@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from gi.repository import Gdk, Gtk
 
@@ -423,9 +423,30 @@ class PatchChannelsTab(Gtk.Box):
                     address=vals["address"],
                     force=vals["force"],
                 )
+                warnings = getattr(self.patch, "last_exchange_warnings", [])
+                if warnings:
+                    self._show_clamping_warning_dialog(warnings)
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
         dialog.destroy()
+
+    def _show_clamping_warning_dialog(self, warnings: list[Any]) -> None:
+        """Display an informational dialog summarizing clamped cue parameters."""
+        count = len(warnings)
+        preview_lines = [w.format_message() for w in warnings[:6]]
+        if count > 6:
+            preview_lines.append(f"... et {count - 6} autre(s) paramètre(s)")
+        body = "\n".join(preview_lines)
+
+        msg_dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK,
+            text=f"Avertissement : {count} valeur(s) dépassent la course mécanique",
+        )
+        msg_dialog.format_secondary_text(body)
+        msg_dialog.run()
+        msg_dialog.destroy()
 
     def _on_import_gdtf_clicked(self, _button: Gtk.Button) -> None:
         chooser = Gtk.FileChooserDialog(

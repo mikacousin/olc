@@ -12,10 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import typing
-from typing import Optional
+from dataclasses import dataclass
+from typing import Any, Optional
 
 import numpy as np
 
@@ -28,6 +31,7 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.cue import Cue
     from olc.curve import Curve
     from olc.gtk3.application import Application
 
@@ -46,6 +50,37 @@ class PatchCollisionError(ValueError):
             f"Address collision on universe {universe}, address {address}: "
             f"already occupied by device {colliding_device_id} "
             f"(attempted by device {new_device_id})."
+        )
+
+
+# pylint: disable=too-many-instance-attributes
+@dataclass(frozen=True)
+class FixtureExchangeWarning:
+    """Warning emitted when a cue value exceeds physical limits of a new profile."""
+
+    device_id: int
+    cue_number: float
+    sequence: int
+    parameter: str
+    original_value: float
+    clamped_value: float
+    unit: str
+    physical_min: float
+    physical_max: float
+
+    def format_message(self) -> str:
+        """Format a user-friendly warning message."""
+        seq_label = (
+            f"Cue {self.cue_number:g} (Seq {self.sequence})"
+            if self.sequence > 0
+            else f"Preset {self.cue_number:g}"
+        )
+        unit_str = f" {self.unit}" if self.unit else ""
+        param_cap = self.parameter.capitalize()
+        return (
+            f"{seq_label}: {param_cap} = {self.original_value:g}{unit_str} "
+            f"écrêté à {self.clamped_value:g}{unit_str} "
+            f"[{self.physical_min:g}..{self.physical_max:g}{unit_str}]"
         )
 
 
@@ -95,6 +130,7 @@ class PatchManager:
         self.map_dev_dst_universes = np.array([], dtype=np.intp)
         self.map_dev_dst_outputs = np.array([], dtype=np.intp)
         self.map_dev_is_htp = np.array([], dtype=bool)
+        self.last_exchange_warnings: list[FixtureExchangeWarning] = []
 
         self.patch_1on1()
 
@@ -385,7 +421,7 @@ class PatchManager:
 
         return patched
 
-    def exchange_fixture(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    def exchange_fixture(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals, too-many-branches
         self,
         device_id: int,
         new_fixture_def: FixtureDefinition,
@@ -467,7 +503,137 @@ class PatchManager:
             force=force,
         )
         new_dev.curve_id = curve_id
+
+        self.last_exchange_warnings = self.check_clamped_cue_parameters(
+            device_id, new_fixture_def, mode.name
+        )
+        if self.lightshow is not None:
+            app = getattr(self.lightshow, "app", None)
+            core = getattr(app, "core", app) if app is not None else None
+            if core is not None and hasattr(core, "emit"):
+                core.emit(
+                    "patch.fixture_exchanged",
+                    new_dev,
+                    self.last_exchange_warnings,
+                )
+
         return new_dev
+
+    @staticmethod
+    def _get_mode_physical_limits(
+        mode: Any,  # noqa: ANN401
+    ) -> dict[str, tuple[float, float, str]]:
+        """Build mapping of parameter names to (physical_min, physical_max, unit)."""
+        param_limits: dict[str, tuple[float, float, str]] = {}
+        for cd in mode.channel_defs:
+            p_min = cd.physical_min
+            p_max = cd.physical_max
+            unit = cd.physical_unit
+            bounds = (min(p_min, p_max), max(p_min, p_max), unit)
+
+            if cd.channel_type == ChannelType.PAN:
+                param_limits["pan"] = bounds
+            elif cd.channel_type == ChannelType.TILT:
+                param_limits["tilt"] = bounds
+            elif cd.channel_type == ChannelType.ZOOM:
+                param_limits["zoom"] = bounds
+            elif cd.channel_type == ChannelType.FOCUS:
+                param_limits["focus"] = bounds
+            elif cd.channel_type == ChannelType.STROBE:
+                param_limits["strobe"] = bounds
+            elif cd.channel_type == ChannelType.COLOR_TEMP:
+                param_limits["color_temp"] = bounds
+                param_limits["colortemp"] = bounds
+                param_limits["cct"] = bounds
+            elif cd.channel_type == ChannelType.IRIS:
+                param_limits["iris"] = bounds
+        return param_limits
+
+    def _collect_show_cues(self) -> list[Cue]:
+        """Collect unique cues across global cues, main playback, and chasers."""
+        all_cues: list[Cue] = []
+        seen_cues: set[tuple[int, float]] = set()
+
+        def add_cue(c: Optional[Cue]) -> None:
+            if c is not None:
+                k = (c.sequence, c.number)
+                if k not in seen_cues:
+                    seen_cues.add(k)
+                    all_cues.append(c)
+
+        if hasattr(self.lightshow, "cues") and self.lightshow.cues:
+            for cue in self.lightshow.cues:
+                add_cue(cue)
+
+        if hasattr(self.lightshow, "main_playback") and self.lightshow.main_playback:
+            for step in self.lightshow.main_playback.steps:
+                add_cue(step.cue)
+
+        if hasattr(self.lightshow, "chasers") and self.lightshow.chasers:
+            for seq in self.lightshow.chasers:
+                for step in seq.steps:
+                    add_cue(step.cue)
+
+        return all_cues
+
+    @staticmethod
+    def _check_single_cue_clamping(
+        cue: Cue,
+        device_id: int,
+        param_limits: dict[str, tuple[float, float, str]],
+    ) -> list[FixtureExchangeWarning]:
+        """Inspect a cue's device values against new physical limits."""
+        warnings: list[FixtureExchangeWarning] = []
+        if not cue.device_values or device_id not in cue.device_values:
+            return warnings
+        for param_name, raw_val in cue.device_values[device_id].items():
+            p_lower = param_name.lower()
+            if p_lower not in param_limits or not isinstance(raw_val, (int, float)):
+                continue
+            val = float(raw_val)
+            p_min, p_max, unit = param_limits[p_lower]
+            if val < p_min or val > p_max:
+                warnings.append(
+                    FixtureExchangeWarning(
+                        device_id=device_id,
+                        cue_number=cue.number,
+                        sequence=cue.sequence,
+                        parameter=param_name,
+                        original_value=val,
+                        clamped_value=max(p_min, min(p_max, val)),
+                        unit=unit,
+                        physical_min=p_min,
+                        physical_max=p_max,
+                    )
+                )
+        return warnings
+
+    def check_clamped_cue_parameters(
+        self,
+        device_id: int,
+        new_fixture_def: FixtureDefinition,
+        new_mode_name: Optional[str] = None,
+    ) -> list[FixtureExchangeWarning]:
+        """Check all show cues for parameter values clamped by the new fixture."""
+        warnings: list[FixtureExchangeWarning] = []
+        if self.lightshow is None:
+            return warnings
+
+        mode = (
+            new_fixture_def.get_mode(new_mode_name)
+            if new_mode_name
+            else new_fixture_def.default_mode()
+        )
+        param_limits = self._get_mode_physical_limits(mode)
+        if not param_limits:
+            return warnings
+
+        for cue in self._collect_show_cues():
+            warnings.extend(
+                self._check_single_cue_clamping(cue, device_id, param_limits)
+            )
+
+        return warnings
 
     def get_device(self, device_id: int) -> Optional[LightingDevice]:
         """Get a registered LightingDevice by ID."""

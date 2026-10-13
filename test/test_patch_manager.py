@@ -290,3 +290,116 @@ def test_patch_clear_and_set_1on1_undo_preserves_multi_param_devices() -> None:
     assert dev10_after is not None
     assert dev10_after.label == "Wash 10"
     assert dev10_after.uses_virtual_dimmer is True
+
+
+# pylint: disable=too-many-locals
+def test_fixture_exchange_clamping_warning() -> None:
+    """Test detection of clamped cue parameters when exchanging fixture profiles."""
+    from olc.cue import Cue
+    from olc.devices.device import ChannelType, FixtureType
+    from olc.devices.fixture import (
+        ChannelDefinition,
+        DmxModeDefinition,
+        FixtureDefinition,
+    )
+    from olc.patch import FixtureExchangeWarning
+    from olc.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    # Original moving head has Pan [-270°..270°], Tilt [-135°..135°]
+    orig_mh_def = create_moving_head_definition()
+    patch.patch_device(
+        device_id=1,
+        fixture_def=orig_mh_def,
+        universe=1,
+        address=1,
+        label="Main Spot",
+    )
+
+    # Cue 1.0 has Pan = 250.0°, Tilt = 45.0°, Zoom = 20.0°
+    cue1 = Cue(1, 1.0, channels={1: 255})
+    cue1.set_device_parameter(1, "pan", 250.0)
+    cue1.set_device_parameter(1, "tilt", 45.0)
+    cue1.set_device_parameter(1, "zoom", 20.0)
+    step1 = Step(1, cue=cue1)
+    app.lightshow.cues.add(cue1)
+    app.lightshow.main_playback.insert_step(1, step1)
+
+    # Compact moving head profile with Pan [-180°..180°] and Zoom [15°..25°]
+    compact_mode = DmxModeDefinition(
+        name="Compact 4ch",
+        channel_defs=[
+            ChannelDefinition(
+                ChannelType.PAN,
+                offset=0,
+                physical_min=-180.0,
+                physical_max=180.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.TILT,
+                offset=1,
+                physical_min=-135.0,
+                physical_max=135.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.ZOOM,
+                offset=2,
+                physical_min=15.0,
+                physical_max=25.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.INTENSITY,
+                offset=3,
+                physical_min=0.0,
+                physical_max=1.0,
+            ),
+        ],
+    )
+    compact_fdef = FixtureDefinition(
+        manufacturer="Generic",
+        model="Compact Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        dmx_modes=[compact_mode],
+    )
+
+    # 1. Preview check
+    warnings = patch.check_clamped_cue_parameters(1, compact_fdef, "Compact 4ch")
+    assert len(warnings) == 1
+    w = warnings[0]
+    assert isinstance(w, FixtureExchangeWarning)
+    assert w.device_id == 1
+    assert w.cue_number == 1.0
+    assert w.parameter == "pan"
+    assert w.original_value == pytest.approx(250.0)
+    assert w.clamped_value == pytest.approx(180.0)
+    assert w.physical_min == pytest.approx(-180.0)
+    assert w.physical_max == pytest.approx(180.0)
+    assert "écrêté à 180" in w.format_message()
+
+    # 2. Exchange fixture and event emission
+    received_events: list[tuple[object, list[FixtureExchangeWarning]]] = []
+    app.subscribe(
+        "patch.fixture_exchanged",
+        lambda dev, warns: received_events.append((dev, warns)),
+    )
+
+    new_dev = patch.exchange_fixture(1, compact_fdef, force=True)
+    assert len(patch.last_exchange_warnings) == 1
+    assert len(received_events) == 1
+    event_dev, event_warns = received_events[0]
+    assert event_dev is new_dev
+    assert len(event_warns) == 1
+
+    # 3. Verify non-destructive cue preservation: cue still holds 250.0°
+    assert cue1.device_values[1]["pan"] == pytest.approx(250.0)
+
+    # 4. Applying to new device clamps to 180.0°
+    new_dev.apply_device_values(cue1.device_values[1])
+    assert new_dev.pan_degrees == pytest.approx(180.0)

@@ -259,6 +259,10 @@ class FixtureExchangeDialog(Gtk.Dialog):
         self.collision_label = Gtk.Label(label="", xalign=0)
         grid.attach(self.collision_label, 0, 6, 2, 1)
 
+        # Clamping warning preview
+        self.clamping_warning_label = Gtk.Label(label="", xalign=0)
+        grid.attach(self.clamping_warning_label, 0, 7, 2, 1)
+
         self._populate_modes()
         self._update_collision_preview()
         self.show_all()
@@ -306,6 +310,25 @@ class FixtureExchangeDialog(Gtk.Dialog):
                 f"<span foreground='#55CC55'>Address range U{univ}:{addr}-"
                 f"{addr + footprint - 1} is free ({footprint} ch)</span>"
             )
+
+        # Clamping preview
+        if hasattr(self.patch, "check_clamped_cue_parameters"):
+            clamp_warnings = self.patch.check_clamped_cue_parameters(
+                self.device_id, fdef, mode.name
+            )
+            if clamp_warnings:
+                count = len(clamp_warnings)
+                self.clamping_warning_label.set_markup(
+                    f"<span foreground='#FF8000'>⚠ {count} cue value(s) "
+                    f"exceed physical bounds and will be clamped</span>"
+                )
+            else:
+                self.clamping_warning_label.set_markup(
+                    "<span foreground='#888888'>No cue physical bounds exceeded</span>"
+                )
+        else:
+            self.clamping_warning_label.set_text("")
+
         self.set_response_sensitive(
             Gtk.ResponseType.OK, not collisions or self.force_check.get_active()
         )
