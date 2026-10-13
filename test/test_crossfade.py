@@ -74,6 +74,11 @@ class _MockLightShow:
         self.app: _MockApp = typing.cast(typing.Any, None)
 
 
+class _MockSettings:
+    def get_double(self, _key: str) -> float:
+        return 5.0
+
+
 class _MockApp:
     def __init__(self, patch: PatchManager) -> None:
         self.backend = _MockBackend()
@@ -83,6 +88,7 @@ class _MockApp:
         self.events: list[tuple[str, tuple[typing.Any, ...]]] = []
         self.midi = None
         self.crossfade: CrossFade | None = None
+        self.settings = _MockSettings()
 
     @property
     def core(self) -> _MockApp:
@@ -275,3 +281,113 @@ def test_manual_crossfade_cue_only_mode_and_return_to_zero() -> None:
     assert int(dmx_seq[0]) == 200
     assert seq.on_go is False
     assert xfade.manual is False
+
+
+def test_takeover_manual_crossfade_while_go_paused_does_not_deadlock() -> None:
+    """Verify taking over manual crossfade while Go is paused halts cleanly."""
+    app, seq, _patch, xfade = _build_crossfade_env(tracking_mode=True)
+
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    cue1 = Cue(1, 1.0)
+    cue1.channels = {1: 100}
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=10.0, time_out=10.0))
+
+    cue2 = Cue(1, 2.0)
+    cue2.channels = {1: 200}
+    seq.add_step(Step(sequence=1, cue=cue2, time_in=10.0, time_out=10.0))
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    seq.load_step(1)
+
+    # 1. Trigger Go transition (starts ThreadGo with total_time=10000ms)
+    seq.do_go(None)
+    assert seq.on_go is True
+    assert seq.thread is not None
+    assert seq.thread.is_alive()
+
+    # 2. Pause the transition
+    seq.pause(None, None)
+    assert seq.thread.pause.is_set() is False
+
+    # 3. Take over manually with crossfade
+    xfade.manual = True
+    xfade.scale_a.set_value(50)
+    xfade.scale_moved(xfade.scale_a)
+
+    # Verify:
+    # - Background thread was stopped and joined cleanly without deadlock
+    assert seq.thread is None
+    # - Manual crossfade is now in control
+    assert seq.on_go is True
+    assert xfade.manual is True
+    # - Pause was reset
+    pause_events = [ev for ev in app.events if ev[0] == "playback.pause_triggered"]
+    assert len(pause_events) >= 1
+    assert pause_events[-1][1][0]["active"] is False
+
+
+def test_takeover_manual_crossfade_while_goback_paused_does_not_deadlock() -> None:
+    """Verify taking over manual crossfade while GoBack is paused halts cleanly."""
+    app, seq, _patch, xfade = _build_crossfade_env(tracking_mode=True)
+
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    cue1 = Cue(1, 1.0)
+    cue1.channels = {1: 100}
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=2.0, time_out=2.0))
+
+    cue2 = Cue(1, 2.0)
+    cue2.channels = {1: 200}
+    seq.add_step(Step(sequence=1, cue=cue2, time_in=2.0, time_out=2.0))
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    # Start at step 2, so go_back can step to 1
+    seq.load_step(2)
+
+    seq.go_back(None, None)
+    assert seq.on_go is True
+    assert seq.thread is not None
+    assert seq.thread.is_alive()
+
+    # Pause the go_back
+    seq.pause(None, None)
+    assert seq.thread.pause.is_set() is False
+
+    # Take over manually with crossfade
+    xfade.manual = True
+    xfade.scale_b.set_value(60)
+    xfade.scale_moved(xfade.scale_b)
+
+    # Verify: thread stopped cleanly and manual crossfade in control
+    assert seq.thread is None
+    assert seq.on_go is True
+    assert xfade.manual is True
+
+
+def test_sequence_stop_while_paused_without_midi_does_not_deadlock() -> None:
+    """Verify Sequence.stop() properly halts a paused transition without MIDI."""
+    _app, seq, _patch, _xfade = _build_crossfade_env(tracking_mode=True)
+
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+    cue1 = Cue(1, 1.0)
+    cue1.channels = {1: 100}
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=10.0, time_out=10.0))
+    cue2 = Cue(1, 2.0)
+    cue2.channels = {1: 200}
+    seq.add_step(Step(sequence=1, cue=cue2, time_in=10.0, time_out=10.0))
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    seq.load_step(1)
+    seq.do_go(None)
+    assert seq.on_go is True
+    assert seq.thread is not None
+
+    seq.pause(None, None)
+    assert seq.thread.pause.is_set() is False
+
+    # Calling seq.stop() must cleanly stop and join without deadlocking
+    stopped = seq.stop()
+    assert stopped is True
+    assert seq.on_go is False
+    assert seq.thread is None

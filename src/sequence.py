@@ -157,29 +157,32 @@ class Sequence:
         Returns:
             True if Go to stop, else False
         """
-        if (
-            self.on_go
-            and self.thread
-            and self.app is not None
-            and self.app.midi is not None
-        ):
-            self.app.midi.button_off("playback.go")
-            # Switch off Pause Led
+        if self.on_go and self.thread:
+            if self.app is not None and self.app.midi is not None:
+                self.app.midi.button_off("playback.go")
+            # Switch off Pause Led / Feedback
             if not self.thread.pause.is_set():
                 self.thread.pause.set()
                 if self.app is not None and self.app.midi is not None:
                     self.app.midi.button_off("playback.pause")
                 if self.app is not None:
                     core = getattr(self.app, "core", self.app)
-                    core.action_registry.trigger_feedback("playback.pause")
-                    core.emit(
-                        "playback.pause_triggered",
-                        core.action_registry.get("playback.pause").get_feedback_state(),
-                    )
+                    if hasattr(core, "action_registry"):
+                        core.action_registry.trigger_feedback("playback.pause")
+                    if hasattr(core, "emit"):
+                        core.emit(
+                            "playback.pause_triggered",
+                            core.action_registry.get(
+                                "playback.pause"
+                            ).get_feedback_state()
+                            if hasattr(core, "action_registry")
+                            else {"active": False, "label": "PAUSE"},
+                        )
             else:
                 self.thread.pause.set()
             self.thread.stop()
-            self.thread.join()
+            self.thread.join(timeout=1.0)
+            self.thread = None
             self.on_go = False
             if self.app is not None and self.app.crossfade is not None:
                 self.app.crossfade.scale_a.set_value(0)
@@ -794,10 +797,19 @@ class ThreadGo(threading.Thread):
 
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go is sent"""
-        self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
-        user_levels = self.backend.dmx.levels["user"]
-        user_mask = user_levels != -1
-        self.old_channels_levels[user_mask] = user_levels[user_mask]
+        if (
+            self.backend is not None
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "sequence" in self.backend.dmx.levels
+        ):
+            self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
+            user_levels = self.backend.dmx.levels.get("user")
+            if user_levels is not None:
+                user_mask = user_levels != -1
+                self.old_channels_levels[user_mask] = user_levels[user_mask]
+        else:
+            self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = _capture_device_states(self.sequence.patch)
 
         next_step_idx = self.sequence.position + 1
@@ -853,10 +865,15 @@ class ThreadGo(threading.Thread):
         if self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
-        self.backend.dmx.levels["user"].fill(-1)
-
-        # Distribute DMX levels to frames
-        self.backend.dmx.set_levels()
+        if (
+            self.backend is not None
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "user" in self.backend.dmx.levels
+        ):
+            self.backend.dmx.levels["user"].fill(-1)
+            # Distribute DMX levels to frames
+            self.backend.dmx.set_levels()
 
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
@@ -892,7 +909,7 @@ class ThreadGo(threading.Thread):
                 start_pause = None
                 i = (time.time() * 1000) - (start_time + pause_time)
                 self.update_levels(i)
-                time.sleep(0.05)
+                self._stopevent.wait(0.05)
 
         if self._stopevent.is_set():
             return
@@ -902,6 +919,7 @@ class ThreadGo(threading.Thread):
     def stop(self) -> None:
         """Stop"""
         self._stopevent.set()
+        self.pause.set()
 
     def update_levels(self, i: float) -> None:
         """Update levels
@@ -954,8 +972,16 @@ class ThreadGo(threading.Thread):
         lvls = self._calculate_transitions_go(i, step)
         self._apply_channel_times_go(lvls, i, step)
 
-        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
-        self.backend.dmx.set_levels()
+        if (
+            self.backend is not None
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "sequence" in self.backend.dmx.levels
+        ):
+            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(
+                np.uint8
+            )
+            self.backend.dmx.set_levels()
 
     def _compute_device_factors_go(  # pylint: disable=too-many-locals, too-many-branches
         self,
@@ -1240,10 +1266,19 @@ class ThreadGoBack(threading.Thread):
 
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go Back starts"""
-        self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
-        user_levels = self.backend.dmx.levels["user"]
-        user_mask = user_levels != -1
-        self.old_channels_levels[user_mask] = user_levels[user_mask]
+        if (
+            self.backend is not None
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "sequence" in self.backend.dmx.levels
+        ):
+            self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
+            user_levels = self.backend.dmx.levels.get("user")
+            if user_levels is not None:
+                user_mask = user_levels != -1
+                self.old_channels_levels[user_mask] = user_levels[user_mask]
+        else:
+            self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = _capture_device_states(self.sequence.patch)
 
     def _finalize_goback(self, prev_step: int) -> None:
@@ -1332,14 +1367,18 @@ class ThreadGoBack(threading.Thread):
             else:
                 start_pause = None
                 self.update_levels(go_back_time, i, self.sequence.position)
-                time.sleep(0.05)
+                self._stopevent.wait(0.05)
                 i = (time.time() * 1000) - (start_time + pause_time)
+
+        if self._stopevent.is_set():
+            return
 
         self._finalize_goback(prev_step)
 
     def stop(self) -> None:
         """Stop"""
         self._stopevent.set()
+        self.pause.set()
 
     def update_levels(self, go_back_time: float, i: float, position: int) -> None:
         """Update levels

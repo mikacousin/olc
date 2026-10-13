@@ -95,6 +95,34 @@ class CrossFade:
         self._start_device_states = None
         self._start_channels = None
 
+    def _takeover_background_thread(self, main_pb: typing.Any) -> None:  # noqa: ANN401
+        """Stop background Go/GoBack transition and inherit its baseline states."""
+        if not (self.manual and main_pb.thread and main_pb.thread.is_alive()):
+            return
+
+        if getattr(main_pb.thread, "old_device_states", None):
+            self._start_device_states = dict(main_pb.thread.old_device_states)
+        if getattr(main_pb.thread, "old_channels_levels", None) is not None:
+            self._start_channels = main_pb.thread.old_channels_levels.astype(np.int32)
+
+        main_pb.thread.stop()
+        main_pb.thread.join(timeout=1.0)
+        main_pb.thread = None
+
+        if self.app is not None:
+            if getattr(self.app, "midi", None) is not None:
+                self.app.midi.button_off("playback.pause")
+                self.app.midi.button_off("playback.go")
+            core = getattr(self.app, "core", self.app)
+            if hasattr(core, "action_registry"):
+                core.action_registry.trigger_feedback("playback.pause")
+                core.action_registry.trigger_feedback("playback.go")
+            if hasattr(core, "emit"):
+                core.emit(
+                    "playback.pause_triggered",
+                    {"active": False, "label": "PAUSE"},
+                )
+
     def scale_moved(self, scale: Scale) -> None:
         """On moved
 
@@ -105,18 +133,10 @@ class CrossFade:
         level = scale.get_value()
         main_pb = self.app.core.lightshow.main_playback
 
+        self._takeover_background_thread(main_pb)
+
         if level not in (255, 0):
             main_pb.on_go = True
-            # If Go is sent, stop it and inherit its starting baseline
-            if self.manual and main_pb.thread and main_pb.thread.is_alive():
-                if getattr(main_pb.thread, "old_device_states", None):
-                    self._start_device_states = dict(main_pb.thread.old_device_states)
-                if getattr(main_pb.thread, "old_channels_levels", None) is not None:
-                    self._start_channels = main_pb.thread.old_channels_levels.astype(
-                        np.int32
-                    )
-                main_pb.thread.stop()
-                main_pb.thread.join()
 
         if scale in (self.scale_a, self.scale_b):
             if main_pb.last == 0:
