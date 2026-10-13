@@ -40,6 +40,7 @@ from olc.devices.fixture import (
     DmxModeDefinition,
     FixtureDefinition,
 )
+from olc.files.parsed_data import Action, ParsedData
 from olc.sequence import Sequence
 from olc.step import Step
 
@@ -536,3 +537,86 @@ def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
     assert dst_app.lightshow.patch.has_device(101) is True
     assert dst_app.lightshow.main_playback.tracking_mode is True
     assert dst_app.lightshow.modified is True
+
+
+def test_merge_olc_updates_existing_step_timings() -> None:
+    """Test that merging .olc updates standard and IFCB timings on existing steps."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Initial step with default timings (time_in=5.0, time_out=5.0, no IFCB overrides)
+    c1 = Cue(0, 1.0, channels={1: 100}, text="Initial Label")
+    step1 = Step(1, cue=c1, time_in=5.0, time_out=5.0, text="Old Step Label")
+    app.lightshow.cues.add(c1)
+    app.lightshow.main_playback.insert_step(1, step1)
+
+    # Parsed data payload simulating a merged .olc file with updated timings
+    merged_payload = {
+        "sequences": {
+            1: {
+                "label": "Main",
+                "tracking_mode": True,
+                "mib_enabled": True,
+                "mib_fade_time": 2.5,
+                "steps": {
+                    "1": {
+                        "cue": 1.0,
+                        "label": "Updated Step Label",
+                        "time_in": 2.5,
+                        "time_out": 3.5,
+                        "delay_in": 0.5,
+                        "delay_out": 1.0,
+                        "wait": 0.2,
+                        "channel_time": {"1": {"delay": 0.3, "time": 1.8}},
+                        "time_position": 1.2,
+                        "delay_position": 0.4,
+                        "time_color": 0.8,
+                        "delay_color": None,
+                        "time_beam": 2.2,
+                        "delay_beam": 0.1,
+                    }
+                },
+                "cues": {
+                    1.0: {
+                        "label": "Updated Cue Label",
+                        "channels": {1: 200},
+                        "device_values": {},
+                        "is_block": True,
+                    }
+                },
+            }
+        }
+    }
+
+    parsed = ParsedData(app.lightshow)
+    parsed.data = merged_payload
+    parsed.import_main_playback(1, Action.MERGE)
+
+    found, step_nb = app.lightshow.main_playback.get_step(1.0)
+    assert found is True
+    assert step_nb == 0
+    step = app.lightshow.main_playback.steps[1]
+
+    # Verify cue updates
+    assert step.cue is not None
+    assert step.cue.channels[1] == 200
+    assert step.cue.text == "Updated Cue Label"
+    assert step.cue.is_block is True
+
+    # Verify step metadata and standard timings
+    assert step.text == "Updated Step Label"
+    assert step.time_in == pytest.approx(2.5)
+    assert step.time_out == pytest.approx(3.5)
+    assert step.delay_in == pytest.approx(0.5)
+    assert step.delay_out == pytest.approx(1.0)
+    assert step.wait == pytest.approx(0.2)
+    assert step.channel_time[1].time == pytest.approx(1.8)
+    assert step.channel_time[1].delay == pytest.approx(0.3)
+
+    # Verify IFCB timings
+    assert step.time_position == pytest.approx(1.2)
+    assert step.delay_position == pytest.approx(0.4)
+    assert step.time_color == pytest.approx(0.8)
+    assert step.delay_color is None
+    assert step.time_beam == pytest.approx(2.2)
+    assert step.delay_beam == pytest.approx(0.1)
