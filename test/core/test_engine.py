@@ -247,10 +247,10 @@ class TestCoreEngineZMQ:
         engine.start()
         # Sleep for ~0.2 seconds. Loop runs ~20 times. Monitor should run ~2 times.
         time.sleep(0.25)
+        # Should be called around 2-3 times while running, definitely not 20 times.
+        running_calls = mock_socket.send_multipart.call_count
+        assert 1 <= running_calls <= 4
         engine.stop()
-
-        # Should be called around 2-3 times, definitely not 20 times.
-        assert 1 <= mock_socket.send_multipart.call_count <= 4
 
     @patch("zmq.Context")
     def test_zmq_pub_bind_failure(self, mock_zmq_context: MagicMock) -> None:
@@ -307,11 +307,16 @@ class TestCoreEngineZMQ:
         engine.stop()
 
         assert mock_socket.send_multipart.called
+        runtime_messages = 0
         for call_args in mock_socket.send_multipart.call_args_list:
             parts = call_args[0][0]
             meta = json.loads(parts[1].decode("utf-8"))
+            if meta.get("status") == "shutdown":
+                continue
             assert "active_universes" in meta
             assert meta["active_universes"] == [1, 3]
+            runtime_messages += 1
+        assert runtime_messages > 0
 
 
 class TestCoreEngineNoTransmit:

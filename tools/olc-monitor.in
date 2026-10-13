@@ -66,6 +66,7 @@ class FrequencyMonitor(Horizontal):
         self._history: collections.deque[float] = collections.deque(maxlen=100)
         self._last_sparkline_update = 0.0
         self._last_status_key: tuple[str, str, str, str] | None = None
+        self._is_signal_lost = False
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the monitor."""
@@ -82,11 +83,17 @@ class FrequencyMonitor(Horizontal):
         if self._last_update > 0.0 and (time.time() - self._last_update > 2.0):
             self._draw()
 
+    def set_signal_lost(self) -> None:
+        """Explicitly switch monitor state to SIGNAL LOST."""
+        self._is_signal_lost = True
+        self._draw()
+
     def refresh_data(self, frequency: float) -> None:
         """Update current frequency and sparkline data history."""
         now = time.time()
         self._frequency = frequency
         self._last_update = now
+        self._is_signal_lost = False
 
         # Update sparkline at most every 0.25s (4 Hz) to avoid continuous UI
         # recalculations
@@ -113,10 +120,7 @@ class FrequencyMonitor(Horizontal):
         lu = self._last_update
         signal_timeout = 2.0
 
-        if lu == 0.0:
-            color, icon, status = "yellow", "◌", "Waiting for signal..."
-            fs = "--.-"
-        elif now - lu > signal_timeout:
+        if self._is_signal_lost or (lu > 0.0 and now - lu > signal_timeout):
             color, icon, status = "red", "✖", "SIGNAL LOST"
             fs = f"{freq:.2f}"
             if self._history:
@@ -125,6 +129,9 @@ class FrequencyMonitor(Horizontal):
                 sparkline.data = None
                 sparkline.set_class(False, "nominal")
                 sparkline.set_class(False, "warning")
+        elif lu == 0.0:
+            color, icon, status = "yellow", "◌", "Waiting for signal..."
+            fs = "--.-"
         elif 43.0 <= freq <= 45.0:
             color, icon, status = "green", "●", "NOMINAL"
             fs = f"{freq:.2f}"
@@ -150,7 +157,7 @@ class FrequencyMonitor(Horizontal):
         freq_status.update(t)
 
 
-class UniversePanel(Static):
+class UniversePanel(Static):  # pylint: disable=too-many-instance-attributes
     """
     Displays the 512 channels of a universe in a 32 x 16 grid.
     Each cell: decimal value (0-255) colored by its intensity.
@@ -163,6 +170,7 @@ class UniversePanel(Static):
         self._protocols: list[str] = []
         self._sync_active = False
         self._dirty = False
+        self._signal_lost = False
 
     def on_mount(self) -> None:
         """Draw the initial DMX grid."""
@@ -205,12 +213,26 @@ class UniversePanel(Static):
             self._dirty = False
             self._draw()
 
+    def set_signal_lost(self, lost: bool) -> None:
+        """Mark universe panel as offline / signal lost."""
+        if self._signal_lost == lost:
+            return
+        self._signal_lost = lost
+        if not self.display or not self.is_in_viewport():
+            self._dirty = True
+            return
+        self._dirty = False
+        self._draw()
+
     def refresh_data(self, values: bytes, protocols: list[str] | None = None) -> None:
         """Update and redraw the universe DMX values."""
-        if values == self._values and (
-            protocols is None or protocols == self._protocols
+        if (
+            not self._signal_lost
+            and values == self._values
+            and (protocols is None or protocols == self._protocols)
         ):
             return
+        self._signal_lost = False
         self._values = values
         if protocols is not None:
             self._protocols = protocols
@@ -238,12 +260,15 @@ class UniversePanel(Static):
             if row < 31:
                 text.append("\n")
 
-        if self._protocols:
+        if self._signal_lost:
+            protocols_str = "offline (signal lost)"
+            border_style = "red"
+        elif self._protocols:
             protocols_str = "/".join(self._protocols)
+            border_style = "yellow" if self._sync_active else "cyan"
         else:
             protocols_str = "offline"
-
-        border_style = "yellow" if self._sync_active else "cyan"
+            border_style = "cyan"
 
         self.border_title = f"Universe {self.universe_id}  {protocols_str}"
         self.styles.border = ("round", border_style)
@@ -333,6 +358,8 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
         self._placeholder_active = True
         self.last_hz = 0.0
         self.last_frames = 0
+        self._last_packet_time = 0.0
+        self._signal_lost = False
         self._dmx_cache: dict[int, bytes] = {}
         self._protocols_cache: dict[int, list[str]] = {}
         self._dirty_uids: set[int] = set()
@@ -408,17 +435,25 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
 
     def _update_status_text(self) -> None:
         """Update the status bar text reflecting visible universes and toggles."""
-        if self.show_offline:
+        if self._signal_lost:
+            new_status = (
+                f"OLC offline / Signal lost | 0.0 Hz | {self.last_frames} frames"
+            )
+        elif self.show_offline:
             active_count = len(self._universe_panels)
             suffix = ""
+            new_status = (
+                f"Active universes: {active_count} | {self.last_hz:.1f} Hz | "
+                f"{self.last_frames} frames{suffix}"
+            )
         else:
             active_count = sum(1 for p in self._universe_panels.values() if p.protocols)
             suffix = " (offline hidden)"
+            new_status = (
+                f"Active universes: {active_count} | {self.last_hz:.1f} Hz | "
+                f"{self.last_frames} frames{suffix}"
+            )
 
-        new_status = (
-            f"Active universes: {active_count} | {self.last_hz:.1f} Hz | "
-            f"{self.last_frames} frames{suffix}"
-        )
         if new_status != self.status_text:
             self.status_text = new_status
 
@@ -437,11 +472,31 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 if len(parts) != 3:
                     continue
 
-                if not parts[0].startswith(b"universe:"):
-                    continue
-                uid = int(parts[0][9:])
-
+                topic = parts[0]
                 metadata = json.loads(parts[1])
+
+                self._last_packet_time = time.time()
+                self._signal_lost = False
+
+                if metadata.get("status") == "shutdown":
+                    self.last_hz = 0.0
+                    self._signal_lost = True
+                    active_univs = metadata.get("active_universes", [])
+                    self._last_active_universes = set(active_univs)
+                    if topic.startswith(b"universe:"):
+                        uid = int(topic[9:])
+                        self._deleted_uids.add(uid)
+                        self._dmx_cache.pop(uid, None)
+                        self._protocols_cache.pop(uid, None)
+                        self._dirty_uids.discard(uid)
+                    if self._frequency_monitor is not None:
+                        self._frequency_monitor.set_signal_lost()
+                    continue
+
+                if not topic.startswith(b"universe:"):
+                    continue
+                uid = int(topic[9:])
+
                 self.last_hz = metadata.get("hz", 0.0)
                 self.last_frames = metadata.get("frames", 0)
 
@@ -492,12 +547,34 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
+    def _update_signal_status(self) -> None:
+        """Check watchdog timeout and update frequency monitor and panels."""
+        now = time.time()
+        # Watchdog timeout check (2.0s without receiving any ZMQ packet)
+        if self._last_packet_time > 0.0 and (now - self._last_packet_time > 2.0):
+            self._signal_lost = True
+            self.last_hz = 0.0
+        elif (
+            self._last_packet_time > 0.0
+            and (now - self._last_packet_time <= 2.0)
+            and self.last_hz > 0.0
+        ):
+            self._signal_lost = False
+
+        if self._signal_lost:
+            if self._frequency_monitor is not None:
+                self._frequency_monitor.set_signal_lost()
+            for panel in self._universe_panels.values():
+                panel.set_signal_lost(True)
+        else:
+            if self._frequency_monitor is not None and self._last_packet_time > 0.0:
+                self._frequency_monitor.refresh_data(self.last_hz)
+            for panel in self._universe_panels.values():
+                panel.set_signal_lost(False)
+
     async def _render_cached_data(self) -> None:
         """Periodic UI render task pulling from ZMQ cache."""
-        # Frequency Monitor: update status/frequency
-        if self._frequency_monitor is not None:
-            self._frequency_monitor.refresh_data(self.last_hz)
-
+        self._update_signal_status()
         await self._remove_orphan_and_deleted_universes()
         self._update_status_text()
 

@@ -274,6 +274,26 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         if self._network_thread is not None:
             self._network_thread.stop()
         if self._zmq_pub is not None:
+            try:
+                shutdown_meta = json.dumps(
+                    {
+                        "hz": 0.0,
+                        "frames": self.frame_count,
+                        "protocols": [],
+                        "deleted": True,
+                        "status": "shutdown",
+                        "active_universes": [],
+                    }
+                ).encode("utf-8")
+                with self._lock:
+                    slots_keys = list(self._slots.keys())
+                for uid in slots_keys:
+                    self._zmq_pub.send_multipart(
+                        [f"universe:{uid}".encode("ascii"), shutdown_meta, b""]
+                    )
+                self._zmq_pub.send_multipart([b"system", shutdown_meta, b""])
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
             self._zmq_pub.close()
         if self._zmq_ctx is not None:
             self._zmq_ctx.term()
