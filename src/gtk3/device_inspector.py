@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
@@ -183,6 +183,161 @@ class PanTiltPadWidget(Gtk.DrawingArea):
         return False
 
 
+# pylint: disable=too-many-instance-attributes
+class RotaryEncoderWidget(Gtk.DrawingArea):
+    """Console-style endless rotary encoder wheel with circular drag and scroll."""
+
+    def __init__(
+        self,
+        label: str,
+        on_delta: Callable[[float, bool], None],
+        size: int = 96,
+    ) -> None:
+        super().__init__()
+        self.label = label
+        self.value_text = "0.0°"
+        self._on_delta = on_delta
+        self.angle_rad = -math.pi / 2.0
+        self._last_pointer_angle: Optional[float] = None
+        self.set_size_request(size, size)
+        self.set_halign(Gtk.Align.CENTER)
+        self.set_valign(Gtk.Align.START)
+        self.set_hexpand(False)
+        self.set_vexpand(False)
+
+        self.add_events(
+            Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.BUTTON_MOTION_MASK
+            | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.SCROLL_MASK
+            | Gdk.EventMask.SMOOTH_SCROLL_MASK
+        )
+        self.connect("button-press-event", self._on_press)
+        self.connect("motion-notify-event", self._on_motion)
+        self.connect("button-release-event", self._on_release)
+        self.connect("scroll-event", self._on_scroll)
+
+    def set_value_text(self, text: str) -> None:
+        """Update the readout text drawn in the center of the encoder."""
+        self.value_text = text
+        self.queue_draw()
+
+    def _center(self) -> tuple[float, float]:
+        alloc = self.get_allocation()
+        return alloc.width / 2.0, alloc.height / 2.0
+
+    def _on_press(self, _widget: Gtk.Widget, event: Any) -> bool:  # noqa: ANN401
+        cx, cy = self._center()
+        self._last_pointer_angle = math.atan2(event.y - cy, event.x - cx)
+        return True
+
+    def _on_release(self, _widget: Gtk.Widget, _event: Any) -> bool:  # noqa: ANN401
+        self._last_pointer_angle = None
+        return True
+
+    def _on_motion(self, _widget: Gtk.Widget, event: Any) -> bool:  # noqa: ANN401
+        cx, cy = self._center()
+        cur_angle = math.atan2(event.y - cy, event.x - cx)
+        if self._last_pointer_angle is None:
+            self._last_pointer_angle = cur_angle
+            return True
+        d_angle = (cur_angle - self._last_pointer_angle + math.pi) % (
+            2.0 * math.pi
+        ) - math.pi
+        self._last_pointer_angle = cur_angle
+        if abs(d_angle) < 1e-4:
+            return True
+        self.angle_rad = (self.angle_rad + d_angle) % (2.0 * math.pi)
+        is_shift = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
+        self._on_delta(d_angle / (2.0 * math.pi), is_shift)
+        self.queue_draw()
+        return True
+
+    def _on_scroll(self, _widget: Gtk.Widget, event: Any) -> bool:  # noqa: ANN401
+        is_shift = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
+        step = 0.0
+        has_dir, direction = event.get_scroll_direction()
+        if has_dir:
+            if direction == Gdk.ScrollDirection.UP:
+                step = 1.0
+            elif direction == Gdk.ScrollDirection.DOWN:
+                step = -1.0
+        if step == 0.0 and hasattr(event, "get_scroll_deltas"):
+            has_deltas, _dx, dy = event.get_scroll_deltas()
+            if has_deltas and abs(dy) > 1e-3:
+                step = -float(dy)
+        if step != 0.0:
+            d_rad = step * math.radians(10.0)
+            self.angle_rad = (self.angle_rad + d_rad) % (2.0 * math.pi)
+            self._on_delta(step / 36.0, is_shift)
+            self.queue_draw()
+        return True
+
+    def do_draw(self, cr: cairo.Context) -> bool:  # pylint: disable=too-many-locals
+        """Render the rotary encoder wheel, knurl ticks, LED dot, and readout."""
+        alloc = self.get_allocation()
+        cx = alloc.width / 2.0
+        cy = alloc.height / 2.0
+        radius = min(cx, cy) - 4.0
+
+        # Outer encoder bezel
+        cr.new_sub_path()
+        cr.arc(cx, cy, radius, 0.0, 2.0 * math.pi)
+        cr.set_source_rgb(0.14, 0.16, 0.18)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.45, 0.50, 0.55, 0.85)
+        cr.set_line_width(1.5)
+        cr.stroke()
+
+        # Rotating knurl ticks around encoder rim
+        num_ticks = 24
+        for idx in range(num_ticks):
+            a = self.angle_rad + idx * (2.0 * math.pi / num_ticks)
+            r_in = radius - 6.5
+            r_out = radius - 2.0
+            cr.move_to(cx + math.cos(a) * r_in, cy + math.sin(a) * r_in)
+            cr.line_to(cx + math.cos(a) * r_out, cy + math.sin(a) * r_out)
+        cr.set_source_rgba(0.65, 0.72, 0.78, 0.65)
+        cr.set_line_width(1.2)
+        cr.stroke()
+
+        # Inner cap
+        cap_r = radius - 9.0
+        cr.new_sub_path()
+        cr.arc(cx, cy, cap_r, 0.0, 2.0 * math.pi)
+        cr.set_source_rgb(0.20, 0.22, 0.25)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.1, 0.1, 0.1, 0.9)
+        cr.set_line_width(1.2)
+        cr.stroke()
+
+        # Finger dimple / LED indicator rotating with wheel
+        dimple_r = cap_r - 7.0
+        dx = cx + math.cos(self.angle_rad) * dimple_r
+        dy = cy + math.sin(self.angle_rad) * dimple_r
+        cr.new_sub_path()
+        cr.arc(dx, dy, 3.2, 0.0, 2.0 * math.pi)
+        cr.set_source_rgb(0.25, 0.88, 0.95)
+        cr.fill()
+
+        # Center parameter label & physical value readout
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.set_font_size(9.5)
+        cr.set_source_rgba(0.75, 0.82, 0.88, 0.95)
+        ext_lbl = cr.text_extents(self.label)
+        cr.move_to(cx - ext_lbl.width / 2.0 - ext_lbl.x_bearing, cy - 3.0)
+        cr.show_text(self.label)
+
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
+        cr.set_font_size(9.0)
+        cr.set_source_rgb(0.95, 0.95, 0.95)
+        disp = self.value_text.replace(" [Multi]", "")
+        ext_val = cr.text_extents(disp)
+        cr.move_to(cx - ext_val.width / 2.0 - ext_val.x_bearing, cy + 10.0)
+        cr.show_text(disp)
+        return False
+
+
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DeviceInspectorWidget(Gtk.Box):
     """Multi-device parameter inspector with IFCB union and NNLS ColorMatcher."""
@@ -193,6 +348,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.selected_devices: list[LightingDevice] = []
         self.lead_index: int = 0
         self.edit_mode: str = "relative"  # "relative" or "absolute"
+        self.fine_position_mode: bool = False
         self.last_delta_e: float = 0.0
         self.last_worst_delta_e: float = 0.0
         self.last_color_warning: str = ""
@@ -313,6 +469,33 @@ class DeviceInspectorWidget(Gtk.Box):
 
         self.pan_tilt_pad = PanTiltPadWidget(self)
         self.position_page.pack_start(self.pan_tilt_pad, False, False, 0)
+
+        # Rotary encoders column (Pan & Tilt wheels + Coarse/Fine 16-bit toggle)
+        encoders_col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        encoders_col.set_valign(Gtk.Align.START)
+        encoders_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.pan_encoder = RotaryEncoderWidget(
+            "PAN",
+            lambda turns, shift: self._on_position_encoder("pan", turns, shift),
+        )
+        self.tilt_encoder = RotaryEncoderWidget(
+            "TILT",
+            lambda turns, shift: self._on_position_encoder("tilt", turns, shift),
+        )
+        encoders_row.pack_start(self.pan_encoder, False, False, 0)
+        encoders_row.pack_start(self.tilt_encoder, False, False, 0)
+        encoders_col.pack_start(encoders_row, False, False, 0)
+
+        self.fine_position_btn = Gtk.ToggleButton(label="Fine 16-bit (0.05°)")
+        self.fine_position_btn.set_tooltip_text(
+            "Toggle fine encoder resolution (or hold Shift while turning)"
+        )
+        self.fine_position_btn.connect(
+            "toggled",
+            lambda btn: setattr(self, "fine_position_mode", btn.get_active()),
+        )
+        encoders_col.pack_start(self.fine_position_btn, False, False, 0)
+        self.position_page.pack_start(encoders_col, False, False, 0)
 
         pos_right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         pos_right.set_valign(Gtk.Align.START)
@@ -710,6 +893,42 @@ class DeviceInspectorWidget(Gtk.Box):
         self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
+    def step_position(self, d_pan_deg: float = 0.0, d_tilt_deg: float = 0.0) -> None:
+        """Incrementally adjust Pan and/or Tilt by (d_pan_deg, d_tilt_deg) degrees."""
+        eligible = [d for d in self.selected_devices if self._has_position(d)]
+        if not eligible:
+            return
+
+        if self.edit_mode == "relative":
+            for dev in eligible:
+                if d_pan_deg != 0.0 and dev.get_channel(ChannelType.PAN) is not None:
+                    dev.set_pan_degrees(dev.pan_degrees + d_pan_deg)
+                if d_tilt_deg != 0.0 and dev.get_channel(ChannelType.TILT) is not None:
+                    dev.set_tilt_degrees(dev.tilt_degrees + d_tilt_deg)
+        else:
+            ref_dev = self.lead_device if self.lead_device in eligible else eligible[0]
+            assert ref_dev is not None
+            new_pan = ref_dev.pan_degrees + d_pan_deg
+            new_tilt = ref_dev.tilt_degrees + d_tilt_deg
+            for dev in eligible:
+                if d_pan_deg != 0.0 and dev.get_channel(ChannelType.PAN) is not None:
+                    dev.set_pan_degrees(new_pan)
+                if d_tilt_deg != 0.0 and dev.get_channel(ChannelType.TILT) is not None:
+                    dev.set_tilt_degrees(new_tilt)
+
+        self._sync_devices_to_live_and_dmx(eligible)
+        self.refresh_ui()
+
+    def _on_position_encoder(self, axis: str, turns: float, is_shift: bool) -> None:
+        if self._updating_ui:
+            return
+        deg_per_turn = 1.8 if (is_shift or self.fine_position_mode) else 36.0
+        delta_deg = turns * deg_per_turn
+        if axis == "pan":
+            self.step_position(d_pan_deg=delta_deg, d_tilt_deg=0.0)
+        elif axis == "tilt":
+            self.step_position(d_pan_deg=0.0, d_tilt_deg=delta_deg)
+
     def get_target_points(self) -> list[dict[str, Any]]:
         """Return 2D Pad points for all position-capable devices in selection."""
         lead = self.lead_device
@@ -1090,10 +1309,11 @@ class DeviceInspectorWidget(Gtk.Box):
             self.intensity_value_label.set_text(
                 f"Dimmer: {self.format_parameter_display('intensity')}"
             )
-            self.position_value_label.set_text(
-                f"Pan: {self.format_parameter_display('pan')} | "
-                f"Tilt: {self.format_parameter_display('tilt')}"
-            )
+            pan_str = self.format_parameter_display("pan")
+            tilt_str = self.format_parameter_display("tilt")
+            self.position_value_label.set_text(f"Pan: {pan_str} | Tilt: {tilt_str}")
+            self.pan_encoder.set_value_text(pan_str)
+            self.tilt_encoder.set_value_text(tilt_str)
             self.color_value_label.set_text(
                 f"Color: {self.format_parameter_display('color')} | "
                 f"dE: {self.last_delta_e:.2f}"
@@ -1153,4 +1373,7 @@ class DeviceInspectorWidget(Gtk.Box):
         if self.app is not None and hasattr(self.app, "core"):
             self.app.core.unsubscribe(
                 "channels.selected_changed", self._on_core_selection_changed
+            )
+            self.app.core.unsubscribe(
+                "channel.level_changed", self._on_core_channel_level_changed
             )

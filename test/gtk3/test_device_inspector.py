@@ -346,6 +346,30 @@ def test_inspector_stack_pages_and_permanent_intensity() -> None:
         assert inspector.stack.get_visible_child_name() == page_name
 
 
+def test_inspector_rotary_encoders_coarse_and_fine() -> None:
+    """Test Pan and Tilt rotary encoders in Coarse and Fine (16-bit) modes."""
+    spot1 = create_moving_head_definition().instantiate(1, "Spot 1", 1, 1)
+    spot2 = create_moving_head_definition().instantiate(2, "Spot 2", 1, 20)
+    spot1.set_pan_degrees(0.0)
+    spot1.set_tilt_degrees(0.0)
+    spot2.set_pan_degrees(10.0)
+    spot2.set_tilt_degrees(-10.0)
+
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([spot1, spot2])
+
+    # 1 scroll notch (1/36 turn) in Coarse mode = +1.0° delta
+    inspector._on_position_encoder("pan", 1.0 / 36.0, is_shift=False)
+    assert spot1.pan_degrees == pytest.approx(1.0, abs=0.1)
+    assert spot2.pan_degrees == pytest.approx(11.0, abs=0.1)
+
+    # Toggle Fine 16-bit mode: 1 full turn = +1.8° delta
+    inspector.fine_position_btn.set_active(True)
+    inspector._on_position_encoder("tilt", 1.0, is_shift=False)
+    assert spot1.tilt_degrees == pytest.approx(1.8, abs=0.1)
+    assert spot2.tilt_degrees == pytest.approx(-8.2, abs=0.1)
+
+
 @pytest.mark.gui
 def test_inspector_intensity_syncs_with_live_view(app_gui: Application) -> None:
     """Test that changing intensity in DeviceInspector updates LiveView and DMX."""
