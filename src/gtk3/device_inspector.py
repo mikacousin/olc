@@ -18,15 +18,16 @@
 
 from __future__ import annotations
 
-import colorsys
 import math
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
 
-from olc.devices.color import ColorMatcher, sRGB
+from olc.devices.color import sRGB
+from olc.devices.color_pick import ColorSolver, apply_color_to_devices
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, LightingDevice
+from olc.gtk3.widgets.color_picker import ConsoleColorPicker
 
 if TYPE_CHECKING:
     from olc.gtk3.application import Application
@@ -166,68 +167,6 @@ class PanTiltPadWidget(Gtk.DrawingArea):
         return False
 
 
-class ScientificColorPickerWidget(Gtk.DrawingArea):
-    """Interactive sRGB / HSV color wheel connected to the NNLS ColorMatcher."""
-
-    def __init__(
-        self,
-        on_color_selected: Callable[[float, float, float], None],
-    ) -> None:
-        super().__init__()
-        self.on_color_selected = on_color_selected
-        self.current_rgb: tuple[float, float, float] = (1.0, 1.0, 1.0)
-        self.set_size_request(140, 140)
-
-        self.add_events(
-            Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_MOTION_MASK
-        )
-        self.connect("button-press-event", self._on_pointer)
-        self.connect("motion-notify-event", self._on_pointer)
-
-    def _on_pointer(self, _widget: Gtk.Widget, event: Any) -> bool:  # noqa: ANN401
-        alloc = self.get_allocation()
-        cx = alloc.width / 2.0
-        cy = alloc.height / 2.0
-        radius = max(1.0, min(cx, cy) - 6.0)
-        dx = event.x - cx
-        dy = event.y - cy
-        dist = min(1.0, math.hypot(dx, dy) / radius)
-        angle = (math.atan2(dy, dx) / (2.0 * math.pi)) % 1.0
-        r, g, b = colorsys.hsv_to_rgb(angle, dist, 1.0)
-        self.current_rgb = (r, g, b)
-        self.on_color_selected(r, g, b)
-        self.queue_draw()
-        return True
-
-    def do_draw(self, cr: cairo.Context) -> bool:
-        """Render color wheel preview and selected chromaticity indicator."""
-        alloc = self.get_allocation()
-        cx = alloc.width / 2.0
-        cy = alloc.height / 2.0
-        radius = max(10.0, min(cx, cy) - 6.0)
-
-        # Outer ring segments
-        steps = 36
-        for i in range(steps):
-            a1 = (i / steps) * 2.0 * math.pi
-            a2 = ((i + 1) / steps) * 2.0 * math.pi
-            r, g, b = colorsys.hsv_to_rgb(i / steps, 0.85, 0.95)
-            cr.move_to(cx, cy)
-            cr.arc(cx, cy, radius, a1, a2)
-            cr.close_path()
-            cr.set_source_rgb(r, g, b)
-            cr.fill()
-
-        # Center swatch showing active color
-        cr.arc(cx, cy, radius * 0.42, 0, 2.0 * math.pi)
-        cr.set_source_rgb(*self.current_rgb)
-        cr.fill_preserve()
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.set_line_width(1.5)
-        cr.stroke()
-        return False
-
-
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DeviceInspectorWidget(Gtk.Box):
     """Multi-device parameter inspector with IFCB union and NNLS ColorMatcher."""
@@ -239,6 +178,9 @@ class DeviceInspectorWidget(Gtk.Box):
         self.lead_index: int = 0
         self.edit_mode: str = "relative"  # "relative" or "absolute"
         self.last_delta_e: float = 0.0
+        self.last_worst_delta_e: float = 0.0
+        self.last_color_warning: str = ""
+        self._color_solver = ColorSolver()
         self._updating_ui: bool = False
 
         self._build_header()
@@ -342,11 +284,11 @@ class DeviceInspectorWidget(Gtk.Box):
         self.position_expander.add(pos_box)
         content.pack_start(self.position_expander, False, False, 0)
 
-        # 3. COLOR (SCIENTIFIC COLOR PICKER) Section
+        # 3. COLOR Section
         self.color_expander = Gtk.Expander(label="COLOR [0/0]")
         self.color_expander.set_expanded(True)
         col_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        self.color_picker = ScientificColorPickerWidget(self._on_wheel_color_picked)
+        self.color_picker = ConsoleColorPicker(self._on_wheel_color_picked)
         self.color_value_label = Gtk.Label(label="#FFFFFF | dE: 0.00", xalign=0)
         col_box.pack_start(self.color_value_label, False, False, 0)
         col_box.pack_start(self.color_picker, False, False, 0)
@@ -702,6 +644,7 @@ class DeviceInspectorWidget(Gtk.Box):
         lead = self.lead_device
         if lead is None:
             return
+        color_satellites: list[LightingDevice] = []
         for dev in self.selected_devices:
             if dev is lead:
                 continue
@@ -718,13 +661,15 @@ class DeviceInspectorWidget(Gtk.Box):
             ):
                 dev.set_tilt_degrees(lead.tilt_degrees)
             if self._has_color(lead) and self._has_color(dev):
-                c = lead.color_srgb
-                dev.set_color_srgb(c.r, c.g, c.b)
+                color_satellites.append(dev)
             if (
                 lead.zoom_degrees is not None
                 and dev.get_channel(ChannelType.ZOOM) is not None
             ):
                 dev.set_zoom_degrees(lead.zoom_degrees)
+        if color_satellites:
+            c = lead.color_srgb
+            apply_color_to_devices(color_satellites, c.r, c.g, c.b, self._color_solver)
         self.refresh_ui()
 
     def apply_color_srgb(self, r: float, g: float, b: float) -> dict[int, float]:
@@ -733,29 +678,13 @@ class DeviceInspectorWidget(Gtk.Box):
         Returns:
             Mapping {device_id: delta_e} for each color-matched device.
         """
-        r_clamped = max(0.0, min(1.0, float(r)))
-        g_clamped = max(0.0, min(1.0, float(g)))
-        b_clamped = max(0.0, min(1.0, float(b)))
-        target_cie = sRGB(r_clamped, g_clamped, b_clamped).to_XYZ().to_xyY()
-
-        delta_e_map: dict[int, float] = {}
-        for dev in self.selected_devices:
-            if not self._has_color(dev):
-                continue
-            dev.set_color_srgb(r_clamped, g_clamped, b_clamped)
-            if dev.color_profile is not None:
-                matcher = ColorMatcher([dev.color_profile])
-                matches = matcher.match_cie(target_cie.x, target_cie.y, target_cie.Y)
-                res = matches.get(dev.color_profile.fixture_name)
-                delta_e_map[dev.device_id] = res.delta_e if res else 0.0
-            else:
-                delta_e_map[dev.device_id] = 0.0
-
-        self.last_delta_e = (
-            sum(delta_e_map.values()) / len(delta_e_map) if delta_e_map else 0.0
-        )
+        color_devs = [d for d in self.selected_devices if self._has_color(d)]
+        outcome = apply_color_to_devices(color_devs, r, g, b, self._color_solver)
+        self.last_delta_e = outcome.mean_delta_e
+        self.last_worst_delta_e = outcome.worst_delta_e
+        self.last_color_warning = outcome.warning
         self.refresh_ui()
-        return delta_e_map
+        return outcome.delta_e
 
     def apply_color_hex(self, hex_str: str) -> dict[int, float]:
         """Apply HTML hex color (#RRGGBB) to all color-capable devices."""
@@ -837,7 +766,7 @@ class DeviceInspectorWidget(Gtk.Box):
         if label:
             self.apply_discrete_range(ChannelType.GOBO_WHEEL, label)
 
-    def refresh_ui(self) -> None:
+    def refresh_ui(self) -> None:  # pylint: disable=too-many-locals
         """Synchronize all IFCB section headers, badges, and widgets with selection."""
         self._updating_ui = True
         try:
@@ -895,7 +824,21 @@ class DeviceInspectorWidget(Gtk.Box):
                 self.zoom_scale.set_value(lead.zoom_degrees)
 
             self.pan_tilt_pad.queue_draw()
-            self.color_picker.queue_draw()
+            color_devs = [d for d in self.selected_devices if self._has_color(d)]
+            if color_devs:
+                ref = (
+                    self.lead_device
+                    if self.lead_device in color_devs
+                    else color_devs[0]
+                )
+                assert ref is not None
+                lead_color = ref.color_srgb
+                self.color_picker.set_color(lead_color.r, lead_color.g, lead_color.b)
+                self.color_picker.set_match(
+                    self.last_worst_delta_e, self.last_color_warning
+                )
+            else:
+                self.color_picker.clear_match()
             if (
                 self.app is not None
                 and self.app.window is not None
@@ -919,6 +862,7 @@ class DeviceInspectorWidget(Gtk.Box):
 
     def cleanup(self) -> None:
         """Unsubscribe from Core events when the tab is closed."""
+        self.color_picker.cleanup()
         if self.app is not None and hasattr(self.app, "core"):
             self.app.core.unsubscribe(
                 "channels.selected_changed", self._on_core_selection_changed

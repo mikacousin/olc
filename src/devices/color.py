@@ -342,7 +342,7 @@ def profile_from_emitters(
 
 
 @dataclass
-class MatchResult:
+class MatchResult:  # pylint: disable=too-many-instance-attributes
     """Result of color matching optimization for a fixture."""
 
     fixture_name: str
@@ -352,10 +352,20 @@ class MatchResult:
     achieved_xyz: CIEXYZ
     delta_e: float
     warning: str = ""
+    ratios: list[float] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, int]:
-        """Return {emitter_name: dmx_value} mapping ready to apply."""
+        """Return {emitter_name: dmx_value} mapping ready to apply (8-bit)."""
         return dict(zip(self.emitter_names, self.dmx_values, strict=False))
+
+    def as_normalized_dict(self) -> dict[str, float]:
+        """Return {emitter_name: ratio} mapping in [0.0, 1.0] float precision."""
+        if self.ratios and len(self.ratios) == len(self.emitter_names):
+            return dict(zip(self.emitter_names, self.ratios, strict=False))
+        return {
+            name: dmx / 255.0
+            for name, dmx in zip(self.emitter_names, self.dmx_values, strict=False)
+        }
 
     def __repr__(self) -> str:
         pairs = " ".join(
@@ -366,6 +376,10 @@ class MatchResult:
         return (
             f"<MatchResult '{self.fixture_name}' ΔE={self.delta_e:.2f} [{pairs}]{warn}>"
         )
+
+
+# Largest NNLS coefficient accepted without an "out of gamut" warning (0.5 %).
+GAMUT_WARNING_TOLERANCE = 1.005
 
 
 class ColorMatcher:
@@ -419,7 +433,10 @@ class ColorMatcher:
         max_c = float(coeffs.max()) if len(coeffs) > 0 else 0.0
         if max_c > 1.0:
             coeffs = coeffs / max_c
-            warning = "out of gamut — brightness reduced"
+            # Overshoots within numerical noise (~1e-4 for fully saturated
+            # colors) are normalized silently; only a real loss is reported.
+            if max_c > GAMUT_WARNING_TOLERANCE:
+                warning = "out of gamut — brightness reduced"
 
         achieved = mat_m @ coeffs
         achieved_xyz = CIEXYZ(
@@ -434,6 +451,7 @@ class ColorMatcher:
             achieved_xyz=achieved_xyz,
             delta_e=self._delta_e(target, achieved_xyz),
             warning=warning,
+            ratios=[float(c) for c in coeffs],
         )
 
     @staticmethod

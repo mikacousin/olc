@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from .color import CIExyY, ColorMatcher, FixtureColorProfile, sRGB
+from .color import CIExyY, ColorMatcher, FixtureColorProfile, MatchResult, sRGB
 
 if TYPE_CHECKING:
     from olc.curve import Curve
@@ -743,16 +743,41 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         elif self.uses_virtual_dimmer:
             self._apply_virtual_dimmer(curve=curve)
 
+    def _set_color_emitter_channels(
+        self, channel_type: ChannelType, level: float
+    ) -> None:
+        """Write normalized [0.0, 1.0] color emitter level to 8/16/24-bit channels."""
+        clamped = max(0.0, min(1.0, float(level)))
+        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        if ultra_fine_ch is not None and fine_ch is not None and coarse_ch is not None:
+            val_24 = round(clamped * 16777215.0)
+            coarse_ch.set_value((val_24 >> 16) & 0xFF)
+            fine_ch.set_value((val_24 >> 8) & 0xFF)
+            ultra_fine_ch.set_value(val_24 & 0xFF)
+        elif fine_ch is not None and coarse_ch is not None:
+            val_16 = round(clamped * 65535.0)
+            coarse_ch.set_value((val_16 >> 8) & 0xFF)
+            fine_ch.set_value(val_16 & 0xFF)
+        elif coarse_ch is not None:
+            val_8 = round(clamped * 255.0)
+            for ch in self.channels:
+                if (
+                    ch.channel_type == channel_type
+                    and not ch.fine
+                    and not ch.ultra_fine
+                ):
+                    ch.set_value(val_8)
+
     def _apply_virtual_dimmer(self, curve: Optional[Curve] = None) -> None:
         """Scale base emitter levels by current intensity (curved if assigned)."""
         eff_intensity = (
-            curve.evaluate_normalized(self._intensity) if curve else self._intensity
+            float(curve.evaluate_normalized(self._intensity))
+            if curve
+            else self._intensity
         )
-        for ch in self.channels:
-            if ch.channel_type in COLOR_CHANNEL_TYPES:
-                base_val = self._base_emitters.get(ch.channel_type, 0.0)
-                scaled_dmx = round(base_val * eff_intensity * 255.0)
-                ch.set_value(max(0, min(255, scaled_dmx)))
+        for ctype in COLOR_CHANNEL_TYPES:
+            base_val = self._base_emitters.get(ctype, 0.0)
+            self._set_color_emitter_channels(ctype, base_val * eff_intensity)
 
     # Color controls
     @property
@@ -770,8 +795,23 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Return target color as CIE xyY chromaticity."""
         return self._target_cie
 
-    def set_color_srgb(self, r: float, g: float, b: float) -> None:
-        """Set color from normalized sRGB components [0.0, 1.0]."""
+    def set_color_srgb(
+        self,
+        r: float,
+        g: float,
+        b: float,
+        solved: Optional[MatchResult] = None,
+    ) -> None:
+        """Set color from normalized sRGB components [0.0, 1.0].
+
+        Args:
+            r: Red, 0.0 to 1.0.
+            g: Green, 0.0 to 1.0.
+            b: Blue, 0.0 to 1.0.
+            solved: Optional pre-computed NNLS result for this device's color
+                profile and this color. It lets a caller that drives many
+                identical fixtures solve once and share the result.
+        """
         r_norm = max(0.0, min(1.0, float(r)))
         g_norm = max(0.0, min(1.0, float(g)))
         b_norm = max(0.0, min(1.0, float(b)))
@@ -779,7 +819,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._target_cie = self._target_color.to_XYZ().to_xyY()
 
         if self.color_profile is not None:
-            self._solve_emitters_from_cie(self._target_cie)
+            if solved is not None:
+                self._apply_match_result(solved)
+            else:
+                self._solve_emitters_from_cie(self._target_cie)
         else:
             self._base_emitters[ChannelType.RED] = r_norm
             self._base_emitters[ChannelType.GREEN] = g_norm
@@ -839,27 +882,30 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         matches = matcher.match_cie(cie.x, cie.y, cie.Y)
         result = matches.get(self.color_profile.fixture_name)
         if result:
-            name_map = {
-                "red": ChannelType.RED,
-                "green": ChannelType.GREEN,
-                "blue": ChannelType.BLUE,
-                "white": ChannelType.WHITE,
-                "amber": ChannelType.AMBER,
-            }
-            for emitter_name, dmx_val in result.as_dict().items():
-                ctype = name_map.get(emitter_name.lower())
-                if ctype:
-                    self._base_emitters[ctype] = dmx_val / 255.0
+            self._apply_match_result(result)
+
+    def _apply_match_result(self, result: MatchResult) -> None:
+        """Store the emitter levels of an NNLS match result in float precision."""
+        name_map = {
+            "red": ChannelType.RED,
+            "green": ChannelType.GREEN,
+            "blue": ChannelType.BLUE,
+            "white": ChannelType.WHITE,
+            "amber": ChannelType.AMBER,
+        }
+        for emitter_name, ratio in result.as_normalized_dict().items():
+            ctype = name_map.get(emitter_name.lower())
+            if ctype:
+                self._base_emitters[ctype] = max(0.0, min(1.0, float(ratio)))
 
     def _apply_color(self) -> None:
-        """Apply base emitters to DMX channels."""
+        """Apply base emitters to DMX channels (8, 16, or 24-bit)."""
         if self.uses_virtual_dimmer:
             self._apply_virtual_dimmer()
         else:
-            for ch in self.channels:
-                if ch.channel_type in COLOR_CHANNEL_TYPES:
-                    base_val = self._base_emitters.get(ch.channel_type, 0.0)
-                    ch.set_value(round(base_val * 255.0))
+            for ctype in COLOR_CHANNEL_TYPES:
+                base_val = self._base_emitters.get(ctype, 0.0)
+                self._set_color_emitter_channels(ctype, base_val)
 
     # Physical and multi-resolution helpers
     def _set_physical_parameter(self, channel_type: ChannelType, value: float) -> None:

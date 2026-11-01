@@ -209,3 +209,23 @@ def test_device_inspector_tab_menu_action(app_gui: Application) -> None:
     inspector_tab.on_close_icon(inspector_tab)
     process_events()
     assert app_gui.tabs.tabs.get("device_inspector") is None
+
+
+def test_inspector_color_is_solved_once_per_profile() -> None:
+    """A large mixed selection costs one NNLS solve per distinct color profile."""
+    fixtures = [
+        create_rgbw_definition().instantiate(i, f"W{i}", 1, 1 + 8 * i)
+        for i in range(1, 7)
+    ] + [
+        create_rgba_definition().instantiate(100 + i, f"A{i}", 2, 1 + 8 * i)
+        for i in range(1, 5)
+    ]
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices(fixtures)
+
+    delta_e_map = inspector.apply_color_hex("#FF8800")
+
+    assert len(delta_e_map) == 10
+    assert inspector._color_solver.solves == 2  # pylint: disable=protected-access
+    inspector.apply_color_hex("#FF8800")
+    assert inspector._color_solver.solves == 2  # pylint: disable=protected-access
