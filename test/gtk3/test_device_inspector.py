@@ -294,3 +294,24 @@ def test_inspector_emitter_faders_relative_color_and_fan() -> None:
     inspector.fan_color((1.0, 0.0, 0.0), (0.0, 0.0, 1.0), mode="hs_short")
     assert rgbw.color_srgb.r > 0.9
     assert rgba.color_srgb.b > 0.9
+
+
+def test_inspector_apply_gel_and_swatchbook_filter() -> None:
+    """Test applying Lee/Rosco gels and filtering the Swatchbook with ΔE badges."""
+    rgbw = create_rgbw_definition().instantiate(1, "LED RGBW", 1, 1)
+    rgbw.set_intensity(1.0)
+
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([rgbw])
+    picker = inspector.color_picker
+
+    # Apply L201 (Full C.T. Blue) by code
+    gel = inspector.apply_gel("L201")
+    assert gel is not None and gel.code == "L201"
+    assert rgbw.color_srgb.b > rgbw.color_srgb.r
+
+    # Search 'congo' in swatchbook -> filters to L181 and R382 with ΔE badges
+    picker.gel_search_entry.set_text("congo")
+    codes = [sw.code for sw in picker.swatch_widgets]
+    assert "L181" in codes and "R382" in codes
+    assert all(sw.match_level is not None for sw in picker.swatch_widgets)

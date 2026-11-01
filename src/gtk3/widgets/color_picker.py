@@ -18,6 +18,8 @@ All the color math and rate limiting lives in ``olc.devices.color_pick`` (no
 GTK, unit tested). This module is only the drawing and the event plumbing.
 """
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import math
@@ -63,30 +65,86 @@ class FixtureColorPoint:
     is_lead: bool = False
 
 
+_MATCH_BADGE_RGB: dict[str, cp.RGB] = {
+    "exact": (0.37, 0.75, 0.37),
+    "close": (0.66, 0.78, 0.35),
+    "approx": (0.88, 0.63, 0.19),
+    "out": (0.88, 0.31, 0.31),
+}
+
+
 class _Swatch(Gtk.Button):  # pylint: disable=too-few-public-methods
-    """Small flat button filled with a color."""
+    """Small flat button filled with a color, optional gel code, and ΔE badge."""
 
     def __init__(
-        self, name: str, rgb: cp.RGB, on_pick: Callable[[cp.RGB], None]
+        self,
+        name: str,
+        rgb: cp.RGB,
+        on_pick: Callable[[cp.RGB], None],
+        code: str = "",
+        gel: Optional[cp.GelSwatch] = None,
     ) -> None:
         super().__init__()
+        self.base_name = name
         self.rgb = rgb
+        self.code = code
+        self.gel = gel
+        self.match_level: Optional[str] = None
         self.set_tooltip_text(name)
         self.set_relief(Gtk.ReliefStyle.NONE)
         area = Gtk.DrawingArea()
-        area.set_size_request(22, 18)
+        area.set_size_request(36 if code else 22, 20 if code else 18)
         area.connect("draw", self._on_draw)
+        self._area = area
         self.add(area)
         self.connect("clicked", lambda _b: on_pick(self.rgb))
 
+    def set_match_badge(
+        self, level: Optional[str], delta_e: float = 0.0, warning: str = ""
+    ) -> None:
+        """Update feasibility badge and tooltip for the active Lead profile."""
+        self.match_level = level
+        if level is None:
+            self.set_tooltip_text(self.base_name)
+        else:
+            warn_str = f" ({warning})" if warning else ""
+            self.set_tooltip_text(
+                f"{self.base_name} — ΔE {delta_e:.1f} · {_MATCH_TEXT[level]}{warn_str}"
+            )
+        self._area.queue_draw()
+
     def _on_draw(self, widget: Gtk.Widget, cr: cairo.Context) -> bool:
         alloc = widget.get_allocation()
-        cr.rectangle(0, 0, alloc.width, alloc.height)
+        w, h = alloc.width, alloc.height
+        cr.rectangle(0, 0, w, h)
         cr.set_source_rgb(*self.rgb)
         cr.fill_preserve()
         cr.set_source_rgba(1.0, 1.0, 1.0, 0.35)
         cr.set_line_width(1.0)
         cr.stroke()
+
+        if self.code:
+            luma = 0.2126 * self.rgb[0] + 0.7152 * self.rgb[1] + 0.0722 * self.rgb[2]
+            if luma > 0.55:
+                cr.set_source_rgba(0.05, 0.05, 0.05, 0.9)
+            else:
+                cr.set_source_rgba(1.0, 1.0, 1.0, 0.95)
+            cr.set_font_size(8.5)
+            ext = cr.text_extents(self.code)
+            cr.move_to(
+                (w - ext.width) / 2.0 - ext.x_bearing,
+                (h - ext.height) / 2.0 - ext.y_bearing,
+            )
+            cr.show_text(self.code)
+
+        if self.match_level in _MATCH_BADGE_RGB:
+            br, bg, bb = _MATCH_BADGE_RGB[self.match_level]
+            cr.arc(w - 4.0, 4.0, 2.8, 0.0, 2.0 * math.pi)
+            cr.set_source_rgb(br, bg, bb)
+            cr.fill_preserve()
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.7)
+            cr.set_line_width(0.8)
+            cr.stroke()
         return False
 
 
@@ -498,6 +556,9 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.gamut_hs: list[tuple[float, float]] = []
         self.fixture_points: list[FixtureColorPoint] = []
         self.wheel_slots: list[tuple[str, cp.RGB]] = []
+        self._swatch_solver = cp.ColorSolver()
+        self._lead_profile: Optional[Any] = None
+        self.swatch_widgets: list[_Swatch] = []
 
         self._throttle = cp.Throttle(
             self._emit, SEND_INTERVAL_MS, GLib.timeout_add, GLib.source_remove
@@ -614,13 +675,29 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         row.pack_start(self.match_label, True, True, 0)
         self.pack_start(row, False, False, 0)
 
-        # Presets
-        flow = Gtk.FlowBox()
-        flow.set_max_children_per_line(6)
-        flow.set_selection_mode(Gtk.SelectionMode.NONE)
-        for name, rgb in cp.PRESETS:
-            flow.add(_Swatch(name, rgb, self._on_preset))
-        self.pack_start(flow, False, False, 0)
+        # Gel Swatchbook Filter Bar (Search + Manufacturer Filter)
+        gel_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.gel_search_entry = Gtk.SearchEntry()
+        self.gel_search_entry.set_placeholder_text("Gel # or name (L201, Congo)...")
+        self.gel_search_entry.connect("changed", self._on_gel_filter_changed)
+        self.gel_search_entry.connect("activate", self._on_gel_search_activate)
+        self.gel_filter_combo = Gtk.ComboBoxText()
+        self.gel_filter_combo.append("quick", "Quick")
+        self.gel_filter_combo.append("All", "All Gels")
+        self.gel_filter_combo.append("Lee", "Lee")
+        self.gel_filter_combo.append("Rosco", "Rosco")
+        self.gel_filter_combo.set_active_id("quick")
+        self.gel_filter_combo.connect("changed", self._on_gel_filter_changed)
+        gel_bar.pack_start(self.gel_search_entry, True, True, 0)
+        gel_bar.pack_end(self.gel_filter_combo, False, False, 0)
+        self.pack_start(gel_bar, False, False, 0)
+
+        # Swatchbook Grid
+        self.swatch_flow = Gtk.FlowBox()
+        self.swatch_flow.set_max_children_per_line(6)
+        self.swatch_flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.pack_start(self.swatch_flow, False, False, 0)
+        self._rebuild_swatches()
 
     # -- public ---------------------------------------------------------------
 
@@ -660,10 +737,12 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             self.gamut_xy = cp.device_gamut_xy(lead)
             self.gamut_hs = cp.device_gamut_hs(lead)
             emitters_xy = cp.device_emitters_xy(lead)
+            self._lead_profile = cp.effective_color_profile(lead)
         else:
             self.gamut_xy = []
             self.gamut_hs = []
             emitters_xy = []
+            self._lead_profile = None
 
         points: list[FixtureColorPoint] = []
         present_emitters: set[str] = set()
@@ -696,6 +775,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
 
         self._update_emitter_faders(lead, present_emitters)
         self._update_wheel_slots(lead, dev_list)
+        self._update_swatch_badges()
 
     def _update_emitter_faders(
         self, lead: Optional[object], present_emitters: set[str]
@@ -745,6 +825,52 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
                 sw.show_all()
                 self.wheel_flow.add(sw)
         self.wheel_box.set_visible(bool(new_slots))
+
+    def _rebuild_swatches(self) -> None:
+        """Populate swatch_flow according to active manufacturer filter and query."""
+        for child in self.swatch_flow.get_children():
+            self.swatch_flow.remove(child)
+        self.swatch_widgets.clear()
+
+        query = self.gel_search_entry.get_text().strip()
+        mode = self.gel_filter_combo.get_active_id() or "quick"
+
+        if mode == "quick" and not query:
+            for name, rgb in cp.PRESETS:
+                sw = _Swatch(name, rgb, self._on_preset)
+                sw.show_all()
+                self.swatch_flow.add(sw)
+                self.swatch_widgets.append(sw)
+        else:
+            mfg = "All" if mode in ("quick", "All") else mode
+            for gel in cp.filter_gels(query=query, manufacturer=mfg):
+                tooltip = (
+                    f"{gel.code} · {gel.name} ({gel.manufacturer}) "
+                    f"[{gel.category}, Y={gel.transmission_y:.0f}%]"
+                )
+                sw = _Swatch(
+                    tooltip,
+                    gel.rgb,
+                    self._on_preset,
+                    code=gel.code,
+                    gel=gel,
+                )
+                sw.show_all()
+                self.swatch_flow.add(sw)
+                self.swatch_widgets.append(sw)
+
+        self._update_swatch_badges()
+
+    def _update_swatch_badges(self) -> None:
+        """Update ΔE feasibility badges on visible gel swatches for Lead profile."""
+        for sw in self.swatch_widgets:
+            if sw.gel is None or self._lead_profile is None:
+                sw.set_match_badge(None)
+                continue
+            de, warn, lvl = cp.evaluate_gel_for_profile(
+                sw.gel, self._lead_profile, self._swatch_solver
+            )
+            sw.set_match_badge(lvl, delta_e=de, warning=warn)
 
     def set_match(self, delta_e: float, warning: str = "") -> None:
         """Display how closely the selected fixtures reproduce the color."""
@@ -848,8 +974,25 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         if self._silent:
             return
         strat = combo.get_active_id() or "spectral"
+        self._swatch_solver.strategy = strat
+        self._update_swatch_badges()
         if self._on_strategy_changed is not None:
             self._on_strategy_changed(strat)
+
+    def _on_gel_filter_changed(self, _widget: Gtk.Widget) -> None:
+        if self._silent:
+            return
+        self._rebuild_swatches()
+
+    def _on_gel_search_activate(self, entry: Gtk.SearchEntry) -> None:
+        query = entry.get_text().strip()
+        if not query:
+            return
+        mode = self.gel_filter_combo.get_active_id() or "quick"
+        mfg = "All" if mode in ("quick", "All") else mode
+        matches = cp.filter_gels(query=query, manufacturer=mfg)
+        if matches:
+            self._on_preset(matches[0].rgb)
 
     def _on_wheel_swatch(self, slot_label: str, slot_rgb: cp.RGB) -> None:
         if self._on_wheel_slot_clicked is not None:

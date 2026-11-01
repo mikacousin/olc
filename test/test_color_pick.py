@@ -662,3 +662,40 @@ def test_color_wheel_auto_snap() -> None:
     # Target near Blue -> snaps to Blue slot (DMX 65)
     cp.apply_color_to_devices([spot], 0.0, 0.1, 0.95, solver)
     assert wheel_ch.value == 65
+
+
+def test_gel_library_lookup_and_search() -> None:
+    """Verify lookup by exact code, bare number, name substring, and manufacturer."""
+    l201 = cp.find_gel("L201")
+    assert l201 is not None and l201.code == "L201"
+    assert l201.name == "Full C.T. Blue"
+
+    # Lookup by bare number without leading 'L' or '0'
+    by_num = cp.find_gel("201")
+    assert by_num == l201
+    l021 = cp.find_gel("21")
+    assert l021 is not None and l021.code in ("L021", "R21")
+
+    # Lookup by name substring
+    congo = cp.filter_gels("congo")
+    assert len(congo) >= 2
+    assert {g.code for g in congo} >= {"L181", "R382"}
+
+    # Filter by manufacturer
+    rosco_only = cp.filter_gels("", manufacturer="Rosco")
+    assert rosco_only and all(g.manufacturer == "Rosco" for g in rosco_only)
+
+
+def test_evaluate_gel_feasibility_on_profiles() -> None:
+    """Verify evaluate_gel_for_profile returns valid ΔE and match level."""
+    rgbw_prof = create_rgbw_definition().color_profile
+    solver = cp.ColorSolver()
+    gel = cp.find_gel("L201")
+    assert gel is not None
+
+    de, _warn, level = cp.evaluate_gel_for_profile(gel, rgbw_prof, solver)
+    assert de >= 0.0
+    assert level in ("exact", "close", "approx", "out")
+
+    # None profile -> exact (0.0)
+    assert cp.evaluate_gel_for_profile(gel, None, solver) == (0.0, "", "exact")

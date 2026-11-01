@@ -28,8 +28,10 @@ from olc.devices.color import sRGB
 from olc.devices.color_pick import (
     ColorApplyResult,
     ColorSolver,
+    GelSwatch,
     apply_color_to_devices,
     fan_colors_to_devices,
+    find_gel,
     hs_to_rgb,
     rgb_to_hs,
     shift_color_hs,
@@ -743,6 +745,14 @@ class DeviceInspectorWidget(Gtk.Box):
         """Apply HTML hex color (#RRGGBB) to all color-capable devices."""
         c = sRGB.from_hex(hex_str)
         return self.apply_color_srgb(c.r, c.g, c.b)
+
+    def apply_gel(self, query: str) -> Optional[GelSwatch]:
+        """Find a gel by code/number/name (e.g. 'L201', '181', 'Congo') and apply it."""
+        gel = find_gel(query)
+        if gel is None:
+            return None
+        self.apply_color_srgb(*gel.rgb)
+        return gel
 
     def set_color_solver_strategy(self, strategy: str) -> None:
         """Set NNLS solver strategy ('spectral', 'punch', 'rgb_only') and re-solve."""
