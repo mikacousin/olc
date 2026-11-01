@@ -315,3 +315,32 @@ def test_inspector_apply_gel_and_swatchbook_filter() -> None:
     codes = [sw.code for sw in picker.swatch_widgets]
     assert "L181" in codes and "R382" in codes
     assert all(sw.match_level is not None for sw in picker.swatch_widgets)
+
+
+def test_inspector_stack_pages_and_permanent_intensity() -> None:
+    """Test IFCB Stack pages, dynamic [M/N] page titles, and permanent Intensity bar."""
+    dimmer = create_dimmer_definition().instantiate(1, "Dimmer 1", 1, 1)
+    rgbw = create_rgbw_definition().instantiate(2, "LED RGBW 2", 1, 10)
+    spot1 = create_moving_head_definition().instantiate(3, "Spot 3", 1, 20)
+    spot2 = create_moving_head_definition().instantiate(4, "Spot 4", 1, 40)
+
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([dimmer, rgbw, spot1, spot2])
+
+    assert inspector.intensity_header_label.get_text() == "INTENSITY [4/4]"
+    assert (
+        inspector.stack.child_get_property(inspector.position_page, "title")
+        == "POSITION [2/4]"
+    )
+    assert (
+        inspector.stack.child_get_property(inspector.color_page, "title")
+        == "COLOR [1/4]"
+    )
+    assert (
+        inspector.stack.child_get_property(inspector.beam_page, "title")
+        == "BEAM & GOBOS [2/4]"
+    )
+
+    for page_name in ("position", "color", "beam"):
+        inspector.stack.set_visible_child_name(page_name)
+        assert inspector.stack.get_visible_child_name() == page_name

@@ -32,7 +32,7 @@ from gi.repository import Gdk, GLib, Gtk
 
 from olc.devices import color_pick as cp
 
-DISC_SIZE = 160
+DISC_SIZE = 260
 SEND_INTERVAL_MS = 33  # ~30 Hz toward the devices while dragging
 
 _MATCH_TEXT = {
@@ -52,6 +52,12 @@ _CSS = b"""
 .olc-match-close { color: #a8c85a; }
 .olc-match-approx { color: #e0a030; }
 .olc-match-out { color: #e05050; }
+button.olc-swatch {
+    padding: 1px;
+    margin: 0px;
+    min-width: 0px;
+    min-height: 0px;
+}
 """
 
 
@@ -73,6 +79,10 @@ _MATCH_BADGE_RGB: dict[str, cp.RGB] = {
 }
 
 
+SWATCH_WIDTH = 34
+SWATCH_HEIGHT = 20
+
+
 class _Swatch(Gtk.Button):  # pylint: disable=too-few-public-methods
     """Small flat button filled with a color, optional gel code, and ΔE badge."""
 
@@ -92,8 +102,19 @@ class _Swatch(Gtk.Button):  # pylint: disable=too-few-public-methods
         self.match_level: Optional[str] = None
         self.set_tooltip_text(name)
         self.set_relief(Gtk.ReliefStyle.NONE)
+        self.set_halign(Gtk.Align.START)
+        self.set_valign(Gtk.Align.START)
+        self.set_hexpand(False)
+        self.set_vexpand(False)
+        css = Gtk.CssProvider()
+        css.load_from_data(_CSS)
+        ctx = self.get_style_context()
+        ctx.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        ctx.add_class("olc-swatch")
         area = Gtk.DrawingArea()
-        area.set_size_request(36 if code else 22, 20 if code else 18)
+        area.set_size_request(SWATCH_WIDTH, SWATCH_HEIGHT)
+        area.set_halign(Gtk.Align.CENTER)
+        area.set_valign(Gtk.Align.CENTER)
         area.connect("draw", self._on_draw)
         self._area = area
         self.add(area)
@@ -569,6 +590,14 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             self._emit, SEND_INTERVAL_MS, GLib.timeout_add, GLib.source_remove
         )
 
+        # Two-column layout: Left = 2D Color Space + Hex, Right = Sliders/Emitters/Gels
+        columns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        left_col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        right_col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        columns.pack_start(left_col, False, False, 0)
+        columns.pack_start(right_col, True, True, 0)
+        self.pack_start(columns, True, True, 0)
+
         # View Switcher: HS Disc | CIE 1931 xy + NNLS Strategy selector
         self.view_stack = Gtk.Stack()
         self.view_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
@@ -588,11 +617,28 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.strategy_combo.connect("changed", self._on_strategy_combo_changed)
         top_bar.pack_start(switcher, True, False, 0)
         top_bar.pack_end(self.strategy_combo, False, False, 0)
-        self.pack_start(top_bar, False, False, 0)
-        self.pack_start(self.view_stack, False, False, 0)
+        left_col.pack_start(top_bar, False, False, 0)
+        left_col.pack_start(self.view_stack, False, False, 0)
+
+        # Hex + match quality (Left column below 2D picker)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.hex_entry = Gtk.Entry()
+        self.hex_entry.set_max_length(7)
+        self.hex_entry.set_width_chars(8)
+        self.hex_entry.set_text("#FFFFFF")
+        self.hex_entry.connect("activate", self._on_hex_activate)
+        self.match_label = Gtk.Label(label="", xalign=0)
+        css = Gtk.CssProvider()
+        css.load_from_data(_CSS)
+        self.match_label.get_style_context().add_provider(
+            css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        row.pack_start(self.hex_entry, False, False, 0)
+        row.pack_start(self.match_label, True, True, 0)
+        left_col.pack_start(row, False, False, 0)
 
         # Kelvin (CCT)
-        self.pack_start(
+        right_col.pack_start(
             Gtk.Label(label="Color temperature (K)", xalign=0), False, False, 0
         )
         self.kelvin = Gtk.Scale.new_with_range(
@@ -606,10 +652,10 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.kelvin.connect("value-changed", self._on_kelvin_or_tint_changed)
         self.kelvin.connect("button-press-event", self._on_kelvin_press)
         self.kelvin.connect("button-release-event", self._on_kelvin_release)
-        self.pack_start(self.kelvin, False, False, 0)
+        right_col.pack_start(self.kelvin, False, False, 0)
 
         # Tint (Duv)
-        self.pack_start(Gtk.Label(label="Tint (Δuv)", xalign=0), False, False, 0)
+        right_col.pack_start(Gtk.Label(label="Tint (Δuv)", xalign=0), False, False, 0)
         self.tint = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, cp.DUV_MIN, cp.DUV_MAX, 0.001
         )
@@ -622,7 +668,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.tint.connect("value-changed", self._on_kelvin_or_tint_changed)
         self.tint.connect("button-press-event", self._on_tint_press)
         self.tint.connect("button-release-event", self._on_tint_release)
-        self.pack_start(self.tint, False, False, 0)
+        right_col.pack_start(self.tint, False, False, 0)
 
         # Real-time physical emitter faders (R, G, B, W, A, L)
         self.emitters_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -648,7 +694,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             self.emitter_rows[etype] = erow
             self.emitter_scales[etype] = scale
             self.emitters_box.pack_start(erow, False, False, 0)
-        self.pack_start(self.emitters_box, False, False, 0)
+        right_col.pack_start(self.emitters_box, False, False, 0)
 
         # Dynamic Color Wheel slots row (shown when COLOR_WHEEL ranges exist)
         self.wheel_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -656,29 +702,17 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         wheel_lbl = Gtk.Label(label="Color Wheel Slots", xalign=0)
         wheel_lbl.show()
         self.wheel_flow = Gtk.FlowBox()
-        self.wheel_flow.set_max_children_per_line(6)
+        self.wheel_flow.set_halign(Gtk.Align.START)
+        self.wheel_flow.set_valign(Gtk.Align.START)
+        self.wheel_flow.set_homogeneous(True)
+        self.wheel_flow.set_column_spacing(3)
+        self.wheel_flow.set_row_spacing(3)
+        self.wheel_flow.set_max_children_per_line(8)
         self.wheel_flow.set_selection_mode(Gtk.SelectionMode.NONE)
         self.wheel_flow.show()
         self.wheel_box.pack_start(wheel_lbl, False, False, 0)
         self.wheel_box.pack_start(self.wheel_flow, False, False, 0)
-        self.pack_start(self.wheel_box, False, False, 0)
-
-        # Hex + match quality
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.hex_entry = Gtk.Entry()
-        self.hex_entry.set_max_length(7)
-        self.hex_entry.set_width_chars(8)
-        self.hex_entry.set_text("#FFFFFF")
-        self.hex_entry.connect("activate", self._on_hex_activate)
-        self.match_label = Gtk.Label(label="", xalign=0)
-        css = Gtk.CssProvider()
-        css.load_from_data(_CSS)
-        self.match_label.get_style_context().add_provider(
-            css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
-        row.pack_start(self.hex_entry, False, False, 0)
-        row.pack_start(self.match_label, True, True, 0)
-        self.pack_start(row, False, False, 0)
+        right_col.pack_start(self.wheel_box, False, False, 0)
 
         # Gel Swatchbook Filter Bar (Search + Manufacturer Filter)
         gel_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
@@ -695,13 +729,22 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.gel_filter_combo.connect("changed", self._on_gel_filter_changed)
         gel_bar.pack_start(self.gel_search_entry, True, True, 0)
         gel_bar.pack_end(self.gel_filter_combo, False, False, 0)
-        self.pack_start(gel_bar, False, False, 0)
+        right_col.pack_start(gel_bar, False, False, 0)
 
-        # Swatchbook Grid
+        # Swatchbook Grid inside a dedicated ScrolledWindow
+        swatch_scroll = Gtk.ScrolledWindow()
+        swatch_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        swatch_scroll.set_min_content_height(110)
         self.swatch_flow = Gtk.FlowBox()
-        self.swatch_flow.set_max_children_per_line(6)
+        self.swatch_flow.set_halign(Gtk.Align.START)
+        self.swatch_flow.set_valign(Gtk.Align.START)
+        self.swatch_flow.set_homogeneous(True)
+        self.swatch_flow.set_column_spacing(3)
+        self.swatch_flow.set_row_spacing(3)
+        self.swatch_flow.set_max_children_per_line(8)
         self.swatch_flow.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.pack_start(self.swatch_flow, False, False, 0)
+        swatch_scroll.add(self.swatch_flow)
+        right_col.pack_start(swatch_scroll, True, True, 0)
         self._rebuild_swatches()
 
     # -- public ---------------------------------------------------------------

@@ -76,6 +76,10 @@ class PanTiltPadWidget(Gtk.DrawingArea):
         self.pan_min, self.pan_max = pan_range
         self.tilt_min, self.tilt_max = tilt_range
         self.set_size_request(200, 160)
+        self.set_halign(Gtk.Align.START)
+        self.set_valign(Gtk.Align.START)
+        self.set_hexpand(False)
+        self.set_vexpand(False)
 
         self.add_events(
             Gdk.EventMask.BUTTON_PRESS_MASK
@@ -213,7 +217,7 @@ class DeviceInspectorWidget(Gtk.Box):
     # -------------------------------------------------------------------------
 
     def _build_header(self) -> None:
-        """Build context banner, Lead Fixture selector, and Relative/Absolute switch."""
+        """Build context banner, Lead Fixture selector, and permanent Intensity bar."""
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         header_box.set_margin_start(6)
         header_box.set_margin_end(6)
@@ -246,38 +250,63 @@ class DeviceInspectorWidget(Gtk.Box):
         self.align_btn = Gtk.Button(label="Align to Lead")
         self.align_btn.connect("clicked", lambda _b: self.align_to_lead())
         lead_row.pack_end(self.align_btn, False, False, 0)
-
         header_box.pack_start(lead_row, False, False, 0)
-        self.pack_start(header_box, False, False, 0)
 
-    def _build_ifcb_sections(self) -> None:  # pylint: disable=too-many-statements
-        """Build collapsible IFCB (Intensity, Position, Color, Beam/Gobos) panels."""
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        content.set_margin_start(6)
-        content.set_margin_end(6)
-
-        # 1. INTENSITY Section
-        self.intensity_expander = Gtk.Expander(label="INTENSITY [0/0]")
-        self.intensity_expander.set_expanded(True)
-        int_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        self.intensity_value_label = Gtk.Label(label="0.0%", xalign=0)
+        # Permanent Intensity Bar (always visible regardless of active IFCB page)
+        int_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.intensity_header_label = Gtk.Label(label="INTENSITY [0/0]", xalign=0)
+        self.intensity_value_label = Gtk.Label(label="Dimmer: --", xalign=0)
         self.intensity_scale = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
         )
+        self.intensity_scale.set_digits(1)
+        self.intensity_scale.set_value_pos(Gtk.PositionType.RIGHT)
         self.intensity_scale.connect("value-changed", self._on_intensity_scale_changed)
-        int_box.pack_start(self.intensity_value_label, False, False, 0)
-        int_box.pack_start(self.intensity_scale, False, False, 0)
-        self.intensity_expander.add(int_box)
-        content.pack_start(self.intensity_expander, False, False, 0)
 
-        # 2. POSITION (PAN / TILT) Section
-        self.position_expander = Gtk.Expander(label="POSITION (PAN / TILT) [0/0]")
-        self.position_expander.set_expanded(True)
-        pos_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        btn_zero = Gtk.Button(label="0%")
+        btn_zero.connect("clicked", lambda _b: self.apply_intensity(0.0))
+        btn_half = Gtk.Button(label="50%")
+        btn_half.connect("clicked", lambda _b: self.apply_intensity(50.0))
+        btn_full = Gtk.Button(label="Full")
+        btn_full.connect("clicked", lambda _b: self.apply_intensity(100.0))
+
+        int_row.pack_start(self.intensity_header_label, False, False, 0)
+        int_row.pack_start(self.intensity_value_label, False, False, 0)
+        int_row.pack_start(self.intensity_scale, True, True, 0)
+        int_row.pack_start(btn_zero, False, False, 0)
+        int_row.pack_start(btn_half, False, False, 0)
+        int_row.pack_start(btn_full, False, False, 0)
+        header_box.pack_start(int_row, False, False, 0)
+
+        header_box.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2
+        )
+        self.pack_start(header_box, False, False, 0)
+
+    def _build_ifcb_sections(self) -> None:  # pylint: disable=too-many-statements,too-many-locals
+        """Build paginated IFCB (Position, Color, Beam & Gobos) stack pages."""
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+
+        self.stack_switcher = Gtk.StackSwitcher()
+        self.stack_switcher.set_stack(self.stack)
+        self.stack_switcher.set_halign(Gtk.Align.CENTER)
+        self.pack_start(self.stack_switcher, False, False, 2)
+
+        # Page 1: POSITION (PAN / TILT)
+        self.position_page = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.position_page.set_valign(Gtk.Align.START)
+        self.position_page.set_margin_start(6)
+        self.position_page.set_margin_end(6)
+        self.position_page.set_margin_top(4)
+
         self.pan_tilt_pad = PanTiltPadWidget(self)
+        self.position_page.pack_start(self.pan_tilt_pad, False, False, 0)
+
+        pos_right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        pos_right.set_valign(Gtk.Align.START)
         self.position_value_label = Gtk.Label(label="Pan: 0.0° | Tilt: 0.0°", xalign=0)
+        pos_right.pack_start(self.position_value_label, False, False, 0)
 
         pos_btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         center_btn = Gtk.Button(label="Center (0°, 0°)")
@@ -289,63 +318,79 @@ class DeviceInspectorWidget(Gtk.Box):
         pos_btn_row.pack_start(center_btn, False, False, 0)
         pos_btn_row.pack_start(inv_pan_btn, False, False, 0)
         pos_btn_row.pack_start(inv_tilt_btn, False, False, 0)
+        pos_right.pack_start(pos_btn_row, False, False, 0)
 
-        pos_box.pack_start(self.position_value_label, False, False, 0)
-        pos_box.pack_start(self.pan_tilt_pad, False, False, 0)
-        pos_box.pack_start(pos_btn_row, False, False, 0)
-        self.position_expander.add(pos_box)
-        content.pack_start(self.position_expander, False, False, 0)
+        pos_fan_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        fan_pan_45_btn = Gtk.Button(label="Fan Pan ±45°")
+        fan_pan_45_btn.connect("clicked", lambda _b: self.fan_pan(45.0))
+        fan_pan_90_btn = Gtk.Button(label="Fan Pan ±90°")
+        fan_pan_90_btn.connect("clicked", lambda _b: self.fan_pan(90.0))
+        pos_fan_row.pack_start(fan_pan_45_btn, False, False, 0)
+        pos_fan_row.pack_start(fan_pan_90_btn, False, False, 0)
+        pos_right.pack_start(pos_fan_row, False, False, 0)
 
-        # 3. COLOR Section
-        self.color_expander = Gtk.Expander(label="COLOR [0/0]")
-        self.color_expander.set_expanded(True)
-        col_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.position_page.pack_start(pos_right, True, True, 0)
+        self.stack.add_titled(self.position_page, "position", "POSITION [0/0]")
+
+        # Page 2: COLOR
+        self.color_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.color_page.set_margin_start(6)
+        self.color_page.set_margin_end(6)
+        self.color_page.set_margin_top(4)
+
+        col_top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.color_value_label = Gtk.Label(label="#FFFFFF | dE: 0.00", xalign=0)
+        fan_short_btn = Gtk.Button(label="Fan Hue Short")
+        fan_short_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_short"))
+        fan_rainbow_btn = Gtk.Button(label="Fan Rainbow")
+        fan_rainbow_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_long"))
+        col_top_row.pack_start(self.color_value_label, True, True, 0)
+        col_top_row.pack_end(fan_rainbow_btn, False, False, 0)
+        col_top_row.pack_end(fan_short_btn, False, False, 0)
+        self.color_page.pack_start(col_top_row, False, False, 0)
+
         self.color_picker = ConsoleColorPicker(
             self._on_wheel_color_picked,
             on_emitter_changed=self._on_emitter_fader_changed,
             on_strategy_changed=self.set_color_solver_strategy,
             on_wheel_slot_clicked=self._on_wheel_slot_clicked,
         )
-        self.color_value_label = Gtk.Label(label="#FFFFFF | dE: 0.00", xalign=0)
-        col_fan_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        fan_short_btn = Gtk.Button(label="Fan Hue Short")
-        fan_short_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_short"))
-        fan_rainbow_btn = Gtk.Button(label="Fan Rainbow")
-        fan_rainbow_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_long"))
-        col_fan_row.pack_start(fan_short_btn, False, False, 0)
-        col_fan_row.pack_start(fan_rainbow_btn, False, False, 0)
-        col_box.pack_start(self.color_value_label, False, False, 0)
-        col_box.pack_start(self.color_picker, False, False, 0)
-        col_box.pack_start(col_fan_row, False, False, 0)
-        self.color_expander.add(col_box)
-        content.pack_start(self.color_expander, False, False, 0)
+        self.color_page.pack_start(self.color_picker, True, True, 0)
+        self.stack.add_titled(self.color_page, "color", "COLOR [0/0]")
 
-        # 4. BEAM & OPTICS Section
-        self.beam_expander = Gtk.Expander(label="BEAM & OPTICS [0/0]")
-        self.beam_expander.set_expanded(True)
+        # Page 3: BEAM & GOBOS
+        self.beam_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.beam_page.set_margin_start(6)
+        self.beam_page.set_margin_end(6)
+        self.beam_page.set_margin_top(4)
+
         beam_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.beam_header_label = Gtk.Label(label="BEAM & OPTICS [0/0]", xalign=0)
         self.zoom_value_label = Gtk.Label(label="Zoom: --", xalign=0)
         self.zoom_scale = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, 5.0, 60.0, 0.5
         )
         self.zoom_scale.connect("value-changed", self._on_zoom_scale_changed)
+        beam_box.pack_start(self.beam_header_label, False, False, 0)
         beam_box.pack_start(self.zoom_value_label, False, False, 0)
         beam_box.pack_start(self.zoom_scale, False, False, 0)
-        self.beam_expander.add(beam_box)
-        content.pack_start(self.beam_expander, False, False, 0)
+        self.beam_page.pack_start(beam_box, False, False, 0)
 
-        # 5. GOBOS & DISCRETE RANGES Section
-        self.gobos_expander = Gtk.Expander(label="GOBOS & EFFECTS [0/0]")
-        self.gobos_expander.set_expanded(True)
+        self.beam_page.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2
+        )
+
         gobo_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.gobos_header_label = Gtk.Label(label="GOBOS & EFFECTS [0/0]", xalign=0)
         self.gobo_combo = Gtk.ComboBoxText()
         self.gobo_combo.connect("changed", self._on_gobo_combo_changed)
+        gobo_box.pack_start(self.gobos_header_label, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
-        self.gobos_expander.add(gobo_box)
-        content.pack_start(self.gobos_expander, False, False, 0)
+        self.beam_page.pack_start(gobo_box, False, False, 0)
 
-        scroll.add(content)
-        self.pack_start(scroll, True, True, 0)
+        self.stack.add_titled(self.beam_page, "beam", "BEAM & GOBOS [0/0]")
+
+        self.pack_start(self.stack, True, True, 0)
 
     # -------------------------------------------------------------------------
     # Selection & Lead Fixture Management
@@ -919,7 +964,9 @@ class DeviceInspectorWidget(Gtk.Box):
         if label:
             self.apply_discrete_range(ChannelType.GOBO_WHEEL, label)
 
-    def refresh_ui(self) -> None:  # pylint: disable=too-many-locals
+    def refresh_ui(  # pylint: disable=too-many-locals,too-many-statements
+        self,
+    ) -> None:
         """Synchronize all IFCB section headers, badges, and widgets with selection."""
         self._updating_ui = True
         try:
@@ -948,12 +995,24 @@ class DeviceInspectorWidget(Gtk.Box):
             c_c, c_t = counts["color"]
             b_c, b_t = counts["beam"]
             g_c, g_t = counts["gobos"]
+            bg_c = sum(
+                1
+                for d in self.selected_devices
+                if self._has_beam(d) or self._has_gobos(d)
+            )
 
-            self.intensity_expander.set_label(f"INTENSITY [{i_c}/{i_t}]")
-            self.position_expander.set_label(f"POSITION (PAN / TILT) [{p_c}/{p_t}]")
-            self.color_expander.set_label(f"COLOR [{c_c}/{c_t}]")
-            self.beam_expander.set_label(f"BEAM & OPTICS [{b_c}/{b_t}]")
-            self.gobos_expander.set_label(f"GOBOS & EFFECTS [{g_c}/{g_t}]")
+            self.intensity_header_label.set_text(f"INTENSITY [{i_c}/{i_t}]")
+            self.beam_header_label.set_text(f"BEAM & OPTICS [{b_c}/{b_t}]")
+            self.gobos_header_label.set_text(f"GOBOS & EFFECTS [{g_c}/{g_t}]")
+            self.stack.child_set_property(
+                self.position_page, "title", f"POSITION [{p_c}/{p_t}]"
+            )
+            self.stack.child_set_property(
+                self.color_page, "title", f"COLOR [{c_c}/{c_t}]"
+            )
+            self.stack.child_set_property(
+                self.beam_page, "title", f"BEAM & GOBOS [{bg_c}/{b_t}]"
+            )
 
             self.intensity_value_label.set_text(
                 f"Dimmer: {self.format_parameter_display('intensity')}"
