@@ -191,6 +191,7 @@ class ChannelWidget(Gtk.DrawingArea):
             cx = 11 * self.scale
             cy = 13 * self.scale
             radius = 4.5 * self.scale
+            cr.new_sub_path()
             cr.arc(cx, cy, radius, 0, 6.2831853)
             cr.set_source_rgb(r, g, b)
             cr.fill_preserve()

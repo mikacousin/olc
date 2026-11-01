@@ -139,6 +139,7 @@ class _Swatch(Gtk.Button):  # pylint: disable=too-few-public-methods
 
         if self.match_level in _MATCH_BADGE_RGB:
             br, bg, bb = _MATCH_BADGE_RGB[self.match_level]
+            cr.new_sub_path()
             cr.arc(w - 4.0, 4.0, 2.8, 0.0, 2.0 * math.pi)
             cr.set_source_rgb(br, bg, bb)
             cr.fill_preserve()
@@ -295,12 +296,14 @@ class HSDiscWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attrib
 
         # Marker at the current (Lead) hue/saturation
         mx, my = self._hs_to_px(self.hue, self.sat, cx, cy, radius)
+        cr.new_sub_path()
         cr.arc(mx, my, 6.0, 0.0, 2.0 * math.pi)
         cr.set_source_rgb(*self.rgb)
         cr.fill_preserve()
         cr.set_source_rgb(1.0, 1.0, 1.0)
         cr.set_line_width(2.0)
-        cr.stroke_preserve()
+        cr.stroke()
+        cr.new_sub_path()
         cr.arc(mx, my, 7.0, 0.0, 2.0 * math.pi)
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.6)
         cr.set_line_width(1.0)
@@ -496,12 +499,14 @@ class CIExyWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attribu
 
         # Lead reticle at current (cie_x, cie_y)
         mx, my = self._xy_to_px(self.cie_x, self.cie_y, ox, oy, side)
+        cr.new_sub_path()
         cr.arc(mx, my, 6.0, 0.0, 2.0 * math.pi)
         cr.set_source_rgb(*self.rgb)
         cr.fill_preserve()
         cr.set_source_rgb(1.0, 1.0, 1.0)
         cr.set_line_width(2.0)
-        cr.stroke_preserve()
+        cr.stroke()
+        cr.new_sub_path()
         cr.arc(mx, my, 7.0, 0.0, 2.0 * math.pi)
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.65)
         cr.set_line_width(1.0)

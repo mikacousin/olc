@@ -140,6 +140,7 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             if pt["is_lead"]:
                 continue
             px, py = self._angles_to_coords(pt["pan"], pt["tilt"], w, h)
+            cr.new_sub_path()
             cr.arc(px, py, 5.0, 0, 2 * math.pi)
             cr.set_source_rgba(0.35, 0.75, 0.95, 0.65)
             cr.fill_preserve()
@@ -158,6 +159,7 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             if not pt["is_lead"]:
                 continue
             px, py = self._angles_to_coords(pt["pan"], pt["tilt"], w, h)
+            cr.new_sub_path()
             cr.arc(px, py, 6.5, 0, 2 * math.pi)
             cr.set_source_rgb(0.2, 0.95, 0.4)
             cr.set_line_width(2.0)
