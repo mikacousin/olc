@@ -834,10 +834,12 @@ class DeviceInspectorWidget(Gtk.Box):
                 assert ref is not None
                 lead_color = ref.color_srgb
                 self.color_picker.set_color(lead_color.r, lead_color.g, lead_color.b)
+                self.color_picker.set_devices_context(ref, color_devs)
                 self.color_picker.set_match(
                     self.last_worst_delta_e, self.last_color_warning
                 )
             else:
+                self.color_picker.set_devices_context(None, [])
                 self.color_picker.clear_match()
             if (
                 self.app is not None

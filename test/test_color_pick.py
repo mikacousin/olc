@@ -30,6 +30,7 @@ from olc.devices.builtin import (
     create_rgba_definition,
     create_rgbw_definition,
 )
+from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
 from olc.devices.device import Channel, ChannelType, FixtureType, LightingDevice
 
 
@@ -57,6 +58,45 @@ def test_kelvin_xy_matches_reference_values() -> None:
     x, y = cp.kelvin_to_xy(2856.0)  # illuminant A
     assert x == pytest.approx(0.4476, abs=0.003)
     assert y == pytest.approx(0.4074, abs=0.003)
+
+
+def test_kelvin_duv_tint_shifts_green_and_magenta() -> None:  # pylint: disable=too-many-locals
+    x0, y0 = cp.kelvin_duv_to_xy(5600.0, 0.0)
+    x_plus, y_plus = cp.kelvin_duv_to_xy(5600.0, 0.03)
+    _x_minus, y_minus = cp.kelvin_duv_to_xy(5600.0, -0.03)
+
+    # +Duv shifts toward green (higher y), -Duv shifts toward magenta (lower y)
+    assert y_plus > y0 > y_minus
+    assert (x_plus, y_plus) != (x0, y0)
+
+    # Check orthogonality in CIE 1960 (u, v) space
+    u0, v0 = cp.xy_to_uv(x0, y0)
+    up, vp = cp.xy_to_uv(x_plus, y_plus)
+    u_lo, v_lo = cp.kelvin_to_uv(5590.0)
+    u_hi, v_hi = cp.kelvin_to_uv(5610.0)
+    dot = (up - u0) * (u_hi - u_lo) + (vp - v0) * (v_hi - v_lo)
+    assert dot == pytest.approx(0.0, abs=1e-5)
+    assert math.hypot(up - u0, vp - v0) == pytest.approx(0.03, abs=1e-4)
+
+    rgb_neutral = cp.kelvin_to_srgb(5600.0, 0.0)
+    rgb_green = cp.kelvin_to_srgb(5600.0, 0.04)
+    rgb_magenta = cp.kelvin_to_srgb(5600.0, -0.04)
+    # Green tint boosts green relative to red/blue; magenta tint reduces green
+    assert rgb_green[1] >= rgb_neutral[1] > rgb_magenta[1]
+
+
+def test_xy_srgb_round_trip_and_planckian_locus() -> None:
+    for r, g, b in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 1.0, 1.0)):
+        x, y = cp.srgb_to_xy(r, g, b)
+        r2, g2, b2 = cp.xy_to_srgb(x, y)
+        assert (r2, g2, b2) == pytest.approx((r, g, b), abs=0.02)
+
+    # Black falls back to D65 white point
+    assert cp.srgb_to_xy(0.0, 0.0, 0.0) == pytest.approx((0.3127, 0.3290))
+
+    locus = cp.planckian_locus_xy(16)
+    assert len(locus) == 16
+    assert locus[0][0] > locus[-1][0]  # 1800 K has higher x than 12000 K
 
 
 @pytest.mark.parametrize(
@@ -122,6 +162,48 @@ def test_disc_matches_pointer_hue_formula() -> None:
         expected = (angle_deg / 360.0) % 1.0
         assert min(abs(hue - expected), 1 - abs(hue - expected)) < 0.02
         assert sat == pytest.approx(0.8, abs=0.04)
+
+
+def test_render_cie_xy_diagram_horseshoe() -> None:
+    size = 100
+    diag = cp.render_cie_xy_diagram(size)
+    assert diag.shape == (size, size, 4)
+
+    # Top-right corner (x ~ 0.79, y ~ 0.89) is outside the spectral horseshoe
+    assert diag[2, size - 2, 3] == 0
+    # Bottom-left corner (x ~ 0.01, y ~ 0.01) is also outside
+    assert diag[size - 2, 2, 3] == 0
+
+    # D65 white point (x=0.3127, y=0.3290) is well inside the horseshoe
+    col_d65 = int((0.3127 / cp.CIE_X_MAX) * size)
+    row_d65 = int((1.0 - 0.3290 / cp.CIE_Y_MAX) * size)
+    b, g, r, a = (int(v) for v in diag[row_d65, col_d65])
+    assert a == 255
+    assert min(r, g, b) > 235
+
+    # Clamping outside point (0.78, 0.88) brings it onto the locus boundary
+    cx, cy = cp.clamp_xy_to_locus(0.78, 0.88)
+    assert (cx, cy) != (0.78, 0.88)
+    # Point already inside stays unchanged
+    assert cp.clamp_xy_to_locus(0.3127, 0.3290) == pytest.approx((0.3127, 0.3290))
+
+
+def test_convex_hull_and_profile_gamut() -> None:
+    rgb_prof = create_rgb_definition().color_profile
+    rgba_prof = create_rgba_definition().color_profile
+    assert rgb_prof is not None and rgba_prof is not None
+
+    hull_rgb = cp.profile_gamut_xy(rgb_prof)
+    assert len(hull_rgb) == 3
+    assert len(cp.profile_gamut_hs(rgb_prof)) == 3
+
+    # RGBW has white inside the RGB triangle -> convex hull still has 3 outer vertices
+    rgbw_prof = create_rgbw_definition().color_profile
+    assert rgbw_prof is not None
+    assert len(cp.profile_gamut_xy(rgbw_prof)) == 3
+
+    # RGBA has amber near the R-G edge -> 3 or 4 hull vertices
+    assert len(cp.profile_gamut_xy(rgba_prof)) >= 3
 
 
 # ---- solver / apply --------------------------------------------------------
@@ -414,3 +496,34 @@ def test_real_gamut_overshoot_still_warns() -> None:
     assert match is not None
     assert "out of gamut" in match.warning
     assert match.delta_e > 0.5
+
+
+def test_partial_gdtf_profile_and_lime_emitter() -> None:
+    """Fixtures with partial <Emitters> (e.g. only Lime) get RGB completed."""
+    partial_profile = FixtureColorProfile(
+        fixture_name="RGBL Partial",
+        emitters=[EmitterProfile("Lime", CIExyY(0.3225, 0.3870, 100.0))],
+    )
+    dev = LightingDevice(
+        fixture_id=1,
+        label="RGBL",
+        fixture_type=FixtureType.LED_PAR,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.RED, 1, 2),
+            Channel(ChannelType.GREEN, 1, 3),
+            Channel(ChannelType.BLUE, 1, 4),
+            Channel(ChannelType.LIME, 1, 5),
+        ],
+        color_profile=partial_profile,
+    )
+    dev.set_intensity(1.0)
+    eff = cp.effective_color_profile(dev)
+    assert eff is not None
+    assert [e.name for e in eff.emitters] == ["Red", "Green", "Blue", "Lime"]
+    assert len(cp.device_gamut_xy(dev)) == 3
+    assert len(cp.device_emitters_xy(dev)) == 4
+
+    results = cp.apply_color_to_devices([dev], 0.5, 1.0, 0.2, cp.ColorSolver())
+    assert len(results.delta_e) == 1
+    assert any(ch.value > 0 for ch in dev.channels[1:])

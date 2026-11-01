@@ -272,6 +272,73 @@ class FixtureColorProfile:
         )
 
 
+def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
+    """Build Red, Green, Blue EmitterProfiles from a GDTF ColorSpace."""
+    defn = getattr(cs, "definition", None) if cs is not None else None
+    r_cie = getattr(defn, "r", None) if defn is not None else None
+    g_cie = getattr(defn, "g", None) if defn is not None else None
+    b_cie = getattr(defn, "b", None) if defn is not None else None
+    w_cie = getattr(defn, "w", None) if defn is not None else None
+
+    if r_cie is not None and g_cie is not None and b_cie is not None:
+        w_y = float(getattr(w_cie, "Y", 1.0) or 1.0)
+        scale = 100.0 if w_y <= 1.5 else 1.0
+        return [
+            EmitterProfile(
+                name="Red",
+                cie=CIExyY(
+                    float(getattr(r_cie, "x", 0.64)),
+                    float(getattr(r_cie, "y", 0.33)),
+                    float(getattr(r_cie, "Y", 0.2126)) * scale,
+                ),
+                dominant_wavelength=625.0,
+            ),
+            EmitterProfile(
+                name="Green",
+                cie=CIExyY(
+                    float(getattr(g_cie, "x", 0.30)),
+                    float(getattr(g_cie, "y", 0.60)),
+                    float(getattr(g_cie, "Y", 0.7152)) * scale,
+                ),
+                dominant_wavelength=525.0,
+            ),
+            EmitterProfile(
+                name="Blue",
+                cie=CIExyY(
+                    float(getattr(b_cie, "x", 0.15)),
+                    float(getattr(b_cie, "y", 0.06)),
+                    float(getattr(b_cie, "Y", 0.0722)) * scale,
+                ),
+                dominant_wavelength=465.0,
+            ),
+        ]
+
+    return [
+        EmitterProfile("Red", CIExyY(0.6400, 0.3300, 21.26), 625.0),
+        EmitterProfile("Green", CIExyY(0.3000, 0.6000, 71.52), 525.0),
+        EmitterProfile("Blue", CIExyY(0.1500, 0.0600, 7.22), 465.0),
+    ]
+
+
+def _gdtf_has_rgb_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
+    """Return True if any DMX mode in the GDTF fixture uses additive R/G/B."""
+    rgb_attrs = {
+        "ColorAdd_R",
+        "ColorAdd_G",
+        "ColorAdd_B",
+        "ColorRGB_Red",
+        "ColorRGB_Green",
+        "ColorRGB_Blue",
+    }
+    for mode in getattr(gdtf_fixture, "dmx_modes", []) or []:
+        dmx_chs = getattr(mode, "dmx_channels", None)
+        if dmx_chs is not None and hasattr(dmx_chs, "as_dict"):
+            for ch in dmx_chs.as_dict():
+                if ch.get("attribute") in rgb_attrs:
+                    return True
+    return False
+
+
 def extract_color_profile(
     gdtf_fixture: Any,  # noqa: ANN401
     fixture_name: str = "",
@@ -301,12 +368,24 @@ def extract_color_profile(
             )
         )
 
+    cs = getattr(gdtf_fixture, "color_space", None)
+    existing_lower = {e.name.lower() for e in emitters}
+    has_all_rgb = {"red", "green", "blue"}.issubset(existing_lower)
+    if not has_all_rgb and (
+        _gdtf_has_rgb_channels(gdtf_fixture) or 0 < len(emitters) < 3
+    ):
+        cs_rgb = [
+            pe
+            for pe in _extract_colorspace_rgb(cs)
+            if pe.name.lower() not in existing_lower
+        ]
+        emitters = cs_rgb + emitters
+
     if not emitters:
         raise ValueError(
             f"No emitters found in '{name}'. Ensure GDTF has an <Emitters> section."
         )
 
-    cs = getattr(gdtf_fixture, "color_space", None)
     mode = (
         str(getattr(cs, "mode", "sRGB")) if cs and getattr(cs, "mode", None) else "sRGB"
     )

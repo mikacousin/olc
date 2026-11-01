@@ -51,6 +51,8 @@ GDTF_ATTRIBUTE_MAP: dict[str, ChannelType] = {
     "ColorAdd_WW": ChannelType.WHITE,
     "ColorAdd_CW": ChannelType.WHITE,
     "ColorAdd_A": ChannelType.AMBER,
+    "ColorAdd_GY": ChannelType.LIME,
+    "ColorAdd_L": ChannelType.LIME,
     "ColorAdd_UV": ChannelType.GENERIC,
     "Color1": ChannelType.COLOR_WHEEL,
     "Color1WheelSpin": ChannelType.COLOR_WHEEL,

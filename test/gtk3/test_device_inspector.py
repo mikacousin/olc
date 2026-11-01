@@ -229,3 +229,28 @@ def test_inspector_color_is_solved_once_per_profile() -> None:
     assert inspector._color_solver.solves == 2  # pylint: disable=protected-access
     inspector.apply_color_hex("#FF8800")
     assert inspector._color_solver.solves == 2  # pylint: disable=protected-access
+
+
+def test_inspector_color_picker_gamut_and_multi_reticles() -> None:
+    """Gamut hull and multi-fixture reticle points track selection and Lead."""
+    rgbw = create_rgbw_definition().instantiate(1, "LED RGBW", 1, 1)
+    rgba = create_rgba_definition().instantiate(2, "LED RGBA", 1, 10)
+    rgbw.set_color_hex("#FF0000")
+    rgba.set_color_hex("#0000FF")
+
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([rgbw, rgba])
+
+    picker = inspector.color_picker
+    assert len(picker.gamut_xy) >= 3
+    assert len(picker.gamut_hs) >= 3
+    assert len(picker.fixture_points) == 2
+    assert picker.fixture_points[0].device_id == 1
+    assert picker.fixture_points[0].is_lead is True
+    assert picker.fixture_points[1].device_id == 2
+    assert picker.fixture_points[1].is_lead is False
+
+    # Switch Lead to fixture #2
+    inspector.next_lead()
+    assert picker.fixture_points[0].is_lead is False
+    assert picker.fixture_points[1].is_lead is True

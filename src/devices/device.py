@@ -51,6 +51,7 @@ class ChannelType(Enum):
     BLUE = "blue"
     WHITE = "white"
     AMBER = "amber"
+    LIME = "lime"
     COLOR_WHEEL = "color_wheel"
     GOBO_WHEEL = "gobo_wheel"
     STROBE = "strobe"
@@ -71,6 +72,7 @@ COLOR_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
         ChannelType.BLUE,
         ChannelType.WHITE,
         ChannelType.AMBER,
+        ChannelType.LIME,
     }
 )
 
@@ -749,24 +751,30 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Write normalized [0.0, 1.0] color emitter level to 8/16/24-bit channels."""
         clamped = max(0.0, min(1.0, float(level)))
         coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
-        if ultra_fine_ch is not None and fine_ch is not None and coarse_ch is not None:
+        if coarse_ch is None:
+            return
+        if ultra_fine_ch is not None and fine_ch is not None:
             val_24 = round(clamped * 16777215.0)
-            coarse_ch.set_value((val_24 >> 16) & 0xFF)
-            fine_ch.set_value((val_24 >> 8) & 0xFF)
-            ultra_fine_ch.set_value(val_24 & 0xFF)
-        elif fine_ch is not None and coarse_ch is not None:
+            c_byte, f_byte, u_byte = (
+                (val_24 >> 16) & 0xFF,
+                (val_24 >> 8) & 0xFF,
+                val_24 & 0xFF,
+            )
+        elif fine_ch is not None:
             val_16 = round(clamped * 65535.0)
-            coarse_ch.set_value((val_16 >> 8) & 0xFF)
-            fine_ch.set_value(val_16 & 0xFF)
-        elif coarse_ch is not None:
-            val_8 = round(clamped * 255.0)
-            for ch in self.channels:
-                if (
-                    ch.channel_type == channel_type
-                    and not ch.fine
-                    and not ch.ultra_fine
-                ):
-                    ch.set_value(val_8)
+            c_byte, f_byte, u_byte = (val_16 >> 8) & 0xFF, val_16 & 0xFF, None
+        else:
+            c_byte, f_byte, u_byte = round(clamped * 255.0), None, None
+
+        for ch in self.channels:
+            if ch.channel_type != channel_type:
+                continue
+            if ch.ultra_fine and u_byte is not None:
+                ch.set_value(u_byte)
+            elif ch.fine and f_byte is not None:
+                ch.set_value(f_byte)
+            elif not ch.fine and not ch.ultra_fine:
+                ch.set_value(c_byte)
 
     def _apply_virtual_dimmer(self, curve: Optional[Curve] = None) -> None:
         """Scale base emitter levels by current intensity (curved if assigned)."""
@@ -892,6 +900,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "blue": ChannelType.BLUE,
             "white": ChannelType.WHITE,
             "amber": ChannelType.AMBER,
+            "lime": ChannelType.LIME,
+            "green-yellow": ChannelType.LIME,
+            "coloradd_gy": ChannelType.LIME,
         }
         for emitter_name, ratio in result.as_normalized_dict().items():
             ctype = name_map.get(emitter_name.lower())
