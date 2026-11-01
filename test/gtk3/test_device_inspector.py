@@ -344,3 +344,29 @@ def test_inspector_stack_pages_and_permanent_intensity() -> None:
     for page_name in ("position", "color", "beam"):
         inspector.stack.set_visible_child_name(page_name)
         assert inspector.stack.get_visible_child_name() == page_name
+
+
+@pytest.mark.gui
+def test_inspector_intensity_syncs_with_live_view(app_gui: Application) -> None:
+    """Test that changing intensity in DeviceInspector updates LiveView and DMX."""
+    app_gui.core.lightshow.patch.patch_device(1, create_rgbw_definition(), 1, 1)
+    app_gui.activate_action("device_inspector", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    inspector = app_gui.tabs.tabs.get("device_inspector")
+    assert isinstance(inspector, DeviceInspectorWidget)
+
+    inspector.set_selected_channels([1])
+    inspector.apply_intensity_percent(100.0, force_absolute=True)
+    process_events()
+
+    assert app_gui.core.backend is not None
+    assert int(app_gui.core.backend.dmx.levels["user"][0]) == 255
+    assert app_gui.window is not None
+    ch_widget = app_gui.window.live_view.channels_view.get_channel_widget(1)
+    assert ch_widget is not None
+    assert ch_widget.level == 255
+
+    inspector.on_close_icon(inspector)
+    process_events()

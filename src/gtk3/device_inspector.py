@@ -206,6 +206,9 @@ class DeviceInspectorWidget(Gtk.Box):
             self.app.core.subscribe(
                 "channels.selected_changed", self._on_core_selection_changed
             )
+            self.app.core.subscribe(
+                "channel.level_changed", self._on_core_channel_level_changed
+            )
             self.set_selected_channels(self.app.core.selected_channels)
         else:
             self.refresh_ui()
@@ -264,11 +267,19 @@ class DeviceInspectorWidget(Gtk.Box):
         self.intensity_scale.connect("value-changed", self._on_intensity_scale_changed)
 
         btn_zero = Gtk.Button(label="0%")
-        btn_zero.connect("clicked", lambda _b: self.apply_intensity(0.0))
+        btn_zero.connect(
+            "clicked", lambda _b: self.apply_intensity_percent(0.0, force_absolute=True)
+        )
         btn_half = Gtk.Button(label="50%")
-        btn_half.connect("clicked", lambda _b: self.apply_intensity(50.0))
+        btn_half.connect(
+            "clicked",
+            lambda _b: self.apply_intensity_percent(50.0, force_absolute=True),
+        )
         btn_full = Gtk.Button(label="Full")
-        btn_full.connect("clicked", lambda _b: self.apply_intensity(100.0))
+        btn_full.connect(
+            "clicked",
+            lambda _b: self.apply_intensity_percent(100.0, force_absolute=True),
+        )
 
         int_row.pack_start(self.intensity_header_label, False, False, 0)
         int_row.pack_start(self.intensity_value_label, False, False, 0)
@@ -322,9 +333,9 @@ class DeviceInspectorWidget(Gtk.Box):
 
         pos_fan_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         fan_pan_45_btn = Gtk.Button(label="Fan Pan ±45°")
-        fan_pan_45_btn.connect("clicked", lambda _b: self.fan_pan(45.0))
+        fan_pan_45_btn.connect("clicked", lambda _b: self.fan_pan(-45.0, 45.0))
         fan_pan_90_btn = Gtk.Button(label="Fan Pan ±90°")
-        fan_pan_90_btn.connect("clicked", lambda _b: self.fan_pan(90.0))
+        fan_pan_90_btn.connect("clicked", lambda _b: self.fan_pan(-90.0, 90.0))
         pos_fan_row.pack_start(fan_pan_45_btn, False, False, 0)
         pos_fan_row.pack_start(fan_pan_90_btn, False, False, 0)
         pos_right.pack_start(pos_fan_row, False, False, 0)
@@ -399,14 +410,58 @@ class DeviceInspectorWidget(Gtk.Box):
     def _on_core_selection_changed(self, channel_ids: list[int]) -> None:
         self.set_selected_channels(channel_ids)
 
+    def _on_core_channel_level_changed(self, channel_id: int, _level: int) -> None:
+        if self._updating_ui:
+            return
+        if any(dev.device_id == channel_id for dev in self.selected_devices):
+            self.refresh_ui()
+
+    def _sync_devices_to_live_and_dmx(
+        self, devices: list[LightingDevice], sync_intensity: bool = False
+    ) -> None:
+        """Synchronize modified device parameters to Core DMX engine and LiveView."""
+        if self.app is None or not hasattr(self.app, "core"):
+            return
+        core = self.app.core
+        if sync_intensity:
+            channels_dict = {
+                dev.device_id: round(dev.intensity * 255)
+                for dev in devices
+                if self._has_intensity(dev) and dev.device_id >= 1
+            }
+            if channels_dict and getattr(core, "action_registry", None) is not None:
+                core.action_registry.execute("channel.set_multi_levels", channels_dict)
+        else:
+            backend = getattr(core, "backend", None)
+            dmx = getattr(backend, "dmx", None) if backend is not None else None
+            if dmx is not None:
+                dmx.set_levels()
+
+        window = getattr(self.app, "window", None)
+        live_view = getattr(window, "live_view", None) if window is not None else None
+        if live_view is not None:
+            for dev in devices:
+                live_view.update_channel_widget(
+                    dev.device_id, round(dev.intensity * 255)
+                )
+            if sync_intensity:
+                live_view.channels_view.flowbox.invalidate_filter()
+
     def set_selected_channels(self, channel_ids: list[int]) -> None:
         """Resolve channel IDs through PatchManager.devices and update inspector."""
         if self.app is None:
             return
         patch = self.app.core.lightshow.patch
-        devices = [
-            patch.devices[ch_id] for ch_id in channel_ids if ch_id in patch.devices
-        ]
+        backend = getattr(self.app.core, "backend", None)
+        dmx = getattr(backend, "dmx", None) if backend is not None else None
+        devices = []
+        for ch_id in channel_ids:
+            if ch_id in patch.devices:
+                dev = patch.devices[ch_id]
+                if dmx is not None and 1 <= ch_id <= len(dmx.levels["user"]):
+                    lvl, _ = dmx.get_composite_level(ch_id - 1)
+                    dev.set_intensity(lvl / 255.0)
+                devices.append(dev)
         self.set_selected_devices(devices)
 
     def set_selected_devices(self, devices: list[LightingDevice]) -> None:
@@ -603,14 +658,16 @@ class DeviceInspectorWidget(Gtk.Box):
     # Parameter Application (Relative Delta vs Absolute)
     # -------------------------------------------------------------------------
 
-    def apply_intensity_percent(self, percent: float) -> None:
+    def apply_intensity_percent(
+        self, percent: float, force_absolute: bool = False
+    ) -> None:
         """Apply intensity [0.0..100.0] to all intensity-capable selected devices."""
         eligible = [d for d in self.selected_devices if self._has_intensity(d)]
         if not eligible:
             return
 
         target_pct = max(0.0, min(100.0, float(percent)))
-        if self.edit_mode == "relative":
+        if self.edit_mode == "relative" and not force_absolute:
             ref_dev = self.lead_device if self.lead_device in eligible else eligible[0]
             assert ref_dev is not None
             delta = target_pct - ref_dev.intensity_percent
@@ -622,7 +679,10 @@ class DeviceInspectorWidget(Gtk.Box):
             for dev in eligible:
                 dev.set_intensity_percent(target_pct)
 
+        self._sync_devices_to_live_and_dmx(eligible, sync_intensity=True)
         self.refresh_ui()
+
+    apply_intensity = apply_intensity_percent
 
     def set_pad_position(self, pan_deg: float, tilt_deg: float) -> None:
         """Apply 2D Pan/Tilt coordinates in physical degrees (Relative or Absolute)."""
@@ -647,6 +707,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 if dev.get_channel(ChannelType.TILT) is not None:
                     dev.set_tilt_degrees(tilt_deg)
 
+        self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
     def get_target_points(self) -> list[dict[str, Any]]:
@@ -675,6 +736,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 dev.set_pan_degrees(0.0)
             if dev.get_channel(ChannelType.TILT) is not None:
                 dev.set_tilt_degrees(0.0)
+        self._sync_devices_to_live_and_dmx(self.selected_devices)
         self.refresh_ui()
 
     def invert_pan(self) -> None:
@@ -682,6 +744,7 @@ class DeviceInspectorWidget(Gtk.Box):
         for dev in self.selected_devices:
             if dev.get_channel(ChannelType.PAN) is not None:
                 dev.set_pan_degrees(-dev.pan_degrees)
+        self._sync_devices_to_live_and_dmx(self.selected_devices)
         self.refresh_ui()
 
     def invert_tilt(self) -> None:
@@ -689,6 +752,7 @@ class DeviceInspectorWidget(Gtk.Box):
         for dev in self.selected_devices:
             if dev.get_channel(ChannelType.TILT) is not None:
                 dev.set_tilt_degrees(-dev.tilt_degrees)
+        self._sync_devices_to_live_and_dmx(self.selected_devices)
         self.refresh_ui()
 
     def fan_pan(self, min_deg: float, max_deg: float) -> None:
@@ -707,6 +771,7 @@ class DeviceInspectorWidget(Gtk.Box):
             for idx, dev in enumerate(eligible):
                 angle = min_deg + (idx / (count - 1)) * (max_deg - min_deg)
                 dev.set_pan_degrees(angle)
+        self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
     def align_to_lead(self) -> None:
@@ -740,6 +805,8 @@ class DeviceInspectorWidget(Gtk.Box):
         if color_satellites:
             c = lead.color_srgb
             apply_color_to_devices(color_satellites, c.r, c.g, c.b, self._color_solver)
+        self._sync_devices_to_live_and_dmx(self.selected_devices, sync_intensity=True)
+        self._sync_devices_to_live_and_dmx(self.selected_devices, sync_intensity=False)
         self.refresh_ui()
 
     def apply_color_srgb(  # pylint: disable=too-many-locals
@@ -785,6 +852,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
+        self._sync_devices_to_live_and_dmx(color_devs)
         self.refresh_ui()
         return outcome.delta_e
 
@@ -816,6 +884,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
+        self._sync_devices_to_live_and_dmx(color_devs)
         self.refresh_ui()
 
     def apply_emitter_level(self, channel_type: ChannelType, level: float) -> None:
@@ -837,6 +906,7 @@ class DeviceInspectorWidget(Gtk.Box):
         else:
             for dev in eligible:
                 dev.set_emitter_level(channel_type, target)
+        self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
     def fan_color(
@@ -872,6 +942,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
+        self._sync_devices_to_live_and_dmx(color_devs)
         self.refresh_ui()
         return outcome.delta_e
 
@@ -907,6 +978,7 @@ class DeviceInspectorWidget(Gtk.Box):
             for dev in eligible:
                 getattr(dev, setter_name)(float(value))
 
+        self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
     def apply_discrete_range(self, channel_type: ChannelType, range_label: str) -> int:
@@ -921,6 +993,7 @@ class DeviceInspectorWidget(Gtk.Box):
                     ch.set_value(r.activation_value)
                     activated_count += 1
                     break
+        self._sync_devices_to_live_and_dmx(self.selected_devices)
         self.refresh_ui()
         return activated_count
 
