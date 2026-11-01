@@ -254,3 +254,43 @@ def test_inspector_color_picker_gamut_and_multi_reticles() -> None:
     inspector.next_lead()
     assert picker.fixture_points[0].is_lead is False
     assert picker.fixture_points[1].is_lead is True
+
+
+def test_inspector_emitter_faders_relative_color_and_fan() -> None:
+    """Test emitter fader visibility, relative HS color shift, and color fan."""
+    rgbw = create_rgbw_definition().instantiate(1, "LED RGBW", 1, 1)
+    rgba = create_rgba_definition().instantiate(2, "LED RGBA", 1, 10)
+    rgbw.set_intensity(1.0)
+    rgba.set_intensity(1.0)
+
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([rgbw])
+    picker = inspector.color_picker
+    assert picker.emitter_rows["red"].get_visible() is True
+    assert picker.emitter_rows["white"].get_visible() is True
+    assert picker.emitter_rows["amber"].get_visible() is False
+    assert picker.emitter_rows["lime"].get_visible() is False
+
+    # Select both RGBW and RGBA -> both W and A rows become visible
+    inspector.set_selected_devices([rgbw, rgba])
+    assert picker.emitter_rows["white"].get_visible() is True
+    assert picker.emitter_rows["amber"].get_visible() is True
+
+    # Direct emitter level control
+    inspector.set_edit_mode("absolute")
+    inspector.apply_emitter_level(ChannelType.WHITE, 0.8)
+    assert rgbw.get_emitter_level(ChannelType.WHITE) == pytest.approx(0.8)
+
+    # Relative HS color shift: fixture 1 Red (#FF0000), fixture 2 Green (#00FF00)
+    rgbw.set_color_srgb(1.0, 0.0, 0.0)
+    rgba.set_color_srgb(0.0, 1.0, 0.0)
+    inspector.set_edit_mode("relative")
+    # Move Lead (fixture 1) from Red to Green (+120 deg) -> fixture 2 shifts to Blue
+    inspector.apply_color_srgb(0.0, 1.0, 0.0)
+    assert rgbw.color_srgb.g > 0.9
+    assert rgba.color_srgb.b > 0.9
+
+    # Color Fan across both fixtures
+    inspector.fan_color((1.0, 0.0, 0.0), (0.0, 0.0, 1.0), mode="hs_short")
+    assert rgbw.color_srgb.r > 0.9
+    assert rgba.color_srgb.b > 0.9

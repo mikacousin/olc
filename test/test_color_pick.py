@@ -31,7 +31,13 @@ from olc.devices.builtin import (
     create_rgbw_definition,
 )
 from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
-from olc.devices.device import Channel, ChannelType, FixtureType, LightingDevice
+from olc.devices.device import (
+    Channel,
+    ChannelRange,
+    ChannelType,
+    FixtureType,
+    LightingDevice,
+)
 
 
 def _emitters(dev: LightingDevice) -> dict[ChannelType, float]:
@@ -527,3 +533,132 @@ def test_partial_gdtf_profile_and_lime_emitter() -> None:
     results = cp.apply_color_to_devices([dev], 0.5, 1.0, 0.2, cp.ColorSolver())
     assert len(results.delta_e) == 1
     assert any(ch.value > 0 for ch in dev.channels[1:])
+
+
+def test_solver_strategies_spectral_punch_rgb_only() -> None:
+    """Verify spectral, punch (max brightness), and rgb_only solver strategies."""
+    rgbw = create_rgbw_definition().instantiate(1, "RGBW", 1, 1)
+    assert rgbw.color_profile is not None
+    solver = cp.ColorSolver()
+
+    # 1. rgb_only keeps White at 0 even for pure white (1.0, 1.0, 1.0)
+    res_rgb_only = solver.solve(rgbw.color_profile, 1.0, 1.0, 1.0, strategy="rgb_only")
+    assert res_rgb_only is not None
+    norm_rgb = res_rgb_only.as_normalized_dict()
+    assert norm_rgb["White"] == pytest.approx(0.0, abs=1e-6)
+    assert norm_rgb["Red"] == pytest.approx(1.0, abs=1e-2)
+    assert norm_rgb["Green"] == pytest.approx(1.0, abs=1e-2)
+    assert norm_rgb["Blue"] == pytest.approx(1.0, abs=1e-2)
+
+    # 2. punch drives both RGB and White higher than spectral for white
+    res_spectral = solver.solve(rgbw.color_profile, 1.0, 1.0, 1.0, strategy="spectral")
+    res_punch = solver.solve(rgbw.color_profile, 1.0, 1.0, 1.0, strategy="punch")
+    assert res_spectral is not None and res_punch is not None
+    assert res_punch.achieved_xyz.Y > res_spectral.achieved_xyz.Y
+    norm_punch = res_punch.as_normalized_dict()
+    assert norm_punch["White"] > 0.9
+    assert norm_punch["Red"] > 0.9
+
+
+def test_set_emitter_level_updates_cie_and_dmx_16_24bit() -> None:
+    """Direct emitter fader adjustment updates 16-bit DMX and forward CIE/sRGB."""
+    rgba_prof = create_rgba_definition().color_profile
+    dev = LightingDevice(
+        fixture_id=1,
+        label="RGBA 16b",
+        fixture_type=FixtureType.LED_PAR,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.RED, 1, 2, fine=False),
+            Channel(ChannelType.RED, 1, 3, fine=True),
+            Channel(ChannelType.GREEN, 1, 4, fine=False),
+            Channel(ChannelType.GREEN, 1, 5, fine=True),
+            Channel(ChannelType.BLUE, 1, 6, fine=False),
+            Channel(ChannelType.BLUE, 1, 7, fine=True),
+            Channel(ChannelType.AMBER, 1, 8, fine=False),
+            Channel(ChannelType.AMBER, 1, 9, fine=True),
+        ],
+        color_profile=rgba_prof,
+    )
+    dev.set_intensity(1.0)
+    dev.set_color_srgb(0.0, 0.0, 0.0)
+    dev.set_emitter_level(ChannelType.AMBER, 0.75)
+
+    assert dev.get_emitter_level(ChannelType.AMBER) == pytest.approx(0.75)
+    amber_16 = (dev.channels[7].value << 8) | dev.channels[8].value
+    assert amber_16 == round(0.75 * 65535.0)
+    # Forward CIE synthesis matches Amber chromaticity (0.59, 0.40)
+    assert dev.color_cie.x == pytest.approx(0.59, abs=0.01)
+    assert dev.color_cie.y == pytest.approx(0.40, abs=0.01)
+    assert dev.color_srgb.r > dev.color_srgb.g > dev.color_srgb.b
+
+
+def test_relative_color_shift_hs() -> None:
+    """shift_color_hs shifts hue circularly and clamps saturation."""
+    red: cp.RGB = (1.0, 0.0, 0.0)
+    blue: cp.RGB = (0.0, 0.0, 1.0)
+    # Shift by +1/3 turn (+120 deg): Red -> Green, Blue -> Red
+    r_shifted = cp.shift_color_hs(red, 1.0 / 3.0, 0.0)
+    b_shifted = cp.shift_color_hs(blue, 1.0 / 3.0, 0.0)
+    assert r_shifted == pytest.approx((0.0, 1.0, 0.0), abs=1e-4)
+    assert b_shifted == pytest.approx((1.0, 0.0, 0.0), abs=1e-4)
+
+
+def test_fan_colors_to_devices_short_and_rainbow() -> None:
+    """fan_colors_to_devices spreads distinct colors across fixtures."""
+    devs = [
+        create_rgb_definition().instantiate(i, f"P{i}", 1, 1 + 4 * i)
+        for i in range(1, 5)
+    ]
+    solver = cp.ColorSolver()
+    outcome = cp.fan_colors_to_devices(
+        devs, (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), solver, mode="hs_short"
+    )
+    assert len(outcome.delta_e) == 4
+    distinct_hex = {
+        cp.rgb_to_hex(d.color_srgb.r, d.color_srgb.g, d.color_srgb.b) for d in devs
+    }
+    assert len(distinct_hex) == 4
+
+    # Rainbow fan when start == end still produces 4 distinct hues
+    cp.fan_colors_to_devices(
+        devs, (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), solver, mode="hs_long"
+    )
+    rainbow_hex = {
+        cp.rgb_to_hex(d.color_srgb.r, d.color_srgb.g, d.color_srgb.b) for d in devs
+    }
+    assert len(rainbow_hex) == 4
+
+
+def test_color_wheel_auto_snap() -> None:
+    """Spot fixture with COLOR_WHEEL ranges snaps to the closest slot."""
+    wheel_ch = Channel(
+        ChannelType.COLOR_WHEEL,
+        1,
+        1,
+        ranges=[
+            ChannelRange("Open", ChannelType.COLOR_WHEEL, 0, 19, snap_value=0),
+            ChannelRange("Red", ChannelType.COLOR_WHEEL, 20, 39, snap_value=25),
+            ChannelRange("Green", ChannelType.COLOR_WHEEL, 40, 59, snap_value=45),
+            ChannelRange("Blue", ChannelType.COLOR_WHEEL, 60, 79, snap_value=65),
+        ],
+    )
+    spot = LightingDevice(
+        fixture_id=99,
+        label="Spot Wheel",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[wheel_ch],
+    )
+    slots = cp.extract_color_wheel_slots(spot)
+    assert len(slots) == 4
+
+    solver = cp.ColorSolver()
+    # Target near Red -> snaps to Red slot (DMX 25)
+    cp.apply_color_to_devices([spot], 0.95, 0.05, 0.05, solver)
+    assert wheel_ch.value == 25
+    assert spot.color_srgb.r == pytest.approx(1.0)
+    assert spot.color_srgb.g == pytest.approx(0.0)
+
+    # Target near Blue -> snaps to Blue slot (DMX 65)
+    cp.apply_color_to_devices([spot], 0.0, 0.1, 0.95, solver)
+    assert wheel_ch.value == 65

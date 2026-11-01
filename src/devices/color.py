@@ -460,6 +460,57 @@ class MatchResult:  # pylint: disable=too-many-instance-attributes
 # Largest NNLS coefficient accepted without an "out of gamut" warning (0.5 %).
 GAMUT_WARNING_TOLERANCE = 1.005
 
+SOLVER_STRATEGIES: tuple[str, ...] = ("spectral", "punch", "rgb_only")
+_RGB_EMITTER_NAMES = frozenset({"red", "green", "blue"})
+
+
+def _raw_nnls(mat_m: np.ndarray, target_vec: np.ndarray) -> np.ndarray:
+    """Solve non-negative least squares min_{c >= 0} ||M c - target||_2."""
+    if mat_m.shape[1] == 0:
+        return np.zeros(0, dtype=float)
+    try:
+        from scipy.optimize import nnls  # pylint: disable=import-outside-toplevel
+
+        coeffs, _ = nnls(mat_m, target_vec)
+        return np.asarray(coeffs, dtype=float)
+    except ImportError:
+        coeffs, *_ = np.linalg.lstsq(mat_m, target_vec, rcond=None)
+        return np.clip(np.asarray(coeffs, dtype=float), 0.0, None)
+
+
+def _bounded_punch_nnls(mat_m: np.ndarray, target_vec: np.ndarray) -> np.ndarray:
+    """Solve bounded NNLS (0 <= c_i <= 1) for boosted luminance along target ray."""
+    n_emitters = mat_m.shape[1]
+    if n_emitters == 0 or float(np.linalg.norm(target_vec)) < 1e-9:
+        return np.zeros(n_emitters, dtype=float)
+
+    base = _raw_nnls(mat_m, target_vec)
+    max_base = float(base.max()) if len(base) > 0 else 0.0
+    if max_base <= 1e-9:
+        return base
+    # Boost target so primary emitters saturate at 1.0 and supplementary
+    # emitters (White, Amber, Lime) are recruited along the same CIE xy ray.
+    boost = max(2.0, 1.8 / max_base)
+    rem_target = target_vec * boost
+    coeffs = np.zeros(n_emitters, dtype=float)
+    free_mask = np.ones(n_emitters, dtype=bool)
+
+    for _ in range(n_emitters):
+        free_idx = np.flatnonzero(free_mask)
+        if len(free_idx) == 0:
+            break
+        sub_c = _raw_nnls(mat_m[:, free_idx], rem_target)
+        over = sub_c >= 1.0 - 1e-7
+        if not np.any(over):
+            coeffs[free_idx] = sub_c
+            break
+        for idx_in_sub, col_idx in enumerate(free_idx):
+            if over[idx_in_sub]:
+                coeffs[col_idx] = 1.0
+                free_mask[col_idx] = False
+                rem_target = rem_target - mat_m[:, col_idx]
+    return coeffs
+
 
 class ColorMatcher:
     """Calculates DMX levels to accurately reproduce target colors across fixtures."""
@@ -473,40 +524,65 @@ class ColorMatcher:
         """Register a fixture color profile."""
         self.profiles[profile.fixture_name] = profile
 
-    def match_srgb(self, r: int, g: int, b: int) -> dict[str, MatchResult]:
+    def match_srgb(
+        self, r: int, g: int, b: int, strategy: str = "spectral"
+    ) -> dict[str, MatchResult]:
         """Calculate DMX outputs to match sRGB(r, g, b) on all registered fixtures."""
         target = sRGB.from_255(r, g, b).to_XYZ()
-        return {name: self._solve(p, target) for name, p in self.profiles.items()}
+        return {
+            name: self._solve(p, target, strategy=strategy)
+            for name, p in self.profiles.items()
+        }
 
     def match_cie(
         self,
         x: float,
         y: float,
         Y: float = 100.0,  # pylint: disable=invalid-name
+        strategy: str = "spectral",
     ) -> dict[str, MatchResult]:
         """Calculate DMX outputs to match CIE xyY on all registered fixtures."""
         target = CIExyY(x, y, Y).to_XYZ()
-        return {name: self._solve(p, target) for name, p in self.profiles.items()}
+        return {
+            name: self._solve(p, target, strategy=strategy)
+            for name, p in self.profiles.items()
+        }
 
-    def match_hex(self, hex_color: str) -> dict[str, MatchResult]:
+    def match_hex(
+        self, hex_color: str, strategy: str = "spectral"
+    ) -> dict[str, MatchResult]:
         """Calculate DMX outputs to match an HTML hex color string (#RRGGBB)."""
         clean_hex = hex_color.lstrip("#")
         r = int(clean_hex[0:2], 16)
         g = int(clean_hex[2:4], 16)
         b = int(clean_hex[4:6], 16)
-        return self.match_srgb(r, g, b)
+        return self.match_srgb(r, g, b, strategy=strategy)
 
-    def _solve(self, profile: FixtureColorProfile, target: CIEXYZ) -> MatchResult:
-        mat_m = profile.mixing_matrix  # (3, N)
+    def _solve(  # pylint: disable=too-many-locals
+        self,
+        profile: FixtureColorProfile,
+        target: CIEXYZ,
+        strategy: str = "spectral",
+    ) -> MatchResult:
+        full_m = profile.mixing_matrix  # (3, N)
+        mat_m = full_m.copy()
         target_vec = target.as_array()  # (3,)
 
-        try:
-            from scipy.optimize import nnls  # pylint: disable=import-outside-toplevel
+        if strategy == "rgb_only":
+            rgb_cols = [
+                i
+                for i, e in enumerate(profile.emitters)
+                if e.name.lower() in _RGB_EMITTER_NAMES
+            ]
+            if rgb_cols:
+                for i in range(len(profile.emitters)):
+                    if i not in rgb_cols:
+                        mat_m[:, i] = 0.0
 
-            coeffs, _ = nnls(mat_m, target_vec)
-        except ImportError:
-            coeffs, *_ = np.linalg.lstsq(mat_m, target_vec, rcond=None)
-            coeffs = np.clip(coeffs, 0.0, None)
+        if strategy == "punch":
+            coeffs = _bounded_punch_nnls(mat_m, target_vec)
+        else:
+            coeffs = _raw_nnls(mat_m, target_vec)
 
         warning = ""
         max_c = float(coeffs.max()) if len(coeffs) > 0 else 0.0
@@ -517,10 +593,16 @@ class ColorMatcher:
             if max_c > GAMUT_WARNING_TOLERANCE:
                 warning = "out of gamut — brightness reduced"
 
-        achieved = mat_m @ coeffs
+        achieved = full_m @ coeffs
         achieved_xyz = CIEXYZ(
             float(achieved[0]), float(achieved[1]), float(achieved[2])
         )
+        eval_xyz = achieved_xyz
+        if strategy == "punch" and achieved_xyz.Y > target.Y > 1e-6:
+            scale = target.Y / achieved_xyz.Y
+            eval_xyz = CIEXYZ(
+                achieved_xyz.X * scale, achieved_xyz.Y * scale, achieved_xyz.Z * scale
+            )
 
         return MatchResult(
             fixture_name=profile.fixture_name,
@@ -528,7 +610,7 @@ class ColorMatcher:
             coefficients=[round(float(c) * 100.0, 1) for c in coeffs],
             dmx_values=[round(float(c) * 255.0) for c in coeffs],
             achieved_xyz=achieved_xyz,
-            delta_e=self._delta_e(target, achieved_xyz),
+            delta_e=self._delta_e(target, eval_xyz),
             warning=warning,
             ratios=[float(c) for c in coeffs],
         )

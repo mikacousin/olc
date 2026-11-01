@@ -25,7 +25,15 @@ import cairo
 from gi.repository import Gdk, Gtk
 
 from olc.devices.color import sRGB
-from olc.devices.color_pick import ColorSolver, apply_color_to_devices
+from olc.devices.color_pick import (
+    ColorApplyResult,
+    ColorSolver,
+    apply_color_to_devices,
+    fan_colors_to_devices,
+    hs_to_rgb,
+    rgb_to_hs,
+    shift_color_hs,
+)
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, LightingDevice
 from olc.gtk3.widgets.color_picker import ConsoleColorPicker
 
@@ -288,10 +296,23 @@ class DeviceInspectorWidget(Gtk.Box):
         self.color_expander = Gtk.Expander(label="COLOR [0/0]")
         self.color_expander.set_expanded(True)
         col_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        self.color_picker = ConsoleColorPicker(self._on_wheel_color_picked)
+        self.color_picker = ConsoleColorPicker(
+            self._on_wheel_color_picked,
+            on_emitter_changed=self._on_emitter_fader_changed,
+            on_strategy_changed=self.set_color_solver_strategy,
+            on_wheel_slot_clicked=self._on_wheel_slot_clicked,
+        )
         self.color_value_label = Gtk.Label(label="#FFFFFF | dE: 0.00", xalign=0)
+        col_fan_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        fan_short_btn = Gtk.Button(label="Fan Hue Short")
+        fan_short_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_short"))
+        fan_rainbow_btn = Gtk.Button(label="Fan Rainbow")
+        fan_rainbow_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_long"))
+        col_fan_row.pack_start(fan_short_btn, False, False, 0)
+        col_fan_row.pack_start(fan_rainbow_btn, False, False, 0)
         col_box.pack_start(self.color_value_label, False, False, 0)
         col_box.pack_start(self.color_picker, False, False, 0)
+        col_box.pack_start(col_fan_row, False, False, 0)
         self.color_expander.add(col_box)
         content.pack_start(self.color_expander, False, False, 0)
 
@@ -672,14 +693,46 @@ class DeviceInspectorWidget(Gtk.Box):
             apply_color_to_devices(color_satellites, c.r, c.g, c.b, self._color_solver)
         self.refresh_ui()
 
-    def apply_color_srgb(self, r: float, g: float, b: float) -> dict[int, float]:
-        """Apply sRGB color via NNLS ColorMatcher to all color-capable devices.
+    def apply_color_srgb(  # pylint: disable=too-many-locals
+        self, r: float, g: float, b: float
+    ) -> dict[int, float]:
+        """Apply sRGB color via NNLS ColorMatcher (Relative or Absolute).
 
         Returns:
             Mapping {device_id: delta_e} for each color-matched device.
         """
         color_devs = [d for d in self.selected_devices if self._has_color(d)]
-        outcome = apply_color_to_devices(color_devs, r, g, b, self._color_solver)
+        if not color_devs:
+            return {}
+
+        if self.edit_mode == "relative":
+            ref_dev = (
+                self.lead_device if self.lead_device in color_devs else color_devs[0]
+            )
+            assert ref_dev is not None
+            ref_c = ref_dev.color_srgb
+            ref_h, ref_s = rgb_to_hs(ref_c.r, ref_c.g, ref_c.b)
+            new_h, new_s = rgb_to_hs(r, g, b, hue_hint=ref_h)
+            d_hue = (new_h - ref_h) % 1.0
+            if d_hue > 0.5:
+                d_hue -= 1.0
+            d_sat = new_s - ref_s
+
+            outcome = ColorApplyResult()
+            for dev in color_devs:
+                if dev is ref_dev:
+                    target = (r, g, b)
+                else:
+                    dc = dev.color_srgb
+                    target = shift_color_hs(
+                        (dc.r, dc.g, dc.b), d_hue, d_sat, hue_hint=ref_h
+                    )
+                sub = apply_color_to_devices([dev], *target, self._color_solver)
+                outcome.delta_e.update(sub.delta_e)
+                outcome.warnings.update(sub.warnings)
+        else:
+            outcome = apply_color_to_devices(color_devs, r, g, b, self._color_solver)
+
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
@@ -690,6 +743,80 @@ class DeviceInspectorWidget(Gtk.Box):
         """Apply HTML hex color (#RRGGBB) to all color-capable devices."""
         c = sRGB.from_hex(hex_str)
         return self.apply_color_srgb(c.r, c.g, c.b)
+
+    def set_color_solver_strategy(self, strategy: str) -> None:
+        """Set NNLS solver strategy ('spectral', 'punch', 'rgb_only') and re-solve."""
+        self._color_solver.strategy = strategy
+        color_devs = [d for d in self.selected_devices if self._has_color(d)]
+        if not color_devs:
+            return
+        outcome = ColorApplyResult()
+        for dev in color_devs:
+            dc = dev.color_srgb
+            sub = apply_color_to_devices([dev], dc.r, dc.g, dc.b, self._color_solver)
+            outcome.delta_e.update(sub.delta_e)
+            outcome.warnings.update(sub.warnings)
+        self.last_delta_e = outcome.mean_delta_e
+        self.last_worst_delta_e = outcome.worst_delta_e
+        self.last_color_warning = outcome.warning
+        self.refresh_ui()
+
+    def apply_emitter_level(self, channel_type: ChannelType, level: float) -> None:
+        """Apply normalized [0.0..1.0] emitter level (Relative or Absolute)."""
+        eligible = [
+            d for d in self.selected_devices if d.get_channel(channel_type) is not None
+        ]
+        if not eligible:
+            return
+        target = max(0.0, min(1.0, float(level)))
+        if self.edit_mode == "relative":
+            ref_dev = self.lead_device if self.lead_device in eligible else eligible[0]
+            assert ref_dev is not None
+            delta = target - ref_dev.get_emitter_level(channel_type)
+            for dev in eligible:
+                dev.set_emitter_level(
+                    channel_type, dev.get_emitter_level(channel_type) + delta
+                )
+        else:
+            for dev in eligible:
+                dev.set_emitter_level(channel_type, target)
+        self.refresh_ui()
+
+    def fan_color(
+        self,
+        start_rgb: Optional[tuple[float, float, float]] = None,
+        end_rgb: Optional[tuple[float, float, float]] = None,
+        mode: str = "hs_short",
+    ) -> dict[int, float]:
+        """Distribute a color gradient across color-capable selected devices."""
+        color_devs = [d for d in self.selected_devices if self._has_color(d)]
+        if not color_devs:
+            return {}
+        if start_rgb is None:
+            sc = color_devs[0].color_srgb
+            start_rgb = (sc.r, sc.g, sc.b)
+        if end_rgb is None:
+            ec = color_devs[-1].color_srgb
+            end_rgb = (ec.r, ec.g, ec.b)
+            h1, s1 = rgb_to_hs(*start_rgb)
+            h2, s2 = rgb_to_hs(*end_rgb, hue_hint=h1)
+            if abs(h2 - h1) < 1e-3 and abs(s2 - s1) < 1e-3:
+                # Default spread when all fixtures share the same color
+                eff_s = max(0.85, s1)
+                start_rgb = hs_to_rgb(h1, eff_s)
+                span = (
+                    (1.0 - 1.0 / max(2, len(color_devs))) if mode == "hs_long" else 0.25
+                )
+                end_rgb = hs_to_rgb((h1 + span) % 1.0, eff_s)
+
+        outcome = fan_colors_to_devices(
+            color_devs, start_rgb, end_rgb, self._color_solver, mode=mode
+        )
+        self.last_delta_e = outcome.mean_delta_e
+        self.last_worst_delta_e = outcome.worst_delta_e
+        self.last_color_warning = outcome.warning
+        self.refresh_ui()
+        return outcome.delta_e
 
     def apply_physical_parameter(self, channel_type: ChannelType, value: float) -> None:
         """Apply physical parameter (Zoom, Focus, Strobe, CCT) to eligible devices."""
@@ -758,6 +885,20 @@ class DeviceInspectorWidget(Gtk.Box):
         if self._updating_ui:
             return
         self.apply_color_srgb(r, g, b)
+
+    def _on_emitter_fader_changed(self, etype: str, level: float) -> None:
+        if self._updating_ui:
+            return
+        try:
+            ctype = ChannelType(etype)
+        except ValueError:
+            return
+        self.apply_emitter_level(ctype, level)
+
+    def _on_wheel_slot_clicked(self, slot_label: str) -> None:
+        if self._updating_ui:
+            return
+        self.apply_discrete_range(ChannelType.COLOR_WHEEL, slot_label)
 
     def _on_gobo_combo_changed(self, combo: Gtk.ComboBoxText) -> None:
         if self._updating_ui:

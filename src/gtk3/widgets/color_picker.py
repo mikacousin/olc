@@ -451,34 +451,59 @@ class CIExyWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attribu
         return False
 
 
+_EMITTER_SPECS: tuple[tuple[str, str], ...] = (
+    ("red", "R"),
+    ("green", "G"),
+    ("blue", "B"),
+    ("white", "W"),
+    ("amber", "A"),
+    ("lime", "L"),
+)
+
+
 class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attributes
-    """HS disc + CIE 1931 xy + Kelvin + Tint (Duv) + hex + presets.
+    """HS disc + CIE 1931 xy + Kelvin + Tint (Duv) + emitter faders + presets.
 
     Args:
         on_color: called with normalized sRGB ``(r, g, b)``, at most every
             ``SEND_INTERVAL_MS`` while dragging and once more, exactly, when
             the pointer is released.
+        on_emitter_changed: optional callback ``(channel_type_value, level_0_1)``
+            invoked when an emitter fader is adjusted manually.
+        on_strategy_changed: optional callback ``(strategy_name,)`` invoked when
+            the NNLS solver strategy changes.
+        on_wheel_slot_clicked: optional callback ``(slot_label,)`` invoked when
+            a COLOR_WHEEL slot swatch is clicked.
     """
 
-    def __init__(  # pylint: disable=too-many-statements
-        self, on_color: Callable[[float, float, float], None]
+    def __init__(  # pylint: disable=too-many-statements,too-many-locals
+        self,
+        on_color: Callable[[float, float, float], None],
+        on_emitter_changed: Optional[Callable[[str, float], None]] = None,
+        on_strategy_changed: Optional[Callable[[str], None]] = None,
+        on_wheel_slot_clicked: Optional[Callable[[str], None]] = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self._on_color = on_color
+        self._on_emitter_changed = on_emitter_changed
+        self._on_strategy_changed = on_strategy_changed
+        self._on_wheel_slot_clicked = on_wheel_slot_clicked
         self._rgb: cp.RGB = (1.0, 1.0, 1.0)
         self._hue = 0.0
         self._silent = False
         self._kelvin_dragging = False
         self._tint_dragging = False
+        self._emitter_dragging = False
         self.gamut_xy: list[cp.XY] = []
         self.gamut_hs: list[tuple[float, float]] = []
         self.fixture_points: list[FixtureColorPoint] = []
+        self.wheel_slots: list[tuple[str, cp.RGB]] = []
 
         self._throttle = cp.Throttle(
             self._emit, SEND_INTERVAL_MS, GLib.timeout_add, GLib.source_remove
         )
 
-        # View Switcher: HS Disc | CIE 1931 xy
+        # View Switcher: HS Disc | CIE 1931 xy + NNLS Strategy selector
         self.view_stack = Gtk.Stack()
         self.view_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.disc = HSDiscWidget(self._on_disc_change, self._throttle.flush)
@@ -486,10 +511,18 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.view_stack.add_titled(self.disc, "hs", "HS Disc")
         self.view_stack.add_titled(self.cie_xy, "cie_xy", "CIE 1931 xy")
 
+        top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         switcher = Gtk.StackSwitcher()
         switcher.set_stack(self.view_stack)
-        switcher.set_halign(Gtk.Align.CENTER)
-        self.pack_start(switcher, False, False, 0)
+        self.strategy_combo = Gtk.ComboBoxText()
+        self.strategy_combo.append("spectral", "Match: Spectral")
+        self.strategy_combo.append("punch", "Match: Max Punch")
+        self.strategy_combo.append("rgb_only", "Match: RGB Only")
+        self.strategy_combo.set_active_id("spectral")
+        self.strategy_combo.connect("changed", self._on_strategy_combo_changed)
+        top_bar.pack_start(switcher, True, False, 0)
+        top_bar.pack_end(self.strategy_combo, False, False, 0)
+        self.pack_start(top_bar, False, False, 0)
         self.pack_start(self.view_stack, False, False, 0)
 
         # Kelvin (CCT)
@@ -524,6 +557,45 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.tint.connect("button-press-event", self._on_tint_press)
         self.tint.connect("button-release-event", self._on_tint_release)
         self.pack_start(self.tint, False, False, 0)
+
+        # Real-time physical emitter faders (R, G, B, W, A, L)
+        self.emitters_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.emitter_rows: dict[str, Gtk.Box] = {}
+        self.emitter_scales: dict[str, Gtk.Scale] = {}
+        for etype, short_lbl in _EMITTER_SPECS:
+            erow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            lbl = Gtk.Label(label=short_lbl, xalign=0.0)
+            lbl.set_width_chars(2)
+            scale = Gtk.Scale.new_with_range(
+                Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
+            )
+            scale.set_digits(0)
+            scale.set_value_pos(Gtk.PositionType.RIGHT)
+            scale.connect("value-changed", self._on_emitter_scale_changed, etype)
+            scale.connect("button-press-event", self._on_emitter_press)
+            scale.connect("button-release-event", self._on_emitter_release)
+            erow.pack_start(lbl, False, False, 0)
+            erow.pack_start(scale, True, True, 0)
+            erow.set_no_show_all(True)
+            lbl.show()
+            scale.show()
+            self.emitter_rows[etype] = erow
+            self.emitter_scales[etype] = scale
+            self.emitters_box.pack_start(erow, False, False, 0)
+        self.pack_start(self.emitters_box, False, False, 0)
+
+        # Dynamic Color Wheel slots row (shown when COLOR_WHEEL ranges exist)
+        self.wheel_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.wheel_box.set_no_show_all(True)
+        wheel_lbl = Gtk.Label(label="Color Wheel Slots", xalign=0)
+        wheel_lbl.show()
+        self.wheel_flow = Gtk.FlowBox()
+        self.wheel_flow.set_max_children_per_line(6)
+        self.wheel_flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.wheel_flow.show()
+        self.wheel_box.pack_start(wheel_lbl, False, False, 0)
+        self.wheel_box.pack_start(self.wheel_flow, False, False, 0)
+        self.pack_start(self.wheel_box, False, False, 0)
 
         # Hex + match quality
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -560,6 +632,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             or self.cie_xy.dragging
             or self._kelvin_dragging
             or self._tint_dragging
+            or self._emitter_dragging
         )
 
     def set_color(self, r: float, g: float, b: float) -> None:
@@ -578,10 +651,11 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         finally:
             self._silent = False
 
-    def set_devices_context(
+    def set_devices_context(  # pylint: disable=too-many-locals,too-many-branches
         self, lead: Optional[object], devices: Iterable[object]
     ) -> None:
-        """Update gamut hull and multi-fixture reticles from selected devices."""
+        """Update gamut hull, reticles, emitter faders, and wheel slots."""
+        dev_list = list(devices)
         if lead is not None:
             self.gamut_xy = cp.device_gamut_xy(lead)
             self.gamut_hs = cp.device_gamut_hs(lead)
@@ -592,7 +666,12 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             emitters_xy = []
 
         points: list[FixtureColorPoint] = []
-        for dev in devices:
+        present_emitters: set[str] = set()
+        for dev in dev_list:
+            for ch in getattr(dev, "channels", ()):
+                ct_val = getattr(getattr(ch, "channel_type", None), "value", None)
+                if isinstance(ct_val, str):
+                    present_emitters.add(ct_val)
             srgb = getattr(dev, "color_srgb", None)
             cie = getattr(dev, "color_cie", None)
             if srgb is None:
@@ -614,6 +693,58 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.fixture_points = points
         self.disc.set_overlay(self.gamut_hs, points)
         self.cie_xy.set_overlay(self.gamut_xy, points, emitters_xy)
+
+        self._update_emitter_faders(lead, present_emitters)
+        self._update_wheel_slots(lead, dev_list)
+
+    def _update_emitter_faders(
+        self, lead: Optional[object], present_emitters: set[str]
+    ) -> None:
+        """Show/hide emitter faders and sync values with the lead fixture."""
+        self._silent = True
+        try:
+            for etype, _lbl in _EMITTER_SPECS:
+                erow = self.emitter_rows[etype]
+                is_present = etype in present_emitters
+                erow.set_visible(is_present)
+                if is_present and lead is not None and not self._emitter_dragging:
+                    base_map = getattr(lead, "_base_emitters", {})
+                    lvl = 0.0
+                    for k, v in base_map.items():
+                        if getattr(k, "value", k) == etype:
+                            lvl = float(v)
+                            break
+                    self.emitter_scales[etype].set_value(round(lvl * 100.0))
+        finally:
+            self._silent = False
+
+    def _update_wheel_slots(
+        self, lead: Optional[object], dev_list: list[object]
+    ) -> None:
+        """Populate dynamic COLOR_WHEEL slot swatches if present in selection."""
+        slots_raw: list[tuple[Any, cp.RGB]] = []
+        if lead is not None:
+            slots_raw = cp.extract_color_wheel_slots(lead)
+        if not slots_raw:
+            for dev in dev_list:
+                slots_raw = cp.extract_color_wheel_slots(dev)
+                if slots_raw:
+                    break
+
+        new_slots = [(str(rng.label), rgb) for rng, rgb in slots_raw]
+        if new_slots != self.wheel_slots:
+            self.wheel_slots = new_slots
+            for child in self.wheel_flow.get_children():
+                self.wheel_flow.remove(child)
+            for slot_label, slot_rgb in new_slots:
+                sw = _Swatch(
+                    slot_label,
+                    slot_rgb,
+                    lambda rgb, lbl=slot_label: self._on_wheel_swatch(lbl, rgb),
+                )
+                sw.show_all()
+                self.wheel_flow.add(sw)
+        self.wheel_box.set_visible(bool(new_slots))
 
     def set_match(self, delta_e: float, warning: str = "") -> None:
         """Display how closely the selected fixtures reproduce the color."""
@@ -697,6 +828,34 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self._tint_dragging = False
         self._throttle.flush()
         return False
+
+    def _on_emitter_press(self, _w: Gtk.Widget, _event: Any) -> bool:  # noqa: ANN401
+        self._emitter_dragging = True
+        return False
+
+    def _on_emitter_release(self, _w: Gtk.Widget, _event: Any) -> bool:  # noqa: ANN401
+        self._emitter_dragging = False
+        return False
+
+    def _on_emitter_scale_changed(self, scale: Gtk.Scale, etype: str) -> None:
+        if self._silent:
+            return
+        level = max(0.0, min(1.0, scale.get_value() / 100.0))
+        if self._on_emitter_changed is not None:
+            self._on_emitter_changed(etype, level)
+
+    def _on_strategy_combo_changed(self, combo: Gtk.ComboBoxText) -> None:
+        if self._silent:
+            return
+        strat = combo.get_active_id() or "spectral"
+        if self._on_strategy_changed is not None:
+            self._on_strategy_changed(strat)
+
+    def _on_wheel_swatch(self, slot_label: str, slot_rgb: cp.RGB) -> None:
+        if self._on_wheel_slot_clicked is not None:
+            self._on_wheel_slot_clicked(slot_label)
+        else:
+            self._on_preset(slot_rgb)
 
     def _on_hex_activate(self, entry: Gtk.Entry) -> None:
         if self._silent:

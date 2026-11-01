@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from .color import CIExyY, ColorMatcher, FixtureColorProfile, MatchResult, sRGB
+from .color import CIEXYZ, CIExyY, ColorMatcher, FixtureColorProfile, MatchResult, sRGB
 
 if TYPE_CHECKING:
     from olc.curve import Curve
@@ -881,6 +881,72 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._target_color = sRGB(r_norm, g_norm, b_norm)
         self._target_cie = self._target_color.to_XYZ().to_xyY()
         self._apply_color()
+
+    def get_emitter_level(self, channel_type: ChannelType) -> float:
+        """Return normalized [0.0, 1.0] emitter level for a color ChannelType."""
+        return float(self._base_emitters.get(channel_type, 0.0))
+
+    def set_emitter_level(self, channel_type: ChannelType, level: float) -> None:
+        """Set a single color emitter level [0.0, 1.0] and update CIE/sRGB state."""
+        if channel_type not in COLOR_CHANNEL_TYPES:
+            return
+        self._base_emitters[channel_type] = max(0.0, min(1.0, float(level)))
+        self._update_target_from_emitters()
+        self._apply_color()
+
+    def _update_target_from_emitters(self) -> None:  # pylint: disable=too-many-locals
+        """Synthesize target CIE xyY and sRGB from current _base_emitters levels."""
+        default_cie: dict[ChannelType, CIExyY] = {
+            ChannelType.RED: CIExyY(0.6400, 0.3300, 21.26),
+            ChannelType.GREEN: CIExyY(0.3000, 0.6000, 71.52),
+            ChannelType.BLUE: CIExyY(0.1500, 0.0600, 7.22),
+            ChannelType.WHITE: CIExyY(0.3127, 0.3290, 100.0),
+            ChannelType.AMBER: CIExyY(0.5900, 0.4000, 50.0),
+            ChannelType.LIME: CIExyY(0.3225, 0.3870, 80.0),
+        }
+        name_map = {
+            "red": ChannelType.RED,
+            "green": ChannelType.GREEN,
+            "blue": ChannelType.BLUE,
+            "white": ChannelType.WHITE,
+            "amber": ChannelType.AMBER,
+            "lime": ChannelType.LIME,
+            "green-yellow": ChannelType.LIME,
+            "coloradd_gy": ChannelType.LIME,
+        }
+        if self.color_profile is not None:
+            for em in self.color_profile.emitters:
+                ct = name_map.get(em.name.lower())
+                if ct is not None:
+                    default_cie[ct] = em.cie
+
+        tot_x = tot_y = tot_z = 0.0
+        for ctype in COLOR_CHANNEL_TYPES:
+            lvl = self._base_emitters.get(ctype, 0.0)
+            if lvl <= 0.0:
+                continue
+            xyz = default_cie[ctype].to_XYZ()
+            tot_x += lvl * xyz.X
+            tot_y += lvl * xyz.Y
+            tot_z += lvl * xyz.Z
+
+        if tot_y <= 1e-6 and (tot_x + tot_y + tot_z) <= 1e-6:
+            self._target_color = sRGB(0.0, 0.0, 0.0)
+            self._target_cie = CIExyY(0.3127, 0.3290, 0.0)
+            return
+
+        total_xyz = CIEXYZ(tot_x, tot_y, tot_z)
+        xyy = total_xyz.to_xyY()
+        self._target_cie = CIExyY(xyy.x, xyy.y, min(100.0, xyy.Y))
+
+        # Scale XYZ down if linear RGB exceeds 1.0 to preserve chromaticity/hue
+        x_n, y_n, z_n = tot_x / 100.0, tot_y / 100.0, tot_z / 100.0
+        r_lin = 3.2404542 * x_n - 1.5371385 * y_n - 0.4985314 * z_n
+        g_lin = -0.9692660 * x_n + 1.8760108 * y_n + 0.0415560 * z_n
+        b_lin = 0.0556434 * x_n - 0.2040259 * y_n + 1.0572252 * z_n
+        max_lin = max(r_lin, g_lin, b_lin, 1.0)
+        scaled_xyz = CIEXYZ(tot_x / max_lin, tot_y / max_lin, tot_z / max_lin)
+        self._target_color = scaled_xyz.to_srgb()
 
     def _solve_emitters_from_cie(self, cie: CIExyY) -> None:
         """Calculate emitter fractions using NNLS ColorMatcher."""
