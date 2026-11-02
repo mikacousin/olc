@@ -871,7 +871,8 @@ class PatchManager:
 
         # 3. Direct routing for multi-parameter and multi-resolution device channels
         dynamic_devs: list[LightingDevice] = []
-        for dev in self.devices.values():
+        devices_snapshot = tuple(self.devices.values())
+        for dev in devices_snapshot:
             if (
                 dev.uses_virtual_dimmer
                 or dev.has_16bit_dimmer
@@ -885,7 +886,7 @@ class PatchManager:
         dev_dst_outs = []
         dev_is_htp = []
 
-        for dev in self.devices.values():
+        for dev in devices_snapshot:
             for ch in dev.channels:
                 is_conventional_8bit_dimmer = (
                     dev.fixture_type == FixtureType.DIMMER

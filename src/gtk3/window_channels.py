@@ -110,6 +110,17 @@ class LiveChannelsView(ChannelsView):
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
         super().__init__(app=window.app, window=window, tabs=tabs)
+        self._batch_next_levels: list[int] | None = None
+
+    def update(self) -> None:
+        """Update channels display with batched next cue levels."""
+        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+        if main_pb is not None and hasattr(main_pb, "get_all_next_channel_levels"):
+            self._batch_next_levels = main_pb.get_all_next_channel_levels()
+        try:
+            super().update()
+        finally:
+            self._batch_next_levels = None
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
@@ -151,6 +162,10 @@ class LiveChannelsView(ChannelsView):
         Returns:
             Channel next level (0 - 255)
         """
+        if self._batch_next_levels is not None and 1 <= channel <= len(
+            self._batch_next_levels
+        ):
+            return self._batch_next_levels[channel - 1]
         current_level = int(typing.cast(typing.Any, channel_widget).level)
         return self.app.core.lightshow.main_playback.get_next_channel_level(
             channel, current_level

@@ -81,6 +81,7 @@ class Sequence:
         # Move In Black (MIB) pre-positioning and post-extinction fade time (s)
         self.mib_enabled = True
         self.mib_fade_time = DEFAULT_MIB_FADE_TIME
+        self._cached_next_levels: tuple[typing.Any, list[int]] | None = None
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -101,6 +102,7 @@ class Sequence:
         """Directly load and apply a sequence step state to DMX outputs."""
         if not self.steps or step_index < 0 or step_index >= len(self.steps):
             return
+        self.invalidate_next_channel_levels_cache()
         self.position = step_index
         resolved = TrackingEngine.resolve_step_state(
             self, step_index, tracking_mode=self.tracking_mode, patch=self.patch
@@ -224,6 +226,7 @@ class Sequence:
         Args:
             step: Step number
         """
+        self.invalidate_next_channel_levels_cache()
         self.steps.append(step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -236,6 +239,7 @@ class Sequence:
             index: Index
             step: Step
         """
+        self.invalidate_next_channel_levels_cache()
         self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -299,15 +303,15 @@ class Sequence:
             else number + 1
         )
 
-    def get_next_channel_level(self, channel: int, level: int) -> int:
-        """Get channel level in next cue
+    def invalidate_next_channel_levels_cache(self) -> None:
+        """Invalidate memoized next cue channel levels."""
+        self._cached_next_levels = None
 
-        Args:
-            channel: channel number (1 - MAX_CHANNELS)
-            level: level in active cue (0 - 255)
+    def get_all_next_channel_levels(self) -> list[int] | None:
+        """Get all channel levels in next cue as an array of 512 integers.
 
         Returns:
-            level in next cue (0 - 255)
+            List of levels indexed by channel (0 to 511), or None if no next cue.
         """
         if (
             len(self.steps) > self.position + 1
@@ -318,7 +322,19 @@ class Sequence:
         elif self.last and self.steps:
             target_step_idx = 0
         else:
-            return level
+            return None
+
+        cache_key = (
+            target_step_idx,
+            self.tracking_mode,
+            len(self.steps),
+            getattr(self.patch, "_numpy_cache_dirty", None),
+        )
+        if (
+            self._cached_next_levels is not None
+            and self._cached_next_levels[0] == cache_key
+        ):
+            return self._cached_next_levels[1]
 
         resolved = TrackingEngine.resolve_step_state(
             self,
@@ -327,19 +343,41 @@ class Sequence:
             patch=self.patch,
             mib_enabled=False,
         )
-        next_level = (
-            int(resolved.channels[channel - 1])
-            if 1 <= channel <= len(resolved.channels)
-            else 0
-        )
-        if channel in resolved.device_values:
-            dev_int = resolved.device_values[channel].get("intensity")
-            if isinstance(dev_int, (int, float)):
-                dev_lvl = round(
-                    float(dev_int) * 255.0 if float(dev_int) <= 1.0 else float(dev_int)
-                )
-                next_level = max(next_level, dev_lvl)
-        return max(0, min(255, next_level))
+
+        levels = [0] * MAX_CHANNELS
+        for ch_idx in range(min(MAX_CHANNELS, len(resolved.channels))):
+            levels[ch_idx] = int(resolved.channels[ch_idx])
+
+        for ch_num, dev_vals in resolved.device_values.items():
+            if 1 <= ch_num <= MAX_CHANNELS:
+                dev_int = dev_vals.get("intensity")
+                if isinstance(dev_int, (int, float)):
+                    dev_lvl = round(
+                        float(dev_int) * 255.0
+                        if float(dev_int) <= 1.0
+                        else float(dev_int)
+                    )
+                    levels[ch_num - 1] = max(
+                        levels[ch_num - 1], 0, min(255, dev_lvl)
+                    )
+
+        self._cached_next_levels = (cache_key, levels)
+        return levels
+
+    def get_next_channel_level(self, channel: int, level: int) -> int:
+        """Get channel level in next cue
+
+        Args:
+            channel: channel number (1 - MAX_CHANNELS)
+            level: level in active cue (0 - 255)
+
+        Returns:
+            level in next cue (0 - 255)
+        """
+        levels = self.get_all_next_channel_levels()
+        if levels is not None and 1 <= channel <= len(levels):
+            return levels[channel - 1]
+        return level
 
     def sequence_plus(self) -> None:
         """Sequence +"""
