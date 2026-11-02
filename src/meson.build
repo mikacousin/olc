@@ -30,6 +30,7 @@ olc_sources = [
   'independent.py',
   'main_fader.py',
   'patch.py',
+  'patch_outputs.py',
   'sequence.py',
   'sequence_threads.py',
   'settings.py',
