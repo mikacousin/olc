@@ -460,8 +460,8 @@ class Throttle:  # pylint: disable=too-many-instance-attributes
         self,
         callback: Callable[..., None],
         interval_ms: int,
-        schedule: Callable[[int, Callable[[], bool]], Any],
-        cancel: Callable[[Any], None],
+        schedule: Callable[..., Any],
+        cancel: Callable[..., Any],
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._callback = callback
