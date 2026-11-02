@@ -22,10 +22,9 @@ from typing import Optional
 from olc.define import is_int
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
-
     from olc.core.app import CoreApplication
     from olc.core.commandline import CoreCommandLine
+    from olc.gtk3.application import Application
     from olc.patch import DMXPatch
 
 
