@@ -108,9 +108,11 @@ class LiveView(Gtk.Notebook):
 class LiveChannelsView(ChannelsView):
     """Channels View"""
 
+    _batch_next_levels: list[int] | None = None
+
     def __init__(self, window: Window, tabs: Tabs) -> None:
+        self._batch_next_levels = None
         super().__init__(app=window.app, window=window, tabs=tabs)
-        self._batch_next_levels: list[int] | None = None
 
     def update(self) -> None:
         """Update channels display with batched next cue levels."""

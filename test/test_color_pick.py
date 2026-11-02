@@ -30,7 +30,12 @@ from olc.devices.builtin import (
     create_rgba_definition,
     create_rgbw_definition,
 )
-from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
+from olc.devices.color import (
+    CIExyY,
+    EmitterProfile,
+    FixtureColorProfile,
+    profile_from_emitters,
+)
 from olc.devices.device import (
     Channel,
     ChannelRange,
@@ -495,13 +500,30 @@ def test_saturated_colors_do_not_warn_on_rgb_fixture(
 
 
 def test_real_gamut_overshoot_still_warns() -> None:
-    # RGBA white needs ~103 % of the emitters: a real (small) brightness loss.
+    # A color truly outside the fixture's gamut polygon must warn.
+    narrow_profile = profile_from_emitters(
+        "Narrow",
+        [
+            ("Red", 0.50, 0.35, 25.0, 610.0),
+            ("Green", 0.35, 0.45, 60.0, 540.0),
+            ("Blue", 0.25, 0.20, 15.0, 480.0),
+        ],
+    )
+    match = cp.ColorSolver().solve(narrow_profile, 0.0, 1.0, 0.0)
+    assert match is not None
+    assert "out of gamut" in match.warning
+    assert match.delta_e > 0.5
+
+
+def test_rgba_white_no_longer_warns_false_out_of_gamut() -> None:
+    # RGBA white is inside the physical gamut and must not trigger false warnings.
     dev = create_rgba_definition().instantiate(1, "RGBA", 1, 1)
     assert dev.color_profile is not None
     match = cp.ColorSolver().solve(dev.color_profile, 1.0, 1.0, 1.0)
     assert match is not None
-    assert "out of gamut" in match.warning
-    assert match.delta_e > 0.5
+    assert match.warning == ""
+    assert match.delta_e < 0.2
+    assert cp.classify_match(match.delta_e, match.warning) == "exact"
 
 
 def test_partial_gdtf_profile_and_lime_emitter() -> None:

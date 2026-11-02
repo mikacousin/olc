@@ -357,9 +357,7 @@ class Sequence:
                         if float(dev_int) <= 1.0
                         else float(dev_int)
                     )
-                    levels[ch_num - 1] = max(
-                        levels[ch_num - 1], 0, min(255, dev_lvl)
-                    )
+                    levels[ch_num - 1] = max(levels[ch_num - 1], 0, min(255, dev_lvl))
 
         self._cached_next_levels = (cache_key, levels)
         return levels

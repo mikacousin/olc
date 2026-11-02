@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import numpy as np
 
@@ -209,6 +209,34 @@ class EmitterProfile:
         return f"<Emitter '{self.name}' {self.cie}{wl} ≈{self.srgb.hex()}>"
 
 
+def convex_hull_2d(
+    points: Iterable[tuple[float, float]],
+) -> list[tuple[float, float]]:
+    """Monotone chain 2D convex hull in counter-clockwise order."""
+    pts = sorted({(round(float(x), 6), round(float(y), 6)) for x, y in points})
+    if len(pts) <= 2:
+        return list(pts)
+
+    def cross(
+        o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]
+    ) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0.0:
+            lower.pop()
+        lower.append(p)
+
+    upper: list[tuple[float, float]] = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0.0:
+            upper.pop()
+        upper.append(p)
+
+    return lower[:-1] + upper[:-1]
+
+
 @dataclass
 class FixtureColorProfile:
     """Complete colorimetric profile of a multi-emitter LED fixture."""
@@ -237,13 +265,41 @@ class FixtureColorProfile:
         return np.column_stack([e.xyz.as_array() for e in self.emitters])
 
     @property
+    def gamut_polygon(self) -> list[tuple[float, float]]:
+        """Convex hull vertices of all chromatic emitters in CIE xy space."""
+        pts = [
+            (e.cie.x, e.cie.y) for e in self.emitters if e.cie.x > 0.0 or e.cie.y > 0.0
+        ]
+        return convex_hull_2d(pts)
+
+    @property
     def gamut_area(self) -> float:
-        """Area of the color gamut triangle in the CIE xy chromaticity diagram."""
-        chromatic = [e for e in self.emitters if e.dominant_wavelength > 0.0][:3]
-        if len(chromatic) < 3:
+        """Area of the color gamut polygon in the CIE xy chromaticity diagram."""
+        poly = self.gamut_polygon
+        n = len(poly)
+        if n < 3:
             return 0.0
-        (x1, y1), (x2, y2), (x3, y3) = [(e.cie.x, e.cie.y) for e in chromatic]
-        return abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)) / 2.0
+        # Shoelace formula (Gauss's area formula)
+        area = 0.0
+        for i in range(n):
+            j = (i + 1) % n
+            area += poly[i][0] * poly[j][1] - poly[j][0] * poly[i][1]
+        return abs(area) / 2.0
+
+    def contains_xy(self, x: float, y: float, tol: float = 1e-4) -> bool:
+        """Return True if (x, y) is inside or on the boundary of the fixture's gamut."""
+        poly = self.gamut_polygon
+        n = len(poly)
+        if n < 3:
+            return False
+        # Cross product test with each directed edge of the CCW polygon
+        for i in range(n):
+            p1 = poly[i]
+            p2 = poly[(i + 1) % n]
+            cross = (p2[0] - p1[0]) * (y - p1[1]) - (p2[1] - p1[1]) * (x - p1[0])
+            if cross < -tol:
+                return False
+        return True
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize fixture colorimetric profile to dictionary."""
@@ -292,6 +348,7 @@ def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
                     float(getattr(r_cie, "Y", 0.2126)) * scale,
                 ),
                 dominant_wavelength=625.0,
+                gdtf_attribute="ColorAdd_R",
             ),
             EmitterProfile(
                 name="Green",
@@ -301,6 +358,7 @@ def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
                     float(getattr(g_cie, "Y", 0.7152)) * scale,
                 ),
                 dominant_wavelength=525.0,
+                gdtf_attribute="ColorAdd_G",
             ),
             EmitterProfile(
                 name="Blue",
@@ -310,13 +368,20 @@ def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
                     float(getattr(b_cie, "Y", 0.0722)) * scale,
                 ),
                 dominant_wavelength=465.0,
+                gdtf_attribute="ColorAdd_B",
             ),
         ]
 
     return [
-        EmitterProfile("Red", CIExyY(0.6400, 0.3300, 21.26), 625.0),
-        EmitterProfile("Green", CIExyY(0.3000, 0.6000, 71.52), 525.0),
-        EmitterProfile("Blue", CIExyY(0.1500, 0.0600, 7.22), 465.0),
+        EmitterProfile(
+            "Red", CIExyY(0.6400, 0.3300, 21.26), 625.0, gdtf_attribute="ColorAdd_R"
+        ),
+        EmitterProfile(
+            "Green", CIExyY(0.3000, 0.6000, 71.52), 525.0, gdtf_attribute="ColorAdd_G"
+        ),
+        EmitterProfile(
+            "Blue", CIExyY(0.1500, 0.0600, 7.22), 465.0, gdtf_attribute="ColorAdd_B"
+        ),
     ]
 
 
@@ -339,7 +404,7 @@ def _gdtf_has_rgb_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
     return False
 
 
-def extract_color_profile(
+def extract_color_profile(  # pylint: disable=too-many-locals
     gdtf_fixture: Any,  # noqa: ANN401
     fixture_name: str = "",
 ) -> FixtureColorProfile:
@@ -349,15 +414,48 @@ def extract_color_profile(
         f"{getattr(gdtf_fixture, 'name', '')}".strip()
     )
 
+    _default_name_to_attr = {
+        "red": "ColorAdd_R",
+        "green": "ColorAdd_G",
+        "blue": "ColorAdd_B",
+        "white": "ColorAdd_W",
+        "amber": "ColorAdd_A",
+        "lime": "ColorAdd_GY",
+        "green-yellow": "ColorAdd_GY",
+        "cyan": "ColorAdd_C",
+        "indigo": "ColorAdd_BC",
+        "royal blue": "ColorAdd_BC",
+        "blue-cyan": "ColorAdd_BC",
+        "magenta": "ColorAdd_M",
+        "yellow": "ColorAdd_Y",
+        "red-orange": "ColorAdd_RY",
+    }
+
+    emitter_to_attr: dict[str, str] = {}
+    for dmx_mode in getattr(gdtf_fixture, "dmx_modes", []) or []:
+        for ch in getattr(dmx_mode, "dmx_channels", []) or []:
+            ch_dict = ch.as_dict() if hasattr(ch, "as_dict") else {}
+            for lc in ch_dict.get("logical_channels", []):
+                for cf in lc.get("channel_functions", []):
+                    attr = cf.get("attribute", "")
+                    em_ref = cf.get("emitter")
+                    if em_ref and attr:
+                        em_ref_name = getattr(em_ref, "name", str(em_ref))
+                        emitter_to_attr[em_ref_name.lower()] = attr
+
     emitters: list[EmitterProfile] = []
     gdtf_emitters = getattr(gdtf_fixture, "emitters", [])
     for e in gdtf_emitters:
         color = getattr(e, "color", None)
         if color is None:
             continue
+        em_name = getattr(e, "name", "") or ""
+        gdtf_attr = emitter_to_attr.get(em_name.lower()) or _default_name_to_attr.get(
+            em_name.lower(), ""
+        )
         emitters.append(
             EmitterProfile(
-                name=getattr(e, "name", "") or "",
+                name=em_name,
                 cie=CIExyY(
                     x=getattr(color, "x", 0.0),
                     y=getattr(color, "y", 0.0),
@@ -365,6 +463,7 @@ def extract_color_profile(
                 ),
                 dominant_wavelength=getattr(e, "dominant_wave_length", 0.0) or 0.0,
                 diode_part=getattr(e, "diode_part", "") or "",
+                gdtf_attribute=gdtf_attr,
             )
         )
 
@@ -432,15 +531,51 @@ class MatchResult:  # pylint: disable=too-many-instance-attributes
     delta_e: float
     warning: str = ""
     ratios: list[float] = field(default_factory=list)
+    normalized_weights: list[float] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.normalized_weights and self.ratios:
+            self.normalized_weights = list(self.ratios)
+        elif not self.ratios and self.normalized_weights:
+            self.ratios = list(self.normalized_weights)
+
+    @property
+    def dmx_values_16(self) -> list[int]:
+        """Return 16-bit DMX values [0..65535] based on normalized weights."""
+        weights = (
+            self.normalized_weights
+            or self.ratios
+            or [d / 255.0 for d in self.dmx_values]
+        )
+        return [max(0, min(65535, round(w * 65535.0))) for w in weights]
+
+    @property
+    def dmx_values_24(self) -> list[int]:
+        """Return 24-bit DMX values [0..16777215] based on normalized weights."""
+        weights = (
+            self.normalized_weights
+            or self.ratios
+            or [d / 255.0 for d in self.dmx_values]
+        )
+        return [max(0, min(16777215, round(w * 16777215.0))) for w in weights]
 
     def as_dict(self) -> dict[str, int]:
         """Return {emitter_name: dmx_value} mapping ready to apply (8-bit)."""
         return dict(zip(self.emitter_names, self.dmx_values, strict=False))
 
+    def as_dict_16(self) -> dict[str, int]:
+        """Return {emitter_name: dmx_value_16} mapping ready to apply (16-bit)."""
+        return dict(zip(self.emitter_names, self.dmx_values_16, strict=False))
+
+    def as_dict_24(self) -> dict[str, int]:
+        """Return {emitter_name: dmx_value_24} mapping ready to apply (24-bit)."""
+        return dict(zip(self.emitter_names, self.dmx_values_24, strict=False))
+
     def as_normalized_dict(self) -> dict[str, float]:
         """Return {emitter_name: ratio} mapping in [0.0, 1.0] float precision."""
-        if self.ratios and len(self.ratios) == len(self.emitter_names):
-            return dict(zip(self.emitter_names, self.ratios, strict=False))
+        weights = self.normalized_weights or self.ratios
+        if weights and len(weights) == len(self.emitter_names):
+            return dict(zip(self.emitter_names, weights, strict=False))
         return {
             name: dmx / 255.0
             for name, dmx in zip(self.emitter_names, self.dmx_values, strict=False)
@@ -462,6 +597,83 @@ GAMUT_WARNING_TOLERANCE = 1.005
 
 SOLVER_STRATEGIES: tuple[str, ...] = ("spectral", "punch", "rgb_only")
 _RGB_EMITTER_NAMES = frozenset({"red", "green", "blue"})
+_BROADBAND_EMITTER_NAMES = frozenset(
+    {
+        "white",
+        "amber",
+        "lime",
+        "cyan",
+        "warm white",
+        "cold white",
+        "ww",
+        "cw",
+        "yellow",
+    }
+)
+
+
+def _solve_nled(  # pylint: disable=too-many-locals
+    profile: FixtureColorProfile,
+    target: CIEXYZ,
+    strategy: str = "spectral",
+) -> np.ndarray:
+    """Solve multi-LED mixing (N >= 4) with strict chromaticity & L2 regularization."""
+    n_emitters = len(profile.emitters)
+    if n_emitters == 0:
+        return np.zeros(0, dtype=float)
+
+    sum_xyz = target.X + target.Y + target.Z
+    if sum_xyz < 1e-9 or target.Y < 1e-9:
+        return np.zeros(n_emitters, dtype=float)
+
+    mat_m = profile.mixing_matrix  # (3, N)
+    x_t = target.X / sum_xyz
+    y_t = target.Y / sum_xyz
+    y_target = target.Y
+
+    # Chromaticity constraint rows
+    # (1 - x_t) * X_i - x_t * Y_i - x_t * Z_i = 0
+    # -y_t * X_i + (1 - y_t) * Y_i - y_t * Z_i = 0
+    r1 = (1.0 - x_t) * mat_m[0] - x_t * mat_m[1] - x_t * mat_m[2]
+    r2 = -y_t * mat_m[0] + (1.0 - y_t) * mat_m[1] - y_t * mat_m[2]
+    r3 = mat_m[1]  # Luminance row: Y_i * c_i = y_target
+
+    w_chroma = 100.0
+    w_lum = 1.0
+    lambda_reg = 1e-4
+
+    # Regularization weights: lower penalty for broadband emitters encourages
+    # recruitment.
+    w_reg = np.array(
+        [
+            0.5 if e.name.lower() in _BROADBAND_EMITTER_NAMES else 1.0
+            for e in profile.emitters
+        ],
+        dtype=float,
+    )
+    reg_rows = np.diag(np.sqrt(lambda_reg) * w_reg)
+
+    mat_a = np.vstack([w_chroma * r1, w_chroma * r2, w_lum * r3, reg_rows])
+    vec_b = np.concatenate([[0.0, 0.0, w_lum * y_target], np.zeros(n_emitters)])
+
+    bounds_lower = np.zeros(n_emitters, dtype=float)
+    bounds_upper = np.ones(n_emitters, dtype=float)
+
+    if strategy == "rgb_only":
+        for i, e in enumerate(profile.emitters):
+            if e.name.lower() not in _RGB_EMITTER_NAMES:
+                bounds_upper[i] = 0.0
+
+    try:
+        from scipy.optimize import (  # pylint: disable=import-outside-toplevel
+            lsq_linear,
+        )
+
+        res = lsq_linear(mat_a, vec_b, bounds=(bounds_lower, bounds_upper))
+        return np.asarray(res.x, dtype=float)
+    except ImportError:
+        coeffs, *_ = np.linalg.lstsq(mat_a, vec_b, rcond=None)
+        return np.clip(np.asarray(coeffs, dtype=float), bounds_lower, bounds_upper)
 
 
 def _raw_nnls(mat_m: np.ndarray, target_vec: np.ndarray) -> np.ndarray:
@@ -558,7 +770,7 @@ class ColorMatcher:
         b = int(clean_hex[4:6], 16)
         return self.match_srgb(r, g, b, strategy=strategy)
 
-    def _solve(  # pylint: disable=too-many-locals
+    def _solve(  # pylint: disable=too-many-locals, too-many-branches
         self,
         profile: FixtureColorProfile,
         target: CIEXYZ,
@@ -567,31 +779,42 @@ class ColorMatcher:
         full_m = profile.mixing_matrix  # (3, N)
         mat_m = full_m.copy()
         target_vec = target.as_array()  # (3,)
+        n_emitters = len(profile.emitters)
 
-        if strategy == "rgb_only":
-            rgb_cols = [
-                i
-                for i, e in enumerate(profile.emitters)
-                if e.name.lower() in _RGB_EMITTER_NAMES
-            ]
-            if rgb_cols:
-                for i in range(len(profile.emitters)):
-                    if i not in rgb_cols:
-                        mat_m[:, i] = 0.0
-
-        if strategy == "punch":
-            coeffs = _bounded_punch_nnls(mat_m, target_vec)
+        sum_xyz = target.X + target.Y + target.Z
+        if sum_xyz > 1e-9 and target.Y > 1e-9:
+            target_x = target.X / sum_xyz
+            target_y = target.Y / sum_xyz
+            inside_gamut = profile.contains_xy(target_x, target_y)
         else:
-            coeffs = _raw_nnls(mat_m, target_vec)
+            inside_gamut = True
 
-        warning = ""
+        if strategy != "punch" and n_emitters >= 4 and strategy != "rgb_only":
+            coeffs = _solve_nled(profile, target, strategy=strategy)
+        else:
+            if strategy == "rgb_only":
+                rgb_cols = [
+                    i
+                    for i, e in enumerate(profile.emitters)
+                    if e.name.lower() in _RGB_EMITTER_NAMES
+                ]
+                if rgb_cols:
+                    for i in range(len(profile.emitters)):
+                        if i not in rgb_cols:
+                            mat_m[:, i] = 0.0
+
+            if strategy == "punch":
+                coeffs = _bounded_punch_nnls(mat_m, target_vec)
+            else:
+                coeffs = _raw_nnls(mat_m, target_vec)
+
         max_c = float(coeffs.max()) if len(coeffs) > 0 else 0.0
         if max_c > 1.0:
             coeffs = coeffs / max_c
-            # Overshoots within numerical noise (~1e-4 for fully saturated
-            # colors) are normalized silently; only a real loss is reported.
-            if max_c > GAMUT_WARNING_TOLERANCE:
-                warning = "out of gamut — brightness reduced"
+
+        warning = ""
+        if not inside_gamut:
+            warning = "out of gamut — brightness reduced"
 
         achieved = full_m @ coeffs
         achieved_xyz = CIEXYZ(
@@ -604,6 +827,7 @@ class ColorMatcher:
                 achieved_xyz.X * scale, achieved_xyz.Y * scale, achieved_xyz.Z * scale
             )
 
+        norm_weights = [float(c) for c in coeffs]
         return MatchResult(
             fixture_name=profile.fixture_name,
             emitter_names=[e.name for e in profile.emitters],
@@ -612,7 +836,8 @@ class ColorMatcher:
             achieved_xyz=achieved_xyz,
             delta_e=self._delta_e(target, eval_xyz),
             warning=warning,
-            ratios=[float(c) for c in coeffs],
+            ratios=norm_weights,
+            normalized_weights=norm_weights,
         )
 
     @staticmethod

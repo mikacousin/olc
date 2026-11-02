@@ -494,6 +494,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             ChannelType.WHITE: CIExyY(0.3127, 0.3290, 100.0),
             ChannelType.AMBER: CIExyY(0.5900, 0.4000, 50.0),
             ChannelType.LIME: CIExyY(0.3225, 0.3870, 80.0),
+            ChannelType.CYAN: CIExyY(0.0454, 0.2950, 25.0),
+            ChannelType.INDIGO: CIExyY(0.1689, 0.0069, 5.0),
+            ChannelType.MAGENTA: CIExyY(0.3800, 0.1500, 20.0),
+            ChannelType.YELLOW: CIExyY(0.4800, 0.4800, 60.0),
         }
         name_map = {
             "red": ChannelType.RED,
@@ -504,6 +508,18 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "lime": ChannelType.LIME,
             "green-yellow": ChannelType.LIME,
             "coloradd_gy": ChannelType.LIME,
+            "cyan": ChannelType.CYAN,
+            "coloradd_c": ChannelType.CYAN,
+            "indigo": ChannelType.INDIGO,
+            "royal blue": ChannelType.INDIGO,
+            "blue-cyan": ChannelType.INDIGO,
+            "coloradd_bc": ChannelType.INDIGO,
+            "magenta": ChannelType.MAGENTA,
+            "coloradd_m": ChannelType.MAGENTA,
+            "yellow": ChannelType.YELLOW,
+            "coloradd_y": ChannelType.YELLOW,
+            "red-orange": ChannelType.RED,
+            "coloradd_ry": ChannelType.RED,
         }
         if self.color_profile is not None:
             for em in self.color_profile.emitters:
@@ -560,6 +576,18 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "lime": ChannelType.LIME,
             "green-yellow": ChannelType.LIME,
             "coloradd_gy": ChannelType.LIME,
+            "cyan": ChannelType.CYAN,
+            "coloradd_c": ChannelType.CYAN,
+            "indigo": ChannelType.INDIGO,
+            "royal blue": ChannelType.INDIGO,
+            "blue-cyan": ChannelType.INDIGO,
+            "coloradd_bc": ChannelType.INDIGO,
+            "magenta": ChannelType.MAGENTA,
+            "coloradd_m": ChannelType.MAGENTA,
+            "yellow": ChannelType.YELLOW,
+            "coloradd_y": ChannelType.YELLOW,
+            "red-orange": ChannelType.RED,
+            "coloradd_ry": ChannelType.RED,
         }
         for emitter_name, ratio in result.as_normalized_dict().items():
             ctype = name_map.get(emitter_name.lower())

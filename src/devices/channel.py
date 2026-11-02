@@ -44,6 +44,10 @@ class ChannelType(Enum):
     WHITE = "white"
     AMBER = "amber"
     LIME = "lime"
+    CYAN = "cyan"
+    INDIGO = "indigo"
+    MAGENTA = "magenta"
+    YELLOW = "yellow"
     COLOR_WHEEL = "color_wheel"
     GOBO_WHEEL = "gobo_wheel"
     STROBE = "strobe"
@@ -65,6 +69,10 @@ COLOR_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
         ChannelType.WHITE,
         ChannelType.AMBER,
         ChannelType.LIME,
+        ChannelType.CYAN,
+        ChannelType.INDIGO,
+        ChannelType.MAGENTA,
+        ChannelType.YELLOW,
     }
 )
 
