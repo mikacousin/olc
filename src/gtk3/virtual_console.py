@@ -266,7 +266,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.a = ButtonWidget(label="A")
         self.b = ButtonWidget(label="B")
 
-        adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=255,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         self.scale_a = FaderWidget(
             text="crossfade_out",
             red=0.3,
@@ -285,7 +292,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scale_a.set_inverted(True)
         self.scale_a.connect("value-changed", self.scale_moved)
 
-        adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=255,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         self.scale_b = FaderWidget(
             text="crossfade_in",
             red=0.6,
@@ -344,7 +358,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.faders = []
         self.flashes = []
         for i in range(10):  # 10 Faders per page
-            adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+            adjustment = Gtk.Adjustment(
+                value=0,
+                lower=0,
+                upper=255,
+                step_increment=1,
+                page_increment=10,
+                page_size=0,
+            )
             self.faders.append(
                 FaderWidget(
                     text=f"fader_{i + 1}",
