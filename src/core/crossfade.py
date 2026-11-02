@@ -223,13 +223,13 @@ class CrossFade:
             self.app.core.action_registry.execute("playback.go")
 
     def update_slider(  # pylint: disable=too-many-locals
-        self, scale: Scale, level: int
+        self, scale: Scale, level: int | float
     ) -> None:
         """Update sliders position
 
         Args:
             scale: Scale object
-            level: int
+            level: int or float
         """
         main_pb = self.app.core.lightshow.main_playback
         step_idx = main_pb.position + 1

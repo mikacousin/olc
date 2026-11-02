@@ -575,8 +575,8 @@ class PlaybackUpdateActiveStepAction(Action):
         self.number: float | None = None
         self.sequence: int = 1
         self.target_cue: Cue | None = None
-        self.old_channels: dict[int, int] = {}
-        self.new_channels: dict[int, int] = {}
+        self.old_channels: dict[int, int | float] = {}
+        self.new_channels: dict[int, int | float] = {}
         self.old_device_values: dict[int, dict[str, typing.Any]] = {}
         self.new_device_values: dict[int, dict[str, typing.Any]] = {}
 
