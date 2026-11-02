@@ -256,7 +256,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.color_page.set_margin_top(4)
 
         col_top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.color_value_label = Gtk.Label(label="#FFFFFF | dE: 0.00", xalign=0)
+        self.color_value_label = Gtk.Label(label="Color: --", xalign=0)
         fan_short_btn = Gtk.Button(label="Fan Hue Short")
         fan_short_btn.connect("clicked", lambda _b: self.fan_color(mode="hs_short"))
         fan_rainbow_btn = Gtk.Button(label="Fan Rainbow")
@@ -1038,8 +1038,7 @@ class DeviceInspectorWidget(Gtk.Box):
             self.pan_encoder.set_value_text(pan_str)
             self.tilt_encoder.set_value_text(tilt_str)
             self.color_value_label.set_text(
-                f"Color: {self.format_parameter_display('color')} | "
-                f"dE: {self.last_delta_e:.2f}"
+                f"Color: {self.format_parameter_display('color')}"
             )
             self.zoom_value_label.set_text(
                 f"Zoom: {self.format_parameter_display('zoom')}"
