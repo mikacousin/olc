@@ -46,13 +46,15 @@ class ChannelWidget(Gtk.DrawingArea):
     window: Window | None
     tabs: Tabs | None
     commandline: CoreCommandLine
+    level: int | float
+    next_level: int | float
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         channel: int,
-        level: int,
-        next_level: int,
+        level: int | float,
+        next_level: int | float,
         app: Application,
         window: Window | None = None,
         tabs: Tabs | None = None,

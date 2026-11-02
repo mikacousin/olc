@@ -30,10 +30,9 @@ from olc.define import is_int
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.channel import ChannelWidget
-
     from olc.gtk3.application import Application
     from olc.gtk3.sequence import SequenceTab
+    from olc.gtk3.widgets.channel import ChannelWidget
     from olc.sequence import Sequence
 
 
@@ -252,7 +251,9 @@ class SeqChannelsView(ChannelsView):
             return self._filter_patched(child, channel_level)
         return self._filter_all(child, channel_level)
 
-    def _filter_active(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+    def _filter_active(
+        self, child: Gtk.FlowBoxChild, channel_level: int | float
+    ) -> bool:
         """Filter in Active mode"""
         channel_index = child.get_index()
         widget = child.get_child()
@@ -293,7 +294,9 @@ class SeqChannelsView(ChannelsView):
         child.set_visible(False)
         return False
 
-    def _filter_patched(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+    def _filter_patched(
+        self, child: Gtk.FlowBoxChild, channel_level: int | float
+    ) -> bool:
         """Filter in Patched mode"""
         channel = child.get_index() + 1
         assert self.lightshow is not None
@@ -302,7 +305,7 @@ class SeqChannelsView(ChannelsView):
             return False
         return self._filter_all(child, channel_level)
 
-    def _filter_all(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+    def _filter_all(self, child: Gtk.FlowBoxChild, channel_level: int | float) -> bool:
         """Filter in All channels mode"""
         channel_index = child.get_index()
         widget = child.get_child()
