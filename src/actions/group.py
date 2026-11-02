@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import typing
+from collections.abc import Mapping
 
 from olc.core.action import Action
 from olc.group import Group
@@ -66,7 +67,7 @@ class NewGroupAction(Action):
             raise ValueError(f"Group {group_nb} already exists.")
 
         # Create new group with empty channel list
-        channels: dict[int, int] = {}
+        channels: dict[int, int | float] = {}
         self.created_group = Group(group_nb, channels, str(group_nb))
 
         # Add group to Groups container (sorted insert)
@@ -179,10 +180,10 @@ class GroupUpdateChannelsAction(Action):
         """
         super().__init__(app)
         self.group_nb: float = 0.0
-        self.new_channels: dict[int, int] = {}
-        self.old_channels: dict[int, int] = {}
+        self.new_channels: dict[int, int | float] = {}
+        self.old_channels: dict[int, int | float] = {}
 
-    def configure(self, group_nb: float, channels: dict[int, int]) -> None:
+    def configure(self, group_nb: float, channels: Mapping[int, int | float]) -> None:
         """Configure the action.
 
         Args:
