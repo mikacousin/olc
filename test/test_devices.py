@@ -935,3 +935,100 @@ def test_gdtf_24bit_adaptation() -> None:
     assert cd.offset == 0
     assert cd.fine_offset == 1
     assert cd.ultra_fine_offset == 2
+
+
+def test_substep_accumulation_8bit_vs_float() -> None:
+    """Verify micro-stepping (0.05 deg) accumulates in float on 8-bit fixtures."""
+    mode = DmxModeDefinition(
+        name="8bit_Spot",
+        channel_defs=[
+            ChannelDefinition(
+                ChannelType.PAN,
+                offset=0,
+                label="Pan",
+                physical_min=-270.0,
+                physical_max=270.0,
+                physical_unit="deg",
+            )
+        ],
+    )
+    fix_def = FixtureDefinition("Test", "8bitSpot", dmx_modes=[mode])
+    dev = fix_def.instantiate(fixture_id=10, label="Spot8", universe=1, address=1)
+    pan_ch = dev.get_channel(ChannelType.PAN)
+    assert pan_ch is not None
+
+    # Center at 0.0 deg
+    dev.set_pan_degrees(0.0)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=1e-6)
+    assert pan_ch.value == 128
+
+    # Step by 0.05 degrees 20 times (total +1.0 deg)
+    for _ in range(20):
+        dev.set_pan_degrees(dev.pan_degrees + 0.05)
+
+    # In continuous float, angle is exactly 1.0 deg (not quantized/lost)
+    assert dev.pan_degrees == pytest.approx(1.0, abs=1e-5)
+    # 1.0 deg on [-270..270] is norm=271/540=0.50185 -> round(0.50185 * 255) = 128
+    assert pan_ch.value == 128
+
+    # Step 25 more times (+1.25 deg, total +2.25 deg, crossing ~2.118 deg DMX step)
+    for _ in range(25):
+        dev.set_pan_degrees(dev.pan_degrees + 0.05)
+
+    assert dev.pan_degrees == pytest.approx(2.25, abs=1e-5)
+    # 2.25 deg -> norm=272.25/540=0.504167 -> round(0.504167 * 255) = 129
+    assert pan_ch.value == 129
+
+
+def test_external_dmx_write_resynchronization() -> None:
+    """Verify that directly modifying DMX channel bytes resynchronizes float state."""
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(fixture_id=11, label="SpotExt", universe=1, address=1)
+    coarse_ch, fine_ch = dev._get_coarse_fine_channels(ChannelType.PAN)
+    assert coarse_ch is not None
+    assert fine_ch is not None
+
+    dev.set_pan_degrees(0.0)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.01)
+
+    # External modification: simulate raw DMX update or patch reset on coarse and fine
+    coarse_ch.set_value(255)
+    fine_ch.set_value(255)
+    # Should detect raw DMX mismatch and resynchronize to physical max (270 deg)
+    assert dev.pan_degrees == pytest.approx(270.0, abs=0.01)
+
+
+def test_apply_color_param_normalized_floats() -> None:
+    """Verify normalized float RGB tuples [0.0..1.0] are applied accurately."""
+    fix_def = create_rgbw_definition()
+    dev = fix_def.instantiate(fixture_id=12, label="ParRGB", universe=1, address=1)
+
+    # 1. Normalized float tuple (0.5, 0.25, 1.0)
+    dev.apply_device_parameter("color", (0.5, 0.25, 1.0))
+    rgb = dev.color_srgb
+    assert rgb.r == pytest.approx(0.5, abs=1e-4)
+    assert rgb.g == pytest.approx(0.25, abs=1e-4)
+    assert rgb.b == pytest.approx(1.0, abs=1e-4)
+
+    # 2. Legacy 8-bit integer tuple (255, 128, 0)
+    dev.apply_device_parameter("color", (255, 128, 0))
+    rgb_legacy = dev.color_srgb
+    assert rgb_legacy.r == pytest.approx(1.0, abs=1e-3)
+    assert rgb_legacy.g == pytest.approx(128 / 255.0, abs=1e-3)
+    assert rgb_legacy.b == pytest.approx(0.0, abs=1e-3)
+
+
+def test_set_parameter_percent_multi_resolution() -> None:
+    """Verify set_parameter_percent and get_parameter_percent across channels."""
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(
+        fixture_id=13,
+        label="SpotPercent",
+        universe=1,
+        address=1,
+        mode_name="Extended 24-bit 11ch",
+    )
+
+    dev.set_parameter_percent(ChannelType.PAN, 75.0)
+    assert dev.get_parameter_percent(ChannelType.PAN) == pytest.approx(75.0, abs=0.01)
+    assert dev.pan_24bit == pytest.approx(round(0.75 * 16777215), abs=2)

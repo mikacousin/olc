@@ -492,6 +492,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._target_color: sRGB = sRGB(1.0, 1.0, 1.0)
         self._target_cie: CIExyY = CIExyY(0.3127, 0.3290, 100.0)
         self._base_emitters: dict[ChannelType, float] = {}
+        self._param_normalized: dict[ChannelType, float] = {}
+        self._param_last_raw: dict[ChannelType, int] = {}
         self._init_base_emitters()
 
     @property
@@ -841,6 +843,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Set color from 8-bit integer RGB components [0..255]."""
         self.set_color_srgb(r / 255.0, g / 255.0, b / 255.0)
 
+    def set_color_rgb_float(self, r: float, g: float, b: float) -> None:
+        """Set color from normalized float RGB [0.0..1.0] (alias for set_color_srgb)."""
+        self.set_color_srgb(r, g, b)
+
     def set_color_hex(self, hex_str: str) -> None:
         """Set color from HTML hex string (#RRGGBB)."""
         c = sRGB.from_hex(hex_str)
@@ -984,10 +990,88 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 base_val = self._base_emitters.get(ctype, 0.0)
                 self._set_color_emitter_channels(ctype, base_val)
 
-    # Physical and multi-resolution helpers
+    # Physical, normalized and multi-resolution helpers
+    def _get_raw_and_max(
+        self, channel_type: ChannelType
+    ) -> Optional[tuple[int, int, Channel, Optional[Channel], Optional[Channel]]]:
+        """Return (raw_value, max_raw_value, coarse_ch, fine_ch, ultra_fine_ch)."""
+        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        if coarse_ch is None:
+            return None
+        if ultra_fine_ch is not None and fine_ch is not None:
+            raw = (coarse_ch.value << 16) | (fine_ch.value << 8) | ultra_fine_ch.value
+            max_raw = 16777215
+        elif fine_ch is not None:
+            raw = (coarse_ch.value << 8) | fine_ch.value
+            max_raw = 65535
+        else:
+            raw = coarse_ch.value
+            max_raw = 255
+        return (raw, max_raw, coarse_ch, fine_ch, ultra_fine_ch)
+
+    def _sync_param_after_raw_write(self, channel_type: ChannelType) -> None:
+        """Synchronize _param_normalized and _param_last_raw from DMX channels."""
+        res = self._get_raw_and_max(channel_type)
+        if res is not None:
+            raw, max_raw, _, _, _ = res
+            self._param_last_raw[channel_type] = raw
+            self._param_normalized[channel_type] = (
+                raw / float(max_raw) if max_raw > 0 else 0.0
+            )
+
+    def get_parameter_normalized(self, channel_type: ChannelType) -> Optional[float]:
+        """Return normalized parameter value in continuous range [0.0..1.0]."""
+        res = self._get_raw_and_max(channel_type)
+        if res is None:
+            return None
+        raw, max_raw, _, _, _ = res
+        if (
+            channel_type not in self._param_normalized
+            or self._param_last_raw.get(channel_type) != raw
+        ):
+            norm = raw / float(max_raw) if max_raw > 0 else 0.0
+            self._param_normalized[channel_type] = norm
+            self._param_last_raw[channel_type] = raw
+        return self._param_normalized[channel_type]
+
+    def set_parameter_normalized(self, channel_type: ChannelType, norm: float) -> None:
+        """Set normalized parameter [0.0..1.0] and distribute across 8/16/24 bits."""
+        res = self._get_raw_and_max(channel_type)
+        if res is None:
+            return
+        _, _, coarse_ch, fine_ch, ultra_fine_ch = res
+        clamped_norm = max(0.0, min(1.0, float(norm)))
+        self._param_normalized[channel_type] = clamped_norm
+
+        if ultra_fine_ch is not None and fine_ch is not None:
+            val_24 = round(clamped_norm * 16777215.0)
+            coarse_ch.set_value((val_24 >> 16) & 0xFF)
+            fine_ch.set_value((val_24 >> 8) & 0xFF)
+            ultra_fine_ch.set_value(val_24 & 0xFF)
+            self._param_last_raw[channel_type] = val_24
+        elif fine_ch is not None:
+            val_16 = round(clamped_norm * 65535.0)
+            coarse_ch.set_value((val_16 >> 8) & 0xFF)
+            fine_ch.set_value(val_16 & 0xFF)
+            self._param_last_raw[channel_type] = val_16
+        else:
+            val_8 = round(clamped_norm * 255.0)
+            coarse_ch.set_value(val_8)
+            self._param_last_raw[channel_type] = val_8
+
+    def set_parameter_percent(self, channel_type: ChannelType, percent: float) -> None:
+        """Set parameter percent [0.0..100.0] across 8/16/24-bit channels."""
+        norm = max(0.0, min(100.0, float(percent))) / 100.0
+        self.set_parameter_normalized(channel_type, norm)
+
+    def get_parameter_percent(self, channel_type: ChannelType) -> Optional[float]:
+        """Get parameter percent [0.0..100.0] reconstructed across channels."""
+        norm = self.get_parameter_normalized(channel_type)
+        return round(norm * 100.0, 2) if norm is not None else None
+
     def _set_physical_parameter(self, channel_type: ChannelType, value: float) -> None:
         """Set a parameter value using physical range (supports 8/16/24-bit)."""
-        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        coarse_ch, _, _ = self._get_resolution_channels(channel_type)
         if coarse_ch is None:
             return
 
@@ -999,39 +1083,18 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             clamped = max(min(p_min, p_max), min(max(p_min, p_max), float(value)))
             norm = (clamped - p_min) / (p_max - p_min)
 
-        if ultra_fine_ch is not None and fine_ch is not None:
-            val_24 = round(norm * 16777215.0)
-            coarse_ch.set_value((val_24 >> 16) & 0xFF)
-            fine_ch.set_value((val_24 >> 8) & 0xFF)
-            ultra_fine_ch.set_value(val_24 & 0xFF)
-        elif fine_ch is not None:
-            val_16 = round(norm * 65535.0)
-            coarse_ch.set_value((val_16 >> 8) & 0xFF)
-            fine_ch.set_value(val_16 & 0xFF)
-        else:
-            val_8 = round(norm * 255.0)
-            coarse_ch.set_value(val_8)
+        self.set_parameter_normalized(channel_type, norm)
 
     def _get_physical_parameter(self, channel_type: ChannelType) -> Optional[float]:
-        """Get parameter value in physical units, reconstructing 8/16/24-bit."""
-        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        """Get parameter value in physical units, preserving continuous float."""
+        coarse_ch, _, _ = self._get_resolution_channels(channel_type)
         if coarse_ch is None:
             return None
-
+        norm = self.get_parameter_normalized(channel_type)
+        if norm is None:
+            return None
         p_min = coarse_ch.physical_min
         p_max = coarse_ch.physical_max
-
-        if ultra_fine_ch is not None and fine_ch is not None:
-            raw_24 = (
-                (coarse_ch.value << 16) | (fine_ch.value << 8) | ultra_fine_ch.value
-            )
-            norm = raw_24 / 16777215.0
-        elif fine_ch is not None:
-            raw_16 = (coarse_ch.value << 8) | fine_ch.value
-            norm = raw_16 / 65535.0
-        else:
-            norm = coarse_ch.value / 255.0
-
         return p_min + norm * (p_max - p_min)
 
     # Position controls (8-bit, 16-bit, 24-bit and physical degrees)
@@ -1066,6 +1129,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             fine_ch.set_value(0)
         if ultra_fine_ch:
             ultra_fine_ch.set_value(0)
+        self._sync_param_after_raw_write(ChannelType.PAN)
 
     def set_pan_16bit(self, pan: int) -> None:
         """Set pan coordinate (16-bit) [0..65535]."""
@@ -1080,6 +1144,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 ultra_fine_ch.set_value(0)
         elif coarse_ch:
             coarse_ch.set_value(round(clamped / 65535.0 * 255.0))
+        self._sync_param_after_raw_write(ChannelType.PAN)
 
     def set_pan_24bit(self, pan: int) -> None:
         """Set pan coordinate (24-bit) [0..16777215]."""
@@ -1097,6 +1162,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             fine_ch.set_value(val_16 & 0xFF)
         elif coarse_ch:
             coarse_ch.set_value(round(clamped / 16777215.0 * 255.0))
+        self._sync_param_after_raw_write(ChannelType.PAN)
 
     def set_tilt(self, tilt: int) -> None:
         """Set tilt coordinate (8-bit) [0..255]."""
@@ -1109,6 +1175,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             fine_ch.set_value(0)
         if ultra_fine_ch:
             ultra_fine_ch.set_value(0)
+        self._sync_param_after_raw_write(ChannelType.TILT)
 
     def set_tilt_16bit(self, tilt: int) -> None:
         """Set tilt coordinate (16-bit) [0..65535]."""
@@ -1123,6 +1190,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 ultra_fine_ch.set_value(0)
         elif coarse_ch:
             coarse_ch.set_value(round(clamped / 65535.0 * 255.0))
+        self._sync_param_after_raw_write(ChannelType.TILT)
 
     def set_tilt_24bit(self, tilt: int) -> None:
         """Set tilt coordinate (24-bit) [0..16777215]."""
@@ -1140,6 +1208,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             fine_ch.set_value(val_16 & 0xFF)
         elif coarse_ch:
             coarse_ch.set_value(round(clamped / 16777215.0 * 255.0))
+        self._sync_param_after_raw_write(ChannelType.TILT)
 
     def set_pan_degrees(self, angle: float) -> None:
         """Set pan coordinate in physical degrees."""
@@ -1299,6 +1368,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Reset all channels to default values."""
         for ch in self.channels:
             ch.reset()
+        self._param_normalized.clear()
+        self._param_last_raw.clear()
         self._intensity = 0.0 if self.has_physical_dimmer else 1.0
         self._target_color = sRGB(0.0, 0.0, 0.0)
         self._target_cie = CIExyY(0.3127, 0.3290, 0.0)
@@ -1310,7 +1381,15 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         if isinstance(value, str):
             self.set_color_hex(value)
         elif isinstance(value, (tuple, list)) and len(value) >= 3:
-            self.set_color_rgb(int(value[0]), int(value[1]), int(value[2]))
+            c0, c1, c2 = value[0], value[1], value[2]
+            if (
+                all(isinstance(c, (float, int)) for c in (c0, c1, c2))
+                and all(0.0 <= c <= 1.0 for c in (c0, c1, c2))
+                and any(isinstance(c, float) for c in (c0, c1, c2))
+            ):
+                self.set_color_rgb_float(float(c0), float(c1), float(c2))
+            else:
+                self.set_color_rgb(int(c0), int(c1), int(c2))
 
     def _apply_gobo_param(self, value: Any) -> None:  # noqa: ANN401
         """Apply gobo parameter from slot index, DMX value, or range label."""
