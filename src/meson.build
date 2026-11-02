@@ -31,6 +31,7 @@ olc_sources = [
   'main_fader.py',
   'patch.py',
   'sequence.py',
+  'sequence_threads.py',
   'settings.py',
   'step.py',
   'timer.py',
