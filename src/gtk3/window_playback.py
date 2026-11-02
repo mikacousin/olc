@@ -152,12 +152,11 @@ class MainPlaybackView(Gtk.Notebook):
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
 
+            column = Gtk.TreeViewColumn(title=column_title, cell_renderer=renderer)
+            column.add_attribute(renderer, "text", i)
             if is_main:
-                column = Gtk.TreeViewColumn(
-                    column_title, renderer, text=i, background=9, weight=10
-                )
-            else:
-                column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+                column.add_attribute(renderer, "background", 9)
+                column.add_attribute(renderer, "weight", 10)
 
             if i == 2:
                 column.set_min_width(400)
