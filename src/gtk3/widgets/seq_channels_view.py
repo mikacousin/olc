@@ -59,7 +59,7 @@ class SeqChannelsView(ChannelsView):
             self._cache_time = now
         return self._cached_sequence, self._cached_step
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level"""
         if self.tabs is not None:
             tab = typing.cast("SequenceTab", self.tabs.tabs["sequences"])

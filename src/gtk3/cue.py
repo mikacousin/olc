@@ -472,7 +472,7 @@ class CueChannelsView(ChannelsView):
             self._cache_time = now
         return self._cached_cue
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set level channel via temporary action.
 
         Args:

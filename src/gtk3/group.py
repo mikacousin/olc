@@ -72,7 +72,7 @@ class GroupChannelsView(ChannelsView):
             self._cache_time = now
         return self._cached_group
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level via temporary action.
 
         Args:

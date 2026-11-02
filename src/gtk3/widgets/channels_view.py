@@ -129,7 +129,7 @@ class ChannelsView(Gtk.Box):
         self.pack_start(self.scrolled, True, True, 0)
         self.combo.set_active(0)
 
-    def _get_channel_level_for_select(self, channel: int) -> int:
+    def _get_channel_level_for_select(self, channel: int) -> int | float:
         """Helper callback to read the level from a ChannelWidget."""
         widget = self.get_channel_widget(channel)
         return widget.level if widget else 0
@@ -177,7 +177,7 @@ class ChannelsView(Gtk.Box):
         """
         raise NotImplementedError
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Channel at level
 
         Args:

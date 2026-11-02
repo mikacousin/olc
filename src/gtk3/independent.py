@@ -288,7 +288,7 @@ class IndeChannelsView(ChannelsView):
     def __init__(self, app: Application) -> None:
         super().__init__(app=app)
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level
 
         Args:

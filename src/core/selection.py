@@ -33,7 +33,7 @@ class SelectionManager:
         commandline: CoreCommandLine,
         on_changed_callback: typing.Optional[typing.Callable[[list[int]], None]] = None,
         history_manager: typing.Optional[typing.Any] = None,  # noqa: ANN401
-        get_level_callback: typing.Optional[typing.Callable[[int], int]] = None,
+        get_level_callback: typing.Optional[typing.Callable[[int], int | float]] = None,
     ) -> None:
         """Initialize the SelectionManager.
 

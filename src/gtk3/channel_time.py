@@ -343,7 +343,7 @@ class CTChannelsView(ChannelsView):
             direction: Up or Down
         """
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Channel at level
 
         Args:

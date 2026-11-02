@@ -173,7 +173,7 @@ class LiveChannelsView(ChannelsView):
             channel, current_level
         )
 
-    def set_channel_level(self, channel: int, level: int) -> None:
+    def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level using the unified core ActionRegistry."""
         self.app.core.action_registry.execute("channel.set_level", channel, level)
 
