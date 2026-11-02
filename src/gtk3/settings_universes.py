@@ -171,7 +171,14 @@ class UniversesSettingsMixin:
         label = Gtk.Label(label=_("Universe Number:"))
         box.pack_start(label, False, False, 0)
 
-        spin_adj = Gtk.Adjustment(next_univ, 1, 63999, 1, 10, 0)
+        spin_adj = Gtk.Adjustment(
+            value=next_univ,
+            lower=1,
+            upper=63999,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         spin = Gtk.SpinButton()
         spin.set_adjustment(spin_adj)
         box.pack_start(spin, False, False, 0)
@@ -325,7 +332,14 @@ class UniversesSettingsMixin:
         net_label = Gtk.Label(label=_("Net:"))
         net_label.set_halign(Gtk.Align.START)
         artnet_params.attach(net_label, 0, 0, 1, 1)
-        net_adj = Gtk.Adjustment(0, 0, 127, 1, 10, 0)
+        net_adj = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=127,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         net_spin = Gtk.SpinButton()
         net_spin.set_adjustment(net_adj)
         artnet_params.attach(net_spin, 1, 0, 1, 1)
@@ -334,7 +348,14 @@ class UniversesSettingsMixin:
         sub_label = Gtk.Label(label=_("Sub:"))
         sub_label.set_halign(Gtk.Align.START)
         artnet_params.attach(sub_label, 2, 0, 1, 1)
-        sub_adj = Gtk.Adjustment(0, 0, 15, 1, 5, 0)
+        sub_adj = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=15,
+            step_increment=1,
+            page_increment=5,
+            page_size=0,
+        )
         sub_spin = Gtk.SpinButton()
         sub_spin.set_adjustment(sub_adj)
         artnet_params.attach(sub_spin, 3, 0, 1, 1)
@@ -364,7 +385,14 @@ class UniversesSettingsMixin:
         prio_label = Gtk.Label(label=_("Priority:"))
         prio_label.set_halign(Gtk.Align.START)
         sacn_params.attach(prio_label, 0, 0, 1, 1)
-        prio_adj = Gtk.Adjustment(100, 1, 200, 1, 10, 0)
+        prio_adj = Gtk.Adjustment(
+            value=100,
+            lower=1,
+            upper=200,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         prio_spin = Gtk.SpinButton()
         prio_spin.set_adjustment(prio_adj)
         sacn_params.attach(prio_spin, 1, 0, 1, 1)
@@ -373,7 +401,14 @@ class UniversesSettingsMixin:
         sacn_sync_label = Gtk.Label(label=_("Sync Address:"))
         sacn_sync_label.set_halign(Gtk.Align.START)
         sacn_params.attach(sacn_sync_label, 0, 1, 1, 1)
-        sacn_sync_adj = Gtk.Adjustment(0, 0, 63999, 1, 10, 0)
+        sacn_sync_adj = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=63999,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         sacn_sync_spin = Gtk.SpinButton()
         sacn_sync_spin.set_adjustment(sacn_sync_adj)
         sacn_params.attach(sacn_sync_spin, 1, 1, 1, 1)
