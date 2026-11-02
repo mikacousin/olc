@@ -28,14 +28,14 @@ class Group:
     """A Group is composed of channels at some DMX levels."""
 
     index: float
-    channels: dict[int, int]
+    channels: dict[int, int | float]
     text: str = ""
 
     def set_text(self, text: str) -> None:
         """Set the group's text description."""
         self.text = text
 
-    def set_channel(self, channel: int, level: int) -> None:
+    def set_channel(self, channel: int, level: int | float) -> None:
         """Set the DMX level of a channel in the group."""
         self.channels[channel] = level
 
@@ -44,15 +44,15 @@ class Group:
         if channel in self.channels:
             del self.channels[channel]
 
-    def get_channel_level(self, channel: int, default: int = 0) -> int:
+    def get_channel_level(self, channel: int, default: int | float = 0) -> int | float:
         """Get the DMX level of a channel, returning default if not present."""
         return self.channels.get(channel, default)
 
-    def get_channels(self) -> dict[int, int]:
+    def get_channels(self) -> dict[int, int | float]:
         """Return the dictionary of channels and their levels."""
         return self.channels
 
-    def set_channels(self, channels: dict[int, int]) -> None:
+    def set_channels(self, channels: dict[int, int | float]) -> None:
         """Set/overwrite the dictionary of channels."""
         self.channels = channels
 

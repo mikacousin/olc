@@ -56,7 +56,7 @@ class BaseChannelLevelAction(Action):
                     if lvl >= 0:
                         dev.set_intensity(lvl / 255.0)
                     elif seq_arr is not None and 1 <= ch <= len(seq_arr):
-                        dev.set_intensity(int(seq_arr[ch - 1]) / 255.0)
+                        dev.set_intensity(float(seq_arr[ch - 1]) / 255.0)
                     else:
                         dev.set_intensity(0.0)
 

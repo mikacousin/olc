@@ -25,7 +25,7 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
 
 
-class CueChannels(dict[int, int]):
+class CueChannels(dict[int, int | float]):
     """Custom dictionary to keep the array cache in sync with in-place changes."""
 
     # pylint: disable=protected-access
@@ -34,11 +34,12 @@ class CueChannels(dict[int, int]):
         super().__init__(*args, **kwargs)
         self.cue = cue
 
-    def __setitem__(self, key: int, value: int) -> None:
+    def __setitem__(self, key: int, value: int | float) -> None:
         super().__setitem__(key, value)
         if self.cue._channels_array is not None:
-            if 1 <= key <= MAX_CHANNELS:
-                self.cue._channels_array[key - 1] = value
+            ch_int = int(key)
+            if 1 <= ch_int <= MAX_CHANNELS:
+                self.cue._channels_array[ch_int - 1] = float(value)
 
     def __delitem__(self, key: int) -> None:
         super().__delitem__(key)
@@ -50,7 +51,8 @@ class CueChannels(dict[int, int]):
 
     def update(  # ty: ignore[invalid-method-override]
         self,
-        m: typing.Mapping[int, int] | typing.Iterable[tuple[int, int]] = (),
+        m: typing.Mapping[int, int | float]
+        | typing.Iterable[tuple[int, int | float]] = (),
         /,
     ) -> None:
         super().update(m)
@@ -75,7 +77,7 @@ class Cue:
         self,
         sequence: int,
         number: float,
-        channels: dict[int, int] | None = None,
+        channels: dict[int, int | float] | None = None,
         text: str = "",
         device_values: dict[int, dict[str, typing.Any]] | None = None,
         is_block: bool = False,
@@ -89,12 +91,12 @@ class Cue:
         self.is_block = is_block
 
     @property
-    def channels(self) -> dict[int, int]:
+    def channels(self) -> dict[int, int | float]:
         """Get the channel levels dictionary."""
         return self._channels
 
     @channels.setter
-    def channels(self, value: dict[int, int]) -> None:
+    def channels(self, value: dict[int, int | float]) -> None:
         self._channels = CueChannels(self, value)
         self._channels_array = None
 
@@ -102,14 +104,15 @@ class Cue:
     def channels_array(self) -> np.ndarray:
         """Cached array representation of cue channels for block calculations."""
         if self._channels_array is None:
-            arr = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+            arr = np.zeros(MAX_CHANNELS, dtype=np.float64)
             for channel, level in self.channels.items():
-                if 1 <= channel <= MAX_CHANNELS:
-                    arr[channel - 1] = level
+                ch_int = int(channel)
+                if 1 <= ch_int <= MAX_CHANNELS:
+                    arr[ch_int - 1] = float(level)
             self._channels_array = arr
         return self._channels_array
 
-    def set_level(self, channel: int, level: int) -> None:
+    def set_level(self, channel: int, level: int | float) -> None:
         """Set level of a channel.
 
         Args :
@@ -117,16 +120,16 @@ class Cue:
             level: level (0 - 255)
         """
         if (
-            isinstance(level, int)
-            and 0 <= level < 256
+            isinstance(level, (int, float))
+            and 0 <= level <= 255
             and isinstance(channel, int)
             and 0 < channel <= MAX_CHANNELS
         ):
             self.channels[channel] = level
             if self._channels_array is not None:
-                self._channels_array[channel - 1] = level
+                self._channels_array[channel - 1] = float(level)
 
-    def get_level(self, channel: int) -> int:
+    def get_level(self, channel: int) -> float | int:
         """Get channel's level (including fallback to device_values intensity).
 
         Args:
@@ -135,13 +138,13 @@ class Cue:
         Returns:
             channel's level (0-255)
         """
-        lvl = int(self.channels.get(channel, 0))
+        lvl = self.channels.get(channel, 0)
         if lvl == 0 and channel in self.device_values:
             dev_int = self.device_values[channel].get("intensity")
             if isinstance(dev_int, (int, float)):
                 val = float(dev_int)
-                lvl = round(val * 255.0 if val <= 1.0 else val)
-                lvl = max(0, min(255, lvl))
+                lvl = val * 255.0 if val <= 1.0 else val
+                lvl = max(0.0, min(255.0, lvl))
         return lvl
 
     def get_active_channels_count(self) -> int:

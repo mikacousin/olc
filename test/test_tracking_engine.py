@@ -66,6 +66,29 @@ def test_conventional_cue_only_vs_tracking() -> None:
     assert state_tracking.channels[2] == 50  # Channel 3 explicit 50
 
 
+def test_conventional_continuous_float_channel_tracking() -> None:
+    """Verify that conventional channels with sub-integer float values
+    track accurately without quantization.
+    """
+    seq = create_mock_sequence()
+
+    cue1 = Cue(1, 1.0)
+    cue1.channels = {1: 127.5, 2: 63.25}
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    cue2 = Cue(1, 2.0)
+    cue2.channels = {2: 204.8, 3: 12.3}
+    seq.add_step(Step(sequence=1, cue=cue2))
+
+    state_tracking = TrackingEngine.resolve_step_state(
+        seq, step_index=1, tracking_mode=True
+    )
+    assert state_tracking.channels.dtype == np.float64
+    assert state_tracking.channels[0] == pytest.approx(127.5)
+    assert state_tracking.channels[1] == pytest.approx(204.8)
+    assert state_tracking.channels[2] == pytest.approx(12.3)
+
+
 def test_conventional_block_cue() -> None:
     """Verify that a Block Cue halts backward tracking of conventional channels."""
     seq = create_mock_sequence()

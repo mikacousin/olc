@@ -169,7 +169,7 @@ class ResolvedState:
     """
 
     channels: np.ndarray = field(
-        default_factory=lambda: np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        default_factory=lambda: np.zeros(MAX_CHANNELS, dtype=np.float64)
     )
     device_values: dict[int, dict[str, Any]] = field(default_factory=dict)
     mib_parameters: dict[int, set[str]] = field(default_factory=dict)
@@ -266,10 +266,10 @@ class TrackingEngine:
             return (
                 target_cue.channels_array.copy()
                 if target_cue is not None
-                else np.zeros(MAX_CHANNELS, dtype=np.uint8)
+                else np.zeros(MAX_CHANNELS, dtype=np.float64)
             )
 
-        resolved_channels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        resolved_channels = np.zeros(MAX_CHANNELS, dtype=np.float64)
         resolved_mask = np.zeros(MAX_CHANNELS, dtype=bool)
 
         for idx in range(step_index, -1, -1):
@@ -278,9 +278,10 @@ class TrackingEngine:
                 continue
 
             for ch_num, level in cue.channels.items():
-                if 1 <= ch_num <= MAX_CHANNELS and not resolved_mask[ch_num - 1]:
-                    resolved_channels[ch_num - 1] = level
-                    resolved_mask[ch_num - 1] = True
+                ch_int = int(ch_num)
+                if 1 <= ch_int <= MAX_CHANNELS and not resolved_mask[ch_int - 1]:
+                    resolved_channels[ch_int - 1] = float(level)
+                    resolved_mask[ch_int - 1] = True
 
             if cue.is_block or np.all(resolved_mask):
                 break
