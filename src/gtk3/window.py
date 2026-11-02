@@ -37,6 +37,8 @@ if typing.TYPE_CHECKING:
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
+    live_view: LiveView
+
     @property
     def app(self) -> Application:
         """Get parent application instance safely."""

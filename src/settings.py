@@ -41,7 +41,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         self.tabs = app.tabs
         self.midi = app.midi
         self.backend = app.core.backend
-        self.window = app.window
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._last_artnet_state: list[list[str]] | None = None
@@ -76,17 +75,38 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             Gtk.Switch, builder.get_object("switch_percent")
         )
         self.switch_percent.set_state(self.settings.get_boolean("percent"))
-        adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=1,
+            upper=100,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         widget2 = typing.cast(Gtk.SpinButton, builder.get_object("spin_percent_level"))
         widget2.set_adjustment(adjustment)
         widget2.set_value(self.settings.get_int("percent-level"))
-        adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=1,
+            upper=100,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         self.spin_default_time = typing.cast(
             Gtk.SpinButton, builder.get_object("spin_default_time")
         )
         self.spin_default_time.set_adjustment(adjustment)
         self.spin_default_time.set_value(self.settings.get_double("default-time"))
-        adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=1,
+            upper=100,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         widget4 = typing.cast(Gtk.SpinButton, builder.get_object("spin_go_back_time"))
         widget4.set_adjustment(adjustment)
         widget4.set_value(self.settings.get_double("go-back-time"))
@@ -104,14 +124,28 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         self.spin_client_port = typing.cast(
             Gtk.SpinButton, builder.get_object("spin_client_port")
         )
-        adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=65535,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         self.spin_client_port.set_adjustment(adjustment)
         self.spin_client_port.set_value(self.settings.get_int("osc-client-port"))
 
         self.spin_server_port = typing.cast(
             Gtk.SpinButton, builder.get_object("spin_server_port")
         )
-        adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=65535,
+            step_increment=1,
+            page_increment=10,
+            page_size=0,
+        )
         self.spin_server_port.set_adjustment(adjustment)
         self.spin_server_port.set_value(self.settings.get_int("osc-server-port"))
 
@@ -131,11 +165,17 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         treeview = Gtk.TreeView(model=self.liststore_midi)
         self._populate_midi_ports()
         renderer_text = Gtk.CellRendererText()
-        column_text = Gtk.TreeViewColumn(_("MIDI Port"), renderer_text, text=0)
+        column_text = Gtk.TreeViewColumn(
+            title=_("MIDI Port"), cell_renderer=renderer_text
+        )
+        column_text.add_attribute(renderer_text, "text", 0)
         treeview.append_column(column_text)
         renderer_toggle = Gtk.CellRendererToggle()
         renderer_toggle.connect("toggled", self.on_midi_toggle)
-        column_toggle = Gtk.TreeViewColumn(_("Active"), renderer_toggle, active=1)
+        column_toggle = Gtk.TreeViewColumn(
+            title=_("Active"), cell_renderer=renderer_toggle
+        )
+        column_toggle.add_attribute(renderer_toggle, "active", 1)
         treeview.append_column(column_toggle)
         renderer_combo = Gtk.CellRendererCombo()
         renderer_combo.set_property("editable", True)
@@ -144,8 +184,9 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         renderer_combo.set_property("has-entry", False)
         renderer_combo.connect("edited", self.on_combo_change)
         column_combo = Gtk.TreeViewColumn(
-            _("Rotary encoder Mode"), renderer_combo, text=2
+            title=_("Rotary encoder Mode"), cell_renderer=renderer_combo
         )
+        column_combo.add_attribute(renderer_combo, "text", 2)
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
 
@@ -287,19 +328,31 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         treeview = Gtk.TreeView(model=self.liststore_artnet)
 
         renderer_text_name = Gtk.CellRendererText()
-        column_name = Gtk.TreeViewColumn(_("Name"), renderer_text_name, text=0)
+        column_name = Gtk.TreeViewColumn(
+            title=_("Name"), cell_renderer=renderer_text_name
+        )
+        column_name.add_attribute(renderer_text_name, "text", 0)
         treeview.append_column(column_name)
 
         renderer_text_ip = Gtk.CellRendererText()
-        column_ip = Gtk.TreeViewColumn(_("IP Address"), renderer_text_ip, text=1)
+        column_ip = Gtk.TreeViewColumn(
+            title=_("IP Address"), cell_renderer=renderer_text_ip
+        )
+        column_ip.add_attribute(renderer_text_ip, "text", 1)
         treeview.append_column(column_ip)
 
         renderer_text_type = Gtk.CellRendererText()
-        column_type = Gtk.TreeViewColumn(_("Type"), renderer_text_type, text=2)
+        column_type = Gtk.TreeViewColumn(
+            title=_("Type"), cell_renderer=renderer_text_type
+        )
+        column_type.add_attribute(renderer_text_type, "text", 2)
         treeview.append_column(column_type)
 
         renderer_text_univ = Gtk.CellRendererText()
-        column_univ = Gtk.TreeViewColumn(_("Universes"), renderer_text_univ, text=3)
+        column_univ = Gtk.TreeViewColumn(
+            title=_("Universes"), cell_renderer=renderer_text_univ
+        )
+        column_univ.add_attribute(renderer_text_univ, "text", 3)
         treeview.append_column(column_univ)
 
         artnet_grid = typing.cast(Gtk.Grid, builder.get_object("artnet_grid"))
@@ -430,8 +483,8 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             )
         else:
             self.settings.set_value("percent", GLib.Variant("b", state))
-            if self.window is not None:
-                self.window.live_view.channels_view.update()
+            if self.app is not None and self.app.window is not None:
+                self.app.window.live_view.channels_view.update()
         return False
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
