@@ -27,6 +27,7 @@ from olc.devices.color_pick import (
     ColorApplyResult,
     ColorSolver,
     GelSwatch,
+    apply_color_cie_to_devices,
     apply_color_to_devices,
     fan_colors_to_devices,
     find_gel,
@@ -268,6 +269,7 @@ class DeviceInspectorWidget(Gtk.Box):
 
         self.color_picker = ConsoleColorPicker(
             self._on_wheel_color_picked,
+            on_cie_color=self._on_cie_color_picked,
             on_emitter_changed=self._on_emitter_fader_changed,
             on_strategy_changed=self.set_color_solver_strategy,
             on_wheel_slot_clicked=self._on_wheel_slot_clicked,
@@ -798,6 +800,25 @@ class DeviceInspectorWidget(Gtk.Box):
         self.refresh_ui()
         return outcome.delta_e
 
+    def apply_color_cie(
+        self,
+        x: float,
+        y: float,
+        Y: Optional[float] = None,  # pylint: disable=invalid-name
+    ) -> dict[int, float]:
+        """Apply CIE xyY chromaticity to all color-capable devices."""
+        color_devs = [d for d in self.selected_devices if self._has_color(d)]
+        if not color_devs:
+            return {}
+
+        outcome = apply_color_cie_to_devices(color_devs, x, y, self._color_solver, Y=Y)
+        self.last_delta_e = outcome.mean_delta_e
+        self.last_worst_delta_e = outcome.worst_delta_e
+        self.last_color_warning = outcome.warning
+        self._sync_devices_to_live_and_dmx(color_devs)
+        self.refresh_ui()
+        return outcome.delta_e
+
     def apply_color_hex(self, hex_str: str) -> dict[int, float]:
         """Apply HTML hex color (#RRGGBB) to all color-capable devices."""
         c = sRGB.from_hex(hex_str)
@@ -958,6 +979,11 @@ class DeviceInspectorWidget(Gtk.Box):
             return
         self.apply_color_srgb(r, g, b)
 
+    def _on_cie_color_picked(self, x: float, y: float) -> None:
+        if self._updating_ui:
+            return
+        self.apply_color_cie(x, y)
+
     def _on_emitter_fader_changed(self, etype: str, level: float) -> None:
         if self._updating_ui:
             return
@@ -1060,7 +1086,10 @@ class DeviceInspectorWidget(Gtk.Box):
                 )
                 assert ref is not None
                 lead_color = ref.color_srgb
-                self.color_picker.set_color(lead_color.r, lead_color.g, lead_color.b)
+                lead_cie = getattr(ref, "color_cie", None)
+                self.color_picker.set_color(
+                    lead_color.r, lead_color.g, lead_color.b, cie=lead_cie
+                )
                 self.color_picker.set_devices_context(ref, color_devs)
                 self.color_picker.set_match(
                     self.last_worst_delta_e, self.last_color_warning

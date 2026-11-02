@@ -424,6 +424,37 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             self._base_emitters[ChannelType.BLUE] = b_norm
         self._apply_color()
 
+    def set_color_cie(
+        self,
+        x: float,
+        y: float,
+        Y: Optional[float] = None,  # pylint: disable=invalid-name
+        solved: Optional[MatchResult] = None,
+    ) -> None:
+        """Set target color from CIE xyY chromaticity coordinates."""
+        if Y is not None:
+            eff_y = max(0.0, float(Y))
+        else:
+            eff_y = max(
+                0.0,
+                min(
+                    100.0,
+                    CIExyY(float(x), float(y), 100.0).to_XYZ().to_srgb().to_XYZ().Y,
+                ),
+            )
+        self._target_cie = CIExyY(float(x), float(y), eff_y)
+        self._target_color = self._target_cie.to_XYZ().to_srgb()
+        if self.color_profile is not None:
+            if solved is not None:
+                self._apply_match_result(solved)
+            else:
+                self._solve_emitters_from_cie(self._target_cie)
+        else:
+            self._base_emitters[ChannelType.RED] = self._target_color.r
+            self._base_emitters[ChannelType.GREEN] = self._target_color.g
+            self._base_emitters[ChannelType.BLUE] = self._target_color.b
+        self._apply_color()
+
     def set_color_rgb(self, r: int, g: int, b: int) -> None:
         """Set color from 8-bit integer RGB components [0..255]."""
         self.set_color_srgb(r / 255.0, g / 255.0, b / 255.0)
@@ -436,24 +467,6 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Set color from HTML hex string (#RRGGBB)."""
         c = sRGB.from_hex(hex_str)
         self.set_color_srgb(c.r, c.g, c.b)
-
-    def set_color_cie(
-        self,
-        x: float,
-        y: float,
-        Y: float = 100.0,  # pylint: disable=invalid-name
-    ) -> None:
-        """Set color from CIE xyY chromaticity coordinates."""
-        self._target_cie = CIExyY(x, y, Y)
-        srgb = self._target_cie.to_XYZ().to_srgb()
-        self._target_color = srgb
-        if self.color_profile is not None:
-            self._solve_emitters_from_cie(self._target_cie)
-        else:
-            self._base_emitters[ChannelType.RED] = srgb.r
-            self._base_emitters[ChannelType.GREEN] = srgb.g
-            self._base_emitters[ChannelType.BLUE] = srgb.b
-        self._apply_color()
 
     def set_color(self, r: int, g: int, b: int, w: int = 0, a: int = 0) -> None:
         """Set color emitter channel values directly [0..255]."""

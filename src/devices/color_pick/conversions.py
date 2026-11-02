@@ -129,6 +129,22 @@ def xy_to_srgb(x: float, y: float) -> RGB:
     return _gamma_encode(r_n), _gamma_encode(g_n), _gamma_encode(b_n)
 
 
+def xy_max_luminance(x: float, y: float) -> float:
+    """Maximum achievable relative luminance Y (0..100) for chromaticity (x, y)."""
+    y_safe = max(1e-4, float(y))
+    x_safe = max(0.0, float(x))
+    big_x = x_safe / y_safe
+    big_y = 1.0
+    big_z = max(0.0, (1.0 - x_safe - y_safe) / y_safe)
+    r = 3.2406 * big_x - 1.5372 * big_y - 0.4986 * big_z
+    g = -0.9689 * big_x + 1.8758 * big_y + 0.0415 * big_z
+    b = 0.0557 * big_x - 0.2040 * big_y + 1.0570 * big_z
+    peak = max(r, g, b)
+    if peak <= 0.0:
+        return 100.0
+    return max(0.0, min(100.0, 100.0 / peak))
+
+
 def srgb_to_xy(r: float, g: float, b: float) -> XY:
     """Normalized sRGB to CIE 1931 (x, y) (returns D65 white point when black)."""
     r_n = max(0.0, min(1.0, float(r)))

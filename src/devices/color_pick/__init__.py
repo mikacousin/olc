@@ -51,6 +51,7 @@ from .conversions import (
     to_8bit,
     to_24bit,
     uv_to_xy,
+    xy_max_luminance,
     xy_to_srgb,
     xy_to_uv,
 )
@@ -83,6 +84,7 @@ from .solver import (
     ColorApplyResult,
     ColorSolver,
     Throttle,
+    apply_color_cie_to_devices,
     apply_color_to_devices,
     compute_color_fan,
     extract_color_wheel_slots,
@@ -123,6 +125,7 @@ __all__ = [
     "to_8bit",
     "to_24bit",
     "uv_to_xy",
+    "xy_max_luminance",
     "xy_to_srgb",
     "xy_to_uv",
     # Geometry
@@ -152,6 +155,7 @@ __all__ = [
     "ColorSolver",
     "Throttle",
     "WHEEL_SLOT_COLORS",
+    "apply_color_cie_to_devices",
     "apply_color_to_devices",
     "compute_color_fan",
     "extract_color_wheel_slots",

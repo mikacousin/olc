@@ -721,3 +721,91 @@ def test_evaluate_gel_feasibility_on_profiles() -> None:
 
     # None profile -> exact (0.0)
     assert cp.evaluate_gel_for_profile(gel, None, solver) == (0.0, "", "exact")
+
+
+def test_device_gamut_hs_boundary_sampling() -> None:
+    """Device gamut boundary in HS space samples edges to follow the outer circle."""
+    rgb_dev = create_rgb_definition().instantiate(1, "RGB", 1, 1)
+    pts = cp.device_gamut_hs(rgb_dev, samples_per_edge=16)
+    assert len(pts) == 48
+    sats = [s for _, s in pts]
+    assert min(sats) > 0.99
+    assert max(sats) <= 1.0001
+    # Yellow (hue ~ 1/6 ~ 0.166) stays at s ~ 1.0 instead of Cartesian chord dip (0.5)
+    yellow_pts = [s for h, s in pts if 0.14 <= h <= 0.19]
+    assert yellow_pts
+    for s in yellow_pts:
+        assert s > 0.99
+
+
+def test_color_solver_solve_cie_out_of_gamut() -> None:
+    """Solving CIE (x, y) outside fixture gamut returns large delta_e and warning."""
+    rgb_dev = create_rgb_definition().instantiate(1, "RGB", 1, 1)
+    profile = cp.effective_color_profile(rgb_dev)
+    assert profile is not None
+    solver = cp.ColorSolver()
+
+    # D65 white point (in gamut)
+    match_in = solver.solve_cie(profile, 0.3127, 0.3290)
+    assert match_in is not None
+    assert match_in.delta_e < 1.0
+    assert not match_in.warning
+
+    # Saturated laser green (outside sRGB gamut)
+    match_out = solver.solve_cie(profile, 0.10, 0.80)
+    assert match_out is not None
+    assert match_out.delta_e > 50.0
+    assert match_out.warning == "out of gamut — brightness reduced"
+
+
+def test_apply_color_cie_to_devices() -> None:
+    """apply_color_cie_to_devices updates targets and reports out-of-gamut correctly."""
+    rgb_dev = create_rgb_definition().instantiate(1, "RGB", 1, 1)
+    solver = cp.ColorSolver()
+
+    # Apply out-of-gamut chromaticity
+    res_out = cp.apply_color_cie_to_devices([rgb_dev], 0.10, 0.80, solver)
+    assert res_out.delta_e[1] > 50.0
+    assert res_out.worst_delta_e > 50.0
+    assert res_out.warning == "out of gamut — brightness reduced"
+    assert rgb_dev.color_cie.x == pytest.approx(0.10, abs=1e-4)
+    assert rgb_dev.color_cie.y == pytest.approx(0.80, abs=1e-4)
+
+    # Apply in-gamut chromaticity
+    res_in = cp.apply_color_cie_to_devices([rgb_dev], 0.3127, 0.3290, solver)
+    assert res_in.delta_e[1] < 1.0
+    assert res_in.worst_delta_e < 1.0
+    assert not res_in.warning
+
+
+def test_cie_chromaticity_gamut_behavior_rgb_vs_rgba() -> None:
+    """CIE chromaticities evaluate exact on primaries and respect gamut."""
+    rgb = create_rgb_definition().instantiate(1, "RGB", 1, 1)
+    rgba = create_rgba_definition().instantiate(2, "RGBA", 1, 10)
+    solver = cp.ColorSolver()
+
+    # Saturated Red primary (0.64, 0.33) -> exact on RGB
+    res_red = cp.apply_color_cie_to_devices([rgb], 0.640, 0.330, solver)
+    assert res_red.delta_e[1] < 0.1
+    assert not res_red.warning
+
+    # Saturated Green primary (0.30, 0.60) -> exact on RGB
+    res_green = cp.apply_color_cie_to_devices([rgb], 0.300, 0.600, solver)
+    assert res_green.delta_e[1] < 0.1
+    assert not res_green.warning
+
+    # Saturated Blue primary (0.15, 0.06) -> exact on RGB
+    res_blue = cp.apply_color_cie_to_devices([rgb], 0.150, 0.060, solver)
+    assert res_blue.delta_e[1] < 0.1
+    assert not res_blue.warning
+
+    # Saturated Amber point (0.56, 0.40):
+    # Outside standard sRGB triangle -> out-of-gamut for RGB
+    res_amber_rgb = cp.apply_color_cie_to_devices([rgb], 0.560, 0.400, solver)
+    assert res_amber_rgb.delta_e[1] > 2.0
+    assert "out of gamut" in res_amber_rgb.warning
+
+    # Inside RGBA quad (has 590nm Amber emitter) -> exact for RGBA
+    res_amber_rgba = cp.apply_color_cie_to_devices([rgba], 0.560, 0.400, solver)
+    assert res_amber_rgba.delta_e[2] < 0.1
+    assert not res_amber_rgba.warning

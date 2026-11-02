@@ -166,9 +166,25 @@ def device_gamut_xy(device: object) -> list[XY]:
     return convex_hull_2d(device_emitters_xy(device))
 
 
-def device_gamut_hs(device: object) -> list[tuple[float, float]]:
-    """Device gamut hull vertices mapped to (hue, sat) coordinates."""
-    return [rgb_to_hs(*xy_to_srgb(x, y)) for x, y in device_gamut_xy(device)]
+def device_gamut_hs(
+    device: object, samples_per_edge: int = 16
+) -> list[tuple[float, float]]:
+    """Device gamut boundary mapped to (hue, sat) coordinates for the HS disc."""
+    gamut_xy = device_gamut_xy(device)
+    n = len(gamut_xy)
+    if n < 3 or samples_per_edge <= 1:
+        return [rgb_to_hs(*xy_to_srgb(x, y)) for x, y in gamut_xy]
+
+    result: list[tuple[float, float]] = []
+    for i in range(n):
+        x1, y1 = gamut_xy[i]
+        x2, y2 = gamut_xy[(i + 1) % n]
+        for s in range(samples_per_edge):
+            t = s / float(samples_per_edge)
+            xt = (1.0 - t) * x1 + t * x2
+            yt = (1.0 - t) * y1 + t * y2
+            result.append(rgb_to_hs(*xy_to_srgb(xt, yt)))
+    return result
 
 
 def point_in_polygon(x: float, y: float, polygon: tuple[XY, ...] | list[XY]) -> bool:

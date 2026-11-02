@@ -27,6 +27,7 @@ from typing import Any, Callable, Iterable, Optional
 from gi.repository import GLib, Gtk
 
 from olc.devices import color_pick as cp
+from olc.devices.color import CIExyY
 from olc.gtk3.widgets.color import (
     CIExyWidget,
     FixtureColorPoint,
@@ -80,6 +81,8 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         on_color: called with normalized sRGB ``(r, g, b)``, at most every
             ``SEND_INTERVAL_MS`` while dragging and once more, exactly, when
             the pointer is released.
+        on_cie_color: optional callback called with CIE ``(x, y)`` chromaticity
+            when dragging or clicking in the CIE 1931 xy diagram.
         on_emitter_changed: optional callback ``(channel_type_value, level_0_1)``
             invoked when an emitter fader is adjusted manually.
         on_strategy_changed: optional callback ``(strategy_name,)`` invoked when
@@ -91,12 +94,14 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
     def __init__(  # pylint: disable=too-many-statements,too-many-locals
         self,
         on_color: Callable[[float, float, float], None],
+        on_cie_color: Optional[Callable[[float, float], None]] = None,
         on_emitter_changed: Optional[Callable[[str, float], None]] = None,
         on_strategy_changed: Optional[Callable[[str], None]] = None,
         on_wheel_slot_clicked: Optional[Callable[[str], None]] = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self._on_color = on_color
+        self._on_cie_color = on_cie_color
         self._on_emitter_changed = on_emitter_changed
         self._on_strategy_changed = on_strategy_changed
         self._on_wheel_slot_clicked = on_wheel_slot_clicked
@@ -117,6 +122,16 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self._throttle = cp.Throttle(
             self._emit, SEND_INTERVAL_MS, GLib.timeout_add, GLib.source_remove
         )
+        self._throttle_cie: Optional[cp.Throttle] = (
+            cp.Throttle(
+                self._emit_cie,
+                SEND_INTERVAL_MS,
+                GLib.timeout_add,
+                GLib.source_remove,
+            )
+            if on_cie_color is not None
+            else None
+        )
 
         # Two-column layout: Left = 2D Color Space + Hex, Right = Sliders/Emitters/Gels
         columns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -130,7 +145,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.view_stack = Gtk.Stack()
         self.view_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.disc = HSDiscWidget(self._on_disc_change, self._throttle.flush)
-        self.cie_xy = CIExyWidget(self._on_cie_xy_change, self._throttle.flush)
+        self.cie_xy = CIExyWidget(self._on_cie_xy_change, self._on_cie_xy_release)
         self.view_stack.add_titled(self.disc, "hs", "HS Disc")
         self.view_stack.add_titled(self.cie_xy, "cie_xy", "CIE 1931 xy")
 
@@ -288,7 +303,13 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             or self._emitter_dragging
         )
 
-    def set_color(self, r: float, g: float, b: float) -> None:
+    def set_color(
+        self,
+        r: float,
+        g: float,
+        b: float,
+        cie: Optional[CIExyY] = None,
+    ) -> None:
         """Show a color (e.g. the lead fixture's) without emitting."""
         if self.is_dragging:
             return  # never fight the user's pointer
@@ -296,7 +317,10 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         hue, sat = cp.rgb_to_hs(r, g, b, self._hue)
         self._hue = hue
         self.disc.set_hs(hue, sat, cp.hs_to_rgb(hue, sat))
-        cx, cy = cp.srgb_to_xy(r, g, b)
+        if cie is not None and (cie.x > 0.0 or cie.y > 0.0):
+            cx, cy = cie.x, cie.y
+        else:
+            cx, cy = cp.srgb_to_xy(r, g, b)
         self.cie_xy.set_xy(cx, cy, (r, g, b))
         self._silent = True
         try:
@@ -466,8 +490,14 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
     def cleanup(self) -> None:
         """Cancel pending timers; call before the widget is destroyed."""
         self._throttle.cancel()
+        if self._throttle_cie is not None:
+            self._throttle_cie.cancel()
 
     # -- input handlers -------------------------------------------------------
+
+    def _emit_cie(self, x: float, y: float) -> None:
+        if self._on_cie_color is not None:
+            self._on_cie_color(x, y)
 
     def _submit(self, rgb: cp.RGB) -> None:
         self._rgb = rgb
@@ -490,7 +520,21 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         hue, sat = cp.rgb_to_hs(*rgb, self._hue)
         self._hue = hue
         self.disc.set_hs(hue, sat, rgb)
-        self._submit(rgb)
+        self._silent = True
+        try:
+            self.hex_entry.set_text(cp.rgb_to_hex(*rgb))
+        finally:
+            self._silent = False
+        if self._throttle_cie is not None:
+            self._throttle_cie.submit(x, y)
+        else:
+            self._throttle.submit(*rgb)
+
+    def _on_cie_xy_release(self) -> None:
+        if self._throttle_cie is not None:
+            self._throttle_cie.flush()
+        else:
+            self._throttle.flush()
 
     def _on_kelvin_or_tint_changed(self, _scale: Gtk.Scale) -> None:
         if self._silent:

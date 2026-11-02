@@ -32,6 +32,7 @@ from olc.devices.builtin import (  # noqa: E402
 from olc.devices.device import ChannelRange, ChannelType  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
+from olc.gtk3.widgets.color_picker import ConsoleColorPicker  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
@@ -394,3 +395,40 @@ def test_inspector_intensity_syncs_with_live_view(app_gui: Application) -> None:
 
     inspector.on_close_icon(inspector)
     process_events()
+
+
+def test_inspector_apply_color_cie_out_of_gamut_and_in_gamut() -> None:
+    """Inspector updates delta_e, warning, and badge on out-of-gamut CIE pick."""
+    rgbw = create_rgbw_definition().instantiate(1, "LED RGBW", 1, 1)
+    inspector = DeviceInspectorWidget()
+    inspector.set_selected_devices([rgbw])
+
+    # Out of gamut pick on CIE 1931 xy
+    res_out = inspector.apply_color_cie(0.10, 0.80)
+    assert 1 in res_out
+    assert inspector.last_worst_delta_e > 50.0
+    assert "out of gamut" in inspector.last_color_warning
+    badge_text = inspector.color_picker.match_label.get_text()
+    assert "out of gamut" in badge_text
+    tooltip = inspector.color_picker.match_label.get_tooltip_text()
+    assert tooltip == inspector.last_color_warning
+
+    # In gamut pick on CIE 1931 xy (D65 white)
+    res_in = inspector.apply_color_cie(0.3127, 0.3290)
+    assert 1 in res_in
+    assert inspector.last_worst_delta_e < 1.0
+    assert not inspector.last_color_warning
+    badge_text_in = inspector.color_picker.match_label.get_text()
+    assert "exact" in badge_text_in or "close" in badge_text_in
+
+
+def test_color_picker_emits_cie_when_configured() -> None:
+    """ConsoleColorPicker routes CIE pointer changes to on_cie_color when provided."""
+    emitted_cie: list[tuple[float, float]] = []
+    picker = ConsoleColorPicker(
+        on_color=lambda r, g, b: None,
+        on_cie_color=lambda x, y: emitted_cie.append((x, y)),
+    )
+    picker._on_cie_xy_change(0.12, 0.34)
+    picker._on_cie_xy_release()
+    assert emitted_cie == [(0.12, 0.34)]

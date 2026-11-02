@@ -36,6 +36,8 @@ from .conversions import (
     parse_hex,
     rgb_to_hs,
     to_24bit,
+    xy_max_luminance,
+    xy_to_srgb,
 )
 from .geometry import effective_color_profile
 
@@ -92,6 +94,47 @@ class ColorSolver:
             self._matchers[sig] = matcher
         cie = sRGB(r_n, g_n, b_n).to_XYZ().to_xyY()
         result = matcher.match_cie(cie.x, cie.y, cie.Y, strategy=eff_strat).get(
+            profile.fixture_name
+        )
+        self.solves += 1
+
+        if len(self._cache) >= self.max_entries:
+            self._cache.pop(next(iter(self._cache)))  # FIFO eviction
+        self._cache[key] = result
+        return result
+
+    def solve_cie(
+        self,
+        profile: FixtureColorProfile,
+        x: float,
+        y: float,
+        Y: Optional[float] = None,  # pylint: disable=invalid-name
+        strategy: Optional[str] = None,
+    ) -> Optional[MatchResult]:
+        """Emitter levels reproducing CIE (x, y, Y) on ``profile``."""
+        eff_strat = strategy if strategy is not None else self.strategy
+        if eff_strat not in SOLVER_STRATEGIES:
+            eff_strat = "spectral"
+        x_n = max(0.0, min(1.0, float(x)))
+        y_n = max(0.0, min(1.0, float(y)))
+        y_lum = max(0.0, float(Y)) if Y is not None else xy_max_luminance(x_n, y_n)
+        sig = profile_signature(profile)
+        key = (
+            "cie",
+            sig,
+            to_24bit(x_n),
+            to_24bit(y_n),
+            to_24bit(y_lum / 100.0),
+            eff_strat,
+        )
+        if key in self._cache:
+            return self._cache[key]
+
+        matcher = self._matchers.get(sig)
+        if matcher is None:
+            matcher = ColorMatcher([profile])
+            self._matchers[sig] = matcher
+        result = matcher.match_cie(x_n, y_n, y_lum, strategy=eff_strat).get(
             profile.fixture_name
         )
         self.solves += 1
@@ -343,6 +386,42 @@ def apply_color_to_devices(
         result.delta_e[dev.device_id] = match.delta_e if match else 0.0
         if match and match.warning:
             result.warnings[dev.device_id] = match.warning
+    return result
+
+
+def apply_color_cie_to_devices(
+    devices: Iterable[Any],
+    x: float,
+    y: float,
+    solver: ColorSolver,
+    Y: Optional[float] = None,  # pylint: disable=invalid-name
+) -> ColorApplyResult:
+    """Apply CIE (x, y, Y) to color-capable devices, evaluating exact chromaticity."""
+    x_n = max(0.0, min(1.0, float(x)))
+    y_n = max(0.0, min(1.0, float(y)))
+    y_lum = max(0.0, float(Y)) if Y is not None else xy_max_luminance(x_n, y_n)
+    result = ColorApplyResult()
+    for dev in devices:
+        profile = effective_color_profile(dev)
+        if profile is None:
+            rgb = xy_to_srgb(x_n, y_n)
+            dev.set_color_srgb(rgb[0], rgb[1], rgb[2])
+            result.delta_e[dev.device_id] = 0.0
+            continue
+        match = solver.solve_cie(profile, x_n, y_n, Y=y_lum)
+        if match is not None:
+            if hasattr(dev, "set_color_cie"):
+                dev.set_color_cie(x_n, y_n, Y=y_lum, solved=match)
+            else:
+                rgb_achieved = match.achieved_xyz.to_srgb()
+                dev.set_color_srgb(
+                    rgb_achieved.r, rgb_achieved.g, rgb_achieved.b, solved=match
+                )
+            result.delta_e[dev.device_id] = match.delta_e
+            if match.warning:
+                result.warnings[dev.device_id] = match.warning
+        else:
+            result.delta_e[dev.device_id] = 0.0
     return result
 
 
