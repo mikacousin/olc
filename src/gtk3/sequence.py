@@ -166,7 +166,8 @@ class SequenceTab(Gtk.Grid):
 
         for i, column_title in enumerate(["Seq", "Type", "Name"]):
             renderer = Gtk.CellRendererText()
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column = Gtk.TreeViewColumn(column_title, renderer)
+            column.add_attribute(renderer, "text", i)
             self.treeview1.append_column(column)
 
     def _setup_cues_list(self) -> None:
@@ -222,7 +223,8 @@ class SequenceTab(Gtk.Grid):
                 renderer.set_property("editable", True)
                 renderer.connect("edited", edit_callbacks[i])
 
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column = Gtk.TreeViewColumn(column_title, renderer)
+            column.add_attribute(renderer, "text", i)
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
