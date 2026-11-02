@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import typing
+from collections.abc import Mapping
 
 from olc.core.action import Action
 from olc.cue import Cue
@@ -42,10 +43,12 @@ class CueUpdateAction(Action):
         super().__init__(app)
         self.number: float = 0.0
         self.sequence: int = 0
-        self.new_channels: dict[int, int] = {}
-        self.old_channels: dict[int, int] = {}
+        self.new_channels: dict[int, int | float] = {}
+        self.old_channels: dict[int, int | float] = {}
 
-    def configure(self, number: float, sequence: int, channels: dict[int, int]) -> None:
+    def configure(
+        self, number: float, sequence: int, channels: Mapping[int, int | float]
+    ) -> None:
         """Configure the action.
 
         Args:
@@ -231,7 +234,7 @@ class CueCopyAction(Action):
         self.dst_number: float = 0.0
         self.sequence: int = 0
         self._dst_was_new: bool = False
-        self._dst_old_channels: dict[int, int] = {}
+        self._dst_old_channels: dict[int, int | float] = {}
         self._dst_index: int = -1
 
     def configure(self, src_number: float, dst_number: float, sequence: int) -> None:
@@ -320,11 +323,14 @@ class CueInsertAction(Action):
         super().__init__(app)
         self.number: float = 0.0
         self.sequence: int = 0
-        self.channels: dict[int, int] = {}
+        self.channels: dict[int, int | float] = {}
         self._inserted_index: int = -1
 
     def configure(
-        self, number: float, sequence: int, channels: dict[int, int] | None = None
+        self,
+        number: float,
+        sequence: int,
+        channels: Mapping[int, int | float] | None = None,
     ) -> None:
         """Configure the action.
 
@@ -389,10 +395,12 @@ class CueSetChannelLevelAction(Action):
         self.number: float = 0.0
         self.sequence: int = 0
         self.channel: int = 1
-        self.level: int = 0
-        self.old_level: int = 0
+        self.level: int | float = 0
+        self.old_level: int | float = 0
 
-    def configure(self, number: float, sequence: int, channel: int, level: int) -> None:
+    def configure(
+        self, number: float, sequence: int, channel: int, level: int | float
+    ) -> None:
         """Configure the action.
 
         Args:

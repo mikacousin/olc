@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Mapping
 
 import numpy as np
 
@@ -77,7 +78,7 @@ class Cue:
         self,
         sequence: int,
         number: float,
-        channels: dict[int, int | float] | None = None,
+        channels: Mapping[int, int | float] | None = None,
         text: str = "",
         device_values: dict[int, dict[str, typing.Any]] | None = None,
         is_block: bool = False,
@@ -96,7 +97,7 @@ class Cue:
         return self._channels
 
     @channels.setter
-    def channels(self, value: dict[int, int | float]) -> None:
+    def channels(self, value: Mapping[int, int | float]) -> None:
         self._channels = CueChannels(self, value)
         self._channels_array = None
 
