@@ -45,8 +45,8 @@ def _create_headless_app() -> tuple[CoreApplication, MagicMock]:
     mock_dmx = MagicMock()
     mock_dmx.levels = {
         "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
-        "sequence": np.full(MAX_CHANNELS, 0, dtype=np.int16),
-        "faders": np.full(MAX_CHANNELS, 0, dtype=np.uint8),
+        "sequence": np.full(MAX_CHANNELS, 0.0, dtype=np.float64),
+        "faders": np.full(MAX_CHANNELS, 0.0, dtype=np.float64),
     }
     mock_main_fader = MagicMock()
     mock_dmx.main_fader = mock_main_fader

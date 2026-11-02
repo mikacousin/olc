@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import typing
+from unittest.mock import patch as mock_patch
 
 import numpy as np
 import pytest
@@ -26,15 +27,16 @@ from olc.core.crossfade import CrossFade
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
+from olc.dmx import Dmx
 from olc.patch import PatchManager
-from olc.sequence import Sequence
+from olc.sequence import Sequence, ThreadGo
 from olc.step import Step
 
 
 class _MockDMX:
     def __init__(self) -> None:
         self.levels = {
-            "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+            "sequence": np.zeros(MAX_CHANNELS, dtype=np.float64),
             "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
         }
         self.set_levels_calls = 0
@@ -72,6 +74,12 @@ class _MockLightShow:
         self.patch = patch
         self.main_playback: Sequence = typing.cast(typing.Any, None)
         self.app: _MockApp = typing.cast(typing.Any, None)
+        mock_inde = typing.cast(typing.Any, type("MockIndependents", (), {}))()
+        mock_inde.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
+        self.independents = mock_inde
+        mock_curves = typing.cast(typing.Any, type("MockCurves", (), {}))()
+        mock_curves.curves = {}
+        self.curves = mock_curves
 
 
 class _MockSettings:
@@ -329,7 +337,7 @@ def test_takeover_manual_crossfade_while_go_paused_does_not_deadlock() -> None:
 
 def test_takeover_manual_crossfade_while_goback_paused_does_not_deadlock() -> None:
     """Verify taking over manual crossfade while GoBack is paused halts cleanly."""
-    app, seq, _patch, xfade = _build_crossfade_env(tracking_mode=True)
+    _app, seq, _patch, xfade = _build_crossfade_env(tracking_mode=True)
 
     seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
@@ -391,3 +399,72 @@ def test_sequence_stop_while_paused_without_midi_does_not_deadlock() -> None:
     assert stopped is True
     assert seq.on_go is False
     assert seq.thread is None
+
+
+def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: disable=too-many-locals
+    """Verify manual crossfade and ThreadGo preserve sub-integer float precision
+    yielding full 16-bit DMX fine-byte intermediate resolution without staircasing.
+    """
+    app, seq, patch, xfade = _build_crossfade_env(tracking_mode=True)
+
+    # Patch Channel 1 as a 16-bit dimmer (Universe 1, addresses 1 & 2)
+    dev = patch.patch_dimmer(channel=1, universe=1, address=1, fine=True)
+    assert dev.has_16bit_dimmer
+
+    with mock_patch("olc.dmx.RepeatedTimer"):
+        real_dmx = Dmx(backend=None, lightshow=app.lightshow)
+        real_dmx.main_fader.value = 1.0
+        app.backend.dmx = real_dmx
+
+        # Step 0: Cue 0 (Channels at 0)
+        seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+        # Step 1 (Cue 1): Ch 1 @ 0
+        cue1 = Cue(1, 1.0)
+        cue1.channels = {1: 0}
+        seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
+
+        # Step 2 (Cue 2): Ch 1 @ 100
+        cue2 = Cue(1, 2.0)
+        cue2.channels = {1: 100}
+        step2 = Step(sequence=1, cue=cue2, time_in=1.0, time_out=1.0)
+        seq.add_step(step2)
+
+        # Sentinel last step
+        seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+        # 1. Manual crossfade test
+        seq.load_step(1)
+        xfade.manual = True
+        # Set manual slider to 12.3% of 255
+        xfade.scale_b.set_value(255.0 * 0.123)
+        xfade.scale_moved(xfade.scale_b)
+
+        # Level in sequence must be continuous float: 100 * 0.123 = 12.3
+        seq_level = real_dmx.levels["sequence"][0]
+        assert isinstance(seq_level, (float, np.floating))
+        assert seq_level == pytest.approx(12.3, abs=1e-5)
+
+        # Output DMX frame must compute fine byte from float:
+        # 12.3 / 255.0 * 65535 = 3161.4 -> coarse=12, fine=89
+        u1 = real_dmx.frame[0]
+        coarse = int(u1[0])
+        fine = int(u1[1])
+        val_16 = (coarse << 8) | fine
+        assert coarse == 12
+        assert fine == 89
+        assert val_16 == 3161
+
+        # 2. Automated ThreadGo transition test
+        # pylint: disable=protected-access
+        thread_go = ThreadGo(False, seq)
+        thread_go._capture_start_levels()
+        # Progress at 123ms out of 1000ms (factor = 0.123)
+        thread_go._calculate_transitions_go(123.0, step2)
+        real_dmx.set_levels()
+
+        seq_level_go = real_dmx.levels["sequence"][0]
+        assert seq_level_go == pytest.approx(12.3, abs=1e-5)
+        u1_go = real_dmx.frame[0]
+        val_16_go = (int(u1_go[0]) << 8) | int(u1_go[1])
+        assert val_16_go == 3161

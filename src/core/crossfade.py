@@ -249,15 +249,15 @@ class CrossFade:
         old_levels = (
             self._start_channels
             if self._start_channels is not None
-            else self._resolve_step(main_pb.position).channels.astype(np.int32)
+            else self._resolve_step(main_pb.position).channels.astype(np.float64)
         )
-        next_levels = resolved_next.channels.astype(np.int32)
+        next_levels = resolved_next.channels.astype(np.float64)
         user_levels = self.app.backend.dmx.levels["user"]
 
         # Update levels
         if position >= wait or level == 0:
             sequence_levels = self.app.backend.dmx.levels["sequence"]
-            current_lvls = sequence_levels.astype(np.int32)
+            current_lvls = sequence_levels.astype(np.float64)
 
             # Keep non-transitioning channels at their resolved baseline
             stable_mask = (next_levels == old_levels) & (user_levels == -1)
@@ -280,7 +280,7 @@ class CrossFade:
                 )
                 current_lvls[attack_mask] = lvls_b[attack_mask]
 
-            sequence_levels[:] = np.clip(current_lvls, 0, 255).astype(np.uint8)
+            sequence_levels[:] = np.clip(current_lvls, 0.0, 255.0)
             self._update_devices_crossfade(step, resolved_next, old_levels, total_time)
             self.app.backend.dmx.set_levels()
 
@@ -389,10 +389,10 @@ class CrossFade:
         old_levels = (
             self._start_channels
             if self._start_channels is not None
-            else self._resolve_step(main_pb.position).channels.astype(np.int32)
+            else self._resolve_step(main_pb.position).channels.astype(np.float64)
         )
         next_levels = self._resolve_step(self._get_next_step_idx()).channels.astype(
-            np.int32
+            np.float64
         )
         return old_levels, next_levels
 
@@ -418,10 +418,7 @@ class CrossFade:
                 elif position < ct.delay * 1000 + ct.time * 1000 + wait:
                     factor = (position - ct.delay * 1000 - wait) / (ct.time * 1000)
                     lvl = old_levels[channel - 1] - abs(
-                        int(
-                            (next_levels[channel - 1] - old_levels[channel - 1])
-                            * factor
-                        )
+                        (next_levels[channel - 1] - old_levels[channel - 1]) * factor
                     )
                 else:
                     lvl = next_levels[channel - 1]
@@ -447,15 +444,13 @@ class CrossFade:
             factor = (position - step.wait * 1000 - step.delay_out * 1000) / (
                 step.time_out * 1000
             )
-            # Decays
+            # Decays (continuous floating-point)
             diff = (next_levels - old_levels) * factor
-            lvls = np.round(old_levels - np.abs(diff)).astype(np.int32)
+            lvls = old_levels - np.abs(diff)
             # User overrides
             user_mask = (user_levels != -1) & (next_levels < user_levels)
             if np.any(user_mask):
-                val = np.round(
-                    user_levels - np.abs((next_levels - user_levels) * factor)
-                )
+                val = user_levels - np.abs((next_levels - user_levels) * factor)
                 lvls[user_mask] = val[user_mask]
         else:
             lvls = next_levels.copy()
@@ -484,10 +479,9 @@ class CrossFade:
                     lvl = old_levels[channel - 1]
                 elif position < ct.delay * 1000 + ct.time * 1000 + wait:
                     factor = (position - ct.delay * 1000 - wait) / (ct.time * 1000)
-                    lvl = int(
-                        (next_levels[channel - 1] - old_levels[channel - 1]) * factor
-                        + old_levels[channel - 1]
-                    )
+                    lvl = (
+                        next_levels[channel - 1] - old_levels[channel - 1]
+                    ) * factor + old_levels[channel - 1]
                 else:
                     lvl = next_levels[channel - 1]
                 lvls[channel - 1] = lvl
@@ -511,13 +505,13 @@ class CrossFade:
             factor = (position - step.wait * 1000 - step.delay_in * 1000) / (
                 step.time_in * 1000
             )
-            # Attacks
+            # Attacks (continuous floating-point)
             diff = (next_levels - old_levels) * factor
-            lvls = np.round(old_levels + diff).astype(np.int32)
+            lvls = old_levels + diff
             # User overrides
             user_mask = (user_levels != -1) & (next_levels > user_levels)
             if np.any(user_mask):
-                val = np.round(user_levels + (next_levels - user_levels) * factor)
+                val = user_levels + (next_levels - user_levels) * factor
                 lvls[user_mask] = val[user_mask]
         else:
             lvls = next_levels.copy()

@@ -208,9 +208,9 @@ def test_fader_set_level_action(app_gui: Application) -> None:
 
     # Model and DMX must reflect 50%
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.5
-    assert (
-        app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == 128
-    )  # 0.5 * 255 rounded
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == pytest.approx(
+        127.5
+    )  # 0.5 * 255 continuous float
 
     # Close Virtual Console window
     app_gui.virtual_console.close()

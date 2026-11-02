@@ -851,8 +851,14 @@ class ThreadGo(threading.Thread):
         )
 
         # Block-copy levels to sequential dmx levels
-        n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
-        self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+        if (
+            self.backend
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "sequence" in self.backend.dmx.levels
+        ):
+            n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
+            self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
         # Apply multi-parameter device values
         if self.sequence.patch is not None:
@@ -978,9 +984,7 @@ class ThreadGo(threading.Thread):
             and hasattr(self.backend.dmx, "levels")
             and "sequence" in self.backend.dmx.levels
         ):
-            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(
-                np.uint8
-            )
+            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 255.0)
             self.backend.dmx.set_levels()
 
     def _compute_device_factors_go(  # pylint: disable=too-many-locals, too-many-branches
@@ -1084,7 +1088,7 @@ class ThreadGo(threading.Thread):
         self, i: float, step: Step
     ) -> np.ndarray:
         """Calculate fade levels using array operations."""
-        old_levels = self.old_channels_levels.astype(np.int32)
+        old_levels = self.old_channels_levels.astype(np.float64)
         next_step_idx = self.sequence.position + 1
         resolved = TrackingEngine.resolve_step_state(
             self.sequence,
@@ -1092,7 +1096,7 @@ class ThreadGo(threading.Thread):
             tracking_mode=self.sequence.tracking_mode,
             patch=self.sequence.patch,
         )
-        next_levels = resolved.channels.astype(np.int32)
+        next_levels = resolved.channels.astype(np.float64)
         lvls = old_levels.copy()
 
         # Decays (channels going down)
@@ -1104,7 +1108,7 @@ class ThreadGo(threading.Thread):
             if np.any(progress_mask & decay_mask) and self.time_out > 0:
                 factor = (i - self.wait - self.delay_out) / self.time_out
                 diff = (next_levels - old_levels) * factor
-                decay_lvls = np.round(old_levels - np.abs(diff)).astype(np.int32)
+                decay_lvls = old_levels - np.abs(diff)
                 lvls[progress_mask & decay_mask] = decay_lvls[
                     progress_mask & decay_mask
                 ]
@@ -1121,7 +1125,7 @@ class ThreadGo(threading.Thread):
             if np.any(progress_mask & attack_mask) and self.time_in > 0:
                 factor = (i - self.wait - self.delay_in) / self.time_in
                 diff = (next_levels - old_levels) * factor
-                attack_lvls = np.round(old_levels + diff).astype(np.int32)
+                attack_lvls = old_levels + diff
                 lvls[progress_mask & attack_mask] = attack_lvls[
                     progress_mask & attack_mask
                 ]
@@ -1156,7 +1160,7 @@ class ThreadGo(threading.Thread):
         """Apply individual channel times."""
         if not step.channel_time or self.override_time is not None:
             return
-        old_levels = self.old_channels_levels.astype(np.int32)
+        old_levels = self.old_channels_levels.astype(np.float64)
         next_step_idx = self.sequence.position + 1
         resolved = TrackingEngine.resolve_step_state(
             self.sequence,
@@ -1164,7 +1168,7 @@ class ThreadGo(threading.Thread):
             tracking_mode=self.sequence.tracking_mode,
             patch=self.sequence.patch,
         )
-        next_levels = resolved.channels.astype(np.int32)
+        next_levels = resolved.channels.astype(np.float64)
         for channel, ct in step.channel_time.items():
             o_lvl = old_levels[channel - 1]
             n_lvl = next_levels[channel - 1]
@@ -1173,7 +1177,7 @@ class ThreadGo(threading.Thread):
                     lvl = o_lvl
                 elif i < (ct.delay + ct.time) * 1000 + self.wait:
                     factor = (i - ct.delay * 1000 - self.wait) / (ct.time * 1000)
-                    lvl = o_lvl - abs(int((n_lvl - o_lvl) * factor))
+                    lvl = o_lvl - abs((n_lvl - o_lvl) * factor)
                 else:
                     lvl = n_lvl
                 lvls[channel - 1] = lvl
@@ -1182,7 +1186,7 @@ class ThreadGo(threading.Thread):
                     lvl = o_lvl
                 elif i < (ct.delay + ct.time) * 1000 + self.wait:
                     factor = (i - ct.delay * 1000 - self.wait) / (ct.time * 1000)
-                    lvl = int((n_lvl - o_lvl) * factor + o_lvl)
+                    lvl = (n_lvl - o_lvl) * factor + o_lvl
                 else:
                     lvl = n_lvl
                 lvls[channel - 1] = lvl
@@ -1291,8 +1295,14 @@ class ThreadGoBack(threading.Thread):
         )
 
         # Block-copy levels to sequential dmx levels
-        n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
-        self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+        if (
+            self.backend
+            and hasattr(self.backend, "dmx")
+            and hasattr(self.backend.dmx, "levels")
+            and "sequence" in self.backend.dmx.levels
+        ):
+            n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
+            self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
         # Apply multi-parameter device values
         if self.sequence.patch is not None:
@@ -1413,11 +1423,11 @@ class ThreadGoBack(threading.Thread):
             tracking_mode=self.sequence.tracking_mode,
             patch=self.sequence.patch,
         )
-        old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = resolved.channels.astype(np.int32)
+        old_levels = self.old_channels_levels.astype(np.float64)
+        next_levels = resolved.channels.astype(np.float64)
         factor = i / go_back_time if go_back_time > 0 else 1.0
         diff = (next_levels - old_levels) * factor
-        lvls = np.round(old_levels + diff).astype(np.int32)
+        lvls = old_levels + diff
 
         if resolved.device_values and self.sequence.patch is not None:
             _interpolate_device_states(
@@ -1427,5 +1437,5 @@ class ThreadGoBack(threading.Thread):
                 factor,
             )
 
-        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
+        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 255.0)
         self.backend.dmx.set_levels()

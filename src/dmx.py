@@ -65,12 +65,12 @@ class Dmx:
         self.lightshow = lightshow
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
-        # Dimmers levels
+        # Dimmers levels (floating-point for silky-smooth 16/24-bit crossfades)
         self.levels = DmxLevels(
             {
-                "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+                "sequence": np.zeros(MAX_CHANNELS, dtype=np.float64),
                 "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
-                "faders": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+                "faders": np.zeros(MAX_CHANNELS, dtype=np.float64),
             }
         )
         # DMX values
@@ -173,16 +173,22 @@ class Dmx:
         # Extract levels for each patched output slot
         out_levels = composite[self.patch.map_src_channels].astype(np.float64)
 
-        # Apply curves by block
+        # Apply curves by block with continuous normalized evaluation
         unique_curves = np.unique(self.patch.map_dst_curves)
         for curve_numb in unique_curves:
             if curve_numb != 0:
                 curve = self.lightshow.curves.get_curve(curve_numb)
                 if curve:
                     curve_mask = self.patch.map_dst_curves == curve_numb
-                    out_levels[curve_mask] = curve.values_array[
-                        out_levels[curve_mask].astype(np.uint8)
-                    ]
+                    try:
+                        norm_in = out_levels[curve_mask] / 255.0
+                        out_levels[curve_mask] = (
+                            curve.evaluate_normalized(norm_in) * 255.0
+                        )
+                    except NotImplementedError:
+                        out_levels[curve_mask] = curve.values_array[
+                            out_levels[curve_mask].astype(np.uint8)
+                        ]
 
         # Scale by Main Fader
         out_levels = np.round(out_levels * self.main_fader.value).astype(np.uint8)

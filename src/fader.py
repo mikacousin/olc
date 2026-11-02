@@ -149,7 +149,7 @@ class FaderGroup(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = group
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
         if group:
@@ -184,8 +184,7 @@ class FaderGroup(Fader):
         """Fader level has changed"""
         if self.contents:
             for channel, lvl in self.contents.get_channels().items():
-                level = round(lvl * self.level)
-                self.dmx[channel - 1] = level
+                self.dmx[channel - 1] = float(lvl) * self.level
             self.fader_bank.update_levels()
             if self.app and hasattr(self.app, "backend") and self.app.backend:
                 self.app.backend.dmx.set_levels()
@@ -203,7 +202,7 @@ class FaderPreset(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = cue
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
         if cue:
@@ -238,8 +237,7 @@ class FaderPreset(Fader):
         """Fader level has changed"""
         if self.contents:
             for channel, lvl in self.contents.channels.items():
-                level = round(lvl * self.level)
-                self.dmx[channel - 1] = level
+                self.dmx[channel - 1] = float(lvl) * self.level
             self.fader_bank.update_levels()
             if self.app and hasattr(self.app, "backend") and self.app.backend:
                 self.app.backend.dmx.set_levels()
@@ -257,7 +255,7 @@ class FaderChannels(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = channels
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
         if self.contents:
@@ -291,8 +289,7 @@ class FaderChannels(Fader):
         """Fader level has changed"""
         if self.contents:
             for channel, lvl in self.contents.items():
-                level = round(lvl * self.level)
-                self.dmx[channel - 1] = level
+                self.dmx[channel - 1] = float(lvl) * self.level
             self.fader_bank.update_levels()
             if self.app and hasattr(self.app, "backend") and self.app.backend:
                 self.app.backend.dmx.set_levels()
@@ -310,7 +307,7 @@ class FaderSequence(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = chaser
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
         if chaser:

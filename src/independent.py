@@ -65,7 +65,7 @@ class Independent:
         self.levels = levels or {}
         self.text = text
         self.inde_type = inde_type
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
 
         self.update_channels()
 
@@ -101,8 +101,7 @@ class Independent:
     def update_dmx(self) -> None:
         """Update DMX levels"""
         for channel, level in self.levels.items():
-            dmx_lvl = round(level * self.level)
-            self.dmx[channel - 1] = dmx_lvl
+            self.dmx[channel - 1] = round(level * self.level)
         self.independents.update_dmx()
         if self.app and hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()
@@ -120,7 +119,7 @@ class Independents:
         self.lightshow = lightshow
         self.independents: list[Independent] = []
         self.channels = set()
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
 
         # Create 9 Independents
         for i in range(6):
