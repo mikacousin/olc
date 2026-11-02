@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Mapping
 
 from olc.curve import LimitCurve
 from olc.define import UNIVERSES, strip_accents
@@ -264,7 +265,7 @@ class AsciiWriter(WriteFile):
             return
         self.stream.write(bytes("ENDDATA\n", "ascii"))
 
-    def _save_channels(self, chans: dict[int, int]) -> None:
+    def _save_channels(self, chans: Mapping[int, int | float]) -> None:
         """Save channels
 
         Args:
@@ -276,7 +277,7 @@ class AsciiWriter(WriteFile):
         i = 1
         for chan, level in chans.items():
             if level != 0:
-                lvl = "H" + format(level, "02X")
+                lvl = "H" + format(int(round(level)), "02X")
                 channels += f" {chan}/{lvl}"
                 # 6 Channels per line
                 if not i % 6 and channels != "":
