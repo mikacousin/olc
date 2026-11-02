@@ -78,7 +78,7 @@ class Application(Gtk.Application):
         self.engine = None
         self.version = version
         super().__init__(
-            *args,  # ty: ignore[invalid-argument-type]
+            *args,
             application_id="com.github.mikacousin.olc",
             flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
             **kwargs,  # ty: ignore[invalid-argument-type]
