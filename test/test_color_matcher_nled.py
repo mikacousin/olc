@@ -108,6 +108,7 @@ def test_match_result_16_and_24_bit() -> None:
 
 def test_rgba_white_no_false_out_of_gamut() -> None:
     dev = create_rgba_definition().instantiate(1, "RGBA", 1, 1)
+    assert dev.color_profile is not None
     matcher = ColorMatcher([dev.color_profile])
     res = matcher.match_srgb(255, 255, 255)["Generic LED RGBA"]
     assert res.warning == ""
@@ -117,6 +118,7 @@ def test_rgba_white_no_false_out_of_gamut() -> None:
 
 def test_rgbw_white_recruits_white_emitter() -> None:
     dev = create_rgbw_definition().instantiate(1, "RGBW", 1, 1)
+    assert dev.color_profile is not None
     matcher = ColorMatcher([dev.color_profile])
     res = matcher.match_srgb(255, 255, 255)["Generic LED RGBW"]
     white_weight = res.as_normalized_dict()["White"]
@@ -170,6 +172,7 @@ def test_continuity_during_cct_sweep() -> None:
 
 def test_saturated_primaries_no_false_warning() -> None:
     dev = create_rgbw_definition().instantiate(1, "RGBW", 1, 1)
+    assert dev.color_profile is not None
     matcher = ColorMatcher([dev.color_profile])
 
     for r, g, b in ((255, 0, 0), (0, 255, 0), (0, 0, 255)):

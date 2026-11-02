@@ -47,7 +47,7 @@ class _MockDMX:
 
 class _MockBackend:
     def __init__(self) -> None:
-        self.dmx = _MockDMX()
+        self.dmx: typing.Any = _MockDMX()
 
 
 class _MockAction:
@@ -412,7 +412,7 @@ def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: d
     assert dev.has_16bit_dimmer
 
     with mock_patch("olc.dmx.RepeatedTimer"):
-        real_dmx = Dmx(backend=None, lightshow=app.lightshow)
+        real_dmx = Dmx(backend=None, lightshow=typing.cast(typing.Any, app.lightshow))
         real_dmx.main_fader.value = 1.0
         app.backend.dmx = real_dmx
 

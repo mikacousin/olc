@@ -33,16 +33,16 @@ class Scale:
         self.value = 0
         self.moved = False
 
-    def set_value(self, value: int) -> None:
+    def set_value(self, value: int | float) -> None:
         """Set scale value
 
         Args:
-            value: int
+            value: int | float
         """
         if 0 <= value < 256:
             self.value = value
 
-    def get_value(self) -> int:
+    def get_value(self) -> int | float:
         """Return scale value
 
         Returns:
