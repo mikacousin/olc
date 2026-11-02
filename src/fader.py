@@ -50,7 +50,7 @@ class Fader:
     text: str
     level: float
     old_level: float
-    contents: object
+    contents: typing.Any
 
     def __init__(self, index: int, fader_bank: FaderBank) -> None:
         self.index = index
