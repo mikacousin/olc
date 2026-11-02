@@ -166,7 +166,14 @@ class CurveEdition(Gtk.Box):
         self.hbox.add(self.fixed)
         # Add special widgets
         if isinstance(curve, LimitCurve):
-            adj = Gtk.Adjustment(curve.limit, 0, 255, 1, 10, 0)
+            adj = Gtk.Adjustment(
+                value=curve.limit,
+                lower=0,
+                upper=255,
+                step_increment=1,
+                page_increment=10,
+                page_size=0,
+            )
             scale = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=adj)
             scale.set_digits(0)
             scale.set_inverted(True)

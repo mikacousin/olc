@@ -168,7 +168,8 @@ class PatchChannelsTab(Gtk.Box):
         ]
         for title, col_idx, min_width in columns_spec:
             renderer = Gtk.CellRendererText()
-            column = Gtk.TreeViewColumn(title, renderer, text=col_idx)
+            column = Gtk.TreeViewColumn(title, renderer)
+            column.add_attribute(renderer, "text", col_idx)
             column.set_min_width(min_width)
             column.set_resizable(True)
             self.devices_treeview.append_column(column)

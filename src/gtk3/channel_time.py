@@ -99,7 +99,8 @@ class ChanneltimeTab(Gtk.Paned):
             elif i == 2:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.time_edited)
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column = Gtk.TreeViewColumn(column_title, renderer)
+            column.add_attribute(renderer, "text", i)
             self.treeview.append_column(column)
 
         self.scrolled2.add(self.treeview)

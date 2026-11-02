@@ -95,7 +95,8 @@ class IndependentsTab(Gtk.Paned):
                 if i == 2:
                     renderer.set_property("editable", True)
                     renderer.connect("edited", self.text_edited)
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column = Gtk.TreeViewColumn(column_title, renderer)
+            column.add_attribute(renderer, "text", i)
             self.treeview.append_column(column)
         scrollable = Gtk.ScrolledWindow()
         scrollable.set_vexpand(True)
