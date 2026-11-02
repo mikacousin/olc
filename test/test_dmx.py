@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
+import olc.core.lightshow  # noqa: F401  # Pre-import to resolve circular import cycle
 from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.dmx import Dmx
 

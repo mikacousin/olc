@@ -144,11 +144,31 @@ class Dmx:
             composite[user_mask] = self.levels["user"][user_mask]
         return composite
 
+    def _update_dynamic_devices(self, composite: np.ndarray) -> None:
+        """Update dynamic intensity devices (Virtual Dimmer, 16/24-bit dimmers)."""
+        if not hasattr(self.patch, "dynamic_intensity_devices"):
+            return
+        main_val = self.main_fader.value
+        for dev in self.patch.dynamic_intensity_devices:
+            dev_id = dev.fixture_id
+            if 1 <= dev_id <= len(composite):
+                user_val = self.levels["user"][dev_id - 1]
+                comp_val = composite[dev_id - 1]
+                if user_val != -1:
+                    target_norm = float(user_val) / 255.0
+                elif comp_val > 0:
+                    target_norm = float(comp_val) / 255.0
+                else:
+                    target_norm = dev.intensity
+                dev.set_intensity(target_norm * main_val)
+
     def set_levels(self) -> None:
         """Set DMX frame levels"""
         composite = self.get_all_composite_levels()
 
         self.patch.update_numpy_cache_if_dirty()
+
+        self._update_dynamic_devices(composite)
 
         # Extract levels for each patched output slot
         out_levels = composite[self.patch.map_src_channels].astype(np.float64)

@@ -20,6 +20,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 from unittest.mock import patch as mock_patch
 
+import pytest
+
 from olc.core.app import CoreApplication
 from olc.curve import LimitCurve, LinearCurve, SquareRootCurve
 from olc.devices.builtin import (
@@ -252,3 +254,80 @@ def test_patch_dimmer_attaches_curve() -> None:
 
     dev.set_intensity(1.0)
     assert dev.channels[0].value == 128
+
+
+def test_virtual_dimmer_dmx_levels_and_main_fader() -> None:
+    """Verify virtual dimmer LED fixtures modulate with composite and Main Fader."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    rgb_def = create_rgb_definition()
+    par = patch.patch_device(
+        device_id=1,
+        fixture_def=rgb_def,
+        universe=1,
+        address=1,
+        mode_name="RGB 3ch",
+    )
+    assert par.uses_virtual_dimmer
+    par.set_color_srgb(1.0, 0.0, 0.0)  # Pure Red
+
+    with mock_patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=app.lightshow)
+        dmx.main_fader.value = 1.0
+
+        # Channel 1 at 50% (128 / 255) in user levels
+        dmx.levels["user"][0] = 128
+        dmx.set_levels()
+
+        u1 = dmx.frame[0]
+        # Red should be dimmed to 50% (~128), Green/Blue at 0
+        assert u1[0] == 128
+        assert u1[1] == 0
+        assert u1[2] == 0
+
+        # Main Fader scaled to 50% -> Red is 25% (~64)
+        dmx.main_fader.value = 0.5
+        dmx.set_levels()
+        assert u1[0] == 64
+
+        # Main Fader at 0.0 -> Blackout
+        dmx.main_fader.value = 0.0
+        dmx.set_levels()
+        assert u1[0] == 0
+
+
+def test_16bit_dimmer_dmx_frame_output() -> None:
+    """Verify 16-bit dimmer outputs coarse and fine bytes with full resolution."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    # Channel 2: 16-bit dimmer on Universe 1, address 10 (coarse) and 11 (fine)
+    dev = patch.patch_dimmer(channel=2, universe=1, address=10, fine=True)
+    assert dev.has_16bit_dimmer
+
+    with mock_patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=app.lightshow)
+        dmx.main_fader.value = 1.0
+
+        # Set channel 2 to level 128 (norm = 128/255 -> val_16 = 32896 = 0x8080)
+        dmx.levels["user"][1] = 128
+        dmx.set_levels()
+
+        u1 = dmx.frame[0]
+        coarse_byte = int(u1[9])
+        fine_byte = int(u1[10])
+        val_16 = (coarse_byte << 8) | fine_byte
+        assert coarse_byte == 128
+        assert fine_byte == 128
+        assert val_16 == pytest.approx(32896, abs=2)
+
+        # Scale by Main Fader at 0.5 -> val_16 = 16448 (0x4040)
+        dmx.main_fader.value = 0.5
+        dmx.set_levels()
+        assert u1[9] == 64
+        assert u1[10] == 64

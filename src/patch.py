@@ -127,6 +127,7 @@ class PatchManager:
         self.map_dst_outputs = np.array([], dtype=np.intp)
         self.map_dst_curves = np.array([], dtype=np.intp)
         self.device_channel_refs: list[tuple[LightingDevice, Channel]] = []
+        self.dynamic_intensity_devices: list[LightingDevice] = []
         self.map_dev_dst_universes = np.array([], dtype=np.intp)
         self.map_dev_dst_outputs = np.array([], dtype=np.intp)
         self.map_dev_is_htp = np.array([], dtype=bool)
@@ -826,7 +827,9 @@ class PatchManager:
             self._update_numpy_cache()
             self._numpy_cache_dirty = False
 
-    def _update_numpy_cache(self) -> None:  # pylint: disable=too-many-locals
+    def _update_numpy_cache(  # pylint: disable=too-many-locals, too-many-branches
+        self,
+    ) -> None:
         """Update cached arrays for fast block operations."""
         # 1. Boolean mask of patched channels (True if patched, False if not)
         mask = np.zeros(MAX_CHANNELS, dtype=bool)
@@ -837,6 +840,9 @@ class PatchManager:
                     and None not in self.channels[channel][0]
                 ):
                     mask[channel - 1] = True
+        for dev_id in self.devices:
+            if 1 <= dev_id <= MAX_CHANNELS:
+                mask[dev_id - 1] = True
         self.is_patched_mask = mask
 
         # 2. Flat indexing arrays for conventional intensity level distribution
@@ -866,7 +872,17 @@ class PatchManager:
         self.map_dst_outputs = np.array(dst_outputs, dtype=np.intp)
         self.map_dst_curves = np.array(dst_curves, dtype=np.intp)
 
-        # 3. Direct routing for multi-parameter device channels
+        # 3. Direct routing for multi-parameter and multi-resolution device channels
+        dynamic_devs: list[LightingDevice] = []
+        for dev in self.devices.values():
+            if (
+                dev.uses_virtual_dimmer
+                or dev.has_16bit_dimmer
+                or dev.has_24bit_dimmer
+                or (dev.has_physical_dimmer and dev.fixture_type != FixtureType.DIMMER)
+            ):
+                dynamic_devs.append(dev)
+
         dev_refs: list[tuple[LightingDevice, Channel]] = []
         dev_dst_univs = []
         dev_dst_outs = []
@@ -874,16 +890,24 @@ class PatchManager:
 
         for dev in self.devices.values():
             for ch in dev.channels:
-                if (
-                    ch.channel_type != ChannelType.INTENSITY
-                    or dev.fixture_type != FixtureType.DIMMER
-                ):
+                is_conventional_8bit_dimmer = (
+                    dev.fixture_type == FixtureType.DIMMER
+                    and not dev.has_16bit_dimmer
+                    and not dev.has_24bit_dimmer
+                    and ch.channel_type == ChannelType.INTENSITY
+                    and not ch.fine
+                    and not ch.ultra_fine
+                )
+                if not is_conventional_8bit_dimmer:
                     if ch.universe in self.universes:
                         dev_refs.append((dev, ch))
                         dev_dst_univs.append(self.universes.index(ch.universe))
                         dev_dst_outs.append(ch.address - 1)
-                        dev_is_htp.append(ch.is_htp)
+                        # Channels driven dynamically by set_intensity are
+                        # already scaled with float precision by main_fader.
+                        dev_is_htp.append(ch.is_htp and dev not in dynamic_devs)
 
+        self.dynamic_intensity_devices = dynamic_devs
         self.device_channel_refs = dev_refs
         self.map_dev_dst_universes = np.array(dev_dst_univs, dtype=np.intp)
         self.map_dev_dst_outputs = np.array(dev_dst_outs, dtype=np.intp)
