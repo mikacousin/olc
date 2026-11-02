@@ -476,7 +476,7 @@ class Sequence:
                         self.backend.dmx.levels["user"].fill(-1)
                     self.load_step(i)
                     self.position = i - 1
-                    next_after = _next_step(self)
+                    next_after = _next_step(typing.cast(typing.Any, self))
                     if self.app is not None:
                         core = getattr(self.app, "core", self.app)
                         core.emit(
@@ -545,7 +545,9 @@ class Sequence:
         else:
             # Indicates that a Go is in progress
             self.on_go = True
-            self.thread = ThreadGo(goto, self, override_time=override_time)
+            self.thread = ThreadGo(
+                goto, typing.cast(typing.Any, self), override_time=override_time
+            )
             self.thread.start()
 
     def go_back(self, _action: Optional[Gio.SimpleAction], _param: None) -> bool:
@@ -590,7 +592,7 @@ class Sequence:
             )
 
         self.on_go = True
-        self.thread = ThreadGoBack(self)
+        self.thread = ThreadGoBack(typing.cast(typing.Any, self))
         self.thread.start()
         return False
 
