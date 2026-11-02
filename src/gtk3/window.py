@@ -26,6 +26,14 @@ from olc.gtk3.widgets.main_fader import MainFaderWidget
 from olc.gtk3.window_channels import LiveView
 from olc.gtk3.window_playback import MainPlaybackView
 
+_CellEditableType: typing.Any = Gtk.CellEditable
+
+
+def _is_text_editing(widget: Gtk.Widget | None) -> bool:
+    """Return True if widget is an editable text entry or cell."""
+    return bool(widget and isinstance(widget, (Gtk.Entry, _CellEditableType)))
+
+
 if typing.TYPE_CHECKING:
     import olc.gtk3.window
     from olc.gtk3.application import Application
@@ -503,8 +511,7 @@ class Window(Gtk.ApplicationWindow):
             self.app.core.action_registry.execute("playback.go")
             return True
 
-        focused = self.get_focus()
-        if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
+        if _is_text_editing(self.get_focus()):
             return False
 
         if bool(
@@ -584,7 +591,7 @@ class Window(Gtk.ApplicationWindow):
     def on_window_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
         """Compatibility wrapper for legacy key-press event delegation."""
         focused = self.get_focus()
-        if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
+        if _is_text_editing(focused) and focused is not None:
             return bool(focused.event(event))
         return False
 
