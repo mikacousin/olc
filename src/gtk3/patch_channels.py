@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Device-centric and channel-centric DMX patch view for GTK3."""
+"""Device-centric DMX patch view for GTK3."""
 
 from __future__ import annotations
 
@@ -21,16 +21,14 @@ from typing import Any, Callable, Optional
 
 from gi.repository import Gdk, Gtk
 
-from olc.define import MAX_CHANNELS, UNIVERSES
+from olc.define import MAX_CHANNELS
 from olc.devices.builtin import populate_builtin_library
 from olc.devices.gdtf import GdtfImporter
 from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
-from olc.gtk3.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
-    import olc.gtk3.patch_channels
     from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
@@ -54,7 +52,7 @@ COL_CURVE = 7
 
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class PatchChannelsTab(Gtk.Box):
-    """Tab to patch lighting devices and channels."""
+    """Tab to patch lighting devices."""
 
     app: Application
     patch: DMXPatch
@@ -64,15 +62,17 @@ class PatchChannelsTab(Gtk.Box):
     settings: Gio.Settings
     backend: DMXBackend
     commandline: CoreCommandLine
-    last_chan_selected: str
-    flowbox: Gtk.FlowBox
-    channels: list[PatchChannelWidget]
-    scrollable: Gtk.ScrolledWindow
     fixture_library: FixtureLibrary
     sort_mode: str
     devices_store: Gtk.ListStore
     devices_treeview: Gtk.TreeView
-    view_stack: Gtk.Stack
+    devices_scroll: Gtk.ScrolledWindow
+    toolbar: Gtk.Box
+    sort_toggle_btn: Gtk.ToggleButton
+    add_device_btn: Gtk.Button
+    remove_device_btn: Gtk.Button
+    exchange_btn: Gtk.Button
+    import_gdtf_btn: Gtk.Button
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self, app: Application) -> None:
@@ -90,7 +90,6 @@ class PatchChannelsTab(Gtk.Box):
             else typing.cast(typing.Any, None)
         )
         self.commandline = app.core.commandline
-        self.last_chan_selected = ""
         self.fixture_library = (
             getattr(self.lightshow, "fixture_library", None)
             or populate_builtin_library()
@@ -130,18 +129,10 @@ class PatchChannelsTab(Gtk.Box):
         self.import_gdtf_btn.connect("clicked", self._on_import_gdtf_clicked)
         self.toolbar.pack_start(self.import_gdtf_btn, False, False, 0)
 
-        self.legacy_toggle_btn = Gtk.ToggleButton(label="Channel Grid")
-        self.legacy_toggle_btn.connect("toggled", self._on_view_mode_toggled)
-        self.toolbar.pack_end(self.legacy_toggle_btn, False, False, 0)
-
         self.pack_start(self.toolbar, False, False, 2)
 
     def _setup_views(self) -> None:
-        """Create the Stack holding the Devices TreeView and Legacy Channel FlowBox."""
-        self.view_stack = Gtk.Stack()
-        self.view_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-
-        # 1. Modern Devices Table View
+        """Create the Devices TreeView and add it to the tab."""
         self.devices_store = Gtk.ListStore(
             int,  # COL_ID
             str,  # COL_NAME
@@ -174,46 +165,12 @@ class PatchChannelsTab(Gtk.Box):
             column.set_resizable(True)
             self.devices_treeview.append_column(column)
 
-        devices_scroll = Gtk.ScrolledWindow()
-        devices_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        devices_scroll.add(self.devices_treeview)
-        self.view_stack.add_named(devices_scroll, "devices")
-
-        # 2. Legacy Channels FlowBox View (retained for backward compatibility)
-        legacy_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        header = PatchChannelHeader()
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(1)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-
-        self.channels = []
-        for channel in range(MAX_CHANNELS):
-            self.channels.append(
-                PatchChannelWidget(
-                    channel + 1,
-                    self.app,
-                    typing.cast("olc.gtk3.patch_channels.PatchChannelsTab", self),
-                )
-            )
-            self.flowbox.add(self.channels[channel])
-
-        self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scrollable.add(self.flowbox)
-
-        legacy_box.pack_start(header, False, False, 2)
-        legacy_box.pack_start(self.scrollable, True, True, 0)
-        self.view_stack.add_named(legacy_box, "legacy")
-
-        self.pack_start(self.view_stack, True, True, 0)
-        self.view_stack.set_visible_child_name("devices")
-
-        child = self.flowbox.get_child_at_index(0)
-        if child is not None:
-            self.flowbox.select_child(child)
-            self.last_chan_selected = "0"
+        self.devices_scroll = Gtk.ScrolledWindow()
+        self.devices_scroll.set_policy(
+            Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC
+        )
+        self.devices_scroll.add(self.devices_treeview)
+        self.pack_start(self.devices_scroll, True, True, 0)
 
     # -------------------------------------------------------------------------
     # Device Table Data & Sorting
@@ -361,12 +318,6 @@ class PatchChannelsTab(Gtk.Box):
         if self.sort_mode != mode:
             self.set_sort_mode(mode)
 
-    def _on_view_mode_toggled(self, button: Gtk.ToggleButton) -> None:
-        if button.get_active():
-            self.view_stack.set_visible_child_name("legacy")
-        else:
-            self.view_stack.set_visible_child_name("devices")
-
     def _on_add_device_clicked(self, _button: Gtk.Button) -> None:
         next_id = 1
         while next_id <= MAX_CHANNELS and self.patch.is_patched(next_id):
@@ -479,7 +430,6 @@ class PatchChannelsTab(Gtk.Box):
     def refresh(self) -> None:
         """Refresh display."""
         self.populate_devices_store()
-        self.flowbox.queue_draw()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked."""
@@ -533,261 +483,3 @@ class PatchChannelsTab(Gtk.Box):
 
     def _keypress_backspace(self) -> None:
         self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_down(self) -> None:
-        """Select Next Channel."""
-        if self.last_chan_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.last_chan_selected = "0"
-        elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
-            self.flowbox.unselect_all()
-            child = self.flowbox.get_child_at_index(int(self.last_chan_selected) + 1)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.last_chan_selected = str(int(self.last_chan_selected) + 1)
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_up(self) -> None:
-        """Select Previous Channel."""
-        if self.last_chan_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.last_chan_selected = "0"
-        elif int(self.last_chan_selected) > 0:
-            self.flowbox.unselect_all()
-            child = self.flowbox.get_child_at_index(int(self.last_chan_selected) - 1)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.last_chan_selected = str(int(self.last_chan_selected) - 1)
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_c(self) -> None:
-        """Select Channel."""
-        self.flowbox.unselect_all()
-
-        keystring = self.commandline.get_string()
-        if keystring != "" and "." not in keystring:
-            channel = int(keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
-                child = self.flowbox.get_child_at_index(channel)
-                if child is not None:
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = str(channel)
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_kp_divide(self) -> None:
-        """Thru."""
-        self.thru()
-
-    def _keypress_greater(self) -> None:
-        """Thru."""
-        self.thru()
-
-    def thru(self) -> None:
-        """Thru."""
-        selected = self.flowbox.get_selected_children()
-        if len(selected) == 1:
-            child_widget = selected[0].get_child()
-            if child_widget is not None:
-                patchwidget = typing.cast("PatchChannelWidget", child_widget)
-                channel = patchwidget.channel - 1
-                self.last_chan_selected = str(channel)
-
-        if not self.last_chan_selected:
-            return
-
-        to_chan = int(self.commandline.get_string())
-
-        if to_chan > int(self.last_chan_selected):
-            for chan in range(int(self.last_chan_selected), to_chan):
-                child = self.flowbox.get_child_at_index(chan)
-                if child is not None:
-                    self.flowbox.select_child(child)
-        else:
-            for chan in range(to_chan - 1, int(self.last_chan_selected)):
-                child = self.flowbox.get_child_at_index(chan)
-                if child is not None:
-                    self.flowbox.select_child(child)
-        self.last_chan_selected = str(to_chan - 1)
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-    def _keypress_m(self) -> None:
-        """Modify Output."""
-        sel = self.flowbox.get_selected_children()
-        several = len(sel) > 1
-        channel: int = 0
-        for i, flowboxchild in enumerate(sel):
-            child_widget = flowboxchild.get_child()
-            if child_widget is None:
-                continue
-            widget = typing.cast("PatchChannelWidget", child_widget)
-            channel = widget.channel
-
-            keystring = self.commandline.get_string()
-            if keystring in ["", "0"]:
-                items = list(self.patch.channels[channel])
-                for item in items:
-                    output = item[0]
-                    universe = item[1]
-                    if output is not None and universe is not None:
-                        self.window.app.core.action_registry.execute(
-                            "patch.unpatch_output", output, universe
-                        )
-                self.channels[channel].queue_draw()
-
-                widget_chan = self.window.live_view.channels_view.get_channel_widget(
-                    channel
-                )
-                if widget_chan is not None:
-                    widget_chan.level = 0
-                    widget_chan.queue_draw()
-                self.window.live_view.channels_view.update()
-            else:
-                if "." in keystring:
-                    if keystring[0] == ".":
-                        output = self.patch.channels[channel][0][0]
-                        universe = int(keystring[1:])
-                        several = False
-                    else:
-                        split = keystring.split(".")
-                        output = int(split[0])
-                        universe = int(split[1])
-                else:
-                    output = int(keystring)
-                    universe = UNIVERSES[0]
-
-                if output is not None and universe is not None:
-                    if 0 < output + i <= 512:
-                        self._unpatch_channel(channel)
-                        out_val = output + i if several else output
-                        self.window.app.core.action_registry.execute(
-                            "patch.add_output", channel, out_val, universe
-                        )
-                        self.channels[channel - 1].queue_draw()
-
-                    index = UNIVERSES.index(universe)
-                    level = self.backend.dmx.frame[index][output]
-                    widget_chan = (
-                        self.window.live_view.channels_view.get_channel_widget(channel)
-                    )
-                    if widget_chan is not None:
-                        widget_chan.level = level
-                        widget_chan.queue_draw()
-                    self.window.live_view.channels_view.update()
-
-        if sel and channel < MAX_CHANNELS:
-            self.flowbox.unselect_all()
-            child = self.flowbox.get_child_at_index(channel)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.last_chan_selected = str(channel)
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_i(self) -> None:
-        """Insert Output."""
-        keystring = self.commandline.get_string()
-        if keystring in ["", "0"]:
-            return
-        sel = self.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            child_widget = flowboxchild.get_child()
-            if child_widget is None:
-                continue
-            widget = typing.cast("PatchChannelWidget", child_widget)
-            channel = widget.channel
-
-            if "." in keystring:
-                if keystring[0] == ".":
-                    output = self.patch.channels[channel][0][0]
-                    universe = int(keystring[1:])
-                else:
-                    split = keystring.split(".")
-                    output = int(split[0])
-                    universe = int(split[1])
-            else:
-                output = int(keystring)
-                universe = UNIVERSES[0]
-
-            if output is not None and universe is not None:
-                if 0 < output <= 512:
-                    self.window.app.core.action_registry.execute(
-                        "patch.add_output", channel, output, universe
-                    )
-                    self.channels[channel - 1].queue_draw()
-
-                    widget_chan = (
-                        self.window.live_view.channels_view.get_channel_widget(channel)
-                    )
-                    if widget_chan is not None:
-                        widget_chan.queue_draw()
-                    self.window.live_view.channels_view.update()
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_r(self) -> None:
-        """Remove Output."""
-        keystring = self.commandline.get_string()
-        if keystring in ["", "0"]:
-            return
-        sel = self.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            child_widget = flowboxchild.get_child()
-            if child_widget is None:
-                continue
-            widget = typing.cast("PatchChannelWidget", child_widget)
-            channel = widget.channel
-            if "." in keystring:
-                if keystring[0] != ".":
-                    split = keystring.split(".")
-                    output = int(split[0])
-                    universe = int(split[1])
-                else:
-                    return
-            else:
-                output = int(keystring)
-                universe = UNIVERSES[0]
-
-            if output is not None and universe is not None:
-                if (
-                    0 < output <= 512
-                    and [output, universe] in self.patch.channels[channel]
-                ):
-                    self.window.app.core.action_registry.execute(
-                        "patch.unpatch_output", output, universe
-                    )
-                    self.channels[channel - 1].queue_draw()
-
-                widget_chan = self.window.live_view.channels_view.get_channel_widget(
-                    channel
-                )
-                if widget_chan is not None:
-                    widget_chan.queue_draw()
-                self.window.live_view.channels_view.update()
-
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _unpatch(self, output: int, universe: int) -> None:
-        if universe in self.patch.outputs and output in self.patch.outputs[universe]:
-            self.window.app.core.action_registry.execute(
-                "patch.unpatch_output", output, universe
-            )
-
-    def _unpatch_channel(self, channel: int) -> None:
-        if channel in self.patch.channels:
-            items = list(self.patch.channels[channel])
-            for item in items:
-                output = item[0]
-                universe = item[1]
-                if output is not None and universe is not None:
-                    self.window.app.core.action_registry.execute(
-                        "patch.unpatch_output", output, universe
-                    )

@@ -27,7 +27,6 @@ from gi.repository import Gtk  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402
-from olc.gtk3.widgets.patch_channels import PatchChannelWidget  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
@@ -78,7 +77,7 @@ def test_patch_outputs_tab_behavior(app_gui: Application) -> None:
 
 
 def test_patch_channels_tab_behavior(app_gui: Application) -> None:
-    """Test PatchChannelsTab selection and data updating."""
+    """Test PatchChannelsTab device selection and data updating."""
     # 1. Open the patch channels tab
     app_gui.activate_action("patch_channels", None)
     process_events()
@@ -86,27 +85,37 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     assert app_gui.tabs is not None
     patch_chan_tab = app_gui.tabs.tabs.get("patch_channels")
     assert isinstance(patch_chan_tab, PatchChannelsTab)
-    assert patch_chan_tab.flowbox is not None
+    assert patch_chan_tab.devices_treeview is not None
+    assert patch_chan_tab.devices_store is not None
 
-    # 2. Select channel 5 (index 4)
-    children = patch_chan_tab.flowbox.get_children()
-    patch_chan_tab.flowbox.unselect_all()
-    assert len(children) > 4
-    child_widget = children[4]
-    assert isinstance(child_widget, Gtk.FlowBoxChild)
-    patch_chan_tab.flowbox.select_child(child_widget)
-    process_events()
-
-    selected = patch_chan_tab.flowbox.get_selected_children()
-    assert len(selected) == 1
-    widget = selected[0].get_child()
-    assert isinstance(widget, PatchChannelWidget)
-    assert widget.channel == 5, "Widget channel number should be 5."
-
-    # 3. Modify patch via core and check reflection in patch data
+    # 2. Patch a device and verify reflection in device table
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
-    app_gui.core.action_registry.execute("patch.add_output", 5, 10, 1)
+
+    dev = patch_chan_tab.add_patched_device(
+        device_id=5,
+        fixture_key="Generic:Dimmer",
+        universe=1,
+        address=10,
+        label="Front Dimmer",
+    )
     process_events()
 
-    assert app_gui.core.lightshow.patch.channels[5] == [[10, 1]]
+    assert dev.device_id == 5
+    assert len(patch_chan_tab.devices_store) == 1
+    row = patch_chan_tab.devices_store[0]
+    assert row[0] == 5  # COL_ID
+    assert row[1] == "Front Dimmer"  # COL_NAME
+
+    # 3. Select device in TreeView
+    selection = patch_chan_tab.devices_treeview.get_selection()
+    first_iter = patch_chan_tab.devices_store.get_iter_first()
+    assert first_iter is not None
+    selection.select_iter(first_iter)
+    assert patch_chan_tab.get_selected_device_id() == 5
+
+    # 4. Remove device and verify removal
+    removed = patch_chan_tab.remove_patched_device(5)
+    process_events()
+    assert removed is True
+    assert len(patch_chan_tab.devices_store) == 0
