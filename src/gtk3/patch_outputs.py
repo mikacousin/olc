@@ -524,9 +524,7 @@ class PatchOutputsTab(Gtk.Box):
             return
         idx = self.patch.universes.index(universe)
         for output in outputs:
-            if self.patch.outputs.get(universe) and self.patch.outputs[universe].get(
-                output + 1
-            ):
+            if self.patch.get_address_occupant(universe, output + 1) is not None:
                 output_idx = output + (idx * 512)
                 if output_idx < len(self.outputs):
                     self.outputs[output_idx].queue_draw()

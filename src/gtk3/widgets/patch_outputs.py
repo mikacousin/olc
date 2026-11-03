@@ -336,36 +336,107 @@ class PatchWidget(Gtk.DrawingArea):
         )
         cr.show_text(text)
 
-    def _draw_channel_number(
+    def _draw_channel_number(  # pylint: disable=too-many-locals
         self, cr: cairo.Context, allocation: Gdk.Rectangle
     ) -> None:
-        """Draw Channel number
+        """Draw Channel number and parameter name
 
         Args:
             cr: Cairo context
             allocation: Widget allocation
         """
-        cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_font_size(11 * self.scale)
+        param_info = self.lightshow.patch.get_address_parameter_info(
+            self.universe, self.output
+        )
+
         ch_num = 0
-        if (
-            self.universe in self.lightshow.patch.outputs
-            and self.output in self.lightshow.patch.outputs[self.universe]
-        ):
-            ch_num = self.lightshow.patch.outputs[self.universe][self.output][0]
+        is_simple_dimmer = True
+        short_name = ""
+        param_color = (1.0, 0.6, 0.2)
+
+        if param_info is not None:
+            ch_num = param_info.device_id
+            is_simple_dimmer = param_info.is_simple_dimmer
+            short_name = param_info.short_name
+            param_color = param_info.param_color
         else:
-            occ = self.lightshow.patch.get_address_occupant(self.universe, self.output)
-            if occ is not None:
-                ch_num = occ
-        if ch_num > 0:
-            text = str(ch_num)
-            (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+            if (
+                self.universe in self.lightshow.patch.outputs
+                and self.output in self.lightshow.patch.outputs[self.universe]
+            ):
+                ch_num = self.lightshow.patch.outputs[self.universe][self.output][0]
+            else:
+                occ = self.lightshow.patch.get_address_occupant(
+                    self.universe, self.output
+                )
+                if occ is not None:
+                    ch_num = occ
+
+        if ch_num <= 0:
+            return
+
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        base_font_size = 11.0 * self.scale
+        cr.set_font_size(base_font_size)
+
+        num_text = str(ch_num)
+
+        if is_simple_dimmer or not short_name:
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+            (_x, _y, width, height, _dx, _dy) = cr.text_extents(num_text)
             cr.move_to(
                 allocation.width / 2 - width / 2,
                 3 * (allocation.height / 4 - (height - 20) / 4),
             )
-            cr.show_text(text)
+            cr.show_text(num_text)
+        else:
+            self._draw_device_param_label(
+                cr, allocation, num_text, short_name, param_color, base_font_size
+            )
+
+    def _draw_device_param_label(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+        self,
+        cr: cairo.Context,
+        allocation: Gdk.Rectangle,
+        num_text: str,
+        short_name: str,
+        param_color: tuple[float, float, float],
+        base_font_size: float,
+    ) -> None:
+        """Draw circuit number left-justified and parameter label right-justified."""
+        padding = round(6 * self.scale)
+
+        # 1. Circuit number extent
+        cr.set_font_size(base_font_size)
+        (_x1, _y1, w_num, h_num, _dx1, _dy1) = cr.text_extents(num_text)
+        baseline_y = 3 * (allocation.height / 4 - (h_num - 20) / 4)
+
+        # 2. Parameter extent and font scaling if needed
+        param_font_size = 9.0 * self.scale
+        cr.set_font_size(param_font_size)
+        (_x2, _y2, w_param, _h2, _dx2, _dy2) = cr.text_extents(short_name)
+
+        max_available_param = (
+            allocation.width - 2 * padding - w_num - round(4 * self.scale)
+        )
+        if w_param > max_available_param and w_param > 0:
+            scale_factor = max_available_param / w_param
+            param_font_size = max(7.0 * self.scale, param_font_size * scale_factor)
+            cr.set_font_size(param_font_size)
+            (_x2, _y2, w_param, _h2, _dx2, _dy2) = cr.text_extents(short_name)
+
+        # 3. Draw circuit number on the left
+        cr.set_font_size(base_font_size)
+        cr.set_source_rgb(0.9, 0.6, 0.2)
+        cr.move_to(padding, baseline_y)
+        cr.show_text(num_text)
+
+        # 4. Draw parameter name on the right
+        cr.set_font_size(param_font_size)
+        cr.set_source_rgb(*param_color)
+        param_x = allocation.width - padding - w_param
+        cr.move_to(param_x, baseline_y)
+        cr.show_text(short_name)
 
     def _draw_output_level(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output level

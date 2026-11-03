@@ -18,6 +18,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
+import cairo
 import gi
 import pytest
 
@@ -119,3 +122,81 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     process_events()
     assert removed is True
     assert len(patch_chan_tab.devices_store) == 0
+
+
+def test_patch_widget_draw_dimmer_and_device(app_gui: Application) -> None:
+    """Test PatchWidget drawing for simple dimmer and multi-parameter device."""
+    app_gui.activate_action("patch_outputs", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
+    assert isinstance(patch_tab, PatchOutputsTab)
+
+    # 1. Clear patch and patch a simple dimmer on 1.1 and an RGB LED on 1.10
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+
+    from olc.devices.builtin import create_rgb_definition
+
+    app_gui.core.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1)
+    rgb_def = create_rgb_definition()
+    app_gui.core.lightshow.patch.patch_device(
+        device_id=12, fixture_def=rgb_def, universe=1, address=10
+    )
+    # Patch a 4-digit device to test font scaling
+    app_gui.core.lightshow.patch.patch_device(
+        device_id=1001, fixture_def=rgb_def, universe=1, address=20
+    )
+    process_events()
+
+    # 2. Render dimmer widget (output 1)
+    w_dim = patch_tab.outputs[0]
+    surface = cairo.ImageSurface(cairo.Format.ARGB32, 70, 70)
+    cr = cairo.Context(surface)
+    w_dim.do_draw(cr)
+
+    # 3. Render device widget (output 10, Red param)
+    w_rgb = patch_tab.outputs[9]
+    w_rgb.do_draw(cr)
+
+    # 4. Render 4-digit device widget (output 20)
+    w_large = patch_tab.outputs[19]
+    w_large.do_draw(cr)
+
+
+def test_patch_outputs_network_dmx_refresh_devices(app_gui: Application) -> None:
+    """Test that network DMX updates trigger queue_draw on device widgets."""
+    app_gui.activate_action("patch_outputs", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
+    assert isinstance(patch_tab, PatchOutputsTab)
+
+    from olc.devices.builtin import create_rgb_definition
+
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+
+    rgb_def = create_rgb_definition()
+    app_gui.core.lightshow.patch.patch_device(
+        device_id=5, fixture_def=rgb_def, universe=1, address=1
+    )
+    process_events()
+
+    # Mock queue_draw on the first 3 output widgets
+    w1 = patch_tab.outputs[0]
+    w2 = patch_tab.outputs[1]
+    w3 = patch_tab.outputs[2]
+
+    w1.queue_draw = MagicMock()
+    w2.queue_draw = MagicMock()
+    w3.queue_draw = MagicMock()
+
+    # Simulate network DMX changed on outputs 0, 1, 2
+    patch_tab.on_network_dmx_changed(1, [0, 1, 2])
+
+    assert w1.queue_draw.called
+    assert w2.queue_draw.called
+    assert w3.queue_draw.called

@@ -412,3 +412,132 @@ def test_fixture_exchange_clamping_warning() -> None:
     # 4. Applying to new device clamps to 180.0°
     new_dev.apply_device_values(cue1.device_values[1])
     assert new_dev.pan_degrees == pytest.approx(180.0)
+
+
+def test_address_parameter_info_dimmer_8bit() -> None:
+    """Test get_address_parameter_info for standard 8-bit dimmer."""
+    pm = PatchManager(universes=[1])
+    pm.patch_dimmer(channel=5, universe=1, address=10)
+
+    info = pm.get_address_parameter_info(1, 10)
+    assert info is not None
+    assert info.device_id == 5
+    assert info.is_simple_dimmer is True
+    assert info.short_name == ""
+
+
+def test_address_parameter_info_dimmer_16bit() -> None:
+    """Test get_address_parameter_info for 16-bit dimmer."""
+    pm = PatchManager(universes=[1])
+    pm.patch_dimmer(channel=6, universe=1, address=20, fine=True)
+
+    info_coarse = pm.get_address_parameter_info(1, 20)
+    assert info_coarse is not None
+    assert info_coarse.device_id == 6
+    assert info_coarse.is_simple_dimmer is False
+    assert info_coarse.short_name == "DIM"
+
+    info_fine = pm.get_address_parameter_info(1, 21)
+    assert info_fine is not None
+    assert info_fine.device_id == 6
+    assert info_fine.is_simple_dimmer is False
+    assert info_fine.short_name == "DIM_F"
+
+
+def test_address_parameter_info_rgb_led() -> None:
+    """Test get_address_parameter_info for RGB LED fixture."""
+    from olc.devices.builtin import create_rgb_definition
+
+    pm = PatchManager(universes=[1])
+    rgb_def = create_rgb_definition()
+    pm.patch_device(device_id=10, fixture_def=rgb_def, universe=1, address=30)
+
+    info_r = pm.get_address_parameter_info(1, 30)
+    assert info_r is not None
+    assert info_r.device_id == 10
+    assert info_r.is_simple_dimmer is False
+    assert info_r.short_name == "RED"
+    assert info_r.param_color == (1.0, 0.4, 0.4)
+
+    info_g = pm.get_address_parameter_info(1, 31)
+    assert info_g is not None
+    assert info_g.short_name == "GRN"
+    assert info_g.param_color == (0.35, 1.0, 0.35)
+
+    info_b = pm.get_address_parameter_info(1, 32)
+    assert info_b is not None
+    assert info_b.short_name == "BLU"
+    assert info_b.param_color == (0.4, 0.7, 1.0)
+
+
+def test_address_parameter_info_moving_head() -> None:
+    """Test get_address_parameter_info for 16-bit moving head fixture."""
+    pm = PatchManager(universes=[1])
+    mh_def = create_moving_head_definition()
+    pm.patch_device(
+        device_id=20,
+        fixture_def=mh_def,
+        universe=1,
+        address=50,
+        mode_name="Standard 8ch",
+    )
+
+    expected = [
+        (50, "PAN", (0.0, 0.82, 1.0)),
+        (51, "P_F", (0.0, 0.82, 1.0)),
+        (52, "TILT", (0.0, 0.82, 1.0)),
+        (53, "T_F", (0.0, 0.82, 1.0)),
+        (54, "DIM", (1.0, 0.6, 0.2)),
+        (55, "DIM_F", (1.0, 0.6, 0.2)),
+        (56, "SHUT", (1.0, 0.4, 0.8)),
+        (57, "ZOOM", (1.0, 0.8, 0.1)),
+    ]
+
+    for addr, exp_short, exp_color in expected:
+        info = pm.get_address_parameter_info(1, addr)
+        assert info is not None, f"Address {addr} should have parameter info"
+        assert info.device_id == 20
+        assert info.short_name == exp_short
+        assert info.param_color == exp_color
+
+
+def test_address_parameter_info_unpatch_and_clear() -> None:
+    """Test cache cleanup when unpatching or clearing patch."""
+    from olc.devices.builtin import create_rgb_definition
+
+    pm = PatchManager(universes=[1])
+    rgb_def = create_rgb_definition()
+    pm.patch_device(device_id=15, fixture_def=rgb_def, universe=1, address=40)
+    assert pm.get_address_parameter_info(1, 40) is not None
+
+    # Unpatch device
+    pm.unpatch_device(15)
+    assert pm.get_address_parameter_info(1, 40) is None
+    assert pm.get_address_parameter_info(1, 41) is None
+    assert pm.get_address_parameter_info(1, 42) is None
+
+    # Patch and clear
+    pm.patch_device(device_id=16, fixture_def=rgb_def, universe=1, address=40)
+    assert pm.get_address_parameter_info(1, 40) is not None
+    pm.patch_empty()
+    assert pm.get_address_parameter_info(1, 40) is None
+
+
+def test_address_parameter_info_collision_overwrite() -> None:
+    """Test cache updates when overwriting an address with force=True."""
+    from olc.devices.builtin import create_rgb_definition
+
+    pm = PatchManager(universes=[1])
+    rgb_def = create_rgb_definition()
+    pm.patch_device(device_id=30, fixture_def=rgb_def, universe=1, address=1)
+    info_30 = pm.get_address_parameter_info(1, 1)
+    assert info_30 is not None
+    assert info_30.device_id == 30
+    assert info_30.short_name == "RED"
+
+    # Overwrite address 1 with a dimmer
+    pm.patch_dimmer(channel=99, universe=1, address=1, force=True)
+    info = pm.get_address_parameter_info(1, 1)
+    assert info is not None
+    assert info.device_id == 99
+    assert info.is_simple_dimmer is True

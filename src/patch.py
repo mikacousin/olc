@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
 import typing
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -48,6 +49,97 @@ class PatchCollisionError(ValueError):
             f"already occupied by device {colliding_device_id} "
             f"(attempted by device {new_device_id})."
         )
+
+
+# pylint: disable=too-many-instance-attributes
+@dataclass(frozen=True)
+class AddressParameterInfo:
+    """Precomputed display metadata for a DMX address occupant."""
+
+    device_id: int
+    is_simple_dimmer: bool
+    channel_type: ChannelType
+    short_name: str
+    param_color: tuple[float, float, float]
+
+
+_CHANNEL_TYPE_SHORT_NAMES: dict[ChannelType, str] = {
+    ChannelType.INTENSITY: "DIM",
+    ChannelType.PAN: "PAN",
+    ChannelType.TILT: "TILT",
+    ChannelType.RED: "RED",
+    ChannelType.GREEN: "GRN",
+    ChannelType.BLUE: "BLU",
+    ChannelType.WHITE: "WHT",
+    ChannelType.AMBER: "AMB",
+    ChannelType.LIME: "LIM",
+    ChannelType.CYAN: "CYN",
+    ChannelType.INDIGO: "IND",
+    ChannelType.MAGENTA: "MAG",
+    ChannelType.YELLOW: "YEL",
+    ChannelType.COLOR_WHEEL: "CWHL",
+    ChannelType.COLOR_TEMP: "CTC",
+    ChannelType.GOBO_WHEEL: "GOB",
+    ChannelType.PRISM: "PRIS",
+    ChannelType.ZOOM: "ZOOM",
+    ChannelType.FOCUS: "FOC",
+    ChannelType.IRIS: "IRIS",
+    ChannelType.STROBE: "SHUT",
+    ChannelType.RESET: "RST",
+    ChannelType.MACRO: "MAC",
+}
+
+_CHANNEL_TYPE_COLORS: dict[ChannelType, tuple[float, float, float]] = {
+    ChannelType.PAN: (0.0, 0.82, 1.0),
+    ChannelType.TILT: (0.0, 0.82, 1.0),
+    ChannelType.RED: (1.0, 0.4, 0.4),
+    ChannelType.GREEN: (0.35, 1.0, 0.35),
+    ChannelType.BLUE: (0.4, 0.7, 1.0),
+    ChannelType.WHITE: (0.95, 0.95, 0.95),
+    ChannelType.AMBER: (1.0, 0.75, 0.0),
+    ChannelType.LIME: (0.8, 1.0, 0.2),
+    ChannelType.CYAN: (0.0, 1.0, 1.0),
+    ChannelType.MAGENTA: (1.0, 0.4, 1.0),
+    ChannelType.YELLOW: (1.0, 1.0, 0.3),
+    ChannelType.COLOR_WHEEL: (0.9, 0.6, 0.9),
+    ChannelType.COLOR_TEMP: (0.9, 0.6, 0.9),
+    ChannelType.INDIGO: (0.9, 0.6, 0.9),
+    ChannelType.GOBO_WHEEL: (1.0, 0.8, 0.1),
+    ChannelType.PRISM: (1.0, 0.8, 0.1),
+    ChannelType.ZOOM: (1.0, 0.8, 0.1),
+    ChannelType.FOCUS: (1.0, 0.8, 0.1),
+    ChannelType.IRIS: (1.0, 0.8, 0.1),
+    ChannelType.INTENSITY: (1.0, 0.6, 0.2),
+    ChannelType.STROBE: (1.0, 0.4, 0.8),
+}
+
+
+def get_channel_short_name(channel: Channel) -> str:
+    """Return a concise 2-5 character mnemonic for a fixture channel."""
+    suffix = ""
+    if channel.ultra_fine:
+        suffix = "_UF"
+    elif channel.fine:
+        suffix = "_F"
+
+    base_name = _CHANNEL_TYPE_SHORT_NAMES.get(channel.channel_type, "")
+    if not base_name:
+        lbl = (channel.label or "").strip().upper()
+        base_name = lbl[:4] if lbl and lbl != "GENERIC" else "GEN"
+
+    if suffix:
+        if base_name in ("PAN", "TILT"):
+            return f"{base_name[0]}{suffix}"
+        return f"{base_name}{suffix}"
+
+    return base_name
+
+
+def get_channel_category_color(
+    channel_type: ChannelType,
+) -> tuple[float, float, float]:
+    """Return Cairo RGB color tuple (values 0.0..1.0) for a given channel type."""
+    return _CHANNEL_TYPE_COLORS.get(channel_type, (0.75, 0.75, 0.75))
 
 
 # pylint: disable=too-many-instance-attributes
@@ -99,6 +191,7 @@ class PatchManager:
     devices: dict[int, LightingDevice]
     channels: dict[int, list[list[Optional[int]]]]
     outputs: dict[int, dict[int, list[int]]]
+    _address_param_cache: dict[tuple[int, int], AddressParameterInfo]
 
     def __init__(
         self,
@@ -110,6 +203,7 @@ class PatchManager:
             list(universes) if universes is not None else list(DEFAULT_UNIVERSES)
         )
         self.devices = {}
+        self._address_param_cache = {}
         self._grid: dict[int, np.ndarray] = {
             u: np.zeros(512, dtype=np.int32) for u in self.universes
         }
@@ -158,6 +252,23 @@ class PatchManager:
                 return occ
         if universe in self.outputs and address in self.outputs[universe]:
             return self.outputs[universe][address][0]
+        return None
+
+    def get_address_parameter_info(
+        self, universe: int, address: int
+    ) -> Optional[AddressParameterInfo]:
+        """Return precomputed display metadata for a DMX address occupant."""
+        if (universe, address) in self._address_param_cache:
+            return self._address_param_cache[(universe, address)]
+        occ = self.get_address_occupant(universe, address)
+        if occ is not None and occ > 0:
+            return AddressParameterInfo(
+                device_id=occ,
+                is_simple_dimmer=True,
+                channel_type=ChannelType.INTENSITY,
+                short_name="",
+                param_color=(1.0, 0.6, 0.2),
+            )
         return None
 
     def is_address_free(self, universe: int, address: int) -> bool:
@@ -268,10 +379,40 @@ class PatchManager:
         device.set_curve_provider(self._get_curve_by_id)
         self.devices[dev_id] = device
 
+        is_simple_dimmer = (
+            device.fixture_type == FixtureType.DIMMER
+            and len(device.channels) == 1
+            and not device.channels[0].fine
+            and not device.channels[0].ultra_fine
+        )
+
         for ch in device.channels:
             if ch.universe not in self._grid:
                 self.add_universe(ch.universe)
             self._grid[ch.universe][ch.address - 1] = dev_id
+
+            if is_simple_dimmer:
+                self._address_param_cache[(ch.universe, ch.address)] = (
+                    AddressParameterInfo(
+                        device_id=dev_id,
+                        is_simple_dimmer=True,
+                        channel_type=ChannelType.INTENSITY,
+                        short_name="",
+                        param_color=(1.0, 0.6, 0.2),
+                    )
+                )
+            else:
+                short_name = get_channel_short_name(ch)
+                param_color = get_channel_category_color(ch.channel_type)
+                self._address_param_cache[(ch.universe, ch.address)] = (
+                    AddressParameterInfo(
+                        device_id=dev_id,
+                        is_simple_dimmer=False,
+                        channel_type=ch.channel_type,
+                        short_name=short_name,
+                        param_color=param_color,
+                    )
+                )
 
             # Maintain legacy structures for intensity/dimmer channels
             if (
@@ -336,6 +477,7 @@ class PatchManager:
             return None
         device = self.devices.pop(device_id)
         for ch in device.channels:
+            self._address_param_cache.pop((ch.universe, ch.address), None)
             if (
                 ch.universe in self._grid
                 and self._grid[ch.universe][ch.address - 1] == device_id
@@ -354,6 +496,7 @@ class PatchManager:
 
     def unpatch_address(self, universe: int, address: int) -> Optional[int]:
         """Unpatch whatever occupies (universe, address). Returns device_id or None."""
+        self._address_param_cache.pop((universe, address), None)
         occupant = self.get_address_occupant(universe, address)
         if occupant is not None:
             if occupant in self.devices:
@@ -672,6 +815,7 @@ class PatchManager:
             self.on_patch_empty_cb()
         self.outputs = {}
         self.devices.clear()
+        self._address_param_cache.clear()
         for univ in self.universes:
             if univ in self._grid:
                 self._grid[univ].fill(0)
@@ -744,10 +888,19 @@ class PatchManager:
         if curve:
             self.devices[channel].set_curve_id(curve)
 
+        self._address_param_cache[(univ, output)] = AddressParameterInfo(
+            device_id=channel,
+            is_simple_dimmer=True,
+            channel_type=ChannelType.INTENSITY,
+            short_name="",
+            param_color=(1.0, 0.6, 0.2),
+        )
+
         self._numpy_cache_dirty = True
 
     def unpatch(self, channel: int, output: int, univ: int) -> None:
         """Unpatch an output from a channel (legacy method)."""
+        self._address_param_cache.pop((univ, output), None)
         if univ in self.outputs:
             self.outputs[univ].pop(output, None)
         if channel in self.channels and [output, univ] in self.channels[channel]:
