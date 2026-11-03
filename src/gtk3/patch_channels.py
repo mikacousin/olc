@@ -120,7 +120,7 @@ class PatchChannelsTab(Gtk.Box):
         self.toolbar.set_margin_end(6)
         self.toolbar.set_margin_top(4)
 
-        self.sort_toggle_btn = Gtk.ToggleButton(label="Sort: Logical (ID)")
+        self.sort_toggle_btn = Gtk.ToggleButton(label="Sort by Channels")
         self.sort_toggle_btn.connect("toggled", self._on_sort_toggled)
         self.toolbar.pack_start(self.sort_toggle_btn, False, False, 0)
 
@@ -168,7 +168,7 @@ class PatchChannelsTab(Gtk.Box):
         self.devices_treeview.get_selection().set_mode(Gtk.SelectionMode.SINGLE)
 
         columns_spec = [
-            ("ID", COL_ID, 60),
+            ("Channel", COL_ID, 70),
             ("Label / Name", COL_NAME, 180),
             ("Fixture", COL_TYPE, 150),
             ("Mode", COL_MODE, 120),
@@ -307,7 +307,7 @@ class PatchChannelsTab(Gtk.Box):
         if self.sort_toggle_btn.get_active() != is_phys:
             self.sort_toggle_btn.set_active(is_phys)
         self.sort_toggle_btn.set_label(
-            "Sort: Physical (Univ:Addr)" if is_phys else "Sort: Logical (ID)"
+            "Sort by Addresses" if is_phys else "Sort by Channels"
         )
         self.populate_devices_store()
 
