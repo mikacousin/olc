@@ -22,6 +22,7 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
@@ -281,3 +282,52 @@ def test_patch_device_updates_live_view_and_open_tabs(app_gui: Application) -> N
     process_events()
     assert ch5_child.get_visible() is False
     assert len(inspector.selected_devices) == 0
+
+
+def test_patch_channels_toolbar_global_operations(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test Patch 1:1 and Unpatch all toolbar buttons with confirmation dialogs."""
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+
+    # 1. Clear patch initially
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+    assert len(patch_tab.devices_store) == 0
+
+    # 2. Test Patch 1:1 CANCEL
+    monkeypatch.setattr(
+        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL
+    )
+    patch_tab.patch_1on1_btn.clicked()
+    process_events()
+    assert len(patch_tab.devices_store) == 0
+
+    # 3. Test Patch 1:1 OK
+    monkeypatch.setattr(
+        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK
+    )
+    patch_tab.patch_1on1_btn.clicked()
+    process_events()
+    assert len(patch_tab.devices_store) > 0
+
+    # 4. Test Unpatch all CANCEL
+    monkeypatch.setattr(
+        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL
+    )
+    patch_tab.unpatch_all_btn.clicked()
+    process_events()
+    assert len(patch_tab.devices_store) > 0
+
+    # 5. Test Unpatch all OK
+    monkeypatch.setattr(
+        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK
+    )
+    patch_tab.unpatch_all_btn.clicked()
+    process_events()
+    assert len(patch_tab.devices_store) == 0

@@ -129,6 +129,15 @@ class PatchChannelsTab(Gtk.Box):
         self.import_gdtf_btn.connect("clicked", self._on_import_gdtf_clicked)
         self.toolbar.pack_start(self.import_gdtf_btn, False, False, 0)
 
+        # Global patch operations (packed on the right)
+        self.unpatch_all_btn = Gtk.Button(label="Unpatch all")
+        self.unpatch_all_btn.connect("clicked", self._on_unpatch_all_clicked)
+        self.toolbar.pack_end(self.unpatch_all_btn, False, False, 0)
+
+        self.patch_1on1_btn = Gtk.Button(label="Patch 1:1")
+        self.patch_1on1_btn.connect("clicked", self._on_patch_1on1_clicked)
+        self.toolbar.pack_end(self.patch_1on1_btn, False, False, 0)
+
         self.pack_start(self.toolbar, False, False, 2)
 
     def _setup_views(self) -> None:
@@ -427,6 +436,43 @@ class PatchChannelsTab(Gtk.Box):
                 except Exception:  # pylint: disable=broad-exception-caught
                     pass
         chooser.destroy()
+
+    def _on_patch_1on1_clicked(self, _button: Gtk.Button) -> None:
+        """Prompt confirmation and execute 1:1 patch."""
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            destroy_with_parent=True,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Do you really want to reset and set patch to 1:1?\n"
+            "All current devices and custom patch settings will be replaced.",
+        )
+        dialog.set_title("Patch 1:1 confirmation")
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            self.app.core.action_registry.execute("patch.set_1on1")
+            self.refresh()
+            self.app.core.emit("patch.changed")
+
+    def _on_unpatch_all_clicked(self, _button: Gtk.Button) -> None:
+        """Prompt confirmation and clear all patch allocations."""
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            destroy_with_parent=True,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Do you really want to unpatch all devices and outputs?",
+        )
+        dialog.set_title("Unpatch all confirmation")
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            self.app.core.action_registry.execute("patch.clear")
+            self.refresh()
+            self.app.core.emit("patch.changed")
 
     def refresh(self) -> None:
         """Refresh display."""

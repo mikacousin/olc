@@ -73,17 +73,7 @@ class PatchOutputsTab(Gtk.Box):
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        # Header bar with buttons
-        header = Gtk.HeaderBar()
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button(label="Patch 1:1")
-        button.connect("clicked", self.on_button_clicked)
-        box.add(button)
-        button = Gtk.Button(label="Unpatch all")
-        button.connect("clicked", self.on_button_clicked)
-        box.add(button)
-        header.pack_end(box)
-
+        # Scrolled window with outputs FlowBox
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
@@ -115,25 +105,10 @@ class PatchOutputsTab(Gtk.Box):
             "selected-children-changed", self.on_selected_children_changed
         )
 
-        self.pack_start(header, False, False, 0)
         self.pack_start(scrolled, True, True, 0)
 
         # Register callback for network DMX updates
         self.backend.dmx.add_output_callback(self.on_network_dmx_changed)
-
-    def on_button_clicked(self, button: Gtk.Button) -> None:
-        """On buttons clicked
-
-        Args:
-            widget: Clicked button
-        """
-        button_label = button.get_label()
-
-        if button_label == "Unpatch all":
-            self.window.app.core.action_registry.execute("patch.clear")
-
-        elif button_label == "Patch 1:1":
-            self.window.app.core.action_registry.execute("patch.set_1on1")
 
     def refresh(self) -> None:
         """Refresh display"""

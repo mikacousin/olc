@@ -25,7 +25,6 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
@@ -53,22 +52,21 @@ def test_patch_outputs_tab_behavior(app_gui: Application) -> None:
         "Flowbox should contain 2048 outputs for all Universes."
     )
 
-    # 3. Trigger "Patch 1:1" button
+    # 3. Test patch changes reflection
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
     assert len(app_gui.core.lightshow.patch.outputs) == 0
 
-    patch_tab.on_button_clicked(Gtk.Button(label="Patch 1:1"))
+    app_gui.core.action_registry.execute("patch.set_1on1")
     process_events()
     assert len(app_gui.core.lightshow.patch.outputs) > 0, (
         "1:1 Patch should populate outputs."
     )
 
-    # 4. Trigger "Unpatch all" button
-    patch_tab.on_button_clicked(Gtk.Button(label="Unpatch all"))
+    app_gui.core.action_registry.execute("patch.clear")
     process_events()
     assert len(app_gui.core.lightshow.patch.outputs) == 0, (
-        "Unpatch all should clear outputs."
+        "Unpatch should empty outputs."
     )
 
     # 5. Undo unpatch all
