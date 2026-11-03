@@ -32,6 +32,7 @@ from olc.gtk3.dialogs.patch_device import (  # noqa: E402
 )
 from olc.gtk3.patch_channels import (  # noqa: E402
     COL_ADDRESS,
+    COL_CURVE,
     COL_FOOTPRINT,
     COL_ID,
     COL_MODE,
@@ -331,3 +332,58 @@ def test_patch_channels_toolbar_global_operations(
     patch_tab.unpatch_all_btn.clicked()
     process_events()
     assert len(patch_tab.devices_store) == 0
+
+
+def test_patch_channels_curve_popover_interaction(
+    app_gui: Application,
+) -> None:
+    """Test clicking curve column opens popover and selecting curve updates device."""
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+
+    # Patch a dimmer
+    app_gui.core.action_registry.execute("patch.clear")
+    patch_tab.patch.patch_dimmer(channel=5, universe=1, address=10, curve=0)
+    patch_tab.refresh()
+    process_events()
+
+    assert len(patch_tab.devices_store) == 1
+    row_curve = patch_tab.devices_store[0][COL_CURVE]
+    assert "Linear" in row_curve or "0" in row_curve
+
+    # Trigger curve cell opening
+    assert patch_tab.curve_column is not None
+    opened = patch_tab._open_curve_popover_at_cell(
+        patch_tab.devices_treeview,
+        Gtk.TreePath.new_from_string("0"),
+        patch_tab.curve_column,
+    )
+    assert opened is True
+    assert patch_tab._active_curve_device_id == 5
+
+    # Test popover navigation
+    popover = patch_tab.curve_popover
+    assert popover.stack.get_visible_child_name() == "0"
+
+    # Simulate navigation next button
+    next_btn = Gtk.Button.new_with_label(">")
+    popover._on_nav_clicked(next_btn)
+    new_child = popover.stack.get_visible_child_name()
+    assert new_child != "0"
+
+    # Select curve
+    popover.select_curve(1)
+    process_events()
+
+    dev = patch_tab.patch.get_device(5)
+    assert dev is not None
+    assert dev.curve_id == 1
+    assert patch_tab.patch.outputs[1][10][1] == 1
+
+    # Check that treeview refreshed
+    updated_curve_name = patch_tab.devices_store[0][COL_CURVE]
+    assert updated_curve_name != row_curve

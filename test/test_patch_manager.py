@@ -541,3 +541,35 @@ def test_address_parameter_info_collision_overwrite() -> None:
     assert info is not None
     assert info.device_id == 99
     assert info.is_simple_dimmer is True
+
+
+def test_action_patch_set_device_curve() -> None:
+    """Test PatchSetDeviceCurveAction execute, undo, and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+    patch.patch_dimmer(channel=1, universe=1, address=1, curve=0)
+    dev = patch.get_device(1)
+    assert dev is not None
+    assert dev.curve_id == 0
+    assert patch.outputs[1][1][1] == 0
+
+    # Execute action to change curve to 2
+    app.action_registry.execute("patch.set_device_curve", 1, 2)
+    assert dev.curve_id == 2
+    assert patch.outputs[1][1][1] == 2
+
+    # Undo action
+    app.history.undo()
+    assert dev.curve_id == 0
+    assert patch.outputs[1][1][1] == 0
+
+    # Redo action
+    app.history.redo()
+    assert dev.curve_id == 2
+    assert patch.outputs[1][1][1] == 2
+
+    # Test error when device does not exist
+    with pytest.raises(ValueError, match="Device 999 is not patched"):
+        app.action_registry.execute("patch.set_device_curve", 999, 1)

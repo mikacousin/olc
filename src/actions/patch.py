@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.devices.device import LightingDevice
+from olc.devices.device import ChannelType, LightingDevice
 from olc.devices.fixture import FixtureDefinition
 
 if typing.TYPE_CHECKING:
@@ -299,6 +299,67 @@ class PatchSetOutputCurveAction(Action):
             self.app.emit("patch.changed")
 
 
+class PatchSetDeviceCurveAction(Action):
+    """Action to set the transfer curve of a lighting device."""
+
+    name = "patch.set_device_curve"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.curve: int = 0
+        self.old_curve: int = 0
+
+    def configure(self, device_id: int, curve: int) -> None:
+        """Configure the action with the device ID and new curve.
+
+        Args:
+            device_id: The lighting device ID.
+            curve: The new transfer curve index.
+        """
+        self.device_id = device_id
+        self.curve = curve
+
+    def _apply_curve(self, curve_id: int) -> None:
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        dev.set_curve_id(curve_id)
+        for ch in dev.channels:
+            if (
+                ch.channel_type == ChannelType.INTENSITY
+                and not ch.fine
+                and not ch.ultra_fine
+            ):
+                if (
+                    ch.universe in patch.outputs
+                    and ch.address in patch.outputs[ch.universe]
+                ):
+                    patch.outputs[ch.universe][ch.address][1] = curve_id
+        patch.invalidate_cache()
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def execute(self) -> None:
+        """Execute the action, setting the curve on the device and intensity outputs."""
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        self.old_curve = dev.curve_id
+        self._apply_curve(self.curve)
+
+    def undo(self) -> None:
+        """Undo the action, restoring the previous curve."""
+        self._apply_curve(self.old_curve)
+
+    def redo(self) -> None:
+        """Redo the action, re-applying the configured curve."""
+        self._apply_curve(self.curve)
+
+
 class PatchSelectOutputAction(Action):
     """Action to select DMX outputs."""
 
@@ -457,6 +518,7 @@ __all__ = [
     "PatchDeviceAction",
     "PatchSelectOutputAction",
     "PatchSet1on1Action",
+    "PatchSetDeviceCurveAction",
     "PatchSetOutputCurveAction",
     "PatchUnpatchDeviceAction",
     "PatchUnpatchOutputAction",

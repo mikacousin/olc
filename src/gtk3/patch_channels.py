@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 from typing import Any, Callable, Optional
 
 from gi.repository import Gdk, Gtk
@@ -25,6 +26,8 @@ from olc.define import MAX_CHANNELS
 from olc.devices.builtin import populate_builtin_library
 from olc.devices.gdtf import GdtfImporter
 from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
+from olc.gtk3.widgets.curve import get_curve_display_name
+from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -73,6 +76,9 @@ class PatchChannelsTab(Gtk.Box):
     remove_device_btn: Gtk.Button
     exchange_btn: Gtk.Button
     import_gdtf_btn: Gtk.Button
+    curve_column: Optional[Gtk.TreeViewColumn]
+    curve_popover: CurveSelectionPopover
+    _active_curve_device_id: Optional[int]
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self, app: Application) -> None:
@@ -95,6 +101,11 @@ class PatchChannelsTab(Gtk.Box):
             or populate_builtin_library()
         )
         self.sort_mode = "logical"
+        self.curve_column = None
+        self._active_curve_device_id = None
+        self.curve_popover = CurveSelectionPopover(
+            self.lightshow, self._on_curve_selected
+        )
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
@@ -172,7 +183,13 @@ class PatchChannelsTab(Gtk.Box):
             column.add_attribute(renderer, "text", col_idx)
             column.set_min_width(min_width)
             column.set_resizable(True)
+            if col_idx == COL_CURVE:
+                self.curve_column = column
             self.devices_treeview.append_column(column)
+
+        self.devices_treeview.connect(
+            "button-press-event", self._on_treeview_button_press
+        )
 
         self.devices_scroll = Gtk.ScrolledWindow()
         self.devices_scroll.set_policy(
@@ -196,7 +213,14 @@ class PatchChannelsTab(Gtk.Box):
             devices.sort(key=lambda d: d.device_id)
 
         for dev in devices:
-            curve_str = "Linear" if dev.curve_id == 0 else f"Curve #{dev.curve_id}"
+            curve = self.lightshow.curves.get_curve(dev.curve_id)
+            curve_str = (
+                get_curve_display_name(curve)
+                if curve is not None
+                else (
+                    _("Linear") if dev.curve_id == 0 else f"Curve #{dev.curve_id}"
+                )
+            )
             mode_str = dev.mode_name if dev.mode_name else "-"
             self.devices_store.append(
                 [
@@ -210,6 +234,69 @@ class PatchChannelsTab(Gtk.Box):
                     curve_str,
                 ]
             )
+
+    def _open_curve_popover_at_cell(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> bool:
+        """Open curve popover pointing to the specified cell."""
+        model = treeview.get_model()
+        if model is None:
+            return False
+        treeiter = model.get_iter(path)
+        device_id = int(model.get_value(treeiter, COL_ID))
+        dev = self.patch.devices.get(device_id)
+        if dev is None:
+            return False
+
+        self._active_curve_device_id = device_id
+        treeview.get_selection().select_path(path)
+
+        rect = treeview.get_cell_area(path, col)
+        rect_x, rect_y = treeview.convert_bin_window_to_widget_coords(
+            rect.x, rect.y
+        )
+        pointing_rect = Gdk.Rectangle()
+        pointing_rect.x = rect_x
+        pointing_rect.y = rect_y
+        pointing_rect.width = rect.width
+        pointing_rect.height = rect.height
+
+        self.curve_popover.open_for_curve(
+            dev.curve_id, relative_to=treeview, pointing_to=pointing_rect
+        )
+        return True
+
+    def _on_treeview_button_press(
+        self, treeview: Gtk.TreeView, event: Gdk.EventButton
+    ) -> bool:
+        """Handle button press on devices TreeView.
+
+        Opens curve popover when clicking the curve column.
+
+        Args:
+            treeview: The Gtk.TreeView instance.
+            event: The button press event.
+        """
+        if event.button != 1 or self.curve_column is None:
+            return False
+
+        path_info = treeview.get_path_at_pos(int(event.x), int(event.y))
+        if not path_info:
+            return False
+
+        path, col, _cell_x, _cell_y = path_info
+        if path is not None and col is not None and col == self.curve_column:
+            return self._open_curve_popover_at_cell(treeview, path, col)
+        return False
+
+    def _on_curve_selected(self, curve_id: int) -> None:
+        """Handle curve selection from popover."""
+        if self._active_curve_device_id is None:
+            return
+        self.app.core.action_registry.execute(
+            "patch.set_device_curve", self._active_curve_device_id, curve_id
+        )
+        self.refresh()
 
     def set_sort_mode(self, mode: str) -> None:
         """Set device table sort mode ('logical' or 'physical')."""
