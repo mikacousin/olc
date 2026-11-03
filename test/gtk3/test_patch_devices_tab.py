@@ -33,6 +33,7 @@ from olc.gtk3.patch_channels import (  # noqa: E402
     COL_ADDRESS,
     COL_FOOTPRINT,
     COL_ID,
+    COL_MODE,
     COL_NAME,
     COL_TYPE,
     COL_UNIVERSE,
@@ -85,7 +86,9 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
     rows_logical = [patch_tab.devices_store[i] for i in range(n_rows)]
     assert [r[COL_ID] for r in rows_logical] == [5, 10, 20]
     assert rows_logical[0][COL_NAME] == "Front Spot"
-    assert rows_logical[0][COL_TYPE] == "MOVING_HEAD"
+    assert rows_logical[0][COL_TYPE] == "Moving Head Spot"
+    assert rows_logical[0][COL_MODE] == "Standard 8ch"
+    assert rows_logical[0][COL_ADDRESS] == "200-207"
     assert rows_logical[0][COL_FOOTPRINT] == 8
 
     # 2. Physical sort (by (universe, address) ascending: U1:100, U1:200, U2:50)
@@ -94,9 +97,9 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
     rows_physical = [patch_tab.devices_store[i] for i in range(n_rows)]
     assert [r[COL_ID] for r in rows_physical] == [20, 5, 10]
     assert [(r[COL_UNIVERSE], r[COL_ADDRESS]) for r in rows_physical] == [
-        (1, 100),
-        (1, 200),
-        (2, 50),
+        (1, "100-103"),
+        (1, "200-207"),
+        (2, "50"),
     ]
 
 
@@ -134,7 +137,9 @@ def test_patch_device_collision_and_fixture_exchange(app_gui: Application) -> No
         new_fixture_key="Generic:Moving Head Spot",
     )
     assert exchanged.channel_count() == 8
-    assert patch_tab.devices_store[0][COL_TYPE] == "MOVING_HEAD"
+    assert patch_tab.devices_store[0][COL_TYPE] == "Moving Head Spot"
+    assert patch_tab.devices_store[0][COL_MODE] == "Standard 8ch"
+    assert patch_tab.devices_store[0][COL_ADDRESS] == "10-17"
     assert patch_tab.devices_store[0][COL_FOOTPRINT] == 8
 
     # Remove Device #1

@@ -1032,3 +1032,51 @@ def test_set_parameter_percent_multi_resolution() -> None:
     dev.set_parameter_percent(ChannelType.PAN, 75.0)
     assert dev.get_parameter_percent(ChannelType.PAN) == pytest.approx(75.0, abs=0.01)
     assert dev.pan_24bit == pytest.approx(round(0.75 * 16777215), abs=2)
+
+
+def test_fixture_name_and_address_range_str() -> None:
+    """Verify fixture_name and address_range_str on LightingDevice."""
+    # 1. Generic Dimmer (1 channel)
+    dim_def = create_dimmer_definition(fine=False)
+    dev_dim = dim_def.instantiate(fixture_id=1, label="Dim1", universe=1, address=5)
+    assert dev_dim.fixture_name == "Dimmer"
+    assert dev_dim.address_range_str == "5"
+
+    # 2. Generic Dimmer 16-bit (2 channels)
+    dim16_def = create_dimmer_definition(fine=True)
+    dev_dim16 = dim16_def.instantiate(
+        fixture_id=2, label="Dim16", universe=1, address=10
+    )
+    assert dev_dim16.fixture_name == "Dimmer 16-bit"
+    assert dev_dim16.address_range_str == "10-11"
+
+    # 3. Generic Moving Head (8 channels)
+    mh_def = create_moving_head_definition()
+    dev_mh = mh_def.instantiate(
+        fixture_id=3, label="MH", universe=1, address=20, mode_name="Standard 8ch"
+    )
+    assert dev_mh.fixture_name == "Moving Head Spot"
+    assert dev_mh.address_range_str == "20-27"
+
+    # 4. Third-party manufacturer fixture
+    dev_custom = LightingDevice(
+        fixture_id=4,
+        label="Custom",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 100),
+            Channel(ChannelType.PAN, 1, 101),
+        ],
+        manufacturer="Robe",
+        model="Robin Pointe",
+    )
+    assert dev_custom.fixture_name == "Robe Robin Pointe"
+    assert dev_custom.address_range_str == "100-101"
+
+    # 5. Empty channels device
+    dev_empty = LightingDevice(
+        fixture_id=5,
+        label="Empty",
+        fixture_type=FixtureType.GENERIC,
+    )
+    assert dev_empty.address_range_str == "-"

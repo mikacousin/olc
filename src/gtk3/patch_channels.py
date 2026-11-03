@@ -43,10 +43,10 @@ if typing.TYPE_CHECKING:
 COL_ID = 0
 COL_NAME = 1
 COL_TYPE = 2
-COL_UNIVERSE = 3
-COL_ADDRESS = 4
-COL_FOOTPRINT = 5
-COL_MODE = 6
+COL_MODE = 3
+COL_UNIVERSE = 4
+COL_ADDRESS = 5
+COL_FOOTPRINT = 6
 COL_CURVE = 7
 
 
@@ -137,10 +137,10 @@ class PatchChannelsTab(Gtk.Box):
             int,  # COL_ID
             str,  # COL_NAME
             str,  # COL_TYPE
-            int,  # COL_UNIVERSE
-            int,  # COL_ADDRESS
-            int,  # COL_FOOTPRINT
             str,  # COL_MODE
+            int,  # COL_UNIVERSE
+            str,  # COL_ADDRESS
+            int,  # COL_FOOTPRINT
             str,  # COL_CURVE
         )
         self.devices_treeview = Gtk.TreeView(model=self.devices_store)
@@ -150,11 +150,11 @@ class PatchChannelsTab(Gtk.Box):
         columns_spec = [
             ("ID", COL_ID, 60),
             ("Label / Name", COL_NAME, 180),
-            ("Type", COL_TYPE, 120),
+            ("Fixture", COL_TYPE, 150),
+            ("Mode", COL_MODE, 120),
             ("Universe", COL_UNIVERSE, 80),
-            ("Address", COL_ADDRESS, 80),
+            ("Address", COL_ADDRESS, 90),
             ("Footprint", COL_FOOTPRINT, 80),
-            ("Patch / Footprint", COL_MODE, 140),
             ("Curve", COL_CURVE, 100),
         ]
         for title, col_idx, min_width in columns_spec:
@@ -188,15 +188,16 @@ class PatchChannelsTab(Gtk.Box):
 
         for dev in devices:
             curve_str = "Linear" if dev.curve_id == 0 else f"Curve #{dev.curve_id}"
+            mode_str = dev.mode_name if dev.mode_name else "-"
             self.devices_store.append(
                 [
                     dev.device_id,
                     dev.label or f"Device {dev.device_id}",
-                    dev.fixture_type.value.upper(),
+                    dev.fixture_name,
+                    mode_str,
                     dev.universe,
-                    dev.address,
+                    dev.address_range_str,
                     dev.channel_count(),
-                    dev.patch_summary(),
                     curve_str,
                 ]
             )

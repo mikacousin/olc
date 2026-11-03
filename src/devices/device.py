@@ -101,6 +101,30 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         u = self.universe
         return min(ch.address for ch in self.channels if ch.universe == u)
 
+    @property
+    def fixture_name(self) -> str:
+        """Human-readable fixture profile name (e.g. 'Moving Head Spot', 'LED RGB')."""
+        if self.model:
+            if self.manufacturer and self.manufacturer.lower() != "generic":
+                return f"{self.manufacturer} {self.model}"
+            return self.model
+        return self.fixture_type.value.replace("_", " ").title()
+
+    @property
+    def address_range_str(self) -> str:
+        """Return human-readable address range string (e.g. '10-17' or '5')."""
+        if not self.channels:
+            return "-"
+        u = self.universe
+        same_univ_addrs = [ch.address for ch in self.channels if ch.universe == u]
+        if not same_univ_addrs:
+            return "-"
+        start = min(same_univ_addrs)
+        end = max(same_univ_addrs)
+        if start == end:
+            return str(start)
+        return f"{start}-{end}"
+
     def set_curve_id(self, curve_id: int) -> None:
         """Set curve ID for the device intensity transfer function."""
         self.curve_id = max(0, int(curve_id))
