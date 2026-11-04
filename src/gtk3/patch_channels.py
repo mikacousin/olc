@@ -52,6 +52,28 @@ COL_ADDRESS = 5
 COL_FOOTPRINT = 6
 COL_CURVE = 7
 
+# Visual column order depending on sort mode
+_LOGICAL_COL_ORDER = [
+    COL_ID,
+    COL_NAME,
+    COL_TYPE,
+    COL_MODE,
+    COL_UNIVERSE,
+    COL_ADDRESS,
+    COL_FOOTPRINT,
+    COL_CURVE,
+]
+_PHYSICAL_COL_ORDER = [
+    COL_UNIVERSE,
+    COL_ADDRESS,
+    COL_ID,
+    COL_NAME,
+    COL_TYPE,
+    COL_MODE,
+    COL_FOOTPRINT,
+    COL_CURVE,
+]
+
 
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class PatchChannelsTab(Gtk.Box):
@@ -79,6 +101,7 @@ class PatchChannelsTab(Gtk.Box):
     curve_column: Optional[Gtk.TreeViewColumn]
     curve_popover: CurveSelectionPopover
     _active_curve_device_id: Optional[int]
+    tree_columns: dict[int, Gtk.TreeViewColumn]
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self, app: Application) -> None:
@@ -103,6 +126,7 @@ class PatchChannelsTab(Gtk.Box):
         self.sort_mode = "logical"
         self.curve_column = None
         self._active_curve_device_id = None
+        self.tree_columns = {}
         self.curve_popover = CurveSelectionPopover(
             self.lightshow, self._on_curve_selected
         )
@@ -185,7 +209,10 @@ class PatchChannelsTab(Gtk.Box):
             column.set_resizable(True)
             if col_idx == COL_CURVE:
                 self.curve_column = column
+            self.tree_columns[col_idx] = column
             self.devices_treeview.append_column(column)
+
+        self._reorder_columns_for_mode(self.sort_mode)
 
         self.devices_treeview.connect(
             "button-press-event", self._on_treeview_button_press
@@ -217,9 +244,7 @@ class PatchChannelsTab(Gtk.Box):
             curve_str = (
                 get_curve_display_name(curve)
                 if curve is not None
-                else (
-                    _("Linear") if dev.curve_id == 0 else f"Curve #{dev.curve_id}"
-                )
+                else (_("Linear") if dev.curve_id == 0 else f"Curve #{dev.curve_id}")
             )
             mode_str = dev.mode_name if dev.mode_name else "-"
             self.devices_store.append(
@@ -252,9 +277,7 @@ class PatchChannelsTab(Gtk.Box):
         treeview.get_selection().select_path(path)
 
         rect = treeview.get_cell_area(path, col)
-        rect_x, rect_y = treeview.convert_bin_window_to_widget_coords(
-            rect.x, rect.y
-        )
+        rect_x, rect_y = treeview.convert_bin_window_to_widget_coords(rect.x, rect.y)
         pointing_rect = Gdk.Rectangle()
         pointing_rect.x = rect_x
         pointing_rect.y = rect_y
@@ -298,6 +321,16 @@ class PatchChannelsTab(Gtk.Box):
         )
         self.refresh()
 
+    def _reorder_columns_for_mode(self, mode: str) -> None:
+        """Reorder TreeView columns visually according to sort mode."""
+        col_order = _PHYSICAL_COL_ORDER if mode == "physical" else _LOGICAL_COL_ORDER
+        prev_col: Optional[Gtk.TreeViewColumn] = None
+        for col_idx in col_order:
+            col = self.tree_columns.get(col_idx)
+            if col is not None:
+                self.devices_treeview.move_column_after(col, prev_col)
+                prev_col = col
+
     def set_sort_mode(self, mode: str) -> None:
         """Set device table sort mode ('logical' or 'physical')."""
         if mode not in ("logical", "physical"):
@@ -309,6 +342,7 @@ class PatchChannelsTab(Gtk.Box):
         self.sort_toggle_btn.set_label(
             "Sort by Addresses" if is_phys else "Sort by Channels"
         )
+        self._reorder_columns_for_mode(mode)
         self.populate_devices_store()
 
     def toggle_sort_mode(self) -> str:

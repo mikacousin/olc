@@ -92,6 +92,19 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
     assert rows_logical[0][COL_MODE] == "Standard 8ch"
     assert rows_logical[0][COL_ADDRESS] == "200-207"
     assert rows_logical[0][COL_FOOTPRINT] == 8
+    logical_titles = [
+        col.get_title() for col in patch_tab.devices_treeview.get_columns()
+    ]
+    assert logical_titles == [
+        "Channel",
+        "Label / Name",
+        "Fixture",
+        "Mode",
+        "Universe",
+        "Address",
+        "Footprint",
+        "Curve",
+    ]
 
     # 2. Physical sort (by (universe, address) ascending: U1:100, U1:200, U2:50)
     patch_tab.toggle_sort_mode()
@@ -103,6 +116,26 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
         (1, "200-207"),
         (2, "50"),
     ]
+    physical_titles = [
+        col.get_title() for col in patch_tab.devices_treeview.get_columns()
+    ]
+    assert physical_titles == [
+        "Universe",
+        "Address",
+        "Channel",
+        "Label / Name",
+        "Fixture",
+        "Mode",
+        "Footprint",
+        "Curve",
+    ]
+
+    # 3. Toggle back to logical
+    patch_tab.toggle_sort_mode()
+    assert patch_tab.sort_mode == "logical"
+    assert [
+        col.get_title() for col in patch_tab.devices_treeview.get_columns()
+    ] == logical_titles
 
 
 def test_patch_device_collision_and_fixture_exchange(app_gui: Application) -> None:
@@ -302,33 +335,25 @@ def test_patch_channels_toolbar_global_operations(
     assert len(patch_tab.devices_store) == 0
 
     # 2. Test Patch 1:1 CANCEL
-    monkeypatch.setattr(
-        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL
-    )
+    monkeypatch.setattr(Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL)
     patch_tab.patch_1on1_btn.clicked()
     process_events()
     assert len(patch_tab.devices_store) == 0
 
     # 3. Test Patch 1:1 OK
-    monkeypatch.setattr(
-        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK
-    )
+    monkeypatch.setattr(Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK)
     patch_tab.patch_1on1_btn.clicked()
     process_events()
     assert len(patch_tab.devices_store) > 0
 
     # 4. Test Unpatch all CANCEL
-    monkeypatch.setattr(
-        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL
-    )
+    monkeypatch.setattr(Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.CANCEL)
     patch_tab.unpatch_all_btn.clicked()
     process_events()
     assert len(patch_tab.devices_store) > 0
 
     # 5. Test Unpatch all OK
-    monkeypatch.setattr(
-        Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK
-    )
+    monkeypatch.setattr(Gtk.MessageDialog, "run", lambda _self: Gtk.ResponseType.OK)
     patch_tab.unpatch_all_btn.clicked()
     process_events()
     assert len(patch_tab.devices_store) == 0
