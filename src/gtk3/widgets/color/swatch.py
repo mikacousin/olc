@@ -41,19 +41,6 @@ _MATCH_BADGE_RGB: dict[str, cp.RGB] = {
     "out": (0.88, 0.31, 0.31),
 }
 
-_CSS = b"""
-.olc-match-exact { color: #5fbf5f; }
-.olc-match-close { color: #a8c85a; }
-.olc-match-approx { color: #e0a030; }
-.olc-match-out { color: #e05050; }
-button.olc-swatch {
-    padding: 1px;
-    margin: 0px;
-    min-width: 0px;
-    min-height: 0px;
-}
-"""
-
 
 class SwatchButton(Gtk.Button):  # pylint: disable=too-few-public-methods
     """Small flat button filled with a color, optional gel code, and ΔE badge."""
@@ -78,11 +65,7 @@ class SwatchButton(Gtk.Button):  # pylint: disable=too-few-public-methods
         self.set_valign(Gtk.Align.START)
         self.set_hexpand(False)
         self.set_vexpand(False)
-        css = Gtk.CssProvider()
-        css.load_from_data(_CSS)
-        ctx = self.get_style_context()
-        ctx.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        ctx.add_class("olc-swatch")
+        self.get_style_context().add_class("olc-swatch")
         area = Gtk.DrawingArea()
         area.set_size_request(SWATCH_WIDTH, SWATCH_HEIGHT)
         area.set_halign(Gtk.Align.CENTER)

@@ -50,6 +50,7 @@ class FaderEdit(Gtk.Box):
         settings: Gio.Settings,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.get_style_context().add_class("olc-fader-box")
         self.page = page
         self.index = index
         self.lightshow = lightshow
@@ -100,7 +101,7 @@ class FaderEdit(Gtk.Box):
     def _fader_none(self) -> None:
         """Create edition of not defined fader"""
         self.label.set_markup(f"<span foreground='#666666'>Fader {self.index}</span>")
-        self.set_name("fader_box_empty")
+        self.get_style_context().add_class("empty")
         self.type_button.set_label("")
         self.contents_button = Gtk.MenuButton()
         self.contents_button.set_label("")
@@ -108,7 +109,7 @@ class FaderEdit(Gtk.Box):
     def _fader_main(self) -> None:
         """Create edition of main fader"""
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
-        self.set_name("fader_box")
+        self.get_style_context().remove_class("empty")
         self.type_button.set_label("Main Fader")
         self.contents_button = Gtk.MenuButton()
         self.contents_button.set_label("")
@@ -117,7 +118,7 @@ class FaderEdit(Gtk.Box):
         """Create edition of group fader"""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
-        self.set_name("fader_box")
+        self.get_style_context().remove_class("empty")
         self.type_button.set_label("Group")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
@@ -137,7 +138,7 @@ class FaderEdit(Gtk.Box):
         """Create edition of sequence fader"""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
-        self.set_name("fader_box")
+        self.get_style_context().remove_class("empty")
         self.type_button.set_label("Sequence")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
@@ -157,7 +158,7 @@ class FaderEdit(Gtk.Box):
         """Create edition of preset fader"""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
-        self.set_name("fader_box")
+        self.get_style_context().remove_class("empty")
         self.type_button.set_label("Preset")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)

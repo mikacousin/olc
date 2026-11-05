@@ -61,7 +61,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.header.props.title = "Virtual Console"
         self.set_titlebar(self.header)
         self.midi = Gtk.ToggleButton(label="MIDI")
-        self.midi.set_name("midi_toggle")
+        self.midi.get_style_context().add_class("olc-midi-toggle")
         self.midi.connect("toggled", self._on_button_toggled, "MIDI")
         self.header.pack_end(self.midi)
 

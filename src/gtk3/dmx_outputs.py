@@ -76,9 +76,9 @@ class DMXOutputsTab(Gtk.Box):
                 self.outputs.append(output)
                 self.flowbox.add(output)
 
-        # Set name for CSS style
+        # Apply CSS style class
         for child in self.flowbox.get_children():
-            child.set_name("flowbox_outputs")
+            child.get_style_context().add_class("olc-flowbox-output")
 
         scrolled.add(self.flowbox)
         self.pack_start(scrolled, True, True, 0)
@@ -118,7 +118,7 @@ class DMXOutputsTab(Gtk.Box):
                 self.flowbox.add(output)
 
         for child in self.flowbox.get_children():
-            child.set_name("flowbox_outputs")
+            child.get_style_context().add_class("olc-flowbox-output")
         self.flowbox.show_all()
 
     def add_universe_ui(self, _universe: int) -> None:

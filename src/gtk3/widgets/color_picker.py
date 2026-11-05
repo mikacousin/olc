@@ -51,18 +51,6 @@ _MATCH_CSS_CLASS = {
     "approx": "olc-match-approx",
     "out": "olc-match-out",
 }
-_CSS = b"""
-.olc-match-exact { color: #5fbf5f; }
-.olc-match-close { color: #a8c85a; }
-.olc-match-approx { color: #e0a030; }
-.olc-match-out { color: #e05050; }
-button.olc-swatch {
-    padding: 1px;
-    margin: 0px;
-    min-width: 0px;
-    min-height: 0px;
-}
-"""
 
 _EMITTER_SPECS: tuple[tuple[str, str], ...] = (
     ("red", "R"),
@@ -171,11 +159,6 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         self.hex_entry.set_text("#FFFFFF")
         self.hex_entry.connect("activate", self._on_hex_activate)
         self.match_label = Gtk.Label(label="", xalign=0)
-        css = Gtk.CssProvider()
-        css.load_from_data(_CSS)
-        self.match_label.get_style_context().add_provider(
-            css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
         row.pack_start(self.hex_entry, False, False, 0)
         row.pack_start(self.match_label, True, True, 0)
         left_col.pack_start(row, False, False, 0)

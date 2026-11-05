@@ -1,5 +1,13 @@
-@define-color myred #880000;
+/* Color palette definitions */
+@define-color olc-active-red #880000;
+@define-color olc-fader-border #795004;
+@define-color olc-fader-empty-border #666666;
+@define-color olc-match-exact #5fbf5f;
+@define-color olc-match-close #a8c85a;
+@define-color olc-match-approx #e0a030;
+@define-color olc-match-out #e05050;
 
+/* Disable default GTK focus navigation shortcuts on all windows */
 @binding-set unbind-keys {
   unbind "Right";
   unbind "Left";
@@ -10,32 +18,58 @@
   unbind "space";
 }
 
-flowboxchild:selected {
-  outline-width: 0px;
-  background-color: alpha(@theme_bg_color, 0);
-}
-
 window {
   -gtk-key-bindings: unbind-keys;
 }
 
-#midi_toggle:checked {
-  background-image: none;
-  background-color: @myred;
+/* Make flowbox child selection highlight transparent so Cairo rendering is unobstructed */
+flowboxchild:selected {
+  outline-width: 0px;
+  background-color: transparent;
 }
 
-#flowbox_outputs {
+/* Virtual console toggles */
+.olc-midi-toggle:checked {
+  background-image: none;
+  background-color: @olc-active-red;
+}
+
+/* DMX outputs grid compact packing */
+.olc-flowbox-output {
   padding: 0px;
 }
 
-#fader_box {
+/* Fader editor styling */
+.olc-fader-box {
   border-width: 2px;
   border-style: solid;
-  border-color: #795004;
+  border-color: @olc-fader-border;
 }
 
-#fader_box_empty {
-  border-width: 2px;
-  border-style: solid;
-  border-color: #666666;
+.olc-fader-box.empty {
+  border-color: @olc-fader-empty-border;
+}
+
+/* Color swatch and match level styling */
+.olc-match-exact {
+  color: @olc-match-exact;
+}
+
+.olc-match-close {
+  color: @olc-match-close;
+}
+
+.olc-match-approx {
+  color: @olc-match-approx;
+}
+
+.olc-match-out {
+  color: @olc-match-out;
+}
+
+button.olc-swatch {
+  padding: 1px;
+  margin: 0px;
+  min-width: 0px;
+  min-height: 0px;
 }
