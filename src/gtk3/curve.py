@@ -22,7 +22,7 @@ import cairo
 from gi.repository import Gdk, Gtk
 
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
-from olc.gtk3.patch_outputs import PatchOutputsTab
+from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 from olc.gtk3.widgets.curve_point import CurvePointWidget
 from olc.gtk3.widgets.edit_curve import EditCurveWidget
@@ -559,9 +559,9 @@ class CurvesTab(Gtk.Paned):
                     )
                     self.curve_edition.points_curve()
                     self.curve_edition.queue_draw()
-                    if self.tabs.tabs["patch_outputs"]:
+                    if self.tabs.tabs["dmx_outputs"]:
                         typing.cast(
-                            PatchOutputsTab, self.tabs.tabs["patch_outputs"]
+                            DMXOutputsTab, self.tabs.tabs["dmx_outputs"]
                         ).refresh()
                     break
 

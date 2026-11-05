@@ -41,6 +41,7 @@ from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.curve import CurvesTab  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
+from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
 from olc.gtk3.group import GroupTab  # noqa: E402
@@ -48,7 +49,6 @@ from olc.gtk3.history import HistoryTab  # noqa: E402
 from olc.gtk3.independent import IndependentsTab  # noqa: E402
 from olc.gtk3.lightshow import GtkLightShow  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
-from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402
 from olc.gtk3.tabs_manager import Tabs  # noqa: E402
 from olc.gtk3.track_channels import TrackChannelsTab  # noqa: E402
@@ -223,8 +223,8 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.import_file", ["<Shift><Control>o"])
         self.set_accels_for_action("app.save", ["<Control>s"])
         self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
-        self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
-        self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
+        self.set_accels_for_action("app.patch_channels", ["<Control>p"])
+        self.set_accels_for_action("app.dmx_outputs", ["<Control>d"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.faders", ["<Shift><Control>f"])
@@ -343,7 +343,7 @@ class Application(Gtk.Application):
             "save_as": "_saveas",
             "import_file": "_import_file",
             "export_ascii": "_export_ascii",
-            "patch_outputs": "patch_outputs",
+            "dmx_outputs": "dmx_outputs",
             "patch_channels": "patch_channels",
             "curves": "curves",
             "memories": "memories_cb",
@@ -551,16 +551,16 @@ class Application(Gtk.Application):
         # destroy the FileChooserNative
         save_dialog.destroy()
 
-    def patch_outputs(
+    def dmx_outputs(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
-        """Create Patch Outputs Tab"""
-        self.core.action_registry.execute("gui.tab_open", "patch_outputs")
+        """Create DMX Outputs Tab."""
+        self.core.action_registry.execute("gui.tab_open", "dmx_outputs")
 
-    def open_patch_outputs(self) -> None:
-        """Open Patch Outputs tab UI."""
+    def open_dmx_outputs(self) -> None:
+        """Open DMX Outputs tab UI."""
         if self.tabs:
-            self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs", self)
+            self.tabs.open("dmx_outputs", DMXOutputsTab, "DMX Outputs", self)
 
     def patch_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

@@ -268,5 +268,13 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
         val = menu.get_item_attribute_value(i, "label", None)
         if val is not None:
             labels.append(val.get_string())
-    assert "Patch Channels & Devices" in labels
+    assert "Patch" in labels
+    assert "DMX Outputs" in labels
     assert "Device Inspector" in labels
+
+    # Verify updated accelerators for Patch and DMX Outputs
+    patch_accels = app_gui.get_accels_for_action("app.patch_channels")
+    assert any(a in patch_accels for a in ("<Control>p", "<Primary>p"))
+
+    dmx_accels = app_gui.get_accels_for_action("app.dmx_outputs")
+    assert any(a in dmx_accels for a in ("<Control>d", "<Primary>d"))

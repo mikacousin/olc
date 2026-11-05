@@ -20,10 +20,10 @@ import typing
 
 from gi.repository import Gtk
 
-from olc.gtk3.widgets.patch_outputs import PatchWidget
+from olc.gtk3.widgets.dmx_outputs import DMXOutputWidget
 
 if typing.TYPE_CHECKING:
-    import olc.gtk3.patch_outputs
+    import olc.gtk3.dmx_outputs
     from olc.core.backends import DMXBackend
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
@@ -31,7 +31,7 @@ if typing.TYPE_CHECKING:
     from olc.patch import DMXPatch
 
 
-class PatchOutputsTab(Gtk.Box):
+class DMXOutputsTab(Gtk.Box):
     """Tab displaying real-time DMX output levels and patch occupancy."""
 
     app: Application
@@ -39,7 +39,7 @@ class PatchOutputsTab(Gtk.Box):
     lightshow: LightShow
     tabs: Tabs
     backend: DMXBackend
-    outputs: list[PatchWidget]
+    outputs: list[DMXOutputWidget]
     flowbox: Gtk.FlowBox
 
     def __init__(self, app: Application) -> None:
@@ -67,11 +67,11 @@ class PatchOutputsTab(Gtk.Box):
         self.outputs = []
         for universe in self.patch.universes:
             for out in range(1, 513):
-                output = PatchWidget(
+                output = DMXOutputWidget(
                     universe,
                     out,
                     self.app,
-                    typing.cast("olc.gtk3.patch_outputs.PatchOutputsTab", self),
+                    typing.cast("olc.gtk3.dmx_outputs.DMXOutputsTab", self),
                 )
                 self.outputs.append(output)
                 self.flowbox.add(output)
@@ -92,7 +92,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked."""
-        self.tabs.close("patch_outputs")
+        self.tabs.close("dmx_outputs")
 
     def select_outputs(self) -> None:
         """Compatibility no-op for passive visualizer."""
@@ -108,11 +108,11 @@ class PatchOutputsTab(Gtk.Box):
         self.outputs = []
         for universe in self.patch.universes:
             for out in range(1, 513):
-                output = PatchWidget(
+                output = DMXOutputWidget(
                     universe,
                     out,
                     self.app,
-                    typing.cast("olc.gtk3.patch_outputs.PatchOutputsTab", self),
+                    typing.cast("olc.gtk3.dmx_outputs.DMXOutputsTab", self),
                 )
                 self.outputs.append(output)
                 self.flowbox.add(output)

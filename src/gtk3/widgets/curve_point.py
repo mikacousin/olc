@@ -26,7 +26,7 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.curve import PointsCurve
     from olc.gtk3.curve import CurvesTab
-    from olc.gtk3.patch_outputs import PatchOutputsTab
+    from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.tabs_manager import Tabs
 
 
@@ -216,11 +216,11 @@ class CurvePointWidget(Gtk.DrawingArea):
             self.curve.populate_values()
             if self.lightshow:
                 self.lightshow.set_modified()
-            patch_outputs_tab = typing.cast(
-                "PatchOutputsTab", self.tabs.tabs["patch_outputs"]
+            dmx_outputs_tab = typing.cast(
+                "DMXOutputsTab", self.tabs.tabs["dmx_outputs"]
             )
-            if patch_outputs_tab:
-                patch_outputs_tab.refresh()
+            if dmx_outputs_tab:
+                dmx_outputs_tab.refresh()
 
     def get_active(self) -> bool:
         """Return activate status

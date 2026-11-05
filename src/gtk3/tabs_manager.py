@@ -25,12 +25,12 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.device_inspector import DeviceInspectorWidget
+    from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.fader import FaderTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.history import HistoryTab
     from olc.gtk3.independent import IndependentsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
-    from olc.gtk3.patch_outputs import PatchOutputsTab
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.window import Window
@@ -41,12 +41,12 @@ if typing.TYPE_CHECKING:
         | CuesEditionTab
         | CurvesTab
         | DeviceInspectorWidget
+        | DMXOutputsTab
         | FaderTab
         | GroupTab
         | HistoryTab
         | IndependentsTab
         | PatchChannelsTab
-        | PatchOutputsTab
         | SequenceTab
         | SettingsTab
         | TrackChannelsTab
@@ -80,7 +80,7 @@ class Tabs:
             "history": None,
             "indes": None,
             "memories": None,
-            "patch_outputs": None,
+            "dmx_outputs": None,
             "patch_channels": None,
             "sequences": None,
             "settings": None,

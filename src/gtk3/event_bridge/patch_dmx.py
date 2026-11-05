@@ -21,8 +21,8 @@ import typing
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
+    from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
-    from olc.gtk3.patch_outputs import PatchOutputsTab
     from olc.settings import SettingsTab
 
 
@@ -47,11 +47,11 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         )
         self.app.core.subscribe(
             "dmx.user_outputs_cleared",
-            lambda: self._run_idle(self._safe_refresh_patch_outputs),
+            lambda: self._run_idle(self._safe_refresh_dmx_outputs),
         )
         self.app.core.subscribe(
             "dmx.user_outputs_changed",
-            lambda: self._run_idle(self._safe_refresh_patch_outputs),
+            lambda: self._run_idle(self._safe_refresh_dmx_outputs),
         )
         self.app.core.subscribe(
             "dmx.blackout_all_changed",
@@ -96,17 +96,17 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
                         channels_view.update()
         return False
 
-    def _safe_refresh_patch_outputs(self) -> bool:
-        """Refresh the patch outputs tab UI safely in the GTK thread.
+    def _safe_refresh_dmx_outputs(self) -> bool:
+        """Refresh the DMX outputs tab UI safely in the GTK thread.
 
         Returns:
             Always False.
         """
-        if self.app.tabs and self.app.tabs.tabs.get("patch_outputs") is not None:
-            patch_outputs = typing.cast(
-                "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+        if self.app.tabs and self.app.tabs.tabs.get("dmx_outputs") is not None:
+            dmx_outputs = typing.cast(
+                "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
             )
-            patch_outputs.refresh()
+            dmx_outputs.refresh()
         return False
 
     def _on_selected_outputs_changed(self) -> bool:
@@ -116,11 +116,11 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("patch_outputs") is not None:
-                patch_outputs = typing.cast(
-                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+            if self.app.tabs.tabs.get("dmx_outputs") is not None:
+                dmx_outputs = typing.cast(
+                    "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
                 )
-                patch_outputs.select_outputs()
+                dmx_outputs.select_outputs()
         self.app.core.commandline.set_string("")
         return False
 
@@ -135,16 +135,16 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        if self.app.tabs and self.app.tabs.tabs.get("patch_outputs") is not None:
-            patch_outputs = typing.cast(
-                "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+        if self.app.tabs and self.app.tabs.tabs.get("dmx_outputs") is not None:
+            dmx_outputs = typing.cast(
+                "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
             )
             universes = self.app.core.lightshow.patch.universes
             if universe in universes:
                 idx = universes.index(universe)
                 output_idx = output - 1 + (512 * idx)
-                if 0 <= output_idx < len(patch_outputs.outputs):
-                    patch_outputs.outputs[output_idx].queue_draw()
+                if 0 <= output_idx < len(dmx_outputs.outputs):
+                    dmx_outputs.outputs[output_idx].queue_draw()
         return False
 
     def _on_universe_added(self, universe: int) -> bool:
@@ -157,12 +157,12 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("patch_outputs") is not None:
-                patch_outputs = typing.cast(
-                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+            if self.app.tabs.tabs.get("dmx_outputs") is not None:
+                dmx_outputs = typing.cast(
+                    "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
                 )
-                if hasattr(patch_outputs, "add_universe_ui"):
-                    patch_outputs.add_universe_ui(universe)
+                if hasattr(dmx_outputs, "add_universe_ui"):
+                    dmx_outputs.add_universe_ui(universe)
             if self.app.tabs.tabs.get("patch_channels") is not None:
                 patch_channels = typing.cast(
                     "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
@@ -188,12 +188,12 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("patch_outputs") is not None:
-                patch_outputs = typing.cast(
-                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+            if self.app.tabs.tabs.get("dmx_outputs") is not None:
+                dmx_outputs = typing.cast(
+                    "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
                 )
-                if hasattr(patch_outputs, "remove_universe_ui"):
-                    patch_outputs.remove_universe_ui(universe)
+                if hasattr(dmx_outputs, "remove_universe_ui"):
+                    dmx_outputs.remove_universe_ui(universe)
             if self.app.tabs.tabs.get("patch_channels") is not None:
                 patch_channels = typing.cast(
                     "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
@@ -220,7 +220,7 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         """
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
-        self._safe_refresh_patch_outputs()
+        self._safe_refresh_dmx_outputs()
         return False
 
     def _on_universe_config_updated(self, universe: int) -> bool:

@@ -485,7 +485,7 @@ class MidiNotes:
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "output", True)
             self.app_delegate.core.action_registry.execute(
-                "gui.tab_open", "patch_outputs"
+                "gui.tab_open", "dmx_outputs"
             )
 
     def seq(self, msg: mido.Message) -> None:

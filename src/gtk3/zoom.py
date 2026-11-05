@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import typing
 
-from olc.gtk3.patch_outputs import PatchOutputsTab
+from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import ChannelsView
 
@@ -41,7 +41,7 @@ def zoom(direction: str, window: Window | None) -> None:
     children = tab.get_children()
 
     view = None
-    if isinstance(tab, (ChannelsView, PatchOutputsTab)):
+    if isinstance(tab, (ChannelsView, DMXOutputsTab)):
         view = tab
     else:
         for chld in children:

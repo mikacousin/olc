@@ -27,17 +27,17 @@ if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
-    from olc.gtk3.patch_outputs import PatchOutputsTab
+    from olc.gtk3.dmx_outputs import DMXOutputsTab
 
 
-class PatchWidget(Gtk.DrawingArea):
-    """Patch output widget displaying live DMX level, circuit and passive curve."""
+class DMXOutputWidget(Gtk.DrawingArea):
+    """DMX output widget displaying live DMX level, circuit and passive curve."""
 
-    __gtype_name__ = "PatchWidget"
+    __gtype_name__ = "DMXOutputWidget"
 
     app: Application
     lightshow: LightShow
-    tab: PatchOutputsTab
+    tab: DMXOutputsTab
     backend: DMXBackend
 
     def __init__(
@@ -45,7 +45,7 @@ class PatchWidget(Gtk.DrawingArea):
         universe: int,
         output: int,
         app: Application,
-        tab: PatchOutputsTab,
+        tab: DMXOutputsTab,
     ) -> None:
         self.universe = universe
         self.output = output

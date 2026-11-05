@@ -24,7 +24,7 @@ from olc.curve import InterpolateCurve, SegmentsCurve
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.gtk3.curve import CurvesTab
-    from olc.gtk3.patch_outputs import PatchOutputsTab
+    from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.tabs_manager import Tabs
 
 
@@ -86,11 +86,11 @@ class EditCurveWidget(Gtk.DrawingArea):
                         "curve.update_points", self.curve_nb, new_points
                     )
 
-                if self.tabs.tabs["patch_outputs"]:
-                    patch_tab = typing.cast(
-                        "PatchOutputsTab", self.tabs.tabs["patch_outputs"]
+                if self.tabs.tabs["dmx_outputs"]:
+                    dmx_tab = typing.cast(
+                        "DMXOutputsTab", self.tabs.tabs["dmx_outputs"]
                     )
-                    patch_tab.refresh()
+                    dmx_tab.refresh()
 
     def on_mouse_move(self, _widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Update pointer coordinates

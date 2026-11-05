@@ -26,23 +26,23 @@ gi.require_version("Gtk", "3.0")
 
 from olc.devices.builtin import create_rgb_definition  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
+from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
-from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
 pytestmark = pytest.mark.gui
 
 
-def test_patch_outputs_tab_behavior(app_gui: Application) -> None:
-    """Test PatchOutputsTab GUI interactions and undo/redo."""
-    # 1. Open the patch outputs tab
-    app_gui.activate_action("patch_outputs", None)
+def test_dmx_outputs_tab_behavior(app_gui: Application) -> None:
+    """Test DMXOutputsTab GUI interactions."""
+    # 1. Open the DMX outputs tab
+    app_gui.activate_action("dmx_outputs", None)
     process_events()
 
     assert app_gui.tabs is not None
-    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
-    assert isinstance(patch_tab, PatchOutputsTab)
+    patch_tab = app_gui.tabs.tabs.get("dmx_outputs")
+    assert isinstance(patch_tab, DMXOutputsTab)
     assert patch_tab.flowbox is not None
 
     # 2. Test initial state / select output 10 (index 9)
@@ -121,14 +121,14 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     assert len(patch_chan_tab.devices_store) == 0
 
 
-def test_patch_widget_draw_dimmer_and_device(app_gui: Application) -> None:
-    """Test PatchWidget drawing for simple dimmer and multi-parameter device."""
-    app_gui.activate_action("patch_outputs", None)
+def test_dmx_output_widget_draw_dimmer_and_device(app_gui: Application) -> None:
+    """Test DMXOutputWidget drawing for simple dimmer and multi-parameter device."""
+    app_gui.activate_action("dmx_outputs", None)
     process_events()
 
     assert app_gui.tabs is not None
-    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
-    assert isinstance(patch_tab, PatchOutputsTab)
+    patch_tab = app_gui.tabs.tabs.get("dmx_outputs")
+    assert isinstance(patch_tab, DMXOutputsTab)
 
     # 1. Clear patch and patch a simple dimmer on 1.1 and an RGB LED on 1.10
     app_gui.core.action_registry.execute("patch.clear")
@@ -160,14 +160,14 @@ def test_patch_widget_draw_dimmer_and_device(app_gui: Application) -> None:
     w_large.do_draw(cr)
 
 
-def test_patch_outputs_network_dmx_refresh_devices(app_gui: Application) -> None:
+def test_dmx_outputs_network_dmx_refresh_devices(app_gui: Application) -> None:
     """Test that network DMX updates trigger queue_draw on device widgets."""
-    app_gui.activate_action("patch_outputs", None)
+    app_gui.activate_action("dmx_outputs", None)
     process_events()
 
     assert app_gui.tabs is not None
-    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
-    assert isinstance(patch_tab, PatchOutputsTab)
+    patch_tab = app_gui.tabs.tabs.get("dmx_outputs")
+    assert isinstance(patch_tab, DMXOutputsTab)
 
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
@@ -195,14 +195,14 @@ def test_patch_outputs_network_dmx_refresh_devices(app_gui: Application) -> None
     assert w3.queue_draw.called
 
 
-def test_patch_widget_draw_passive_curve(app_gui: Application) -> None:
-    """Test passive curve drawing on a PatchWidget when non-linear curve is assigned."""
-    app_gui.activate_action("patch_outputs", None)
+def test_dmx_output_widget_draw_passive_curve(app_gui: Application) -> None:
+    """Test passive curve drawing on a DMXOutputWidget with a non-linear curve."""
+    app_gui.activate_action("dmx_outputs", None)
     process_events()
 
     assert app_gui.tabs is not None
-    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
-    assert isinstance(patch_tab, PatchOutputsTab)
+    patch_tab = app_gui.tabs.tabs.get("dmx_outputs")
+    assert isinstance(patch_tab, DMXOutputsTab)
 
     # Patch a dimmer with curve 1 (Square Root)
     app_gui.core.action_registry.execute("patch.clear")

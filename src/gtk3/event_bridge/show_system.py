@@ -20,8 +20,8 @@ import typing
 
 from gi.repository import Gio, Gtk
 
+from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.history import HistoryTab
-from olc.gtk3.patch_outputs import PatchOutputsTab
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import ChannelsView
 
@@ -235,7 +235,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             return False
 
         view = None
-        if isinstance(tab, (ChannelsView, PatchOutputsTab)):
+        if isinstance(tab, (ChannelsView, DMXOutputsTab)):
             view = tab
         else:
             for child in tab.get_children():
@@ -267,7 +267,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         with self.app.window.blocking_switch_page():
             app = typing.cast(typing.Any, self.app)
             mapping = {
-                "patch_outputs": app.open_patch_outputs,
+                "dmx_outputs": app.open_dmx_outputs,
                 "patch_channels": app.open_patch_channels,
                 "track_channels": app.open_track_channels,
                 "memories": app.open_memories,

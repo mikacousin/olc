@@ -95,17 +95,17 @@
             <property name="visible">1</property>
             <property name="title" translatable="yes" context="shortcut window">Tabs &amp; Windows</property>
             <child>
-              <object class="GtkShortcutsShortcut" id="patch_outputs">
+              <object class="GtkShortcutsShortcut" id="patch_channels">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;P</property>
-                <property name="title" translatable="yes" context="shortcut window">Patch Outputs</property>
+                <property name="title" translatable="yes" context="shortcut window">Patch</property>
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="patch_channels">
+              <object class="GtkShortcutsShortcut" id="dmx_outputs">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;P</property>
-                <property name="title" translatable="yes" context="shortcut window">Patch Channels &amp; Devices</property>
+                <property name="accelerator">&lt;ctrl&gt;D</property>
+                <property name="title" translatable="yes" context="shortcut window">DMX Outputs</property>
               </object>
             </child>
             <child>

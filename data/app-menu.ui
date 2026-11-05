@@ -33,11 +33,11 @@
     </submenu>
     <item>
       <attribute name="label" translatable="yes">Patch</attribute>
-      <attribute name="action">app.patch_outputs</attribute>
+      <attribute name="action">app.patch_channels</attribute>
     </item>
     <item>
-      <attribute name="label" translatable="yes">Patch Channels &amp; Devices</attribute>
-      <attribute name="action">app.patch_channels</attribute>
+      <attribute name="label" translatable="yes">DMX Outputs</attribute>
+      <attribute name="action">app.dmx_outputs</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Curves</attribute>

@@ -648,7 +648,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "output"
             self.queue_draw()
         else:
-            self.app.patch_outputs(typing.cast(typing.Any, None), None)
+            self.app.dmx_outputs(typing.cast(typing.Any, None), None)
 
     def _on_seq(self, _widget: Gtk.Widget) -> None:
         """Seq"""
