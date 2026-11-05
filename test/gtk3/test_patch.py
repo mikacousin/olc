@@ -14,8 +14,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """GUI behavior tests for the Patch tab."""
 
-# pylint: disable=redefined-outer-name, protected-access, too-many-statements, import-outside-toplevel, too-many-locals
-
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -26,6 +24,7 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 
+from olc.devices.builtin import create_rgb_definition  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402
@@ -135,8 +134,6 @@ def test_patch_widget_draw_dimmer_and_device(app_gui: Application) -> None:
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
 
-    from olc.devices.builtin import create_rgb_definition
-
     app_gui.core.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1)
     rgb_def = create_rgb_definition()
     app_gui.core.lightshow.patch.patch_device(
@@ -172,8 +169,6 @@ def test_patch_outputs_network_dmx_refresh_devices(app_gui: Application) -> None
     patch_tab = app_gui.tabs.tabs.get("patch_outputs")
     assert isinstance(patch_tab, PatchOutputsTab)
 
-    from olc.devices.builtin import create_rgb_definition
-
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
 
@@ -198,3 +193,24 @@ def test_patch_outputs_network_dmx_refresh_devices(app_gui: Application) -> None
     assert w1.queue_draw.called
     assert w2.queue_draw.called
     assert w3.queue_draw.called
+
+
+def test_patch_widget_draw_passive_curve(app_gui: Application) -> None:
+    """Test passive curve drawing on a PatchWidget when non-linear curve is assigned."""
+    app_gui.activate_action("patch_outputs", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_outputs")
+    assert isinstance(patch_tab, PatchOutputsTab)
+
+    # Patch a dimmer with curve 1 (Square Root)
+    app_gui.core.action_registry.execute("patch.clear")
+    app_gui.core.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1, curve=1)
+    process_events()
+
+    w_dim = patch_tab.outputs[0]
+    surface = cairo.ImageSurface(cairo.Format.ARGB32, 70, 70)
+    cr = cairo.Context(surface)
+    # Verify do_draw runs smoothly with passive curve drawing
+    assert w_dim.do_draw(cr) is False
