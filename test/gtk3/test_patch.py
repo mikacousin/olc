@@ -275,6 +275,71 @@ def test_patch_channels_scope_physical_and_toggle(app_gui: Application) -> None:
     assert len(patch_chan_tab.devices_store) == 1
 
 
+def test_patch_channels_keyboard_navigation(app_gui: Application) -> None:
+    """Test keyboard navigation (Down, Up, PageDown, PageUp) in devices TreeView."""
+    # pylint: disable=protected-access
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_chan_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_chan_tab, PatchChannelsTab)
+
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+
+    # In "all" mode, 1024 rows exist
+    patch_chan_tab.set_scope_mode("all")
+    process_events()
+
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 0
+
+    # Down moves to index 1
+    patch_chan_tab._keypress_down()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 1
+
+    # Up moves back to index 0
+    patch_chan_tab._keypress_up()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 0
+
+    # Up at index 0 stays at index 0
+    patch_chan_tab._keypress_up()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 0
+
+    # Page down jumps 15 rows
+    patch_chan_tab._keypress_page_down()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 15
+
+    # Page up jumps back 15 rows
+    patch_chan_tab._keypress_page_up()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 0
+
+    # Unselect all, verify Down selects index 0
+    patch_chan_tab.devices_treeview.get_selection().unselect_all()
+    patch_chan_tab._keypress_down()
+    process_events()
+    cursor_path, _ = patch_chan_tab.devices_treeview.get_cursor()
+    assert cursor_path is not None
+    assert cursor_path.get_indices()[0] == 0
+
+
 def test_dmx_output_widget_draw_dimmer_and_device(app_gui: Application) -> None:
     """Test DMXOutputWidget drawing for simple dimmer and multi-parameter device."""
     app_gui.activate_action("dmx_outputs", None)

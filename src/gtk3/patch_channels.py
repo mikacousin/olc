@@ -249,8 +249,25 @@ class PatchChannelsTab(Gtk.Box):
     # Device Table Data & Sorting
     # -------------------------------------------------------------------------
 
-    def populate_devices_store(self) -> None:
+    def select_row_index(self, index: int) -> None:
+        """Set cursor to the specified row index and scroll into view."""
+        if 0 <= index < len(self.devices_store):
+            path = Gtk.TreePath.new_from_indices([index])
+            self.devices_treeview.set_cursor(path)
+            self.devices_treeview.scroll_to_cell(path, None, False, 0.0, 0.0)
+
+    def grab_focus(self) -> None:
+        """Delegate focus to the devices TreeView."""
+        self.devices_treeview.grab_focus()
+
+    def populate_devices_store(self, restore_index: Optional[int] = None) -> None:
         """Populate the devices ListStore according to sort_mode and scope_mode."""
+        prev_idx = restore_index
+        if prev_idx is None:
+            curr_path, _ = self.devices_treeview.get_cursor()
+            if curr_path is not None:
+                prev_idx = curr_path.get_indices()[0]
+
         self.devices_store.clear()
         if self.scope_mode == "all":
             if self.sort_mode == "physical":
@@ -259,6 +276,14 @@ class PatchChannelsTab(Gtk.Box):
                 self._populate_all_channels()
         else:
             self._populate_patched_devices()
+
+        if len(self.devices_store) > 0:
+            target_idx = (
+                prev_idx
+                if (prev_idx is not None and prev_idx < len(self.devices_store))
+                else 0
+            )
+            self.select_row_index(target_idx)
 
     def _populate_patched_devices(self) -> None:
         """Populate only patched devices, sorted according to sort_mode."""
@@ -898,3 +923,53 @@ class PatchChannelsTab(Gtk.Box):
 
     def _keypress_backspace(self) -> None:
         self.app.core.action_registry.execute("commandline.clear")
+
+    def _keypress_down(self) -> None:
+        """Navigate to the next row in the devices TreeView, or select first row."""
+        sel = self.devices_treeview.get_selection()
+        path, _col = self.devices_treeview.get_cursor()
+        if path is None or sel.count_selected_rows() == 0:
+            self.select_row_index(0)
+        else:
+            curr = path.get_indices()[0]
+            if curr + 1 < len(self.devices_store):
+                self.select_row_index(curr + 1)
+        self.devices_treeview.grab_focus()
+
+    def _keypress_up(self) -> None:
+        """Navigate to the previous row in the devices TreeView, or select first row."""
+        sel = self.devices_treeview.get_selection()
+        path, _col = self.devices_treeview.get_cursor()
+        if path is None or sel.count_selected_rows() == 0:
+            self.select_row_index(0)
+        else:
+            curr = path.get_indices()[0]
+            if curr - 1 >= 0:
+                self.select_row_index(curr - 1)
+        self.devices_treeview.grab_focus()
+
+    def _keypress_page_down(self) -> None:
+        """Jump forward by a page of rows (15 rows)."""
+        sel = self.devices_treeview.get_selection()
+        path, _col = self.devices_treeview.get_cursor()
+        curr = (
+            path.get_indices()[0]
+            if (path is not None and sel.count_selected_rows() > 0)
+            else -1
+        )
+        target = min(len(self.devices_store) - 1, curr + 15)
+        self.select_row_index(max(0, target))
+        self.devices_treeview.grab_focus()
+
+    def _keypress_page_up(self) -> None:
+        """Jump backward by a page of rows (15 rows)."""
+        sel = self.devices_treeview.get_selection()
+        path, _col = self.devices_treeview.get_cursor()
+        curr = (
+            path.get_indices()[0]
+            if (path is not None and sel.count_selected_rows() > 0)
+            else 0
+        )
+        target = max(0, curr - 15)
+        self.select_row_index(target)
+        self.devices_treeview.grab_focus()

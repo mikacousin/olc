@@ -151,7 +151,11 @@ class Tabs:
                 notebook = parent
             page = notebook.page_num(tab)
             notebook.set_current_page(page)
-        notebook.grab_focus()
+        active_tab = self.tabs[tab_name]
+        if active_tab is not None and hasattr(active_tab, "grab_focus"):
+            active_tab.grab_focus()
+        else:
+            notebook.grab_focus()
 
     def close(self, tab_name: str) -> None:
         """Close tab by executing Core Action.
