@@ -23,11 +23,21 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
 
 from olc.devices.builtin import create_rgb_definition  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
-from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
+from olc.gtk3.patch_channels import (  # noqa: E402
+    COL_COLOR,
+    COL_ID,
+    COL_IS_PATCHED,
+    COL_NAME,
+    COL_RAW_ADDR,
+    COL_RAW_ID,
+    COL_RAW_UNIV,
+    PatchChannelsTab,
+)
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
@@ -104,8 +114,9 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     assert dev.device_id == 5
     assert len(patch_chan_tab.devices_store) == 1
     row = patch_chan_tab.devices_store[0]
-    assert row[0] == 5  # COL_ID
-    assert row[1] == "Front Dimmer"  # COL_NAME
+    assert row[COL_ID] == "5"
+    assert row[COL_NAME] == "Front Dimmer"
+    assert row[COL_RAW_ID] == 5
 
     # 3. Select device in TreeView
     selection = patch_chan_tab.devices_treeview.get_selection()
@@ -119,6 +130,149 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     process_events()
     assert removed is True
     assert len(patch_chan_tab.devices_store) == 0
+
+
+def test_patch_channels_scope_toggle_logical(app_gui: Application) -> None:
+    """Test toggling between Patched only and Show All in logical mode."""
+    # pylint: disable=protected-access,too-many-statements
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_chan_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_chan_tab, PatchChannelsTab)
+
+    # Initial scope mode
+    assert patch_chan_tab.scope_mode == "patched"
+    assert patch_chan_tab.scope_toggle_btn.get_label() == "Patched only"
+    assert not patch_chan_tab.scope_toggle_btn.get_active()
+
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+
+    patch_chan_tab.add_patched_device(
+        device_id=5,
+        fixture_key="Generic:Dimmer",
+        universe=1,
+        address=10,
+        label="Front Dimmer",
+    )
+    process_events()
+    assert len(patch_chan_tab.devices_store) == 1
+
+    # Switch to "Show All" in logical sort mode
+    patch_chan_tab.scope_toggle_btn.set_active(True)
+    process_events()
+
+    assert patch_chan_tab.scope_mode == "all"
+    assert patch_chan_tab.scope_toggle_btn.get_label() == "Show All"
+    assert len(patch_chan_tab.devices_store) == 1024
+
+    # Check unpatched row (ch 1)
+    row_1 = patch_chan_tab.devices_store[0]
+    assert row_1[COL_ID] == "1"
+    assert row_1[COL_NAME] == "-"
+    assert row_1[COL_IS_PATCHED] is False
+    assert row_1[COL_COLOR] == "#777777"
+    assert row_1[COL_RAW_ID] == 1
+    assert row_1[COL_RAW_UNIV] == 0
+    assert row_1[COL_RAW_ADDR] == 0
+
+    # Check patched row (ch 5)
+    row_5 = patch_chan_tab.devices_store[4]
+    assert row_5[COL_ID] == "5"
+    assert row_5[COL_NAME] == "Front Dimmer"
+    assert row_5[COL_IS_PATCHED] is True
+    assert row_5[COL_COLOR] == "#dedede"
+    assert row_5[COL_RAW_ID] == 5
+
+    # Select unpatched row and check sensitivity + add defaults
+    selection = patch_chan_tab.devices_treeview.get_selection()
+    first_iter = patch_chan_tab.devices_store.get_iter_first()
+    assert first_iter is not None
+    selection.select_iter(first_iter)
+    process_events()
+
+    assert patch_chan_tab.get_selected_device_id() is None
+    assert not patch_chan_tab.remove_device_btn.get_sensitive()
+    assert not patch_chan_tab.exchange_btn.get_sensitive()
+
+    def_id, def_univ, def_addr = patch_chan_tab._get_add_device_defaults()
+    assert def_id == 1
+    assert def_univ is None
+    assert def_addr is None
+
+    # Verify curve popover does not open on unpatched row
+    opened = patch_chan_tab._open_curve_popover_at_cell(
+        patch_chan_tab.devices_treeview,
+        Gtk.TreePath.new_from_string("0"),
+        patch_chan_tab.curve_column,
+    )
+    assert opened is False
+    assert not patch_chan_tab.curve_popover.is_visible()
+
+    # Select patched row (ch 5)
+    iter_5 = patch_chan_tab.devices_store.get_iter(Gtk.TreePath.new_from_string("4"))
+    selection.select_iter(iter_5)
+    process_events()
+
+    assert patch_chan_tab.get_selected_device_id() == 5
+    assert patch_chan_tab.remove_device_btn.get_sensitive()
+    assert patch_chan_tab.exchange_btn.get_sensitive()
+
+
+def test_patch_channels_scope_physical_and_toggle(app_gui: Application) -> None:
+    """Test Show All in physical mode and toggle back to patched."""
+    # pylint: disable=protected-access
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_chan_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_chan_tab, PatchChannelsTab)
+
+    app_gui.core.action_registry.execute("patch.clear")
+    process_events()
+
+    patch_chan_tab.add_patched_device(
+        device_id=5,
+        fixture_key="Generic:Dimmer",
+        universe=1,
+        address=10,
+        label="Front Dimmer",
+    )
+    process_events()
+
+    patch_chan_tab.set_scope_mode("all")
+    patch_chan_tab.sort_toggle_btn.set_active(True)
+    process_events()
+
+    assert patch_chan_tab.sort_mode == "physical"
+    assert len(patch_chan_tab.devices_store) == 2048
+
+    # Select vacant address 1.1
+    selection = patch_chan_tab.devices_treeview.get_selection()
+    iter_addr_1 = patch_chan_tab.devices_store.get_iter_first()
+    assert iter_addr_1 is not None
+    selection.select_iter(iter_addr_1)
+    process_events()
+
+    assert patch_chan_tab.get_selected_device_id() is None
+    assert not patch_chan_tab.remove_device_btn.get_sensitive()
+    assert not patch_chan_tab.exchange_btn.get_sensitive()
+
+    def_id_phys, def_u_phys, def_a_phys = patch_chan_tab._get_add_device_defaults()
+    assert def_id_phys == 1
+    assert def_u_phys == 1
+    assert def_a_phys == 1
+
+    # Switch back to "Patched only"
+    patch_chan_tab.scope_toggle_btn.set_active(False)
+    process_events()
+
+    assert patch_chan_tab.scope_mode == "patched"
+    assert patch_chan_tab.scope_toggle_btn.get_label() == "Patched only"
+    assert len(patch_chan_tab.devices_store) == 1
 
 
 def test_dmx_output_widget_draw_dimmer_and_device(app_gui: Application) -> None:

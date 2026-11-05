@@ -86,12 +86,12 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
     patch_tab.set_sort_mode("logical")
     n_rows = len(patch_tab.devices_store)
     rows_logical = [patch_tab.devices_store[i] for i in range(n_rows)]
-    assert [r[COL_ID] for r in rows_logical] == [5, 10, 20]
+    assert [r[COL_ID] for r in rows_logical] == ["5", "10", "20"]
     assert rows_logical[0][COL_NAME] == "Front Spot"
     assert rows_logical[0][COL_TYPE] == "Moving Head Spot"
     assert rows_logical[0][COL_MODE] == "Standard 8ch"
     assert rows_logical[0][COL_ADDRESS] == "200-207"
-    assert rows_logical[0][COL_FOOTPRINT] == 8
+    assert rows_logical[0][COL_FOOTPRINT] == "8"
     logical_titles = [
         col.get_title() for col in patch_tab.devices_treeview.get_columns()
     ]
@@ -110,11 +110,11 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
     patch_tab.toggle_sort_mode()
     assert patch_tab.sort_mode == "physical"
     rows_physical = [patch_tab.devices_store[i] for i in range(n_rows)]
-    assert [r[COL_ID] for r in rows_physical] == [20, 5, 10]
+    assert [r[COL_ID] for r in rows_physical] == ["20", "5", "10"]
     assert [(r[COL_UNIVERSE], r[COL_ADDRESS]) for r in rows_physical] == [
-        (1, "100-103"),
-        (1, "200-207"),
-        (2, "50"),
+        ("1", "100-103"),
+        ("1", "200-207"),
+        ("2", "50"),
     ]
     physical_titles = [
         col.get_title() for col in patch_tab.devices_treeview.get_columns()
@@ -175,7 +175,7 @@ def test_patch_device_collision_and_fixture_exchange(app_gui: Application) -> No
     assert patch_tab.devices_store[0][COL_TYPE] == "Moving Head Spot"
     assert patch_tab.devices_store[0][COL_MODE] == "Standard 8ch"
     assert patch_tab.devices_store[0][COL_ADDRESS] == "10-17"
-    assert patch_tab.devices_store[0][COL_FOOTPRINT] == 8
+    assert patch_tab.devices_store[0][COL_FOOTPRINT] == "8"
 
     # Remove Device #1
     assert patch_tab.remove_patched_device(1) is True

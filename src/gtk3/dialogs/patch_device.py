@@ -31,12 +31,15 @@ if TYPE_CHECKING:
 class AddDeviceDialog(Gtk.Dialog):
     """Interactive dialog to patch a new LightingDevice with collision preview."""
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         parent: Optional[Gtk.Window],
         patch: PatchManager,
         library: FixtureLibrary,
         default_device_id: int = 1,
+        default_universe: Optional[int] = None,
+        default_address: Optional[int] = None,
     ) -> None:
         super().__init__(
             title="Add Lighting Device",
@@ -51,6 +54,19 @@ class AddDeviceDialog(Gtk.Dialog):
         self.patch = patch
         self.library = library
 
+        self._build_grid(default_device_id, default_universe, default_address)
+        self.id_spin.connect("value-changed", self._update_collision_preview)
+        self._populate_modes()
+        self._update_collision_preview()
+        self.show_all()
+
+    def _build_grid(
+        self,
+        default_device_id: int,
+        default_universe: Optional[int],
+        default_address: Optional[int],
+    ) -> None:
+        """Create and attach dialog input controls in grid layout."""
         box = self.get_content_area()
         grid = Gtk.Grid(column_spacing=10, row_spacing=8, margin=12)
         box.add(grid)
@@ -86,16 +102,20 @@ class AddDeviceDialog(Gtk.Dialog):
         grid.attach(Gtk.Label(label="Universe:", xalign=0), 0, 4, 1, 1)
         max_univ = max(self.patch.universes) if self.patch.universes else 4
         self.universe_spin = Gtk.SpinButton.new_with_range(1, max(16, max_univ), 1)
-        self.universe_spin.set_value(
-            self.patch.universes[0] if self.patch.universes else 1
+        univ_val = (
+            default_universe
+            if default_universe is not None
+            else (self.patch.universes[0] if self.patch.universes else 1)
         )
+        self.universe_spin.set_value(univ_val)
         self.universe_spin.connect("value-changed", self._update_collision_preview)
         grid.attach(self.universe_spin, 1, 4, 1, 1)
 
         # Address
         grid.attach(Gtk.Label(label="DMX Address:", xalign=0), 0, 5, 1, 1)
         self.address_spin = Gtk.SpinButton.new_with_range(1, 512, 1)
-        self.address_spin.set_value(1)
+        addr_val = default_address if default_address is not None else 1
+        self.address_spin.set_value(addr_val)
         self.address_spin.connect("value-changed", self._update_collision_preview)
         grid.attach(self.address_spin, 1, 5, 1, 1)
 
@@ -105,7 +125,6 @@ class AddDeviceDialog(Gtk.Dialog):
         self.curve_spin.set_value(0)
         grid.attach(self.curve_spin, 1, 6, 1, 1)
 
-        # Force overwrite
         self.force_check = Gtk.CheckButton(label="Force overwrite on address collision")
         self.force_check.connect("toggled", self._update_collision_preview)
         grid.attach(self.force_check, 0, 7, 2, 1)
@@ -113,11 +132,6 @@ class AddDeviceDialog(Gtk.Dialog):
         # Collision status label
         self.collision_label = Gtk.Label(label="", xalign=0)
         grid.attach(self.collision_label, 0, 8, 2, 1)
-
-        self.id_spin.connect("value-changed", self._update_collision_preview)
-        self._populate_modes()
-        self._update_collision_preview()
-        self.show_all()
 
     def _get_selected_definition(self) -> Optional[FixtureDefinition]:
         key = self.profile_combo.get_active_text()

@@ -51,6 +51,11 @@ COL_UNIVERSE = 4
 COL_ADDRESS = 5
 COL_FOOTPRINT = 6
 COL_CURVE = 7
+COL_COLOR = 8
+COL_IS_PATCHED = 9
+COL_RAW_ID = 10
+COL_RAW_UNIV = 11
+COL_RAW_ADDR = 12
 
 # Visual column order depending on sort mode
 _LOGICAL_COL_ORDER = [
@@ -89,11 +94,13 @@ class PatchChannelsTab(Gtk.Box):
     commandline: CoreCommandLine
     fixture_library: FixtureLibrary
     sort_mode: str
+    scope_mode: str
     devices_store: Gtk.ListStore
     devices_treeview: Gtk.TreeView
     devices_scroll: Gtk.ScrolledWindow
     toolbar: Gtk.Box
     sort_toggle_btn: Gtk.ToggleButton
+    scope_toggle_btn: Gtk.ToggleButton
     add_device_btn: Gtk.Button
     remove_device_btn: Gtk.Button
     exchange_btn: Gtk.Button
@@ -124,6 +131,7 @@ class PatchChannelsTab(Gtk.Box):
             or populate_builtin_library()
         )
         self.sort_mode = "logical"
+        self.scope_mode = "patched"
         self.curve_column = None
         self._active_curve_device_id = None
         self.tree_columns = {}
@@ -147,6 +155,10 @@ class PatchChannelsTab(Gtk.Box):
         self.sort_toggle_btn = Gtk.ToggleButton(label="Sort by Channels")
         self.sort_toggle_btn.connect("toggled", self._on_sort_toggled)
         self.toolbar.pack_start(self.sort_toggle_btn, False, False, 0)
+
+        self.scope_toggle_btn = Gtk.ToggleButton(label="Patched only")
+        self.scope_toggle_btn.connect("toggled", self._on_scope_toggled)
+        self.toolbar.pack_start(self.scope_toggle_btn, False, False, 0)
 
         self.add_device_btn = Gtk.Button(label="Add Device")
         self.add_device_btn.connect("clicked", self._on_add_device_clicked)
@@ -178,18 +190,25 @@ class PatchChannelsTab(Gtk.Box):
     def _setup_views(self) -> None:
         """Create the Devices TreeView and add it to the tab."""
         self.devices_store = Gtk.ListStore(
-            int,  # COL_ID
+            str,  # COL_ID (Channel / Device ID string or "-")
             str,  # COL_NAME
             str,  # COL_TYPE
             str,  # COL_MODE
-            int,  # COL_UNIVERSE
+            str,  # COL_UNIVERSE
             str,  # COL_ADDRESS
-            int,  # COL_FOOTPRINT
+            str,  # COL_FOOTPRINT
             str,  # COL_CURVE
+            str,  # COL_COLOR ("#dedede" or "#777777")
+            bool,  # COL_IS_PATCHED
+            int,  # COL_RAW_ID
+            int,  # COL_RAW_UNIV
+            int,  # COL_RAW_ADDR
         )
         self.devices_treeview = Gtk.TreeView(model=self.devices_store)
         self.devices_treeview.set_enable_search(True)
-        self.devices_treeview.get_selection().set_mode(Gtk.SelectionMode.SINGLE)
+        selection = self.devices_treeview.get_selection()
+        selection.set_mode(Gtk.SelectionMode.SINGLE)
+        selection.connect("changed", self._on_selection_changed)
 
         columns_spec = [
             ("Channel", COL_ID, 70),
@@ -205,6 +224,7 @@ class PatchChannelsTab(Gtk.Box):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(title, renderer)
             column.add_attribute(renderer, "text", col_idx)
+            column.add_attribute(renderer, "foreground", COL_COLOR)
             column.set_min_width(min_width)
             column.set_resizable(True)
             if col_idx == COL_CURVE:
@@ -230,10 +250,19 @@ class PatchChannelsTab(Gtk.Box):
     # -------------------------------------------------------------------------
 
     def populate_devices_store(self) -> None:
-        """Populate the devices ListStore from PatchManager, sorted by sort_mode."""
+        """Populate the devices ListStore according to sort_mode and scope_mode."""
         self.devices_store.clear()
-        devices = list(self.patch.devices.values())
+        if self.scope_mode == "all":
+            if self.sort_mode == "physical":
+                self._populate_all_addresses()
+            else:
+                self._populate_all_channels()
+        else:
+            self._populate_patched_devices()
 
+    def _populate_patched_devices(self) -> None:
+        """Populate only patched devices, sorted according to sort_mode."""
+        devices = list(self.patch.devices.values())
         if self.sort_mode == "physical":
             devices.sort(key=lambda d: (d.universe, d.address, d.device_id))
         else:
@@ -249,16 +278,157 @@ class PatchChannelsTab(Gtk.Box):
             mode_str = dev.mode_name if dev.mode_name else "-"
             self.devices_store.append(
                 [
-                    dev.device_id,
+                    str(dev.device_id),
                     dev.label or f"Device {dev.device_id}",
                     dev.fixture_name,
                     mode_str,
-                    dev.universe,
+                    str(dev.universe),
                     dev.address_range_str,
-                    dev.channel_count(),
+                    str(dev.channel_count()),
                     curve_str,
+                    "#dedede",
+                    True,
+                    dev.device_id,
+                    dev.universe,
+                    dev.address,
                 ]
             )
+
+    def _populate_all_channels(self) -> None:
+        """Populate channels 1..MAX_CHANNELS with patched devices or vacant slots."""
+        for ch in range(1, MAX_CHANNELS + 1):
+            dev = self.patch.get_device(ch)
+            if dev is not None:
+                curve = self.lightshow.curves.get_curve(dev.curve_id)
+                curve_str = (
+                    get_curve_display_name(curve)
+                    if curve is not None
+                    else (
+                        _("Linear") if dev.curve_id == 0 else f"Curve #{dev.curve_id}"
+                    )
+                )
+                mode_str = dev.mode_name if dev.mode_name else "-"
+                self.devices_store.append(
+                    [
+                        str(dev.device_id),
+                        dev.label or f"Device {dev.device_id}",
+                        dev.fixture_name,
+                        mode_str,
+                        str(dev.universe),
+                        dev.address_range_str,
+                        str(dev.channel_count()),
+                        curve_str,
+                        "#dedede",
+                        True,
+                        dev.device_id,
+                        dev.universe,
+                        dev.address,
+                    ]
+                )
+            else:
+                self.devices_store.append(
+                    [
+                        str(ch),
+                        "-",
+                        "-",
+                        "-",
+                        "-",
+                        "-",
+                        "-",
+                        "-",
+                        "#777777",
+                        False,
+                        ch,
+                        0,
+                        0,
+                    ]
+                )
+
+    def _populate_all_addresses(self) -> None:
+        """Populate all 512 DMX addresses per active universe."""
+        for u in self.patch.universes:
+            for addr in range(1, 513):
+                info = self.patch.get_address_parameter_info(u, addr)
+                if info is not None:
+                    dev = self.patch.get_device(info.device_id)
+                    if dev is not None:
+                        curve = self.lightshow.curves.get_curve(dev.curve_id)
+                        curve_str = (
+                            get_curve_display_name(curve)
+                            if curve is not None
+                            else (
+                                _("Linear")
+                                if dev.curve_id == 0
+                                else f"Curve #{dev.curve_id}"
+                            )
+                        )
+                        param_suffix = (
+                            f" ({info.short_name})"
+                            if not info.is_simple_dimmer and info.short_name
+                            else ""
+                        )
+                        label_str = (
+                            f"{dev.label or f'Device {dev.device_id}'}{param_suffix}"
+                        )
+                        fixture_str = dev.fixture_name
+                        mode_str = dev.mode_name if dev.mode_name else "-"
+                        footprint_str = str(dev.channel_count())
+                        raw_id = dev.device_id
+                    else:
+                        dim_curve_id = 0
+                        if u in self.patch.outputs and addr in self.patch.outputs[u]:
+                            dim_curve_id = self.patch.outputs[u][addr][1]
+                        curve = self.lightshow.curves.get_curve(dim_curve_id)
+                        curve_str = (
+                            get_curve_display_name(curve)
+                            if curve is not None
+                            else (
+                                _("Linear")
+                                if dim_curve_id == 0
+                                else f"Curve #{dim_curve_id}"
+                            )
+                        )
+                        label_str = f"Channel {info.device_id}"
+                        fixture_str = "Dimmer" if info.is_simple_dimmer else "-"
+                        mode_str = "-"
+                        footprint_str = "1"
+                        raw_id = info.device_id
+
+                    self.devices_store.append(
+                        [
+                            str(raw_id),
+                            label_str,
+                            fixture_str,
+                            mode_str,
+                            str(u),
+                            str(addr),
+                            footprint_str,
+                            curve_str,
+                            "#dedede",
+                            True,
+                            raw_id,
+                            u,
+                            addr,
+                        ]
+                    )
+                else:
+                    self.devices_store.append(
+                        [
+                            "-",
+                            "-",
+                            "-",
+                            "-",
+                            str(u),
+                            str(addr),
+                            "-",
+                            "-",
+                            "#777777",
+                            False,
+                            0,
+                            u,
+                            addr,
+                        ]
+                    )
 
     def _open_curve_popover_at_cell(
         self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
@@ -268,7 +438,9 @@ class PatchChannelsTab(Gtk.Box):
         if model is None:
             return False
         treeiter = model.get_iter(path)
-        device_id = int(model.get_value(treeiter, COL_ID))
+        if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+            return False
+        device_id = int(model.get_value(treeiter, COL_RAW_ID))
         dev = self.patch.devices.get(device_id)
         if dev is None:
             return False
@@ -309,6 +481,11 @@ class PatchChannelsTab(Gtk.Box):
 
         path, col, _cell_x, _cell_y = path_info
         if path is not None and col is not None and col == self.curve_column:
+            model = treeview.get_model()
+            if model is not None:
+                treeiter = model.get_iter(path)
+                if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+                    return False
             return self._open_curve_popover_at_cell(treeview, path, col)
         return False
 
@@ -351,12 +528,47 @@ class PatchChannelsTab(Gtk.Box):
         self.set_sort_mode(new_mode)
         return new_mode
 
+    def set_scope_mode(self, mode: str) -> None:
+        """Set device table scope mode ('patched' or 'all')."""
+        if mode not in ("patched", "all"):
+            raise ValueError(f"Unsupported scope mode: {mode}")
+        self.scope_mode = mode
+        is_all = mode == "all"
+        if self.scope_toggle_btn.get_active() != is_all:
+            self.scope_toggle_btn.set_active(is_all)
+        self.scope_toggle_btn.set_label("Show All" if is_all else "Patched only")
+        self.populate_devices_store()
+
+    def toggle_scope_mode(self) -> str:
+        """Toggle between patched and all scope modes and return the new mode."""
+        new_mode = "all" if self.scope_mode == "patched" else "patched"
+        self.set_scope_mode(new_mode)
+        return new_mode
+
+    def _on_scope_toggled(self, button: Gtk.ToggleButton) -> None:
+        mode = "all" if button.get_active() else "patched"
+        if self.scope_mode != mode:
+            self.set_scope_mode(mode)
+
+    def _on_selection_changed(self, selection: Gtk.TreeSelection) -> None:
+        """Update button sensitivity depending on whether selection is patched."""
+        model, treeiter = selection.get_selected()
+        if model is None or treeiter is None:
+            self.remove_device_btn.set_sensitive(True)
+            self.exchange_btn.set_sensitive(True)
+            return
+        is_patched = bool(model.get_value(treeiter, COL_IS_PATCHED))
+        self.remove_device_btn.set_sensitive(is_patched)
+        self.exchange_btn.set_sensitive(is_patched)
+
     def get_selected_device_id(self) -> Optional[int]:
         """Return currently selected device_id in the devices TreeView, or None."""
         selection = self.devices_treeview.get_selection()
         model, treeiter = selection.get_selected()
-        if treeiter is not None:
-            return int(model[treeiter][COL_ID])
+        if treeiter is not None and model is not None:
+            if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+                return None
+            return int(model.get_value(treeiter, COL_RAW_ID))
         return None
 
     # -------------------------------------------------------------------------
@@ -449,17 +661,52 @@ class PatchChannelsTab(Gtk.Box):
         if self.sort_mode != mode:
             self.set_sort_mode(mode)
 
-    def _on_add_device_clicked(self, _button: Gtk.Button) -> None:
+    def _get_first_unpatched_channel_id(self) -> int:
+        """Find the lowest available channel ID <= MAX_CHANNELS, or 1."""
         next_id = 1
         while next_id <= MAX_CHANNELS and self.patch.is_patched(next_id):
             next_id += 1
-        if next_id > MAX_CHANNELS:
-            next_id = 1
+        return 1 if next_id > MAX_CHANNELS else next_id
+
+    def _get_add_device_defaults(
+        self,
+    ) -> tuple[int, Optional[int], Optional[int]]:
+        """Determine default device_id, universe and address from selection."""
+        selection = self.devices_treeview.get_selection()
+        model, treeiter = selection.get_selected()
+        if model is None or treeiter is None:
+            return self._get_first_unpatched_channel_id(), None, None
+
+        raw_id = int(model.get_value(treeiter, COL_RAW_ID))
+        raw_univ = int(model.get_value(treeiter, COL_RAW_UNIV))
+        raw_addr = int(model.get_value(treeiter, COL_RAW_ADDR))
+        is_patched = bool(model.get_value(treeiter, COL_IS_PATCHED))
+
+        default_univ = raw_univ if raw_univ > 0 else None
+        default_addr = raw_addr if raw_addr > 0 else None
+
+        if self.sort_mode == "physical":
+            if is_patched and raw_id > 0:
+                next_id = raw_id
+            else:
+                next_id = self._get_first_unpatched_channel_id()
+        else:
+            if not is_patched and raw_id > 0:
+                next_id = raw_id
+            else:
+                next_id = self._get_first_unpatched_channel_id()
+
+        return next_id, default_univ, default_addr
+
+    def _on_add_device_clicked(self, _button: Gtk.Button) -> None:
+        next_id, default_univ, default_addr = self._get_add_device_defaults()
         dialog = AddDeviceDialog(
             parent=self.window,
             patch=self.patch,
             library=self.fixture_library,
             default_device_id=next_id,
+            default_universe=default_univ,
+            default_address=default_addr,
         )
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
