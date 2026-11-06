@@ -47,21 +47,30 @@ class MainFaderWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        if self.backend and self.backend.dmx.main_fader.value != 1:
-            # Draw rounded box
-            cr.set_source_rgb(0.7, 0.2, 0.2)
-            area = (1, self.width - 2, 1, self.height - 2)
-            rounded_rectangle(cr, area, self.radius)
-            # Draw Text
-            self.label = f"Main Fader {round(self.backend.dmx.main_fader.value * 100)}%"
-            cr.set_source_rgb(0.8, 0.3, 0.3)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_font_size(11)
-            (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-            cr.move_to(
-                self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
-            )
-            cr.show_text(self.label)
+        if self.backend:
+            is_blackout = bool(getattr(self.backend.dmx, "blackout", False))
+            mf_val = float(getattr(self.backend.dmx.main_fader, "value", 1.0))
+            if is_blackout or mf_val != 1:
+                # Draw rounded box
+                cr.set_source_rgb(0.7, 0.2, 0.2)
+                area = (1, self.width - 2, 1, self.height - 2)
+                rounded_rectangle(cr, area, self.radius)
+                # Draw Text
+                if is_blackout:
+                    self.label = "BLACKOUT"
+                    cr.set_source_rgb(1.0, 0.8, 0.8)
+                else:
+                    self.label = f"Main Fader {round(mf_val * 100)}%"
+                    cr.set_source_rgb(0.8, 0.3, 0.3)
+                cr.select_font_face(
+                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                )
+                cr.set_font_size(11)
+                (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
+                x_pos = self.width / 2 - w / 2
+                y_pos = self.height / 2 - (h - (self.radius * 2)) / 2
+                cr.move_to(x_pos, y_pos)
+                cr.show_text(self.label)
         return False
 
     def do_realize(self) -> None:

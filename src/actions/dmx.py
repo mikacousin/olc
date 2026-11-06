@@ -307,7 +307,7 @@ class DmxClearUserOutputsAction(Action):
 
 
 class DmxBlackoutAllAction(Action):
-    """Action to blackout all DMX universes simultaneously."""
+    """Action to blackout all DMX universes simultaneously (Scenic Blackout)."""
 
     name = "dmx.blackout_all"
     can_undo = True
@@ -315,65 +315,95 @@ class DmxBlackoutAllAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.old_frames: dict[int, np.ndarray] = {}
+        self.target_state: bool = True
+        self.old_state: bool = False
+
+    def configure(self, state: bool | None = None) -> None:
+        """Configure the target blackout state.
+
+        Args:
+            state: True for blackout, False for restore, or None to toggle.
+        """
+        current_state = bool(getattr(self.app, "blackout_active", False))
+        if state is None:
+            self.target_state = not current_state
+        else:
+            self.target_state = bool(state)
 
     def execute(self) -> None:
-        """Execute blackout on all universes."""
+        """Execute blackout toggle or state change."""
+        self.old_state = bool(getattr(self.app, "blackout_active", False))
+        self.app.blackout_active = self.target_state
         self.old_frames = {}
-        universes = _get_active_universes(self.app)
 
-        for universe in universes:
-            if self.app.engine is not None:
+        backend = getattr(self.app, "backend", None)
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+
+        if backend_dmx is not None:
+            backend_dmx.blackout = self.target_state
+            if type(backend_dmx).__name__ == "Dmx":
+                backend_dmx.set_levels()
+                backend_dmx.send()
+            else:
+                patch_universes = _get_patch_universes(self.app)
+                for idx, universe in enumerate(patch_universes):
+                    if idx < len(backend_dmx.frame):
+                        if universe not in self.old_frames:
+                            self.old_frames[universe] = backend_dmx.frame[idx].copy()
+                        if self.target_state:
+                            backend_dmx.frame[idx].fill(0)
+
+        # Handle engine universes (standalone or mock testing)
+        if self.app.engine is not None:
+            universes = _get_active_universes(self.app)
+            for universe in universes:
                 try:
                     univ = self.app.engine.universe(universe)
-                    self.old_frames[universe] = univ.snapshot()
-                    univ.blackout()
-                except KeyError:
+                    if universe not in self.old_frames:
+                        self.old_frames[universe] = univ.snapshot()
+                    if self.target_state:
+                        univ.blackout()
+                    else:
+                        if universe in self.old_frames:
+                            univ.apply_array(self.old_frames[universe])
+                except (KeyError, AttributeError):
                     pass
 
-        backend = getattr(self.app, "backend", None)
-        if backend is not None and getattr(backend, "dmx", None) is not None:
-            patch_universes = _get_patch_universes(self.app)
-            for idx, universe in enumerate(patch_universes):
-                if universe not in self.old_frames and idx < len(backend.dmx.frame):
-                    self.old_frames[universe] = backend.dmx.frame[idx].copy()
-                if idx < len(backend.dmx.frame):
-                    backend.dmx.frame[idx].fill(0)
-
-        self.app.emit("dmx.blackout_all_changed", True)
+        self.app.emit("dmx.blackout_all_changed", self.target_state)
 
     def undo(self) -> None:
-        """Restore all universes prior to blackout."""
-        for universe, old_frame in self.old_frames.items():
-            if self.app.engine is not None:
-                try:
-                    self.app.engine.universe(universe).apply_array(old_frame)
-                except KeyError:
-                    pass
-            backend = getattr(self.app, "backend", None)
-            if backend is not None and getattr(backend, "dmx", None) is not None:
-                patch_universes = _get_patch_universes(self.app)
-                if universe in patch_universes:
-                    idx = patch_universes.index(universe)
-                    if idx < len(backend.dmx.frame):
-                        np.copyto(backend.dmx.frame[idx], old_frame)
+        """Restore previous state prior to action."""
+        self.app.blackout_active = self.old_state
+        backend = getattr(self.app, "backend", None)
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
 
-        self.app.emit("dmx.blackout_all_changed", False)
+        if backend_dmx is not None:
+            backend_dmx.blackout = self.old_state
+            if type(backend_dmx).__name__ == "Dmx":
+                backend_dmx.set_levels()
+                backend_dmx.send()
+            else:
+                patch_universes = _get_patch_universes(self.app)
+                for idx, universe in enumerate(patch_universes):
+                    if universe in self.old_frames and idx < len(backend_dmx.frame):
+                        np.copyto(backend_dmx.frame[idx], self.old_frames[universe])
+
+        if self.app.engine is not None:
+            for universe, old_frame in self.old_frames.items():
+                try:
+                    univ = self.app.engine.universe(universe)
+                    if self.old_state:
+                        univ.blackout()
+                    else:
+                        univ.apply_array(old_frame)
+                except (KeyError, AttributeError):
+                    pass
+
+        self.app.emit("dmx.blackout_all_changed", self.old_state)
 
     def redo(self) -> None:
-        """Re-apply blackout on all universes."""
-        universes = _get_active_universes(self.app)
-        for universe in universes:
-            if self.app.engine is not None:
-                try:
-                    self.app.engine.universe(universe).blackout()
-                except KeyError:
-                    pass
-        backend = getattr(self.app, "backend", None)
-        if backend is not None and getattr(backend, "dmx", None) is not None:
-            for frame in backend.dmx.frame:
-                frame.fill(0)
-
-        self.app.emit("dmx.blackout_all_changed", True)
+        """Re-apply target blackout state."""
+        self.execute()
 
 
 def _normalize_protocol(protocol: str | Protocol | object) -> Protocol:

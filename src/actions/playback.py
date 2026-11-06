@@ -205,14 +205,21 @@ class PlaybackGotoAction(Action):
         """
         super().__init__(app)
         self.target: str = ""
+        self.override_time: float | None = None
 
-    def configure(self, target: float | str | int) -> None:
+    def configure(
+        self,
+        target: float | str | int,
+        override_time: float | None = None,
+    ) -> None:
         """Configure the target cue.
 
         Args:
             target: Cue number (string or number).
+            override_time: Optional override fade time in seconds.
         """
         self.target = str(target)
+        self.override_time = float(override_time) if override_time is not None else None
 
     def execute(self) -> None:
         """Execute the goto transition."""
@@ -220,7 +227,7 @@ class PlaybackGotoAction(Action):
         if not main_playback or not self.target:
             return
 
-        main_playback.goto(self.target)
+        main_playback.goto(self.target, override_time=self.override_time)
         self.app.emit("playback.goto_triggered", self.get_feedback_state())
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
@@ -229,6 +236,7 @@ class PlaybackGotoAction(Action):
             "active": False,
             "label": "GOTO",
             "target": self.target,
+            "override_time": self.override_time,
         }
 
 

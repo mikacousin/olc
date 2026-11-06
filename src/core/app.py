@@ -55,6 +55,8 @@ class CoreApplication(EventDispatcher):
     selected_group: typing.Optional[float]
     tabs: CoreTabs
     dark_theme: bool
+    blackout_active: bool
+    main_fader_level: float
 
     @property
     def core(self) -> CoreApplication:
@@ -89,6 +91,8 @@ class CoreApplication(EventDispatcher):
         self.engine = None
         self.midi = None
         self.osc_delegate = None
+        self.blackout_active = False
+        self.main_fader_level = 1.0
 
         # For crossfade
         app_delegate = app if app is not None else self

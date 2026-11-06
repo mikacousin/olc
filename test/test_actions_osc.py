@@ -918,3 +918,212 @@ def test_settings_tab_update_osc_static_client_toggle() -> None:
     mock_entry.set_sensitive.assert_called_once_with(True)
     mock_spin.set_sensitive.assert_called_once_with(True)
     assert not tab._updating_settings
+
+
+def test_osc_playback_subscribe_and_telemetry() -> None:
+    """Test subscribing to 'playback' receives initial telemetry and dump."""
+    from olc.cue import Cue
+    from olc.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    # Prepare some cues in main playback
+    mp = app.lightshow.main_playback
+    cue1 = Cue(sequence=1, number=1.0, text="Intro")
+    step1 = Step(sequence=1.0, cue=cue1, text="Intro")
+    cue2 = Cue(sequence=1, number=2.0, text="Chorus")
+    step2 = Step(sequence=1.0, cue=cue2, text="Chorus")
+    mp.steps.append(step1)
+    mp.steps.append(step2)
+    mp.position = 2
+
+    delegate = OSCDelegate(app)
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+
+    delegate._subscribe("/olc/subscribe", ["playback", 8888], ("192.168.1.50", 8888))
+
+    # Check status and telemetry sent to client
+    direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list
+    sent_paths = [c[0][2] for c in direct_calls]
+
+    assert "/olc/subscribe/status" in sent_paths
+    assert "/olc/playback/active/cue" in sent_paths
+    assert "/olc/playback/active/text" in sent_paths
+    assert "/olc/playback/next/cue" in sent_paths
+    assert "/olc/playback/next/text" in sent_paths
+    assert "/olc/playback/state" in sent_paths
+    assert "/olc/blackout" in sent_paths
+    assert "/olc/mainfader" in sent_paths
+    assert "/olc/playback/dump" in sent_paths
+
+
+def test_osc_playback_goto_cue_and_progress() -> None:
+    """Test /olc/playback/goto_cue route and transition progress publishing."""
+    from olc.cue import Cue
+    from olc.sequence import get_cue
+    from olc.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    mp = app.lightshow.main_playback
+    cue1 = Cue(sequence=1, number=1.0, text="Cue 1")
+    step1 = Step(sequence=1.0, cue=cue1, text="Cue 1")
+    cue2 = Cue(sequence=1, number=2.0, text="Cue 2")
+    step2 = Step(sequence=1.0, cue=cue2, text="Cue 2")
+    mp.steps.append(step1)
+    mp.steps.append(step2)
+
+    delegate = OSCDelegate(app)
+
+    # 1. Goto cue 2 with override time 3.0s
+    delegate._playback_goto_cue("/olc/playback/goto_cue", [2.0, 3.0])
+    # Main playback positions to step preceding target, so next step is cue 2
+    assert get_cue(mp.steps[mp.position + 1]).number == 2.0
+
+    # 2. Progress event
+    mock_engine.publish_osc.reset_mock()
+    app.emit(
+        "playback.transition_progress",
+        {"total_time": 3000.0, "time_spent": 1500.0, "progress_val": 128},
+    )
+    mock_engine.publish_osc.assert_any_call("playback", "/olc/playback/progress", 0.5)
+
+    # 3. Transition completed
+    mock_engine.publish_osc.reset_mock()
+    app.emit("playback.transition_completed", {"next_step": 2})
+    # Emits 1.0, updates telemetry, then 0.0
+    progress_calls = [
+        c
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/playback/progress"
+    ]
+    assert len(progress_calls) == 2
+    assert progress_calls[0][0][2] == 1.0
+    assert progress_calls[1][0][2] == 0.0
+
+
+def test_osc_playback_dump_and_cue_dump() -> None:
+    """Test /olc/playback/dump and /olc/cue/dump routes returning JSON."""
+    import json
+
+    from olc.cue import Cue
+    from olc.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    mp = app.lightshow.main_playback
+    cue1 = Cue(sequence=1, number=1.0, text="Scene 1")
+    step1 = Step(sequence=1.0, cue=cue1, text="Scene 1", time_in=3.0, time_out=4.0)
+    mp.steps.append(step1)
+
+    delegate = OSCDelegate(app)
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_engine.publish_osc.reset_mock()
+
+    delegate._playback_dump(
+        "/olc/cue/dump", [], sender_addr=("192.168.1.10", 9000)
+    )
+
+    # Verify direct reply
+    direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list
+    assert len(direct_calls) == 1
+    dump_str = direct_calls[0][0][3]
+    dump_data = json.loads(dump_str)
+    assert len(dump_data) >= 1
+    assert any(c["cue"] == 1.0 and c["text"] == "Scene 1" for c in dump_data)
+
+
+def test_osc_mainfader_and_blackout_routes() -> None:
+    """Test /olc/mainfader and /olc/blackout execution and queries."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+
+    # 1. Set mainfader via float 0.75
+    mock_engine.publish_osc.reset_mock()
+    delegate._mainfader("/olc/mainfader", [0.75])
+    assert getattr(app, "main_fader_level", 0.0) == 0.75
+    mock_engine.publish_osc.assert_any_call("playback", "/olc/mainfader", 0.75)
+
+    # 2. Set mainfader via int 128 (normalized to 128/255)
+    delegate._mainfader("/olc/mainfader", [128])
+    assert abs(getattr(app, "main_fader_level", 0.0) - (128 / 255.0)) < 0.01
+
+    # 3. Query mainfader without args
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    delegate._mainfader("/olc/mainfader", [], sender_addr=("10.0.0.1", 5000))
+    mock_engine.osc_subscriptions.send_direct.assert_called_once()
+    assert mock_engine.osc_subscriptions.send_direct.call_args[0][2] == "/olc/mainfader"
+
+    # 4. Trigger Blackout ON
+    mock_engine.publish_osc.reset_mock()
+    delegate._blackout("/olc/blackout", [1], sender_addr=("10.0.0.1", 5000))
+    assert getattr(app, "blackout_active", False) is True
+    mock_engine.publish_osc.assert_any_call("playback", "/olc/blackout", 1)
+
+    # 5. Toggle Blackout OFF (no args)
+    mock_engine.publish_osc.reset_mock()
+    delegate._blackout("/olc/blackout", [], sender_addr=("10.0.0.1", 5000))
+    assert getattr(app, "blackout_active", True) is False
+    mock_engine.publish_osc.assert_any_call("playback", "/olc/blackout", 0)
+
+
+def test_osc_playback_state_queries() -> None:
+    """Test /olc/playback/active/cue, /next/cue, and /state direct queries."""
+    from olc.cue import Cue
+    from olc.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    mp = app.lightshow.main_playback
+    cue1 = Cue(sequence=1, number=5.0, text="Dance")
+    step1 = Step(sequence=1.0, cue=cue1, text="Dance")
+    cue2 = Cue(sequence=1, number=6.0, text="Bow")
+    step2 = Step(sequence=1.0, cue=cue2, text="Bow")
+    mp.steps.append(step1)
+    mp.steps.append(step2)
+    mp.position = 2
+
+    delegate = OSCDelegate(app)
+
+    # Query active cue
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    delegate._playback_query_active_cue(
+        "/olc/playback/active/cue", [], sender_addr=("10.0.0.2", 8000)
+    )
+    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+        "10.0.0.2", 8000, "/olc/playback/active/cue", 5.0
+    )
+
+    # Query next cue
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    delegate._playback_query_next_cue(
+        "/olc/playback/next/cue", [], sender_addr=("10.0.0.2", 8000)
+    )
+    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+        "10.0.0.2", 8000, "/olc/playback/next/cue", 6.0
+    )
+
+    # Query state
+    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    delegate._playback_query_state(
+        "/olc/playback/state", [], sender_addr=("10.0.0.2", 8000)
+    )
+    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+        "10.0.0.2", 8000, "/olc/playback/state", "idle"
+    )

@@ -21,6 +21,7 @@ from json import dumps as json_dumps
 from olc.core.osc import make_method
 from olc.define import MAX_FADER_PAGE
 from olc.devices.builtin import create_dimmer_definition
+from olc.sequence import get_cue
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -41,6 +42,24 @@ class OSCDelegate:
         self.app.subscribe("fader.changed", self._on_fader_changed)
         self.app.subscribe("commandline.changed", self._on_commandline_changed)
         self.app.subscribe("patch.changed", self._on_patch_changed)
+        self.app.subscribe("playback.transition_progress", self._on_transition_progress)
+        self.app.subscribe("playback.goback_progress", self._on_goback_progress)
+        self.app.subscribe(
+            "playback.transition_completed", self._on_transition_completed
+        )
+        self.app.subscribe("playback.goback_completed", self._on_transition_completed)
+        self.app.subscribe("playback.go_triggered", self._on_playback_triggered)
+        self.app.subscribe(
+            "playback.go_triggered_direct", self._on_playback_triggered
+        )
+        self.app.subscribe("playback.go_back_triggered", self._on_playback_triggered)
+        self.app.subscribe("playback.goto_triggered", self._on_playback_triggered)
+        self.app.subscribe("playback.step_changed", self._on_playback_triggered)
+        self.app.subscribe("playback.pause_triggered", self._on_pause_triggered)
+        self.app.subscribe(
+            "main_fader.level_changed", self._on_main_fader_level_changed
+        )
+        self.app.subscribe("dmx.blackout_all_changed", self._on_blackout_changed)
 
     def _send_patch_status(
         self,
@@ -112,6 +131,183 @@ class OSCDelegate:
         if self.app.engine is not None:
             self.app.engine.publish_osc("commandline", "/olc/command_line", keystring)
 
+    def _get_playback_telemetry(self) -> dict[str, typing.Any]:
+        """Extract current playback cue and state information."""
+        active_cue = 0.0
+        active_text = ""
+        next_cue = 0.0
+        next_text = ""
+        state = "idle"
+
+        main_playback = getattr(self.app.lightshow, "main_playback", None)
+        if main_playback is not None and hasattr(main_playback, "steps"):
+            pos = getattr(main_playback, "position", 0)
+            steps = main_playback.steps
+            if 0 <= pos < len(steps):
+                step = steps[pos]
+                cue = get_cue(step)
+                if cue is not None:
+                    active_cue = float(cue.number)
+                active_text = str(getattr(step, "text", ""))
+
+            next_pos = pos + 1
+            if 0 <= next_pos < len(steps):
+                next_step = steps[next_pos]
+                n_cue = get_cue(next_step)
+                if n_cue is not None:
+                    next_cue = float(n_cue.number)
+                next_text = str(getattr(next_step, "text", ""))
+
+            if getattr(main_playback, "on_go", False):
+                thread = getattr(main_playback, "thread", None)
+                if (
+                    thread is not None
+                    and hasattr(thread, "pause")
+                    and not thread.pause.is_set()
+                ):
+                    state = "paused"
+                else:
+                    state = "running"
+            else:
+                state = "idle"
+
+        return {
+            "active_cue": active_cue,
+            "active_text": active_text,
+            "next_cue": next_cue,
+            "next_text": next_text,
+            "state": state,
+        }
+
+    def _get_cues_dump_json(self) -> str:
+        """Export JSON dump of all cues in main playback."""
+        main_playback = getattr(self.app.lightshow, "main_playback", None)
+        cues_data: list[dict[str, typing.Any]] = []
+        if main_playback is not None and hasattr(main_playback, "steps"):
+            for idx, step in enumerate(main_playback.steps):
+                cue = get_cue(step)
+                if cue is not None:
+                    cues_data.append(
+                        {
+                            "step": idx,
+                            "cue": float(cue.number),
+                            "text": str(getattr(step, "text", "")),
+                            "time_in": float(getattr(step, "time_in", 5.0)),
+                            "time_out": float(getattr(step, "time_out", 5.0)),
+                            "delay_in": float(getattr(step, "delay_in", 0.0)),
+                            "delay_out": float(getattr(step, "delay_out", 0.0)),
+                            "wait": float(getattr(step, "wait", 0.0)),
+                            "total_time": float(getattr(step, "total_time", 5.0)),
+                        }
+                    )
+        return json_dumps(cues_data)
+
+    def _send_playback_telemetry(
+        self, sender_addr: tuple[str, int] | None = None
+    ) -> None:
+        """Send complete playback telemetry to subscribers and/or sender."""
+        if self.app.engine is None:
+            return
+
+        telem = self._get_playback_telemetry()
+        blackout = 1 if getattr(self.app, "blackout_active", False) else 0
+        mf_level = float(getattr(self.app, "main_fader_level", 1.0))
+
+        if sender_addr is not None:
+            host, port = sender_addr
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/playback/active/cue", telem["active_cue"]
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/playback/active/text", telem["active_text"]
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/playback/next/cue", telem["next_cue"]
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/playback/next/text", telem["next_text"]
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/playback/state", telem["state"]
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/blackout", blackout
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/mainfader", mf_level
+            )
+
+        self.app.engine.publish_osc(
+            "playback", "/olc/playback/active/cue", telem["active_cue"]
+        )
+        self.app.engine.publish_osc(
+            "playback", "/olc/playback/active/text", telem["active_text"]
+        )
+        self.app.engine.publish_osc(
+            "playback", "/olc/playback/next/cue", telem["next_cue"]
+        )
+        self.app.engine.publish_osc(
+            "playback", "/olc/playback/next/text", telem["next_text"]
+        )
+        self.app.engine.publish_osc(
+            "playback", "/olc/playback/state", telem["state"]
+        )
+
+    def _on_transition_progress(self, data: dict[str, typing.Any]) -> None:
+        """Publish fade progress on /olc/playback/progress."""
+        if self.app.engine is not None:
+            total_time = float(data.get("total_time", 0.0))
+            time_spent = float(data.get("time_spent", 0.0))
+            if total_time > 0:
+                ratio = min(1.0, max(0.0, time_spent / total_time))
+            else:
+                ratio = 1.0
+            self.app.engine.publish_osc(
+                "playback", "/olc/playback/progress", float(ratio)
+            )
+
+    def _on_goback_progress(self, data: dict[str, typing.Any]) -> None:
+        """Publish goback progress on /olc/playback/progress."""
+        if self.app.engine is not None:
+            goback_time = float(data.get("goback_time", 0.0))
+            time_spent = float(data.get("time_spent", 0.0))
+            ratio = (
+                min(1.0, max(0.0, time_spent / goback_time))
+                if goback_time > 0
+                else 1.0
+            )
+            self.app.engine.publish_osc(
+                "playback", "/olc/playback/progress", float(ratio)
+            )
+
+    def _on_transition_completed(self, _data: dict[str, typing.Any]) -> None:
+        """Publish completed progress and refresh telemetry."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc("playback", "/olc/playback/progress", 1.0)
+            self._send_playback_telemetry()
+            self.app.engine.publish_osc("playback", "/olc/playback/progress", 0.0)
+
+    def _on_playback_triggered(self, _data: object = None) -> None:
+        """Publish updated telemetry when a playback action is triggered."""
+        self._send_playback_telemetry()
+
+    def _on_pause_triggered(self, feedback: dict[str, typing.Any]) -> None:
+        """Publish pause state change."""
+        if self.app.engine is not None:
+            is_paused = bool(feedback.get("active", False))
+            state = "paused" if is_paused else "running"
+            self.app.engine.publish_osc("playback", "/olc/playback/state", state)
+
+    def _on_main_fader_level_changed(self, level: float) -> None:
+        """Publish Main Fader level changes."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc("playback", "/olc/mainfader", float(level))
+
+    def _on_blackout_changed(self, state: bool) -> None:
+        """Publish Blackout state changes."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc("playback", "/olc/blackout", 1 if state else 0)
+
     @make_method("/olc/subscribe")
     def _subscribe(
         self,
@@ -164,6 +360,14 @@ class OSCDelegate:
             self.app.engine.osc_subscriptions.send_direct(
                 host, port, "/olc/patch/dump", json_dumps(dump_data)
             )
+
+        if topic in ("playback", "all"):
+            self._send_playback_telemetry(sender_addr)
+            dump_json = self._get_cues_dump_json()
+            if sender_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, "/olc/playback/dump", dump_json
+                )
 
     @make_method("/olc/unsubscribe")
     def _unsubscribe(
@@ -279,6 +483,129 @@ class OSCDelegate:
     @make_method("/olc/key/seq-")
     def _seq_minus(self, _address: str, _args: list) -> None:
         self._execute_action("playback.sequence_minus")
+
+    @make_method("/olc/playback/goto_cue")
+    @make_method("/olc/playback/goto")
+    def _playback_goto_cue(self, _address: str, args: list) -> None:
+        """Jump to a specific cue, with optional fade override time."""
+        if not args:
+            return
+        target = args[0]
+        override_time = float(args[1]) if len(args) >= 2 else None
+        self._execute_action("playback.goto", target, override_time)
+
+    @make_method("/olc/playback/active/cue")
+    def _playback_query_active_cue(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Query currently active cue number."""
+        if self.app.engine is not None and sender_addr is not None:
+            telem = self._get_playback_telemetry()
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0],
+                sender_addr[1],
+                "/olc/playback/active/cue",
+                telem["active_cue"],
+            )
+
+    @make_method("/olc/playback/next/cue")
+    def _playback_query_next_cue(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Query next cue number."""
+        if self.app.engine is not None and sender_addr is not None:
+            telem = self._get_playback_telemetry()
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0],
+                sender_addr[1],
+                "/olc/playback/next/cue",
+                telem["next_cue"],
+            )
+
+    @make_method("/olc/playback/state")
+    def _playback_query_state(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Query current playback state (idle, running, paused)."""
+        if self.app.engine is not None and sender_addr is not None:
+            telem = self._get_playback_telemetry()
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0],
+                sender_addr[1],
+                "/olc/playback/state",
+                telem["state"],
+            )
+
+    @make_method("/olc/playback/dump")
+    @make_method("/olc/cue/dump")
+    def _playback_dump(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Export JSON dump of all cues in main playback."""
+        if self.app.engine is None:
+            return
+        dump_json = self._get_cues_dump_json()
+        if sender_addr is not None:
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/playback/dump", dump_json
+            )
+        self.app.engine.publish_osc("playback", "/olc/playback/dump", dump_json)
+
+    @make_method("/olc/mainfader")
+    def _mainfader(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Set or query the Main Fader level."""
+        if args:
+            try:
+                val = float(args[0])
+                self._execute_action("main_fader.set_level", val)
+            except (ValueError, TypeError):
+                pass
+        elif self.app.engine is not None and sender_addr is not None:
+            lvl = float(getattr(self.app, "main_fader_level", 1.0))
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/mainfader", lvl
+            )
+
+    @make_method("/olc/blackout")
+    def _blackout(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Set or toggle the scenic blackout state."""
+        if args:
+            raw_state = args[0]
+            if isinstance(raw_state, str):
+                target_state = raw_state.lower() in ("1", "true", "on")
+            else:
+                target_state = bool(raw_state)
+            self._execute_action("dmx.blackout_all", target_state)
+        else:
+            self._execute_action("dmx.blackout_all")
+
+        if self.app.engine is not None and sender_addr is not None:
+            curr_state = 1 if getattr(self.app, "blackout_active", False) else 0
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/blackout", curr_state
+            )
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, _args: list) -> None:

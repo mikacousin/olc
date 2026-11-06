@@ -103,6 +103,7 @@ from olc.actions.independent import (
     IndependentSetLevelAction,
     IndependentUpdateChannelsAction,
 )
+from olc.actions.main_fader import MainFaderSetLevelAction
 from olc.actions.midi import (
     MidiAssignMappingAction,
     MidiClearMappingsAction,
@@ -265,6 +266,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DmxTestOutputAction,
         DmxClearUserOutputsAction,
         DmxBlackoutAllAction,
+        MainFaderSetLevelAction,
         OscToggleAction,
         OscSetConfigAction,
         OscToggleStaticClientAction,

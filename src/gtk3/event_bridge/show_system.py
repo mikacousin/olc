@@ -106,6 +106,14 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda subs: self._run_idle(self._on_osc_subscribers_changed, subs),
         )
         self.app.core.subscribe(
+            "main_fader.level_changed",
+            lambda _level: self._run_idle(self._on_main_fader_changed),
+        )
+        self.app.core.subscribe(
+            "dmx.blackout_all_changed",
+            lambda _state: self._run_idle(self._on_main_fader_changed),
+        )
+        self.app.core.subscribe(
             "midi.port_toggled",
             lambda port_name, enable: self._run_idle(
                 self._on_midi_port_toggled, port_name, enable
@@ -594,4 +602,18 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             if hasattr(settings_tab, "update_default_time_ui"):
                 settings_tab.update_default_time_ui(default_time)
+        return False
+
+    def _on_main_fader_changed(self) -> bool:
+        """Handle Main Fader level or Blackout toggle to refresh header widget.
+
+        Returns:
+            Always False.
+        """
+        if (
+            self.app.window
+            and hasattr(self.app.window, "main_fader")
+            and self.app.window.main_fader is not None
+        ):
+            self.app.window.main_fader.queue_draw()
         return False

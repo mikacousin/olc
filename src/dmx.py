@@ -53,6 +53,7 @@ class Dmx:
     backend: Optional[DMXBackend]
     patch: DMXPatch
     main_fader: MainFader
+    blackout: bool
     levels: DmxLevels
     frame: list[np.ndarray]
     user_outputs: dict[tuple[int, int], int]
@@ -65,6 +66,7 @@ class Dmx:
         self.lightshow = lightshow
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
+        self.blackout = False
         # Dimmers levels (floating-point for silky-smooth 16/24-bit crossfades)
         self.levels = DmxLevels(
             {
@@ -144,11 +146,16 @@ class Dmx:
             composite[user_mask] = self.levels["user"][user_mask]
         return composite
 
+    @property
+    def effective_intensity_mult(self) -> float:
+        """Effective intensity scaling factor combining Main Fader and Blackout."""
+        return 0.0 if self.blackout else self.main_fader.value
+
     def _update_dynamic_devices(self, composite: np.ndarray) -> None:
         """Update dynamic intensity devices (Virtual Dimmer, 16/24-bit dimmers)."""
         if not hasattr(self.patch, "dynamic_intensity_devices"):
             return
-        main_val = self.main_fader.value
+        main_val = self.effective_intensity_mult
         for dev in self.patch.dynamic_intensity_devices:
             dev_id = dev.fixture_id
             if 1 <= dev_id <= len(composite):
@@ -159,7 +166,13 @@ class Dmx:
                 elif comp_val > 0:
                     target_norm = float(comp_val) / 255.0
                 else:
-                    target_norm = dev.intensity
+                    curr_int = (
+                        dev._target_intensity
+                        if dev._target_intensity is not None
+                        else dev.intensity
+                    )
+                    target_norm = float(curr_int)
+                dev._target_intensity = target_norm
                 dev.set_intensity(target_norm * main_val)
 
     def set_levels(self) -> None:
@@ -190,8 +203,9 @@ class Dmx:
                             out_levels[curve_mask].astype(np.uint8)
                         ]
 
-        # Scale by Main Fader
-        out_levels = np.round(out_levels * self.main_fader.value).astype(np.uint8)
+        # Scale by Main Fader and Blackout
+        intensity_mult = self.effective_intensity_mult
+        out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
 
         # Distribute levels to self.frame using advanced indexing
         for index in range(len(self.patch.universes)):
@@ -211,14 +225,12 @@ class Dmx:
                 dtype=np.float64,
                 count=len(self.patch.device_channel_refs),
             )
-            # Scale HTP channels by Main Fader, leaving LTP channels untouched
+            # Scale HTP channels by Main Fader and Blackout, leaving LTP untouched
             if hasattr(self.patch, "map_dev_is_htp") and np.any(
                 self.patch.map_dev_is_htp
             ):
                 htp_mask = self.patch.map_dev_is_htp
-                dev_vals[htp_mask] = np.round(
-                    dev_vals[htp_mask] * self.main_fader.value
-                )
+                dev_vals[htp_mask] = np.round(dev_vals[htp_mask] * intensity_mult)
 
             dev_vals_u8 = dev_vals.astype(np.uint8)
             for index in range(len(self.patch.universes)):
@@ -252,9 +264,8 @@ class Dmx:
             self.patch.update_numpy_cache_if_dirty()
 
             composite = self.get_all_composite_levels()
-            current_display_levels = np.round(composite * self.main_fader.value).astype(
-                np.uint8
-            )
+            scaled = composite * self.effective_intensity_mult
+            current_display_levels = np.round(scaled).astype(np.uint8)
 
             changed_indices = np.where(
                 (current_display_levels != self._old_channel_levels)

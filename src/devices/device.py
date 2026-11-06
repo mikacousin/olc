@@ -74,6 +74,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._curve: Optional[Curve] = None
         self._curve_provider: Optional[Callable[[int], Optional[Curve]]] = None
         self._intensity: float = 0.0 if self.has_physical_dimmer else 1.0
+        self._target_intensity: Optional[float] = None
         self._target_color: sRGB = sRGB(1.0, 1.0, 1.0)
         self._target_cie: CIExyY = CIExyY(0.3127, 0.3290, 100.0)
         self._base_emitters: dict[ChannelType, float] = {}
