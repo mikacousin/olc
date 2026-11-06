@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import re
 import typing
+from json import dumps as json_dumps
 
 from olc.core.osc import make_method
 from olc.define import MAX_FADER_PAGE
+from olc.devices.builtin import create_dimmer_definition
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -38,9 +40,18 @@ class OSCDelegate:
         self.app.subscribe("fader.level_changed", self._on_fader_level_changed)
         self.app.subscribe("fader.changed", self._on_fader_changed)
         self.app.subscribe("commandline.changed", self._on_commandline_changed)
-        self.app.subscribe(
-            "patch.selected_outputs_changed", self._on_selected_outputs_changed
-        )
+        self.app.subscribe("patch.changed", self._on_patch_changed)
+
+    def _send_patch_status(self, status: str, command: str, message: str) -> None:
+        """Send OSC status feedback for patch operations."""
+        if self.app.engine is not None:
+            self.app.engine.send_osc("/olc/patch/status", status, command, message)
+
+    def _on_patch_changed(self) -> None:
+        """Send OSC notification when the patch changes."""
+        if self.app.engine is not None:
+            count = len(self.app.lightshow.patch.devices)
+            self.app.engine.send_osc("/olc/patch/changed", count)
 
     def _on_fader_page_changed(self, page: int) -> None:
         """Send OSC feedback when the active fader page changes."""
@@ -77,14 +88,6 @@ class OSCDelegate:
         """Send OSC feedback when the logical command line changes."""
         if self.app.engine is not None:
             self.app.engine.send_osc("/olc/command_line", keystring)
-
-    def _on_selected_outputs_changed(self) -> None:
-        """Send OSC feedback when selected DMX outputs change."""
-        if self.app.engine is not None:
-            patch_by_outputs = self.app.lightshow.patch_by_outputs
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", patch_by_outputs.get_selected()
-            )
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
@@ -309,25 +312,254 @@ class OSCDelegate:
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_flash: {err}")
 
-    @make_method("/olc/patch/channel")
-    def _patch_channel(self, _address: str, _args: list) -> None:
-        self.app.lightshow.patch_by_outputs.patch_channel(True)
+    @make_method("/olc/patch/dimmer")
+    def _patch_dimmer(self, address: str, args: list) -> None:
+        """Patch a dimmer device (Generic:Dimmer) directly via OSC.
 
-    @make_method("/olc/patch/output")
-    def _patch_output(self, _address: str, _args: list) -> None:
-        self.app.lightshow.patch_by_outputs.select_output()
+        Args:
+            address: The OSC address (/olc/patch/dimmer).
+            args: [device_id, universe, address] or [device_id, "universe.address"].
+        """
+        try:
+            if not args or len(args) < 2:
+                self._send_patch_status(
+                    "ERROR",
+                    address,
+                    "Usage: [device_id, universe, address] or [device_id, 'univ.addr']",
+                )
+                return
 
-    @make_method("/olc/patch/thru")
-    def _patch_thru(self, _address: str, _args: list) -> None:
-        self.app.lightshow.patch_by_outputs.thru()
+            device_id = int(args[0])
+            if len(args) == 2 and isinstance(args[1], str):
+                parts = args[1].split(".")
+                if len(parts) != 2:
+                    self._send_patch_status(
+                        "ERROR",
+                        address,
+                        f"Invalid address '{args[1]}', expected 'universe.address'",
+                    )
+                    return
+                universe = int(parts[0])
+                dmx_address = int(parts[1])
+            elif len(args) >= 3:
+                universe = int(args[1])
+                dmx_address = int(args[2])
+            else:
+                self._send_patch_status(
+                    "ERROR", address, "Invalid arguments for patch dimmer"
+                )
+                return
 
-    @make_method("/olc/patch/+")
-    def _patch_plus(self, _address: str, _args: list) -> None:
-        self.app.lightshow.patch_by_outputs.add_output()
+            fixture_lib = self.app.lightshow.fixture_library
+            dimmer_def = fixture_lib.get_by_key("Generic:Dimmer")
+            if dimmer_def is None:
+                dimmer_def = create_dimmer_definition(fine=False)
 
-    @make_method("/olc/patch/-")
-    def _patch_minus(self, _address: str, _args: list) -> None:
-        self.app.lightshow.patch_by_outputs.del_output()
+            self._execute_action(
+                "patch.device",
+                device_id,
+                dimmer_def,
+                universe,
+                dmx_address,
+                None,
+                "",
+            )
+            self._send_patch_status(
+                "OK", address, f"Device {device_id} patched to {universe}.{dmx_address}"
+            )
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/device")
+    def _patch_device(self, address: str, args: list) -> None:
+        """Patch a lighting fixture device directly via OSC.
+
+        Args:
+            address: The OSC address (/olc/patch/device).
+            args: [device_id, fixture_key, universe, address, (mode_name), (label)].
+        """
+        try:
+            if not args or len(args) < 4:
+                self._send_patch_status(
+                    "ERROR",
+                    address,
+                    "Usage: [device_id, fixture_key, universe, address, (mode), (lbl)]",
+                )
+                return
+
+            device_id = int(args[0])
+            fixture_key = str(args[1])
+            universe = int(args[2])
+            dmx_address = int(args[3])
+            mode_name = str(args[4]).strip() if len(args) > 4 and args[4] else None
+            if mode_name and mode_name.lower() == "default":
+                mode_name = None
+            label = str(args[5]) if len(args) > 5 and args[5] else ""
+
+            fixture_lib = self.app.lightshow.fixture_library
+            fixture_def = fixture_lib.get_by_key(fixture_key)
+            if fixture_def is None:
+                aliases = {
+                    "rgb": "Generic:LED RGB",
+                    "generic:rgb": "Generic:LED RGB",
+                    "rgbw": "Generic:LED RGBW",
+                    "generic:rgbw": "Generic:LED RGBW",
+                    "rgba": "Generic:LED RGBA",
+                    "generic:rgba": "Generic:LED RGBA",
+                    "dimmer": "Generic:Dimmer",
+                    "generic:dimmer": "Generic:Dimmer",
+                    "moving_head": "Generic:Moving Head Spot",
+                    "generic:moving_head": "Generic:Moving Head Spot",
+                }
+                alias = aliases.get(fixture_key.lower().strip())
+                if alias:
+                    fixture_def = fixture_lib.get_by_key(alias)
+
+            if fixture_def is None:
+                self._send_patch_status(
+                    "ERROR",
+                    address,
+                    f"Fixture definition '{fixture_key}' not found in library",
+                )
+                return
+
+            self._execute_action(
+                "patch.device",
+                device_id,
+                fixture_def,
+                universe,
+                dmx_address,
+                mode_name,
+                label,
+            )
+            self._send_patch_status(
+                "OK",
+                address,
+                f"Device {device_id} ({fixture_def.full_name}) "
+                f"patched to {universe}.{dmx_address}",
+            )
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/unpatch")
+    def _patch_unpatch(self, address: str, args: list) -> None:
+        """Unpatch a lighting device via OSC.
+
+        Args:
+            address: The OSC address (/olc/patch/unpatch).
+            args: [device_id: int].
+        """
+        try:
+            if not args:
+                self._send_patch_status("ERROR", address, "Usage: [device_id: int]")
+                return
+
+            device_id = int(args[0])
+            self._execute_action("patch.unpatch_device", device_id)
+            self._send_patch_status("OK", address, f"Device {device_id} unpatched")
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/1on1")
+    def _patch_1on1(self, address: str, _args: list) -> None:
+        """Reset patch to 1:1 dimmers via OSC."""
+        try:
+            self._execute_action("patch.set_1on1")
+            self._send_patch_status("OK", address, "Patch reset to 1:1")
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/clear")
+    def _patch_clear(self, address: str, _args: list) -> None:
+        """Clear all patch assignments via OSC."""
+        try:
+            self._execute_action("patch.clear")
+            self._send_patch_status("OK", address, "Patch cleared")
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/curve")
+    def _patch_curve(self, address: str, args: list) -> None:
+        """Set transfer curve for a device via OSC.
+
+        Args:
+            address: The OSC address (/olc/patch/curve).
+            args: [device_id: int, curve_id: int].
+        """
+        try:
+            if not args or len(args) < 2:
+                self._send_patch_status(
+                    "ERROR", address, "Usage: [device_id: int, curve_id: int]"
+                )
+                return
+
+            device_id = int(args[0])
+            curve_id = int(args[1])
+            self._execute_action("patch.set_device_curve", device_id, curve_id)
+            self._send_patch_status(
+                "OK", address, f"Device {device_id} curve set to {curve_id}"
+            )
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/get")
+    def _patch_get(self, address: str, args: list) -> None:
+        """Query patch state of a single device via OSC.
+
+        Sends response on /olc/patch/device/info.
+        """
+        try:
+            if not args or self.app.engine is None:
+                return
+
+            device_id = int(args[0])
+            dev = self.app.lightshow.patch.get_device(device_id)
+            if dev is not None:
+                model_name = f"{dev.manufacturer}:{dev.model}"
+                self.app.engine.send_osc(
+                    "/olc/patch/device/info",
+                    dev.device_id,
+                    dev.universe,
+                    dev.address,
+                    dev.channel_count(),
+                    model_name,
+                    dev.label,
+                )
+            else:
+                self.app.engine.send_osc(
+                    "/olc/patch/device/info",
+                    device_id,
+                    0,
+                    0,
+                    0,
+                    "",
+                    "",
+                )
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self._send_patch_status("ERROR", address, str(err))
+
+    @make_method("/olc/patch/dump")
+    def _patch_dump(self, _address: str, _args: list) -> None:
+        """Export JSON dump of all patched devices via OSC."""
+        if self.app.engine is None:
+            return
+
+        devices = sorted(
+            self.app.lightshow.patch.devices.values(), key=lambda d: d.device_id
+        )
+        dump_data = [
+            {
+                "device_id": d.device_id,
+                "universe": d.universe,
+                "address": d.address,
+                "footprint": d.channel_count(),
+                "model": f"{d.manufacturer}:{d.model}",
+                "mode": d.mode_name,
+                "label": d.label,
+            }
+            for d in devices
+        ]
+        self.app.engine.send_osc("/olc/patch/dump", json_dumps(dump_data))
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

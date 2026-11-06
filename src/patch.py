@@ -26,7 +26,6 @@ from olc.define import DEFAULT_UNIVERSES, MAX_CHANNELS
 from olc.devices.builtin import create_dimmer_definition
 from olc.devices.device import Channel, ChannelType, FixtureType, LightingDevice
 from olc.devices.fixture import FixtureDefinition
-from olc.patch_outputs import PatchByOutputs
 
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
@@ -1086,5 +1085,4 @@ __all__ = [
     "FixtureExchangeWarning",
     "PatchManager",
     "DMXPatch",
-    "PatchByOutputs",
 ]

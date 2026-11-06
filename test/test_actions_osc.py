@@ -139,12 +139,10 @@ def test_osc_delegate_telemetry_events() -> None:
     app.emit("fader.level_changed", 3, 0.5)
     mock_engine.send_osc.assert_called_with("/olc/fader/1/3/level", 128)
 
-    # 3. Test patch.selected_outputs_changed telemetry
-    app.lightshow.patch_by_outputs.outputs = [1, 2]
-    app.lightshow.patch_by_outputs.last = 2
-    app.emit("patch.selected_outputs_changed")
+    # 3. Test patch.changed telemetry
+    app.emit("patch.changed")
     mock_engine.send_osc.assert_called_with(
-        "/olc/patch/selected_outputs", app.lightshow.patch_by_outputs.get_selected()
+        "/olc/patch/changed", len(app.lightshow.patch.devices)
     )
 
 
@@ -378,3 +376,261 @@ def test_osc_delegate_cmd_execution() -> None:
     delegate._cmd("/olc/cmd", [""])  # pylint: disable=protected-access
     delegate._cmd("/olc/cmd", [123])  # pylint: disable=protected-access
     mock_engine.send_osc.assert_not_called()
+
+
+# pylint: disable=protected-access
+def test_osc_delegate_patch_dimmer() -> None:
+    """Test /olc/patch/dimmer endpoint in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+
+    # 1. Valid patch with 3 integer arguments
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
+    assert 1 in app.lightshow.patch.devices
+    dev1 = app.lightshow.patch.devices[1]
+    assert dev1.universe == 1
+    assert dev1.address == 10
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/dimmer", "Device 1 patched to 1.10"
+    )
+
+    # 2. Valid patch with string format "universe.address"
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [2, "1.20"])
+    assert 2 in app.lightshow.patch.devices
+    dev2 = app.lightshow.patch.devices[2]
+    assert dev2.universe == 1
+    assert dev2.address == 20
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/dimmer", "Device 2 patched to 1.20"
+    )
+
+    # 3. Invalid string format
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [3, "not_a_valid_format"])
+    assert 3 not in app.lightshow.patch.devices
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+    # 4. Too few arguments
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [4])
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+    # 5. Collision detection error
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [5, 1, 10])  # Collides with Device 1
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+    # 6. Undo/Redo support
+    app.history.undo()
+    assert 2 not in app.lightshow.patch.devices
+    app.history.redo()
+    assert 2 in app.lightshow.patch.devices
+
+
+def test_osc_delegate_patch_device() -> None:
+    """Test /olc/patch/device endpoint in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+
+    # 1. Valid fixture patch
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_device(
+        "/olc/patch/device", [10, "Generic:RGBW", 1, 30, "Default", "LED 1"]
+    )
+    assert 10 in app.lightshow.patch.devices
+    dev = app.lightshow.patch.devices[10]
+    assert dev.universe == 1
+    assert dev.address == 30
+    assert dev.channel_count() == 4
+    assert dev.label == "LED 1"
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status",
+        "OK",
+        "/olc/patch/device",
+        "Device 10 (Generic LED RGBW) patched to 1.30",
+    )
+
+    # 2. Unknown fixture definition
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_device("/olc/patch/device", [11, "NonExistent:Fixture", 1, 40])
+    assert 11 not in app.lightshow.patch.devices
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+    assert "not found in library" in status_calls[0][0][3]
+
+    # 3. Insufficient arguments
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_device("/olc/patch/device", [12, "Generic:Dimmer"])
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+
+def test_osc_delegate_patch_unpatch() -> None:
+    """Test /olc/patch/unpatch endpoint in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
+    assert 1 in app.lightshow.patch.devices
+
+    # 1. Unpatch device 1
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_unpatch("/olc/patch/unpatch", [1])
+    assert 1 not in app.lightshow.patch.devices
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/unpatch", "Device 1 unpatched"
+    )
+
+    # 2. Undo unpatch
+    app.history.undo()
+    assert 1 in app.lightshow.patch.devices
+
+    # 3. Missing argument
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_unpatch("/olc/patch/unpatch", [])
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+
+def test_osc_delegate_patch_1on1_and_clear() -> None:
+    """Test /olc/patch/1on1 and /olc/patch/clear endpoints in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+
+    # 1. Clear patch
+    delegate._patch_clear("/olc/patch/clear", [])
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/clear", "Patch cleared"
+    )
+    assert len(app.lightshow.patch.devices) == 0
+
+    # 2. Set 1:1 patch
+    delegate._patch_1on1("/olc/patch/1on1", [])
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/1on1", "Patch reset to 1:1"
+    )
+    assert len(app.lightshow.patch.devices) > 0
+
+
+def test_osc_delegate_patch_curve() -> None:
+    """Test /olc/patch/curve endpoint in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
+
+    # 1. Set curve
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_curve("/olc/patch/curve", [1, 2])
+    assert app.lightshow.patch.devices[1].curve_id == 2
+    mock_engine.send_osc.assert_any_call(
+        "/olc/patch/status", "OK", "/olc/patch/curve", "Device 1 curve set to 2"
+    )
+
+    # 2. Missing args
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_curve("/olc/patch/curve", [1])
+    status_calls = [
+        c
+        for c in mock_engine.send_osc.call_args_list
+        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+    ]
+    assert len(status_calls) == 1
+
+
+def test_osc_delegate_patch_get_and_dump() -> None:
+    """Test /olc/patch/get and /olc/patch/dump query endpoints in OSCDelegate."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
+    delegate._patch_device(
+        "/olc/patch/device", [2, "Generic:RGBW", 1, 20, "Default", "Wash 1"]
+    )
+
+    # 1. Query patched device 1
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_get("/olc/patch/get", [1])
+    mock_engine.send_osc.assert_called_with(
+        "/olc/patch/device/info", 1, 1, 10, 1, "Generic:Dimmer", "Dimmer 1"
+    )
+
+    # 2. Query patched device 2
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_get("/olc/patch/get", [2])
+    mock_engine.send_osc.assert_called_with(
+        "/olc/patch/device/info", 2, 1, 20, 4, "Generic:LED RGBW", "Wash 1"
+    )
+
+    # 3. Query unpatched device 99
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_get("/olc/patch/get", [99])
+    mock_engine.send_osc.assert_called_with(
+        "/olc/patch/device/info", 99, 0, 0, 0, "", ""
+    )
+
+    # 4. Dump patch as JSON
+    mock_engine.send_osc.reset_mock()
+    delegate._patch_dump("/olc/patch/dump", [])
+    assert mock_engine.send_osc.called
+    dump_call = [
+        c for c in mock_engine.send_osc.call_args_list if c[0][0] == "/olc/patch/dump"
+    ]
+    assert len(dump_call) == 1
+    import json  # pylint: disable=import-outside-toplevel
+
+    data = json.loads(dump_call[0][0][1])
+    assert len(data) >= 2
+    dev_ids = [d["device_id"] for d in data]
+    assert 1 in dev_ids
+    assert 2 in dev_ids

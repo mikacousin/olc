@@ -132,8 +132,6 @@ class Application(Gtk.Application):
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)
 
-        self.patch_by_outputs = self.core.lightshow.patch_by_outputs
-
     @property
     def backend(self) -> DMXBackend | None:
         """Get the backend from core."""
