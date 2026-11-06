@@ -61,8 +61,12 @@ class GuiEventBridge:
         self.show_system.register()
 
     def sync_virtual_console(self) -> None:
-        """Sync virtual console button states and crossfades with playback."""
+        """Sync virtual console button states, crossfades, and blackout."""
         self.playback.sync_virtual_console()
+        if self.app.virtual_console and hasattr(
+            self.app.virtual_console, "update_blackout_display"
+        ):
+            self.app.virtual_console.update_blackout_display()
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
         """Run callback in the GTK main loop safely.

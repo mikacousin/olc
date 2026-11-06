@@ -34,6 +34,17 @@ flowboxchild:selected {
   background-color: @olc-active-red;
 }
 
+.olc-blackout-toggle {
+  font-weight: bold;
+}
+
+.olc-blackout-toggle:checked {
+  background-image: none;
+  background-color: @olc-active-red;
+  color: #ffffff;
+  border-color: #ff4444;
+}
+
 /* DMX outputs grid compact packing */
 .olc-flowbox-output {
   padding: 0px;

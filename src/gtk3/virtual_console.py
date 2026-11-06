@@ -41,6 +41,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
     app: Application
     commandline: CoreCommandLine
+    blackout: Gtk.ToggleButton
+    updating_blackout: bool
 
     # pylint: disable=too-many-statements
     def __init__(self, app: Application) -> None:
@@ -48,6 +50,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.commandline = app.core.commandline
         self.updating_fader = False
         self.updating_independent = False
+        self.updating_blackout = False
 
         super().__init__(title="Virtual Console")
         self.set_default_size(400, 300)
@@ -60,10 +63,25 @@ class VirtualConsoleWindow(Gtk.Window):
         self.header.set_show_close_button(True)
         self.header.props.title = "Virtual Console"
         self.set_titlebar(self.header)
+
+        # Blackout toggle button
+        self.blackout = Gtk.ToggleButton(label="BLACKOUT")
+        self.blackout.get_style_context().add_class("olc-blackout-toggle")
+        self.blackout.set_tooltip_text("Toggle Scenic Blackout (DBO)")
+        self.blackout.connect("toggled", self._on_blackout_toggled)
+        self.header.pack_start(self.blackout)
+
         self.midi = Gtk.ToggleButton(label="MIDI")
         self.midi.get_style_context().add_class("olc-midi-toggle")
         self.midi.connect("toggled", self._on_button_toggled, "MIDI")
         self.header.pack_end(self.midi)
+
+        # Initial blackout display state
+        initial_blackout = bool(getattr(self.app.core, "blackout_active", False))
+        backend = getattr(self.app.core, "backend", None)
+        if backend and hasattr(backend, "dmx"):
+            initial_blackout = bool(getattr(backend.dmx, "blackout", initial_blackout))
+        self.update_blackout_display(initial_blackout)
 
         # Numeric Pad
         self.num_pad = Gtk.Grid()
@@ -543,6 +561,35 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.core.action_registry.execute("midi.learn_toggle", action_name)
             if self.app.virtual_console:
                 self.app.virtual_console.queue_draw()
+
+    def _on_blackout_toggled(self, button: Gtk.ToggleButton) -> None:
+        """Handle blackout toggle button interaction."""
+        if self.updating_blackout:
+            return
+
+        target_state = button.get_active()
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "dmx.blackout_all"
+            current_state = bool(getattr(self.app.core, "blackout_active", False))
+            self.update_blackout_display(current_state)
+            self.queue_draw()
+        else:
+            self.app.core.action_registry.execute("dmx.blackout_all", target_state)
+
+    def update_blackout_display(self, state: bool | None = None) -> None:
+        """Update blackout toggle button state without re-triggering action.
+
+        Args:
+            state: Explicit boolean state or None to query core.blackout_active.
+        """
+        if state is None:
+            state = bool(getattr(self.app.core, "blackout_active", False))
+        self.updating_blackout = True
+        try:
+            if self.blackout.get_active() != state:
+                self.blackout.set_active(state)
+        finally:
+            self.updating_blackout = False
 
     def _on_fader_page(self, widget: Gtk.Widget) -> None:
         """Change fader page

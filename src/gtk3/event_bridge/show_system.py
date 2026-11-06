@@ -605,7 +605,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         return False
 
     def _on_main_fader_changed(self) -> bool:
-        """Handle Main Fader level or Blackout toggle to refresh header widget.
+        """Handle Main Fader level or Blackout toggle to refresh header widget and VC.
 
         Returns:
             Always False.
@@ -616,4 +616,8 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             and self.app.window.main_fader is not None
         ):
             self.app.window.main_fader.queue_draw()
+        if self.app.virtual_console and hasattr(
+            self.app.virtual_console, "update_blackout_display"
+        ):
+            self.app.virtual_console.update_blackout_display()
         return False

@@ -49,9 +49,7 @@ class OSCDelegate:
         )
         self.app.subscribe("playback.goback_completed", self._on_transition_completed)
         self.app.subscribe("playback.go_triggered", self._on_playback_triggered)
-        self.app.subscribe(
-            "playback.go_triggered_direct", self._on_playback_triggered
-        )
+        self.app.subscribe("playback.go_triggered_direct", self._on_playback_triggered)
         self.app.subscribe("playback.go_back_triggered", self._on_playback_triggered)
         self.app.subscribe("playback.goto_triggered", self._on_playback_triggered)
         self.app.subscribe("playback.step_changed", self._on_playback_triggered)
@@ -249,9 +247,7 @@ class OSCDelegate:
         self.app.engine.publish_osc(
             "playback", "/olc/playback/next/text", telem["next_text"]
         )
-        self.app.engine.publish_osc(
-            "playback", "/olc/playback/state", telem["state"]
-        )
+        self.app.engine.publish_osc("playback", "/olc/playback/state", telem["state"])
 
     def _on_transition_progress(self, data: dict[str, typing.Any]) -> None:
         """Publish fade progress on /olc/playback/progress."""
@@ -272,9 +268,7 @@ class OSCDelegate:
             goback_time = float(data.get("goback_time", 0.0))
             time_spent = float(data.get("time_spent", 0.0))
             ratio = (
-                min(1.0, max(0.0, time_spent / goback_time))
-                if goback_time > 0
-                else 1.0
+                min(1.0, max(0.0, time_spent / goback_time)) if goback_time > 0 else 1.0
             )
             self.app.engine.publish_osc(
                 "playback", "/olc/playback/progress", float(ratio)

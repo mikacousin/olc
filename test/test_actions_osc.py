@@ -1029,9 +1029,7 @@ def test_osc_playback_dump_and_cue_dump() -> None:
     mock_engine.osc_subscriptions.send_direct.reset_mock()
     mock_engine.publish_osc.reset_mock()
 
-    delegate._playback_dump(
-        "/olc/cue/dump", [], sender_addr=("192.168.1.10", 9000)
-    )
+    delegate._playback_dump("/olc/cue/dump", [], sender_addr=("192.168.1.10", 9000))
 
     # Verify direct reply
     direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list

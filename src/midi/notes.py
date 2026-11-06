@@ -77,6 +77,7 @@ class MidiNotes:
         self.zoom = False
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
+            "dmx.blackout_all": [0, -1],
             "playback.go": [0, 94],
             "playback.go_back": [0, 86],
             "playback.pause": [0, 93],
@@ -404,6 +405,15 @@ class MidiNotes:
             self.app_delegate.core.action_registry.execute(
                 "fader.flash", fader_bank.active_page, fader_index, True
             )
+
+    def blackout_all(self, msg: mido.Message) -> None:
+        """Blackout all
+
+        Args:
+            msg: MIDI message
+        """
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("dmx.blackout_all")
 
     def go(self, msg: mido.Message) -> None:
         """Go
