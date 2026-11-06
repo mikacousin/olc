@@ -26,6 +26,11 @@
       <summary>OSC</summary>
       <description>Start/Stop OSC</description>
     </key>
+    <key name="osc-static-client" type="b">
+      <default>false</default>
+      <summary>Enable OSC static fallback client</summary>
+      <description>Whether to send telemetry stream to a static host/port target</description>
+    </key>
     <key name="osc-host" type="s">
       <default>"127.0.0.1"</default>
       <summary>OSC client IP address</summary>

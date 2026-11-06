@@ -98,6 +98,10 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda state: self._run_idle(self._on_osc_toggled, state),
         )
         self.app.core.subscribe(
+            "osc.static_client_toggled",
+            lambda state: self._run_idle(self._on_osc_static_client_toggled, state),
+        )
+        self.app.core.subscribe(
             "osc.subscribers_changed",
             lambda subs: self._run_idle(self._on_osc_subscribers_changed, subs),
         )
@@ -436,6 +440,20 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             settings_tab.update_osc_toggle(state)
+        return False
+
+    def _on_osc_static_client_toggled(self, state: bool) -> bool:
+        """Handle OSC static client toggle to update Settings tab if open.
+
+        Args:
+            state: True if static client enabled.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_osc_static_client_toggle(state)
         return False
 
     def _on_osc_subscribers_changed(

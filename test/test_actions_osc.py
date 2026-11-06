@@ -61,6 +61,7 @@ def test_osc_toggle_enable_and_disable() -> None:
         host="192.168.1.100",
         client_port=8001,
         server_port=9001,
+        enable_static_client=False,
     )
     mock_engine.register_osc_delegate.assert_called_once()
     assert getattr(app, "osc_delegate", None) is not None
@@ -822,3 +823,98 @@ def test_settings_tab_update_osc_subscribers() -> None:
 
     mock_label.set_text.assert_called_once()
     assert "2" in mock_label.set_text.call_args[0][0]
+
+
+def test_osc_toggle_static_client_action() -> None:
+    """Test osc.toggle_static_client action and undo/redo."""
+    settings = MagicMock()
+    settings.get_boolean.return_value = False
+    settings.get_string.return_value = "192.168.1.50"
+    settings.get_int.return_value = 8500
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    mock_sub_manager = MagicMock()
+    mock_engine.osc_subscriptions = mock_sub_manager
+    app.engine = mock_engine
+
+    toggled_events: list[bool] = []
+    app.subscribe("osc.static_client_toggled", toggled_events.append)
+
+    # 1. Enable static client
+    app.action_registry.execute("osc.toggle_static_client", True)
+    assert toggled_events == [True]
+    mock_engine.set_static_client.assert_called_once_with(
+        True, host="192.168.1.50", port=8500
+    )
+
+    # 2. Undo -> revert to False
+    app.history.undo()
+    assert toggled_events == [True, False]
+    mock_engine.set_static_client.assert_called_with(
+        False, host="192.168.1.50", port=8500
+    )
+
+    # 3. Redo -> re-enable
+    app.history.redo()
+    assert toggled_events == [True, False, True]
+
+
+def test_core_engine_set_static_client() -> None:
+    """Test CoreEngine.set_static_client subscribes or unsubscribes static client."""
+    universe_map = UniverseMap()
+    engine = CoreEngine(universe_map)
+    engine.osc_client = MagicMock()
+    engine.osc_client._addr = ("127.0.0.1", 8000)
+
+    # Enable static client
+    engine.set_static_client(True, "192.168.1.80", 8800)
+    subs = engine.osc_subscriptions.get_subscribers_snapshot()
+    assert len(subs) == 1
+    assert subs[0]["host"] == "192.168.1.80"
+    assert subs[0]["port"] == 8800
+    assert subs[0]["is_static"] is True
+
+    # Disable static client
+    engine.set_static_client(False)
+    subs2 = engine.osc_subscriptions.get_subscribers_snapshot()
+    assert len(subs2) == 0
+
+
+def test_event_bridge_osc_static_client_toggle_sync(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test GuiEventBridge routes osc.static_client_toggled to SettingsTab."""
+    monkeypatch.setattr("gi.repository.GLib.idle_add", lambda func, *args: func(*args))
+    mock_app = MagicMock()
+    core = CoreApplication(MagicMock())
+    mock_app.core = core
+
+    mock_settings_tab = MagicMock()
+    mock_app.tabs = MagicMock()
+    mock_app.tabs.tabs = {"settings": mock_settings_tab}
+
+    _bridge = GuiEventBridge(mock_app)
+
+    core.emit("osc.static_client_toggled", True)
+    mock_settings_tab.update_osc_static_client_toggle.assert_called_once_with(True)
+
+
+def test_settings_tab_update_osc_static_client_toggle() -> None:
+    """Test SettingsTab.update_osc_static_client_toggle updates switch and inputs."""
+    tab = SettingsTab.__new__(SettingsTab)
+    tab._updating_settings = False
+    mock_switch = MagicMock()
+    mock_switch.get_state.return_value = False
+    mock_entry = MagicMock()
+    mock_spin = MagicMock()
+
+    tab.switch_static_client = mock_switch
+    tab.entry_client_ip = mock_entry
+    tab.spin_client_port = mock_spin
+
+    tab.update_osc_static_client_toggle(True)
+    mock_switch.set_state.assert_called_once_with(True)
+    mock_switch.set_active.assert_called_once_with(True)
+    mock_entry.set_sensitive.assert_called_once_with(True)
+    mock_spin.set_sensitive.assert_called_once_with(True)
+    assert not tab._updating_settings

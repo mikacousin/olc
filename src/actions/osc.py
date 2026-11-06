@@ -81,16 +81,25 @@ class OscToggleAction(Action):
                 host = "127.0.0.1"
                 client_port = 8000
                 server_port = 9000
+                enable_static_client = False
                 if settings is not None:
                     if hasattr(settings, "get_string"):
                         host = settings.get_string("osc-host") or "127.0.0.1"
                     if hasattr(settings, "get_int"):
                         client_port = settings.get_int("osc-client-port") or 8000
                         server_port = settings.get_int("osc-server-port") or 9000
+                    if hasattr(settings, "get_boolean"):
+                        try:
+                            enable_static_client = bool(
+                                settings.get_boolean("osc-static-client")
+                            )
+                        except Exception:  # pylint: disable=broad-exception-caught
+                            enable_static_client = False
                 engine.start_osc(
                     host=host,
                     client_port=client_port,
                     server_port=server_port,
+                    enable_static_client=enable_static_client,
                 )
                 core_app = getattr(self.app, "core", self.app)
                 osc_delegate = OSCDelegate(core_app)
@@ -240,3 +249,78 @@ class OscRemoveSubscriberAction(Action):
                 "osc.subscribers_changed",
                 engine.osc_subscriptions.get_subscribers_snapshot(),
             )
+
+
+class OscToggleStaticClientAction(Action):
+    """Action to toggle the static fallback OSC client subscriber."""
+
+    name = "osc.toggle_static_client"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.enable: bool = False
+        self.old_enable: bool = False
+
+    def configure(self, enable: bool) -> None:
+        """Configure whether the static fallback client should be enabled.
+
+        Args:
+            enable: True to register static subscriber, False to unregister.
+        """
+        self.enable = enable
+
+    def execute(self) -> None:
+        """Apply static client toggle."""
+        settings = getattr(self.app, "settings", None)
+        if settings is not None:
+            if hasattr(settings, "get_boolean"):
+                try:
+                    self.old_enable = bool(settings.get_boolean("osc-static-client"))
+                except Exception:  # pylint: disable=broad-exception-caught
+                    self.old_enable = False
+            elif hasattr(settings, "get_value"):
+                try:
+                    self.old_enable = bool(settings.get_value("osc-static-client"))
+                except Exception:  # pylint: disable=broad-exception-caught
+                    self.old_enable = False
+
+        if self.old_enable == self.enable:
+            self.can_undo = False
+        self._apply_toggle(self.enable)
+
+    def undo(self) -> None:
+        """Revert static client toggle."""
+        self._apply_toggle(self.old_enable)
+
+    def redo(self) -> None:
+        """Reapply static client toggle."""
+        self._apply_toggle(self.enable)
+
+    def _apply_toggle(self, enable: bool) -> None:
+        settings = getattr(self.app, "settings", None)
+        if settings is not None:
+            try:
+                if hasattr(settings, "set_value"):
+                    settings.set_value("osc-static-client", GLib.Variant("b", enable))
+                elif hasattr(settings, "set_boolean"):
+                    settings.set_boolean("osc-static-client", enable)
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
+        engine = getattr(self.app, "engine", None)
+        if engine is not None:
+            host = ""
+            port = 0
+            if settings is not None:
+                if hasattr(settings, "get_string"):
+                    host = settings.get_string("osc-host") or ""
+                if hasattr(settings, "get_int"):
+                    port = settings.get_int("osc-client-port") or 0
+            engine.set_static_client(enable, host=host, port=port)
+            self.app.emit(
+                "osc.subscribers_changed",
+                engine.osc_subscriptions.get_subscribers_snapshot(),
+            )
+
+        self.app.emit("osc.static_client_toggled", enable)

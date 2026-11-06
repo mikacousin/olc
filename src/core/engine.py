@@ -602,7 +602,13 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         """Average output frequency since start."""
         return self._loop.effective_hz
 
-    def start_osc(self, host: str, client_port: int, server_port: int) -> None:
+    def start_osc(
+        self,
+        host: str,
+        client_port: int,
+        server_port: int,
+        enable_static_client: bool = False,
+    ) -> None:
         """Start the OSC server and client asynchronously in the network loop."""
         with self._lock:
             if self.osc_server is not None or self.osc_client is not None:
@@ -610,8 +616,11 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
             self.osc_client = CoreOSCClient(host, client_port)
             self.osc_subscriptions.set_socket(self.osc_client._sock)
-            # Register default static client as persistent subscriber to all topics
-            self.osc_subscriptions.subscribe(host, client_port, "all", is_static=True)
+            if enable_static_client:
+                # Register default static client as persistent subscriber to all topics
+                self.osc_subscriptions.subscribe(
+                    host, client_port, "all", is_static=True
+                )
 
             self.osc_server = EngineOSCServer(server_port, engine=self)
             if self._osc_delegate is not None:
@@ -634,6 +643,33 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.osc_client = None
             self.osc_subscriptions.cleanup_expired(0.0)
 
+    def set_static_client(self, enable: bool, host: str = "", port: int = 0) -> None:
+        """Enable or disable the static fallback OSC client subscriber."""
+        with self._lock:
+            target_host = host
+            target_port = port
+            if self.osc_client is not None:
+                client_host, client_port = self.osc_client._addr
+                if not target_host:
+                    target_host = client_host
+                if target_port <= 0:
+                    target_port = client_port
+            elif not target_host:
+                target_host = "127.0.0.1"
+
+            if target_port <= 0:
+                target_port = 8000
+
+            # Remove existing static subscribers
+            for sub in list(self.osc_subscriptions.get_subscribers_snapshot()):
+                if sub.get("is_static", False):
+                    self.osc_subscriptions.unsubscribe(sub["host"], sub["port"], "all")
+
+            if enable:
+                self.osc_subscriptions.subscribe(
+                    target_host, target_port, "all", is_static=True
+                )
+
     def update_osc_client(self, host: str = "", port: int | None = None) -> None:
         """Update client IP or port settings."""
         with self._lock:
@@ -641,11 +677,14 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 old_host, old_port = self.osc_client._addr
                 self.osc_client.target_changed(host, port)
                 new_host, new_port = self.osc_client._addr
-                # Update static subscriber
-                self.osc_subscriptions.unsubscribe(old_host, old_port, "all")
-                self.osc_subscriptions.subscribe(
-                    new_host, new_port, "all", is_static=True
+                # Update static subscriber if it was registered
+                was_subscribed = self.osc_subscriptions.unsubscribe(
+                    old_host, old_port, "all"
                 )
+                if was_subscribed:
+                    self.osc_subscriptions.subscribe(
+                        new_host, new_port, "all", is_static=True
+                    )
 
     def update_osc_server(self, server_port: int) -> None:
         """Restart the OSC server on a new port."""

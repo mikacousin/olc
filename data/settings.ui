@@ -143,7 +143,7 @@
       </packing>
     </child>
     <child>
-      <!-- n-columns=2 n-rows=6 -->
+      <!-- n-columns=2 n-rows=7 -->
       <object class="GtkGrid" id="osc_grid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
@@ -151,105 +151,6 @@
         <property name="margin-bottom">10</property>
         <property name="row-spacing">10</property>
         <property name="column-spacing">10</property>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="halign">start</property>
-            <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Local IP address</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">4</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="halign">start</property>
-            <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Server listening port (Inputs)</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">3</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSpinButton" id="spin_server_port">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="halign">end</property>
-            <property name="margin-end">10</property>
-            <property name="hexpand">True</property>
-            <property name="numeric">True</property>
-            <property name="update-policy">if-valid</property>
-            <signal name="value-changed" handler="_server_port_changed" swapped="no"/>
-          </object>
-          <packing>
-            <property name="left-attach">1</property>
-            <property name="top-attach">3</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSpinButton" id="spin_client_port">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="halign">end</property>
-            <property name="margin-end">10</property>
-            <property name="hexpand">True</property>
-            <property name="input-purpose">digits</property>
-            <property name="numeric">True</property>
-            <property name="update-policy">if-valid</property>
-            <signal name="value-changed" handler="_client_port_changed" swapped="no"/>
-          </object>
-          <packing>
-            <property name="left-attach">1</property>
-            <property name="top-attach">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="halign">start</property>
-            <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Default client port</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="halign">start</property>
-            <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Default client IP (Fallback)</property>
-          </object>
-          <packing>
-            <property name="left-attach">0</property>
-            <property name="top-attach">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkEntry" id="entry_client_ip">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="halign">end</property>
-            <property name="margin-end">10</property>
-            <property name="hexpand">True</property>
-            <signal name="activate" handler="_client_ip_changed" swapped="no"/>
-          </object>
-          <packing>
-            <property name="left-attach">1</property>
-            <property name="top-attach">1</property>
-          </packing>
-        </child>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
@@ -278,6 +179,48 @@
           </packing>
         </child>
         <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Server listening port (Inputs)</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_server_port">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="numeric">True</property>
+            <property name="update-policy">if-valid</property>
+            <signal name="value-changed" handler="_server_port_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Local IP address</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkLabel" id="local_ip">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -287,7 +230,91 @@
           </object>
           <packing>
             <property name="left-attach">1</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Enable static client (Fallback)</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSwitch" id="switch_static_client">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="active">False</property>
+            <signal name="state-set" handler="_switch_static_client" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Default client IP (Fallback)</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
             <property name="top-attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="entry_client_ip">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <signal name="activate" handler="_client_ip_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Default client port</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_client_port">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="input-purpose">digits</property>
+            <property name="numeric">True</property>
+            <property name="update-policy">if-valid</property>
+            <signal name="value-changed" handler="_client_port_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">5</property>
           </packing>
         </child>
       </object>

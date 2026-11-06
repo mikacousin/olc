@@ -114,6 +114,7 @@ from olc.actions.osc import (
     OscRemoveSubscriberAction,
     OscSetConfigAction,
     OscToggleAction,
+    OscToggleStaticClientAction,
 )
 from olc.actions.patch import (
     PatchAddOutputAction,
@@ -266,6 +267,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DmxBlackoutAllAction,
         OscToggleAction,
         OscSetConfigAction,
+        OscToggleStaticClientAction,
         OscRemoveSubscriberAction,
         ShowNewAction,
         ShowResetUserLevelsAction,

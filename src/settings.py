@@ -155,6 +155,22 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         ip_addr = socket.gethostbyname(hostname)
         local_ip.set_label(ip_addr)
 
+        self.switch_static_client = typing.cast(
+            Gtk.Switch, builder.get_object("switch_static_client")
+        )
+        is_static_enabled = False
+        if hasattr(self.settings, "get_boolean"):
+            try:
+                is_static_enabled = self.settings.get_boolean("osc-static-client")
+            except Exception:  # pylint: disable=broad-exception-caught
+                is_static_enabled = False
+        if self.switch_static_client is not None:
+            self.switch_static_client.set_state(is_static_enabled)
+            self.switch_static_client.set_active(is_static_enabled)
+
+        self.entry_client_ip.set_sensitive(is_static_enabled)
+        self.spin_client_port.set_sensitive(is_static_enabled)
+
         osc_grid = typing.cast(Gtk.Grid, builder.get_object("osc_grid"))
         if osc_grid is not None:
             frame = Gtk.Frame(label=_("Active Dynamic Subscribers (Pub/Sub)"))
@@ -221,7 +237,7 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             action_box.pack_end(btn_refresh, False, False, 0)
 
             frame_box.pack_start(action_box, False, False, 0)
-            osc_grid.attach(frame, 0, 5, 2, 1)
+            osc_grid.attach(frame, 0, 6, 2, 1)
             frame.show_all()
 
             GLib.timeout_add_seconds(2, self._refresh_osc_subscribers)
@@ -567,6 +583,24 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         else:
             self.settings.set_value("osc", GLib.Variant("b", state))
 
+    def _switch_static_client(self, _widget: Gtk.Switch, state: bool) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
+        if hasattr(self, "entry_client_ip") and self.entry_client_ip is not None:
+            self.entry_client_ip.set_sensitive(state)
+        if hasattr(self, "spin_client_port") and self.spin_client_port is not None:
+            self.spin_client_port.set_sensitive(state)
+
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("osc.toggle_static_client", state)
+        else:
+            try:
+                self.settings.set_value("osc-static-client", GLib.Variant("b", state))
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            if self.app.engine is not None:
+                self.app.engine.set_static_client(state)
+
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
         if getattr(self, "_updating_settings", False):
             return
@@ -649,6 +683,24 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             if hasattr(self, "switch_osc") and self.switch_osc.get_state() != state:
                 self.switch_osc.set_state(state)
                 self.switch_osc.set_active(state)
+        finally:
+            self._updating_settings = False
+
+    def update_osc_static_client_toggle(self, state: bool) -> None:
+        """Update static client switch and input sensitivity from undo/redo."""
+        self._updating_settings = True
+        try:
+            if (
+                hasattr(self, "switch_static_client")
+                and self.switch_static_client is not None
+            ):
+                if self.switch_static_client.get_state() != state:
+                    self.switch_static_client.set_state(state)
+                    self.switch_static_client.set_active(state)
+            if hasattr(self, "entry_client_ip") and self.entry_client_ip is not None:
+                self.entry_client_ip.set_sensitive(state)
+            if hasattr(self, "spin_client_port") and self.spin_client_port is not None:
+                self.spin_client_port.set_sensitive(state)
         finally:
             self._updating_settings = False
 
