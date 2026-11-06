@@ -23,7 +23,7 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gdk, Gtk  # noqa: E402
 
 from olc.devices.builtin import create_rgb_definition  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
@@ -374,7 +374,16 @@ def test_dmx_output_widget_draw_dimmer_and_device(app_gui: Application) -> None:
     w_rgb = patch_tab.outputs[9]
     w_rgb.do_draw(cr)
 
-    # 4. Render 4-digit device widget (output 20)
+    # 4. Verify universe.output string format (e.g. '1.10')
+    mock_cr = MagicMock()
+    mock_cr.text_extents.return_value = (0, 0, 20, 10, 0, 0)
+    alloc = Gdk.Rectangle()
+    alloc.width = 70
+    alloc.height = 70
+    w_rgb._draw_output_number(mock_cr, alloc)
+    mock_cr.show_text.assert_called_with("1.10")
+
+    # 5. Render 4-digit device widget (output 20)
     w_large = patch_tab.outputs[19]
     w_large.do_draw(cr)
 

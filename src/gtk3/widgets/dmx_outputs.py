@@ -147,7 +147,7 @@ class DMXOutputWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        text = f"{self.output}.{self.universe}"
+        text = f"{self.universe}.{self.output}"
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
         cr.move_to(
             allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
