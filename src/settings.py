@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import time
 import typing
 from gettext import gettext as _
 from typing import Callable
@@ -153,6 +154,77 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         hostname = socket.gethostname()
         ip_addr = socket.gethostbyname(hostname)
         local_ip.set_label(ip_addr)
+
+        osc_grid = typing.cast(Gtk.Grid, builder.get_object("osc_grid"))
+        if osc_grid is not None:
+            frame = Gtk.Frame(label=_("Active Dynamic Subscribers (Pub/Sub)"))
+            frame_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            frame_box.set_margin_start(6)
+            frame_box.set_margin_end(6)
+            frame_box.set_margin_top(6)
+            frame_box.set_margin_bottom(6)
+            frame.add(frame_box)
+
+            self.liststore_osc_subscribers = Gtk.ListStore(str, str, str, str, int)
+            self.treeview_osc_subscribers = Gtk.TreeView(
+                model=self.liststore_osc_subscribers
+            )
+            self.treeview_osc_subscribers.set_headers_visible(True)
+
+            renderer_client = Gtk.CellRendererText()
+            col_client = Gtk.TreeViewColumn(
+                title=_("Client (IP:Port)"), cell_renderer=renderer_client
+            )
+            col_client.add_attribute(renderer_client, "text", 0)
+            col_client.set_min_width(160)
+            col_client.set_resizable(True)
+            self.treeview_osc_subscribers.append_column(col_client)
+
+            renderer_topics = Gtk.CellRendererText()
+            col_topics = Gtk.TreeViewColumn(
+                title=_("Topics"), cell_renderer=renderer_topics
+            )
+            col_topics.add_attribute(renderer_topics, "text", 1)
+            col_topics.set_min_width(140)
+            col_topics.set_resizable(True)
+            self.treeview_osc_subscribers.append_column(col_topics)
+
+            renderer_last = Gtk.CellRendererText()
+            col_last = Gtk.TreeViewColumn(
+                title=_("Last Contact"), cell_renderer=renderer_last
+            )
+            col_last.add_attribute(renderer_last, "text", 2)
+            col_last.set_min_width(120)
+            col_last.set_resizable(True)
+            self.treeview_osc_subscribers.append_column(col_last)
+
+            scrolled = Gtk.ScrolledWindow()
+            scrolled.set_hexpand(True)
+            scrolled.set_vexpand(True)
+            scrolled.set_min_content_height(140)
+            scrolled.add(self.treeview_osc_subscribers)
+            frame_box.pack_start(scrolled, True, True, 0)
+
+            action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            self.label_osc_subscribers_count = Gtk.Label(
+                label=_("Total: 0 active client(s)")
+            )
+            self.label_osc_subscribers_count.set_halign(Gtk.Align.START)
+            action_box.pack_start(self.label_osc_subscribers_count, True, True, 0)
+
+            btn_disconnect = Gtk.Button(label=_("Disconnect Selection"))
+            btn_disconnect.connect("clicked", self._on_disconnect_subscriber_clicked)
+            action_box.pack_end(btn_disconnect, False, False, 0)
+
+            btn_refresh = Gtk.Button(label=_("Refresh"))
+            btn_refresh.connect("clicked", lambda _b: self._refresh_osc_subscribers())
+            action_box.pack_end(btn_refresh, False, False, 0)
+
+            frame_box.pack_start(action_box, False, False, 0)
+            osc_grid.attach(frame, 0, 5, 2, 1)
+            frame.show_all()
+
+            GLib.timeout_add_seconds(2, self._refresh_osc_subscribers)
 
     def _midi(self, builder: Gtk.Builder) -> None:
         # List of MIDI Controllers
@@ -579,6 +651,76 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 self.switch_osc.set_active(state)
         finally:
             self._updating_settings = False
+
+    def update_osc_subscribers(self, subscribers: list[dict[str, typing.Any]]) -> None:
+        """Update subscribers TreeView with current active subscribers."""
+        if not hasattr(self, "liststore_osc_subscribers"):
+            return
+
+        self.liststore_osc_subscribers.clear()
+        now = time.time()
+        active_count = 0
+
+        for sub in subscribers:
+            host = sub.get("host", "")
+            port = sub.get("port", 0)
+            topics = sub.get("topics", [])
+            last_seen = sub.get("last_seen", now)
+            is_static = sub.get("is_static", False)
+
+            if is_static:
+                topics_str = ", ".join(topics) + " [Static]"
+                elapsed_str = _("Persistent")
+            else:
+                topics_str = ", ".join(topics)
+                elapsed = max(0, int(now - last_seen))
+                elapsed_str = (
+                    _("just now") if elapsed == 0 else _("about %ds ago") % elapsed
+                )
+
+            endpoint_str = f"{host}:{port}"
+            self.liststore_osc_subscribers.append(
+                [endpoint_str, topics_str, elapsed_str, host, port]
+            )
+            active_count += 1
+
+        if hasattr(self, "label_osc_subscribers_count"):
+            self.label_osc_subscribers_count.set_text(
+                _("Total: %d active client(s)") % active_count
+            )
+
+    def _refresh_osc_subscribers(self) -> bool:
+        """Periodic refresh of active OSC subscribers."""
+        if not self.tabs or not self.tabs.tabs.get("settings"):
+            return False
+
+        engine = getattr(self.app, "engine", None)
+        if engine is None:
+            return True
+
+        engine.osc_subscriptions.cleanup_expired(60.0)
+        snapshots = engine.osc_subscriptions.get_subscribers_snapshot()
+        self.update_osc_subscribers(snapshots)
+        return True
+
+    def _on_disconnect_subscriber_clicked(self, _widget: Gtk.Button) -> None:
+        """Evict selected OSC subscriber."""
+        if not hasattr(self, "treeview_osc_subscribers"):
+            return
+        selection = self.treeview_osc_subscribers.get_selection()
+        model, tree_iter = selection.get_selected()
+        if tree_iter is not None:
+            host = model.get_value(tree_iter, 3)
+            port = model.get_value(tree_iter, 4)
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
+                    "osc.remove_subscriber", host, port
+                )
+            elif self.app.engine is not None:
+                self.app.engine.osc_subscriptions.unsubscribe(host, port, "all")
+                self.update_osc_subscribers(
+                    self.app.engine.osc_subscriptions.get_subscribers_snapshot()
+                )
 
     def update_percent_ui(self, percent: bool) -> None:
         """Update percent display switch from external event or undo/redo."""

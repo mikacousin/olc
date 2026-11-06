@@ -42,35 +42,54 @@ class OSCDelegate:
         self.app.subscribe("commandline.changed", self._on_commandline_changed)
         self.app.subscribe("patch.changed", self._on_patch_changed)
 
-    def _send_patch_status(self, status: str, command: str, message: str) -> None:
+    def _send_patch_status(
+        self,
+        status: str,
+        command: str,
+        message: str,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
         """Send OSC status feedback for patch operations."""
         if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/status", status, command, message)
+            if sender_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    sender_addr[0],
+                    sender_addr[1],
+                    "/olc/patch/status",
+                    status,
+                    command,
+                    message,
+                )
+            self.app.engine.publish_osc(
+                "patch", "/olc/patch/status", status, command, message
+            )
 
     def _on_patch_changed(self) -> None:
         """Send OSC notification when the patch changes."""
         if self.app.engine is not None:
             count = len(self.app.lightshow.patch.devices)
-            self.app.engine.send_osc("/olc/patch/changed", count)
+            self.app.engine.publish_osc("patch", "/olc/patch/changed", count)
 
     def _on_fader_page_changed(self, page: int) -> None:
         """Send OSC feedback when the active fader page changes."""
         if self.app.engine is not None:
             fader_bank = self.app.lightshow.fader_bank
-            self.app.engine.send_osc("/olc/fader/page", page)
+            self.app.engine.publish_osc("faders", "/olc/fader/page", page)
             for fader in fader_bank.faders[page].values():
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/label", fader.text
+                self.app.engine.publish_osc(
+                    "faders", f"/olc/fader/1/{fader.index}/label", fader.text
                 )
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/level", round(fader.level * 255)
+                self.app.engine.publish_osc(
+                    "faders",
+                    f"/olc/fader/1/{fader.index}/level",
+                    round(fader.level * 255),
                 )
 
     def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
         """Send OSC feedback when a fader level changes."""
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                f"/olc/fader/1/{fader_index}/level", round(level * 255)
+            self.app.engine.publish_osc(
+                "faders", f"/olc/fader/1/{fader_index}/level", round(level * 255)
             )
 
     def _on_fader_changed(self, page: int, index: int) -> None:
@@ -79,21 +98,126 @@ class OSCDelegate:
             fader_bank = self.app.lightshow.fader_bank
             if page == fader_bank.active_page:
                 fader = fader_bank.faders[page][index]
-                self.app.engine.send_osc(f"/olc/fader/1/{index}/label", fader.text)
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{index}/level", round(fader.level * 255)
+                self.app.engine.publish_osc(
+                    "faders", f"/olc/fader/1/{index}/label", fader.text
+                )
+                self.app.engine.publish_osc(
+                    "faders",
+                    f"/olc/fader/1/{index}/level",
+                    round(fader.level * 255),
                 )
 
     def _on_commandline_changed(self, keystring: str) -> None:
         """Send OSC feedback when the logical command line changes."""
         if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/command_line", keystring)
+            self.app.engine.publish_osc("commandline", "/olc/command_line", keystring)
+
+    @make_method("/olc/subscribe")
+    def _subscribe(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Subscribe a remote client to an OSC topic.
+
+        Supported topics: patch, faders, playback, commandline, all.
+        """
+        if self.app.engine is None:
+            return
+
+        topic = str(args[0]).strip().lower() if args else "all"
+        host = sender_addr[0] if sender_addr else "127.0.0.1"
+        port = sender_addr[1] if sender_addr else 8000
+
+        if len(args) >= 2:
+            try:
+                port = int(args[1])
+            except (ValueError, TypeError):
+                pass
+
+        self.app.engine.osc_subscriptions.subscribe(host, port, topic)
+        self.app.engine.osc_subscriptions.send_direct(
+            host, port, "/olc/subscribe/status", "OK", topic
+        )
+        self.app.emit(
+            "osc.subscribers_changed",
+            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+        )
+
+        if topic in ("patch", "all"):
+            devices = sorted(
+                self.app.lightshow.patch.devices.values(), key=lambda d: d.device_id
+            )
+            dump_data = [
+                {
+                    "device_id": d.device_id,
+                    "universe": d.universe,
+                    "address": d.address,
+                    "footprint": d.channel_count(),
+                    "model": f"{d.manufacturer}:{d.model}",
+                    "mode": d.mode_name,
+                    "label": d.label,
+                }
+                for d in devices
+            ]
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/patch/dump", json_dumps(dump_data)
+            )
+
+    @make_method("/olc/unsubscribe")
+    def _unsubscribe(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Unsubscribe a client from an OSC topic."""
+        if self.app.engine is None:
+            return
+
+        topic = str(args[0]).strip().lower() if args else "all"
+        host = sender_addr[0] if sender_addr else "127.0.0.1"
+        port = sender_addr[1] if sender_addr else 8000
+
+        if len(args) >= 2:
+            try:
+                port = int(args[1])
+            except (ValueError, TypeError):
+                pass
+
+        self.app.engine.osc_subscriptions.unsubscribe(host, port, topic)
+        self.app.engine.osc_subscriptions.send_direct(
+            host, port, "/olc/subscribe/status", "OK", "unsubscribed"
+        )
+        self.app.emit(
+            "osc.subscribers_changed",
+            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+        )
+
+    @make_method("/olc/ping")
+    def _ping(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Handle keepalive ping from an OSC client."""
+        if self.app.engine is None or sender_addr is None:
+            return
+
+        host, port = sender_addr
+        self.app.engine.osc_subscriptions.refresh_keepalive(host, port)
+        token = args[0] if args else 0
+        self.app.engine.osc_subscriptions.send_direct(host, port, "/olc/pong", token)
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
         if self.app.engine:
-            self.app.engine.send_osc(
-                "/olc/command_line", self.app.commandline.get_string()
+            self.app.engine.publish_osc(
+                "commandline",
+                "/olc/command_line",
+                self.app.commandline.get_string(),
             )
 
     @make_method("/olc/cmd")
@@ -122,7 +246,7 @@ class OSCDelegate:
             status_msg = (
                 "OK" if result.success else str(getattr(result, "message", "Error"))
             )
-            self.app.engine.send_osc("/olc/cmd/status", status_msg)
+            self.app.engine.publish_osc("commandline", "/olc/cmd/status", status_msg)
 
     def _execute_action(self, name: str, *args: object) -> object:
         """Execute an action from the registry.
@@ -503,7 +627,12 @@ class OSCDelegate:
             self._send_patch_status("ERROR", address, str(err))
 
     @make_method("/olc/patch/get")
-    def _patch_get(self, address: str, args: list) -> None:
+    def _patch_get(
+        self,
+        address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
         """Query patch state of a single device via OSC.
 
         Sends response on /olc/patch/device/info.
@@ -516,7 +645,20 @@ class OSCDelegate:
             dev = self.app.lightshow.patch.get_device(device_id)
             if dev is not None:
                 model_name = f"{dev.manufacturer}:{dev.model}"
-                self.app.engine.send_osc(
+                if sender_addr is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/patch/device/info",
+                        dev.device_id,
+                        dev.universe,
+                        dev.address,
+                        dev.channel_count(),
+                        model_name,
+                        dev.label,
+                    )
+                self.app.engine.publish_osc(
+                    "patch",
                     "/olc/patch/device/info",
                     dev.device_id,
                     dev.universe,
@@ -526,7 +668,20 @@ class OSCDelegate:
                     dev.label,
                 )
             else:
-                self.app.engine.send_osc(
+                if sender_addr is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/patch/device/info",
+                        device_id,
+                        0,
+                        0,
+                        0,
+                        "",
+                        "",
+                    )
+                self.app.engine.publish_osc(
+                    "patch",
                     "/olc/patch/device/info",
                     device_id,
                     0,
@@ -536,10 +691,15 @@ class OSCDelegate:
                     "",
                 )
         except Exception as err:  # pylint: disable=broad-exception-caught
-            self._send_patch_status("ERROR", address, str(err))
+            self._send_patch_status("ERROR", address, str(err), sender_addr)
 
     @make_method("/olc/patch/dump")
-    def _patch_dump(self, _address: str, _args: list) -> None:
+    def _patch_dump(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
         """Export JSON dump of all patched devices via OSC."""
         if self.app.engine is None:
             return
@@ -559,7 +719,12 @@ class OSCDelegate:
             }
             for d in devices
         ]
-        self.app.engine.send_osc("/olc/patch/dump", json_dumps(dump_data))
+        dump_json = json_dumps(dump_data)
+        if sender_addr is not None:
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/patch/dump", dump_json
+            )
+        self.app.engine.publish_osc("patch", "/olc/patch/dump", dump_json)
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

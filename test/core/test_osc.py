@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 from olc.core.osc import (
     CoreOSCServer,
     EngineOSCServer,
+    OSCSubscriptionManager,
     build_message,
     make_method,
     parse_message,
@@ -169,3 +170,110 @@ class TestEngineOSCServer:
 
         server.dispatch("/olc/universe/3/blackout", [])
         mock_engine.blackout.assert_called_once_with(3)
+
+
+class TestOSCSubscriptionManager:
+    """Test suite for OSCSubscriptionManager topic pub/sub and lease management."""
+
+    def test_subscribe_and_snapshot(self) -> None:
+        """Subscriptions must be tracked and reportable via get_subscribers_snapshot."""
+        manager = OSCSubscriptionManager()
+        is_new = manager.subscribe("192.168.1.10", 8000, "patch")
+        assert is_new is True
+
+        # Re-subscribing with same or another topic
+        is_new2 = manager.subscribe("192.168.1.10", 8000, "faders")
+        assert is_new2 is False
+
+        snapshot = manager.get_subscribers_snapshot()
+        assert len(snapshot) == 1
+        assert snapshot[0]["host"] == "192.168.1.10"
+        assert snapshot[0]["port"] == 8000
+        assert snapshot[0]["topics"] == ["faders", "patch"]
+        assert snapshot[0]["is_static"] is False
+
+    def test_unsubscribe(self) -> None:
+        """Unsubscribing topics or all must correctly update manager."""
+        manager = OSCSubscriptionManager()
+        manager.subscribe("10.0.0.5", 9000, "patch")
+        manager.subscribe("10.0.0.5", 9000, "faders")
+
+        # Discard one topic
+        removed = manager.unsubscribe("10.0.0.5", 9000, "patch")
+        assert removed is False
+        snapshot = manager.get_subscribers_snapshot()
+        assert snapshot[0]["topics"] == ["faders"]
+
+        # Discard all
+        removed_all = manager.unsubscribe("10.0.0.5", 9000, "all")
+        assert removed_all is True
+        assert len(manager.get_subscribers_snapshot()) == 0
+
+    def test_static_subscriber_persistence(self) -> None:
+        """Static subscriber must not be removed by timeout expiration."""
+        manager = OSCSubscriptionManager()
+        manager.subscribe("127.0.0.1", 8000, "all", is_static=True)
+        manager.subscribe("192.168.1.99", 5000, "patch", is_static=False)
+
+        # Expire dynamic subscriber by specifying 0 timeout
+        expired = manager.cleanup_expired(timeout_seconds=0.0)
+        assert ("192.168.1.99", 5000) in expired
+        assert ("127.0.0.1", 8000) not in expired
+
+        snapshot = manager.get_subscribers_snapshot()
+        assert len(snapshot) == 1
+        assert snapshot[0]["host"] == "127.0.0.1"
+        assert snapshot[0]["is_static"] is True
+
+    def test_refresh_keepalive(self) -> None:
+        """Keepalive refresh must update last_seen timestamp."""
+        manager = OSCSubscriptionManager()
+        manager.subscribe("192.168.1.12", 7000, "playback")
+        snapshot1 = manager.get_subscribers_snapshot()
+        ts1 = snapshot1[0]["last_seen"]
+
+        # Refresh with matching endpoint
+        assert manager.refresh_keepalive("192.168.1.12", 7000) is True
+        snapshot2 = manager.get_subscribers_snapshot()
+        assert snapshot2[0]["last_seen"] >= ts1
+
+        # Refresh with matching host even if port differs (ephemeral sender port)
+        assert manager.refresh_keepalive("192.168.1.12", 54321) is True
+
+    def test_publish_filtering(self) -> None:
+        """Publish must only deliver to subscribers of matching topic or 'all'."""
+        mock_sock = MagicMock()
+        manager = OSCSubscriptionManager(sock=mock_sock)
+
+        manager.subscribe("192.168.1.1", 8001, "patch")
+        manager.subscribe("192.168.1.2", 8002, "faders")
+        manager.subscribe("192.168.1.3", 8003, "all")
+
+        # 1. Publish patch event
+        mock_sock.sendto.reset_mock()
+        manager.publish("patch", "/olc/patch/changed", 10)
+        recipients = [call[0][1] for call in mock_sock.sendto.call_args_list]
+        assert ("192.168.1.1", 8001) in recipients
+        assert ("192.168.1.3", 8003) in recipients
+        assert ("192.168.1.2", 8002) not in recipients
+
+        # 2. Publish fader event
+        mock_sock.sendto.reset_mock()
+        manager.publish("faders", "/olc/fader/1/1/level", 255)
+        recipients = [call[0][1] for call in mock_sock.sendto.call_args_list]
+        assert ("192.168.1.2", 8002) in recipients
+        assert ("192.168.1.3", 8003) in recipients
+        assert ("192.168.1.1", 8001) not in recipients
+
+    def test_send_direct(self) -> None:
+        """send_direct must deliver to the specified host and port immediately."""
+        mock_sock = MagicMock()
+        manager = OSCSubscriptionManager(sock=mock_sock)
+
+        manager.send_direct("192.168.1.50", 9999, "/direct/msg", "hello")
+        mock_sock.sendto.assert_called_once()
+        msg_bytes, target = mock_sock.sendto.call_args[0]
+        assert target == ("192.168.1.50", 9999)
+        addr, args = parse_message(msg_bytes)
+        assert addr == "/direct/msg"
+        assert args == ["hello"]

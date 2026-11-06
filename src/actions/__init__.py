@@ -111,6 +111,7 @@ from olc.actions.midi import (
     MidiSetPortModeAction,
 )
 from olc.actions.osc import (
+    OscRemoveSubscriberAction,
     OscSetConfigAction,
     OscToggleAction,
 )
@@ -265,6 +266,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DmxBlackoutAllAction,
         OscToggleAction,
         OscSetConfigAction,
+        OscRemoveSubscriberAction,
         ShowNewAction,
         ShowResetUserLevelsAction,
         ShowOpenAction,

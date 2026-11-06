@@ -143,8 +143,8 @@
       </packing>
     </child>
     <child>
-      <!-- n-columns=2 n-rows=5 -->
-      <object class="GtkGrid">
+      <!-- n-columns=2 n-rows=6 -->
+      <object class="GtkGrid" id="osc_grid">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="margin-top">10</property>
@@ -170,7 +170,7 @@
             <property name="can-focus">False</property>
             <property name="halign">start</property>
             <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Server port</property>
+            <property name="label" translatable="yes">Server listening port (Inputs)</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
@@ -216,7 +216,7 @@
             <property name="can-focus">False</property>
             <property name="halign">start</property>
             <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Client port</property>
+            <property name="label" translatable="yes">Default client port</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
@@ -229,7 +229,7 @@
             <property name="can-focus">False</property>
             <property name="halign">start</property>
             <property name="margin-start">10</property>
-            <property name="label" translatable="yes">Client IP address</property>
+            <property name="label" translatable="yes">Default client IP (Fallback)</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
@@ -256,7 +256,7 @@
             <property name="can-focus">False</property>
             <property name="halign">start</property>
             <property name="margin-start">10</property>
-            <property name="label" translatable="yes">OSC</property>
+            <property name="label" translatable="yes">Enable OSC service</property>
           </object>
           <packing>
             <property name="left-attach">0</property>

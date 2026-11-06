@@ -208,3 +208,35 @@ class OscSetConfigAction(Action):
         self._update_settings(host, client_port, server_port)
         self._update_engine(host, client_port, server_port)
         self.app.emit("osc.config_changed", host, client_port, server_port)
+
+
+class OscRemoveSubscriberAction(Action):
+    """Action to manually evict an active dynamic OSC subscriber."""
+
+    name = "osc.remove_subscriber"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.host: str = ""
+        self.port: int = 0
+
+    def configure(self, host: str, port: int) -> None:
+        """Configure subscriber target to remove.
+
+        Args:
+            host: Subscriber host/IP.
+            port: Subscriber port.
+        """
+        self.host = host
+        self.port = port
+
+    def execute(self) -> None:
+        """Remove the subscriber from OSCSubscriptionManager and notify."""
+        engine = getattr(self.app, "engine", None)
+        if engine is not None and self.host and self.port > 0:
+            engine.osc_subscriptions.unsubscribe(self.host, self.port, "all")
+            self.app.emit(
+                "osc.subscribers_changed",
+                engine.osc_subscriptions.get_subscribers_snapshot(),
+            )

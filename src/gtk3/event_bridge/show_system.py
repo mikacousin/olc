@@ -98,6 +98,10 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda state: self._run_idle(self._on_osc_toggled, state),
         )
         self.app.core.subscribe(
+            "osc.subscribers_changed",
+            lambda subs: self._run_idle(self._on_osc_subscribers_changed, subs),
+        )
+        self.app.core.subscribe(
             "midi.port_toggled",
             lambda port_name, enable: self._run_idle(
                 self._on_midi_port_toggled, port_name, enable
@@ -432,6 +436,22 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             settings_tab.update_osc_toggle(state)
+        return False
+
+    def _on_osc_subscribers_changed(
+        self, subscribers: list[dict[str, typing.Any]]
+    ) -> bool:
+        """Handle OSC subscribers change to update Settings tab if open.
+
+        Args:
+            subscribers: List of subscriber dictionaries.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_osc_subscribers(subscribers)
         return False
 
     def _on_midi_port_toggled(self, port_name: str, enable: bool) -> bool:

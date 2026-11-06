@@ -133,16 +133,18 @@ def test_osc_delegate_telemetry_events() -> None:
 
     # 1. Test commandline.changed telemetry
     app.action_registry.execute("commandline.set", "1 THRU 10 @ 80")
-    mock_engine.send_osc.assert_called_with("/olc/command_line", "1 THRU 10 @ 80")
+    mock_engine.publish_osc.assert_called_with(
+        "commandline", "/olc/command_line", "1 THRU 10 @ 80"
+    )
 
     # 2. Test fader.level_changed telemetry
     app.emit("fader.level_changed", 3, 0.5)
-    mock_engine.send_osc.assert_called_with("/olc/fader/1/3/level", 128)
+    mock_engine.publish_osc.assert_called_with("faders", "/olc/fader/1/3/level", 128)
 
     # 3. Test patch.changed telemetry
     app.emit("patch.changed")
-    mock_engine.send_osc.assert_called_with(
-        "/olc/patch/changed", len(app.lightshow.patch.devices)
+    mock_engine.publish_osc.assert_called_with(
+        "patch", "/olc/patch/changed", len(app.lightshow.patch.devices)
     )
 
 
@@ -351,31 +353,31 @@ def test_osc_delegate_cmd_execution() -> None:
 
     # 1. Valid command execution
     delegate._cmd("/olc/cmd", ["1 THRU 5 AT 80"])  # pylint: disable=protected-access
-    mock_engine.send_osc.assert_called_with("/olc/cmd/status", "OK")
+    mock_engine.publish_osc.assert_called_with("commandline", "/olc/cmd/status", "OK")
 
     # 2. Stripping trailing ENTER keyword (case-insensitive)
     delegate._cmd("/olc/cmd", ["10 AT FULL Enter"])  # pylint: disable=protected-access
     assert app.commandline.get_string() == ""  # Successful execution clears buffer
-    mock_engine.send_osc.assert_called_with("/olc/cmd/status", "OK")
+    mock_engine.publish_osc.assert_called_with("commandline", "/olc/cmd/status", "OK")
 
     # 3. Syntax error execution -> status sends error message
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._cmd("/olc/cmd", ["1 AT INVALID_TOKEN"])  # pylint: disable=protected-access
-    assert mock_engine.send_osc.called
+    assert mock_engine.publish_osc.called
     status_call = [
         call
-        for call in mock_engine.send_osc.call_args_list
-        if call[0][0] == "/olc/cmd/status"
+        for call in mock_engine.publish_osc.call_args_list
+        if call[0][1] == "/olc/cmd/status"
     ]
     assert len(status_call) == 1
-    assert "Syntax Error" in status_call[0][0][1]
+    assert "Syntax Error" in status_call[0][0][2]
 
     # 4. Empty or invalid args are safely ignored
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._cmd("/olc/cmd", [])  # pylint: disable=protected-access
     delegate._cmd("/olc/cmd", [""])  # pylint: disable=protected-access
     delegate._cmd("/olc/cmd", [123])  # pylint: disable=protected-access
-    mock_engine.send_osc.assert_not_called()
+    mock_engine.publish_osc.assert_not_called()
 
 
 # pylint: disable=protected-access
@@ -389,55 +391,63 @@ def test_osc_delegate_patch_dimmer() -> None:
     delegate = OSCDelegate(app)
 
     # 1. Valid patch with 3 integer arguments
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
     assert 1 in app.lightshow.patch.devices
     dev1 = app.lightshow.patch.devices[1]
     assert dev1.universe == 1
     assert dev1.address == 10
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/dimmer", "Device 1 patched to 1.10"
+    mock_engine.publish_osc.assert_any_call(
+        "patch",
+        "/olc/patch/status",
+        "OK",
+        "/olc/patch/dimmer",
+        "Device 1 patched to 1.10",
     )
 
     # 2. Valid patch with string format "universe.address"
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [2, "1.20"])
     assert 2 in app.lightshow.patch.devices
     dev2 = app.lightshow.patch.devices[2]
     assert dev2.universe == 1
     assert dev2.address == 20
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/dimmer", "Device 2 patched to 1.20"
+    mock_engine.publish_osc.assert_any_call(
+        "patch",
+        "/olc/patch/status",
+        "OK",
+        "/olc/patch/dimmer",
+        "Device 2 patched to 1.20",
     )
 
     # 3. Invalid string format
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [3, "not_a_valid_format"])
     assert 3 not in app.lightshow.patch.devices
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
     # 4. Too few arguments
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [4])
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
     # 5. Collision detection error
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [5, 1, 10])  # Collides with Device 1
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
@@ -458,7 +468,7 @@ def test_osc_delegate_patch_device() -> None:
     delegate = OSCDelegate(app)
 
     # 1. Valid fixture patch
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_device(
         "/olc/patch/device", [10, "Generic:RGBW", 1, 30, "Default", "LED 1"]
     )
@@ -468,7 +478,8 @@ def test_osc_delegate_patch_device() -> None:
     assert dev.address == 30
     assert dev.channel_count() == 4
     assert dev.label == "LED 1"
-    mock_engine.send_osc.assert_any_call(
+    mock_engine.publish_osc.assert_any_call(
+        "patch",
         "/olc/patch/status",
         "OK",
         "/olc/patch/device",
@@ -476,24 +487,24 @@ def test_osc_delegate_patch_device() -> None:
     )
 
     # 2. Unknown fixture definition
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_device("/olc/patch/device", [11, "NonExistent:Fixture", 1, 40])
     assert 11 not in app.lightshow.patch.devices
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
-    assert "not found in library" in status_calls[0][0][3]
+    assert "not found in library" in status_calls[0][0][4]
 
     # 3. Insufficient arguments
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_device("/olc/patch/device", [12, "Generic:Dimmer"])
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
@@ -510,11 +521,11 @@ def test_osc_delegate_patch_unpatch() -> None:
     assert 1 in app.lightshow.patch.devices
 
     # 1. Unpatch device 1
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_unpatch("/olc/patch/unpatch", [1])
     assert 1 not in app.lightshow.patch.devices
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/unpatch", "Device 1 unpatched"
+    mock_engine.publish_osc.assert_any_call(
+        "patch", "/olc/patch/status", "OK", "/olc/patch/unpatch", "Device 1 unpatched"
     )
 
     # 2. Undo unpatch
@@ -522,12 +533,12 @@ def test_osc_delegate_patch_unpatch() -> None:
     assert 1 in app.lightshow.patch.devices
 
     # 3. Missing argument
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_unpatch("/olc/patch/unpatch", [])
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
@@ -543,15 +554,15 @@ def test_osc_delegate_patch_1on1_and_clear() -> None:
 
     # 1. Clear patch
     delegate._patch_clear("/olc/patch/clear", [])
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/clear", "Patch cleared"
+    mock_engine.publish_osc.assert_any_call(
+        "patch", "/olc/patch/status", "OK", "/olc/patch/clear", "Patch cleared"
     )
     assert len(app.lightshow.patch.devices) == 0
 
     # 2. Set 1:1 patch
     delegate._patch_1on1("/olc/patch/1on1", [])
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/1on1", "Patch reset to 1:1"
+    mock_engine.publish_osc.assert_any_call(
+        "patch", "/olc/patch/status", "OK", "/olc/patch/1on1", "Patch reset to 1:1"
     )
     assert len(app.lightshow.patch.devices) > 0
 
@@ -567,20 +578,24 @@ def test_osc_delegate_patch_curve() -> None:
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
 
     # 1. Set curve
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_curve("/olc/patch/curve", [1, 2])
     assert app.lightshow.patch.devices[1].curve_id == 2
-    mock_engine.send_osc.assert_any_call(
-        "/olc/patch/status", "OK", "/olc/patch/curve", "Device 1 curve set to 2"
+    mock_engine.publish_osc.assert_any_call(
+        "patch",
+        "/olc/patch/status",
+        "OK",
+        "/olc/patch/curve",
+        "Device 1 curve set to 2",
     )
 
     # 2. Missing args
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_curve("/olc/patch/curve", [1])
     status_calls = [
         c
-        for c in mock_engine.send_osc.call_args_list
-        if c[0][0] == "/olc/patch/status" and c[0][1] == "ERROR"
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
@@ -599,38 +614,211 @@ def test_osc_delegate_patch_get_and_dump() -> None:
     )
 
     # 1. Query patched device 1
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_get("/olc/patch/get", [1])
-    mock_engine.send_osc.assert_called_with(
-        "/olc/patch/device/info", 1, 1, 10, 1, "Generic:Dimmer", "Dimmer 1"
+    mock_engine.publish_osc.assert_called_with(
+        "patch", "/olc/patch/device/info", 1, 1, 10, 1, "Generic:Dimmer", "Dimmer 1"
     )
 
     # 2. Query patched device 2
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_get("/olc/patch/get", [2])
-    mock_engine.send_osc.assert_called_with(
-        "/olc/patch/device/info", 2, 1, 20, 4, "Generic:LED RGBW", "Wash 1"
+    mock_engine.publish_osc.assert_called_with(
+        "patch", "/olc/patch/device/info", 2, 1, 20, 4, "Generic:LED RGBW", "Wash 1"
     )
 
     # 3. Query unpatched device 99
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_get("/olc/patch/get", [99])
-    mock_engine.send_osc.assert_called_with(
-        "/olc/patch/device/info", 99, 0, 0, 0, "", ""
+    mock_engine.publish_osc.assert_called_with(
+        "patch", "/olc/patch/device/info", 99, 0, 0, 0, "", ""
     )
 
     # 4. Dump patch as JSON
-    mock_engine.send_osc.reset_mock()
+    mock_engine.publish_osc.reset_mock()
     delegate._patch_dump("/olc/patch/dump", [])
-    assert mock_engine.send_osc.called
+    assert mock_engine.publish_osc.called
     dump_call = [
-        c for c in mock_engine.send_osc.call_args_list if c[0][0] == "/olc/patch/dump"
+        c
+        for c in mock_engine.publish_osc.call_args_list
+        if c[0][1] == "/olc/patch/dump"
     ]
     assert len(dump_call) == 1
     import json  # pylint: disable=import-outside-toplevel
 
-    data = json.loads(dump_call[0][0][1])
+    data = json.loads(dump_call[0][0][2])
     assert len(data) >= 2
     dev_ids = [d["device_id"] for d in data]
     assert 1 in dev_ids
     assert 2 in dev_ids
+
+
+def test_osc_pubsub_subscribe_and_direct_dump() -> None:
+    """Test /olc/subscribe registers subscriber, dumps patch, and notifies app."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    mock_sub_manager = MagicMock()
+    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_sub_manager.get_subscribers_snapshot.return_value = [
+        {
+            "host": "192.168.1.44",
+            "port": 8888,
+            "topics": ["patch"],
+            "last_seen": 100.0,
+            "is_static": False,
+        }
+    ]
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
+
+    changed_events: list[list] = []
+    app.subscribe("osc.subscribers_changed", changed_events.append)
+
+    # Subscribe to "patch" on custom reply port 8888
+    delegate._subscribe(
+        "/olc/subscribe", ["patch", 8888], sender_addr=("192.168.1.44", 51234)
+    )
+
+    mock_sub_manager.subscribe.assert_called_once_with("192.168.1.44", 8888, "patch")
+    mock_sub_manager.send_direct.assert_any_call(
+        "192.168.1.44", 8888, "/olc/subscribe/status", "OK", "patch"
+    )
+    # Direct patch dump sent to client
+    dump_calls = [
+        c
+        for c in mock_sub_manager.send_direct.call_args_list
+        if c[0][2] == "/olc/patch/dump"
+    ]
+    assert len(dump_calls) == 1
+    assert dump_calls[0][0][0] == "192.168.1.44"
+    assert dump_calls[0][0][1] == 8888
+
+    # Event emitted to application bus
+    assert len(changed_events) == 1
+    assert changed_events[0][0]["host"] == "192.168.1.44"
+
+
+def test_osc_pubsub_unsubscribe() -> None:
+    """Test /olc/unsubscribe removes subscriber and emits osc.subscribers_changed."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    mock_sub_manager = MagicMock()
+    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_sub_manager.get_subscribers_snapshot.return_value = []
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    changed_events: list[list] = []
+    app.subscribe("osc.subscribers_changed", changed_events.append)
+
+    delegate._unsubscribe(
+        "/olc/unsubscribe", ["patch", 8888], sender_addr=("192.168.1.44", 51234)
+    )
+
+    mock_sub_manager.unsubscribe.assert_called_once_with("192.168.1.44", 8888, "patch")
+    mock_sub_manager.send_direct.assert_called_once_with(
+        "192.168.1.44", 8888, "/olc/subscribe/status", "OK", "unsubscribed"
+    )
+    assert len(changed_events) == 1
+
+
+def test_osc_pubsub_ping_pong() -> None:
+    """Test /olc/ping refreshes keepalive and replies with /olc/pong."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    mock_sub_manager = MagicMock()
+    mock_engine.osc_subscriptions = mock_sub_manager
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+    delegate._ping("/olc/ping", [12345], sender_addr=("192.168.1.44", 8888))
+
+    mock_sub_manager.refresh_keepalive.assert_called_once_with("192.168.1.44", 8888)
+    mock_sub_manager.send_direct.assert_called_once_with(
+        "192.168.1.44", 8888, "/olc/pong", 12345
+    )
+
+
+def test_osc_remove_subscriber_action() -> None:
+    """Test osc.remove_subscriber action evicts subscriber and emits event."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    mock_sub_manager = MagicMock()
+    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_sub_manager.get_subscribers_snapshot.return_value = []
+    app.engine = mock_engine
+
+    changed_events: list[list] = []
+    app.subscribe("osc.subscribers_changed", changed_events.append)
+
+    app.action_registry.execute("osc.remove_subscriber", "192.168.1.77", 9000)
+
+    mock_sub_manager.unsubscribe.assert_called_once_with("192.168.1.77", 9000, "all")
+    assert len(changed_events) == 1
+
+
+def test_event_bridge_osc_subscribers_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test GuiEventBridge routes osc.subscribers_changed to SettingsTab."""
+    monkeypatch.setattr("gi.repository.GLib.idle_add", lambda func, *args: func(*args))
+    mock_app = MagicMock()
+    core = CoreApplication(MagicMock())
+    mock_app.core = core
+
+    mock_settings_tab = MagicMock()
+    mock_app.tabs = MagicMock()
+    mock_app.tabs.tabs = {"settings": mock_settings_tab}
+
+    _bridge = GuiEventBridge(mock_app)
+
+    sample_subs = [{"host": "192.168.1.99", "port": 8000, "topics": ["all"]}]
+    core.emit("osc.subscribers_changed", sample_subs)
+    mock_settings_tab.update_osc_subscribers.assert_called_once_with(sample_subs)
+
+
+def test_settings_tab_update_osc_subscribers() -> None:
+    """Test SettingsTab.update_osc_subscribers populates store and updates count."""
+    tab = SettingsTab.__new__(SettingsTab)
+    mock_store = MagicMock()
+    mock_label = MagicMock()
+    tab.liststore_osc_subscribers = mock_store
+    tab.label_osc_subscribers_count = mock_label
+
+    sample_subs = [
+        {
+            "host": "192.168.1.10",
+            "port": 8000,
+            "topics": ["patch"],
+            "last_seen": 1000.0,
+            "is_static": False,
+        },
+        {
+            "host": "127.0.0.1",
+            "port": 8000,
+            "topics": ["all"],
+            "last_seen": 1000.0,
+            "is_static": True,
+        },
+    ]
+
+    tab.update_osc_subscribers(sample_subs)
+
+    mock_store.clear.assert_called_once()
+    assert mock_store.append.call_count == 2
+    args0 = mock_store.append.call_args_list[0][0][0]
+    assert args0[0] == "192.168.1.10:8000"
+    assert args0[1] == "patch"
+    assert args0[3] == "192.168.1.10"
+    assert args0[4] == 8000
+
+    args1 = mock_store.append.call_args_list[1][0][0]
+    assert args1[0] == "127.0.0.1:8000"
+    assert "Static" in args1[1]
+
+    mock_label.set_text.assert_called_once()
+    assert "2" in mock_label.set_text.call_args[0][0]

@@ -20,6 +20,9 @@ import inspect
 import json
 import socket
 import struct
+import threading
+import time
+from dataclasses import dataclass
 from typing import Any, Callable, Optional, cast
 
 
@@ -123,6 +126,158 @@ class CoreOSCClient:
         self._sock.close()
 
 
+@dataclass
+class OSCSubscriber:
+    """Represents an active OSC client subscriber."""
+
+    host: str
+    port: int
+    topics: set[str]
+    last_seen: float
+    is_static: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return dictionary representation for GUI monitoring."""
+        return {
+            "host": self.host,
+            "port": self.port,
+            "topics": sorted(self.topics),
+            "last_seen": self.last_seen,
+            "is_static": self.is_static,
+        }
+
+
+class OSCSubscriptionManager:
+    """Manages active OSC subscribers and topic publishing."""
+
+    def __init__(self, sock: socket.socket | None = None) -> None:
+        self._lock = threading.Lock()
+        self._sock = sock
+        self._subscribers: dict[tuple[str, int], OSCSubscriber] = {}
+
+    def set_socket(self, sock: socket.socket) -> None:
+        """Assign or update the outgoing UDP socket."""
+        with self._lock:
+            self._sock = sock
+
+    def subscribe(
+        self,
+        host: str,
+        port: int,
+        topic: str = "all",
+        is_static: bool = False,
+    ) -> bool:
+        """Register or update a subscription for a given client address.
+
+        Returns True if a new subscriber was added, False if updated.
+        """
+        key = (host, port)
+        clean_topic = topic.strip().lower() or "all"
+        is_new = False
+        with self._lock:
+            if key not in self._subscribers:
+                self._subscribers[key] = OSCSubscriber(
+                    host=host,
+                    port=port,
+                    topics={clean_topic},
+                    last_seen=time.time(),
+                    is_static=is_static,
+                )
+                is_new = True
+            else:
+                sub = self._subscribers[key]
+                sub.topics.add(clean_topic)
+                sub.last_seen = time.time()
+                if is_static:
+                    sub.is_static = True
+        return is_new
+
+    def unsubscribe(self, host: str, port: int, topic: str = "all") -> bool:
+        """Unsubscribe a client from a specific topic or all topics."""
+        key = (host, port)
+        clean_topic = topic.strip().lower() or "all"
+        removed = False
+        with self._lock:
+            if key in self._subscribers:
+                sub = self._subscribers[key]
+                if clean_topic in ("all", "*"):
+                    del self._subscribers[key]
+                    removed = True
+                else:
+                    sub.topics.discard(clean_topic)
+                    if not sub.topics and not sub.is_static:
+                        del self._subscribers[key]
+                        removed = True
+        return removed
+
+    def refresh_keepalive(self, host: str, port: int) -> bool:
+        """Refresh the last_seen timestamp of a subscriber."""
+        key = (host, port)
+        with self._lock:
+            if key in self._subscribers:
+                self._subscribers[key].last_seen = time.time()
+                return True
+            for (h, _p), sub in self._subscribers.items():
+                if h == host:
+                    sub.last_seen = time.time()
+                    return True
+        return False
+
+    def cleanup_expired(self, timeout_seconds: float = 60.0) -> list[tuple[str, int]]:
+        """Remove subscribers inactive for longer than timeout_seconds."""
+        now = time.time()
+        expired: list[tuple[str, int]] = []
+        with self._lock:
+            for key, sub in list(self._subscribers.items()):
+                if not sub.is_static and (now - sub.last_seen > timeout_seconds):
+                    expired.append(key)
+                    del self._subscribers[key]
+        return expired
+
+    def get_subscribers_snapshot(self) -> list[dict[str, Any]]:
+        """Return a snapshot list of current subscribers for telemetry/GUI."""
+        with self._lock:
+            return [sub.to_dict() for sub in self._subscribers.values()]
+
+    def send_direct(self, host: str, port: int, address: str, *args: object) -> None:
+        """Send an OSC message directly to a specific target."""
+        with self._lock:
+            if self._sock is None:
+                return
+            try:
+                msg = build_message(address, *args)
+                self._sock.sendto(msg, (host, port))
+            except OSError as err:
+                print(
+                    f"[OSC SubManager] Warning: send_direct to ({host}:{port}) "
+                    f"failed: {err}"
+                )
+
+    def publish(self, topic: str, address: str, *args: object) -> None:
+        """Publish an OSC message to all subscribers of the topic."""
+        clean_topic = topic.strip().lower()
+        targets: list[tuple[str, int]] = []
+        with self._lock:
+            if self._sock is None:
+                return
+            for key, sub in self._subscribers.items():
+                if "all" in sub.topics or clean_topic in sub.topics:
+                    targets.append(key)
+
+        if not targets:
+            return
+
+        msg = build_message(address, *args)
+        for host, port in targets:
+            try:
+                self._sock.sendto(msg, (host, port))
+            except OSError as err:
+                print(
+                    f"[OSC SubManager] Warning: publish to ({host}:{port}) "
+                    f"failed: {err}"
+                )
+
+
 class CoreOSCServer:
     """
     Subclassable asynchronous OSC Server.
@@ -163,29 +318,63 @@ class CoreOSCServer:
             except AttributeError:
                 continue
 
-    def dispatch(self, address: str, args: list) -> None:
+    def dispatch(
+        self,
+        address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
         """Route the received message to matching handlers."""
         fallback = None
         for pattern, handler in self._handlers:
             if pattern is None:
                 fallback = handler
             elif pattern == address:
-                self._invoke_handler(handler, address, args)
+                self._invoke_handler(handler, address, args, sender_addr)
                 return
             elif fnmatch.fnmatch(address, pattern):
-                self._invoke_handler(handler, address, args)
+                self._invoke_handler(handler, address, args, sender_addr)
                 return
         if fallback:
-            self._invoke_handler(fallback, address, args)
+            self._invoke_handler(fallback, address, args, sender_addr)
 
-    def _invoke_handler(self, handler: Callable, address: str, args: list) -> None:
-        """Invoke a handler, passing the instance if unbound."""
-        if inspect.ismethod(handler):
-            # Bound method (already has 'self')
-            handler(address, args)
+    def _invoke_handler(
+        self,
+        handler: Callable,
+        address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Invoke a handler, passing instance and sender_addr if supported."""
+        try:
+            sig = inspect.signature(handler)
+            is_bound = inspect.ismethod(handler)
+            pos_params = [
+                p
+                for p in sig.parameters.values()
+                if p.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            ]
+            expects_sender = (
+                len(pos_params) >= 3 if is_bound else len(pos_params) >= 4
+            ) or "sender_addr" in sig.parameters
+        except (ValueError, TypeError):
+            is_bound = inspect.ismethod(handler)
+            expects_sender = False
+
+        if is_bound:
+            if expects_sender:
+                handler(address, args, sender_addr)
+            else:
+                handler(address, args)
         else:
-            # Unbound method (pass the server instance as first argument)
-            handler(self, address, args)
+            if expects_sender:
+                handler(self, address, args, sender_addr)
+            else:
+                handler(self, address, args)
 
     async def start(self) -> None:
         """Start listening on the configured socket."""
@@ -209,7 +398,7 @@ class _OSCProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         try:
             address, args = parse_message(data)
-            self._server.dispatch(address, args)
+            self._server.dispatch(address, args, addr)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Server] Warning: Parse error from {addr}: {err}")
 

@@ -26,7 +26,7 @@ from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
 from olc.core.mergers import HTPMerger, LTPMerger
-from olc.core.osc import CoreOSCClient, EngineOSCServer
+from olc.core.osc import CoreOSCClient, EngineOSCServer, OSCSubscriptionManager
 from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender
 from olc.core.universe_config import (
     DmxUsbProSettings,
@@ -151,6 +151,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
         self.osc_server = None
         self.osc_client = None
+        self.osc_subscriptions = OSCSubscriptionManager()
         self._osc_delegate = None
         self.app = None
 
@@ -608,6 +609,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.stop_osc()
 
             self.osc_client = CoreOSCClient(host, client_port)
+            self.osc_subscriptions.set_socket(self.osc_client._sock)
+            # Register default static client as persistent subscriber to all topics
+            self.osc_subscriptions.subscribe(host, client_port, "all", is_static=True)
+
             self.osc_server = EngineOSCServer(server_port, engine=self)
             if self._osc_delegate is not None:
                 self.osc_server.register_delegate(self._osc_delegate)
@@ -627,12 +632,20 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if self.osc_client is not None:
                 self.osc_client.close()
                 self.osc_client = None
+            self.osc_subscriptions.cleanup_expired(0.0)
 
     def update_osc_client(self, host: str = "", port: int | None = None) -> None:
         """Update client IP or port settings."""
         with self._lock:
             if self.osc_client is not None:
+                old_host, old_port = self.osc_client._addr
                 self.osc_client.target_changed(host, port)
+                new_host, new_port = self.osc_client._addr
+                # Update static subscriber
+                self.osc_subscriptions.unsubscribe(old_host, old_port, "all")
+                self.osc_subscriptions.subscribe(
+                    new_host, new_port, "all", is_static=True
+                )
 
     def update_osc_server(self, server_port: int) -> None:
         """Restart the OSC server on a new port."""
@@ -657,11 +670,15 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if self.osc_server is not None:
                 self.osc_server.register_delegate(delegate)
 
-    def send_osc(self, path: str, *args: object) -> None:
-        """Send an OSC message to the client target."""
+    def publish_osc(self, topic: str, path: str, *args: object) -> None:
+        """Publish an OSC message to subscribers of a topic."""
         with self._lock:
-            if self.osc_client is not None:
-                self.osc_client.send(path, *args)
+            self.osc_subscriptions.publish(topic, path, *args)
+
+    def send_osc(self, path: str, *args: object) -> None:
+        """Send an OSC message to subscribers listening to all/general topics."""
+        with self._lock:
+            self.osc_subscriptions.publish("all", path, *args)
 
     def _send_all(self) -> None:
         """Called by DMXLoop on every tick. Dispatches to senders."""
