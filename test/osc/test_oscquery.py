@@ -78,7 +78,17 @@ def test_build_oscquery_tree_structure() -> None:
     assert "1" in faders_p1
     fader1 = faders_p1["1"]["CONTENTS"]
     assert fader1["level"]["ACCESS"] == ACCESS_READ_WRITE
-    assert fader1["flash"]["ACCESS"] == ACCESS_WRITE_ONLY
+    assert fader1["flash"]["ACCESS"] == ACCESS_READ_WRITE
+
+    # Independents
+    assert "independent" in olc
+    indes = olc["independent"]["CONTENTS"]
+    assert "1" in indes
+    assert indes["1"]["CONTENTS"]["level"]["RANGE"] == [{"MIN": 0.0, "MAX": 1.0}]
+    assert indes["1"]["CONTENTS"]["button"]["ACCESS"] == ACCESS_WRITE_ONLY
+
+    # Crossfade
+    assert pb["xfade"]["RANGE"] == [{"MIN": 0.0, "MAX": 1.0}]
 
     # Paged channels cells
     cells = olc["cell"]["CONTENTS"]

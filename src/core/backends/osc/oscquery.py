@@ -63,13 +63,49 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                 "flash": {
                     "DESCRIPTION": f"Flash button for fader {i} (1=down, 0=up)",
                     "FULL_PATH": f"/olc/fader/1/{i}/flash",
-                    "ACCESS": ACCESS_WRITE_ONLY,
+                    "ACCESS": ACCESS_READ_WRITE,
                     "TYPE": "i",
                     "RANGE": [{"MIN": 0, "MAX": 1}],
                 },
                 "label": {
                     "DESCRIPTION": f"Label/caption for fader {i}",
                     "FULL_PATH": f"/olc/fader/1/{i}/label",
+                    "ACCESS": ACCESS_READ_ONLY,
+                    "TYPE": "s",
+                },
+            },
+        }
+
+    independent_contents: dict[str, typing.Any] = {}
+    for i in range(1, 10):
+        independent_contents[str(i)] = {
+            "DESCRIPTION": f"Independent {i} container",
+            "FULL_PATH": f"/olc/independent/{i}",
+            "ACCESS": ACCESS_CONTAINER,
+            "CONTENTS": {
+                "level": {
+                    "DESCRIPTION": f"Normalized level for independent {i} (0.0 to 1.0)",
+                    "FULL_PATH": f"/olc/independent/{i}/level",
+                    "ACCESS": ACCESS_READ_WRITE,
+                    "TYPE": "f",
+                    "RANGE": [{"MIN": 0.0, "MAX": 1.0}],
+                },
+                "button": {
+                    "DESCRIPTION": f"Button trigger for independent {i} (1/0)",
+                    "FULL_PATH": f"/olc/independent/{i}/button",
+                    "ACCESS": ACCESS_WRITE_ONLY,
+                    "TYPE": "i",
+                    "RANGE": [{"MIN": 0, "MAX": 1}],
+                },
+                "label": {
+                    "DESCRIPTION": f"Label for independent {i}",
+                    "FULL_PATH": f"/olc/independent/{i}/label",
+                    "ACCESS": ACCESS_READ_ONLY,
+                    "TYPE": "s",
+                },
+                "type": {
+                    "DESCRIPTION": f"Type of independent {i} (knob or button)",
+                    "FULL_PATH": f"/olc/independent/{i}/type",
                     "ACCESS": ACCESS_READ_ONLY,
                     "TYPE": "s",
                 },
@@ -197,6 +233,18 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                                 "ACCESS": ACCESS_WRITE_ONLY,
                                 "TYPE": "",
                             },
+                            "enter": {
+                                "DESCRIPTION": "Execute command on command line",
+                                "FULL_PATH": "/olc/key/enter",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
+                            "backspace": {
+                                "DESCRIPTION": "Backspace on command line",
+                                "FULL_PATH": "/olc/key/backspace",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
                         },
                     },
                     "playback": {
@@ -264,6 +312,41 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                             "dump": {
                                 "DESCRIPTION": "JSON snapshot of all sequence cues",
                                 "FULL_PATH": "/olc/playback/dump",
+                                "ACCESS": ACCESS_READ_ONLY,
+                                "TYPE": "s",
+                            },
+                            "xfade": {
+                                "DESCRIPTION": "Unified manual crossfade (0.0 to 1.0)",
+                                "FULL_PATH": "/olc/playback/xfade",
+                                "ACCESS": ACCESS_READ_WRITE,
+                                "TYPE": "f",
+                                "RANGE": [{"MIN": 0.0, "MAX": 1.0}],
+                            },
+                            "xfade_a": {
+                                "DESCRIPTION": "Manual crossfade scale A (0.0 to 1.0)",
+                                "FULL_PATH": "/olc/playback/xfade/a",
+                                "ACCESS": ACCESS_READ_WRITE,
+                                "TYPE": "f",
+                                "RANGE": [{"MIN": 0.0, "MAX": 1.0}],
+                            },
+                            "xfade_b": {
+                                "DESCRIPTION": "Manual crossfade scale B (0.0 to 1.0)",
+                                "FULL_PATH": "/olc/playback/xfade/b",
+                                "ACCESS": ACCESS_READ_WRITE,
+                                "TYPE": "f",
+                                "RANGE": [{"MIN": 0.0, "MAX": 1.0}],
+                            },
+                        },
+                    },
+                    "independent": {
+                        "DESCRIPTION": "Independents (1 to 9) container",
+                        "FULL_PATH": "/olc/independent",
+                        "ACCESS": ACCESS_CONTAINER,
+                        "CONTENTS": {
+                            **independent_contents,
+                            "dump": {
+                                "DESCRIPTION": "JSON snapshot of all independents",
+                                "FULL_PATH": "/olc/independent/dump",
                                 "ACCESS": ACCESS_READ_ONLY,
                                 "TYPE": "s",
                             },

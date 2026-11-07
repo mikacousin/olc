@@ -1129,7 +1129,7 @@ def build_tablet_template() -> TOSCNode:
             ("CLEAR", "/olc/key/clear"),
             ("0", "/olc/key/0"),
             (".", "/olc/key/."),
-            ("ENTER", "/olc/key/level"),
+            ("ENTER", "/olc/key/enter"),
         ],
     ]
 
@@ -1681,7 +1681,7 @@ def build_phone_template() -> TOSCNode:
             ("CLR", "/olc/key/clear"),
             ("0", "/olc/key/0"),
             (".", "/olc/key/."),
-            ("ENTER", "/olc/key/level"),
+            ("ENTER", "/olc/key/enter"),
         ],
     ]
 

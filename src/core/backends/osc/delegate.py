@@ -89,6 +89,16 @@ class OSCDelegate:
         self.app.subscribe("step.inserted", self._on_cues_changed)
         self.app.subscribe("step.updated", self._on_cues_changed)
         self.app.subscribe("step.deleted", self._on_cues_changed)
+        self.app.subscribe(
+            "independent.level_changed", self._on_independent_level_changed
+        )
+        self.app.subscribe(
+            "independent.channels_changed", self._on_independent_channels_changed
+        )
+        self.app.subscribe(
+            "independent.text_changed", self._on_independent_text_changed
+        )
+        self.app.subscribe("playback.xfade_moved", self._on_xfade_moved)
 
     def _send_patch_status(
         self,
@@ -178,8 +188,12 @@ class OSCDelegate:
                 "faders", f"/olc/fader/1/{fader_index}/level", float(level)
             )
 
-    def _on_fader_flash_changed(self, _fader_index: int, _pressed: bool) -> None:
-        """Refresh channel grid telemetry when a fader flash state changes."""
+    def _on_fader_flash_changed(self, fader_index: int, pressed: bool) -> None:
+        """Refresh channel grid and publish flash state on fader flash change."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc(
+                "faders", f"/olc/fader/1/{fader_index}/flash", 1 if pressed else 0
+            )
         self._send_channels_page()
 
     def _on_fader_changed(self, page: int, index: int) -> None:
@@ -196,6 +210,68 @@ class OSCDelegate:
                     f"/olc/fader/1/{index}/level",
                     float(fader.level),
                 )
+
+    def _send_independents_telemetry(
+        self, sender_addr: tuple[str, int] | None = None
+    ) -> None:
+        """Send telemetry for all 9 independents."""
+        if self.app.engine is None:
+            return
+        independents = getattr(self.app.lightshow, "independents", None)
+        if independents is None:
+            return
+        for inde in getattr(independents, "independents", []):
+            num = int(inde.number)
+            lvl = float(inde.level)
+            lbl = str(inde.text or f"Inde {num}")
+            type_str = str(getattr(inde, "inde_type", "knob"))
+            if sender_addr is not None:
+                host, port = sender_addr
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, f"/olc/independent/{num}/level", lvl
+                )
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, f"/olc/independent/{num}/label", lbl
+                )
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, f"/olc/independent/{num}/type", type_str
+                )
+            self.app.engine.publish_osc(
+                "independents", f"/olc/independent/{num}/level", lvl
+            )
+            self.app.engine.publish_osc(
+                "independents", f"/olc/independent/{num}/label", lbl
+            )
+            self.app.engine.publish_osc(
+                "independents", f"/olc/independent/{num}/type", type_str
+            )
+
+    def _on_independent_level_changed(self, number: int, level: float) -> None:
+        """Send OSC feedback when an independent level changes."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc(
+                "independents", f"/olc/independent/{number}/level", float(level)
+            )
+            self._send_channels_page()
+
+    def _on_independent_text_changed(self, number: int, text: str) -> None:
+        """Send OSC feedback when an independent label changes."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc(
+                "independents", f"/olc/independent/{number}/label", str(text)
+            )
+
+    def _on_independent_channels_changed(self, _number: int) -> None:
+        """Refresh channel grid telemetry on independent channel change."""
+        self._send_channels_page()
+
+    def _on_xfade_moved(self, fader_key: str, val_255: int) -> None:
+        """Publish manual crossfade slider position."""
+        if self.app.engine is not None:
+            norm_val = round(float(val_255) / 255.0, 4)
+            self.app.engine.publish_osc(
+                "playback", f"/olc/playback/xfade/{fader_key}", norm_val
+            )
 
     def _on_commandline_changed(self, keystring: str) -> None:
         """Send OSC feedback when the logical command line changes."""
@@ -491,18 +567,43 @@ class OSCDelegate:
 
         if dev.get_channel(ChannelType.PAN) is not None:
             pan_val = float(dev.pan_degrees)
+            pan_norm = dev.get_parameter_normalized(ChannelType.PAN)
             if sender_addr is not None:
                 self.app.engine.osc_subscriptions.send_direct(
                     sender_addr[0], sender_addr[1], "/olc/selected/pan", pan_val
                 )
+                if pan_norm is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/selected/pan/norm",
+                        float(pan_norm),
+                    )
             self.app.engine.publish_osc("channels", "/olc/selected/pan", pan_val)
+            if pan_norm is not None:
+                self.app.engine.publish_osc(
+                    "channels", "/olc/selected/pan/norm", float(pan_norm)
+                )
+
         if dev.get_channel(ChannelType.TILT) is not None:
             tilt_val = float(dev.tilt_degrees)
+            tilt_norm = dev.get_parameter_normalized(ChannelType.TILT)
             if sender_addr is not None:
                 self.app.engine.osc_subscriptions.send_direct(
                     sender_addr[0], sender_addr[1], "/olc/selected/tilt", tilt_val
                 )
+                if tilt_norm is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/selected/tilt/norm",
+                        float(tilt_norm),
+                    )
             self.app.engine.publish_osc("channels", "/olc/selected/tilt", tilt_val)
+            if tilt_norm is not None:
+                self.app.engine.publish_osc(
+                    "channels", "/olc/selected/tilt/norm", float(tilt_norm)
+                )
         for ch_type, sub_path in (
             (ChannelType.ZOOM, "/olc/selected/zoom"),
             (ChannelType.FOCUS, "/olc/selected/focus"),
@@ -621,6 +722,7 @@ class OSCDelegate:
         self._send_playback_telemetry(sender_addr)
         self._send_channels_page(sender_addr)
         self._send_faders_page(sender_addr)
+        self._send_independents_telemetry(sender_addr)
         selected = getattr(self.app, "selected_channels", [])
         if selected:
             self._send_selected_fixture_telemetry(selected, sender_addr)
@@ -948,6 +1050,31 @@ class OSCDelegate:
             )
         self.app.engine.publish_osc("playback", "/olc/playback/dump", dump_json)
 
+    @make_method("/olc/playback/xfade/a")
+    def _playback_xfade_a(self, _address: str, args: list) -> None:
+        """Set manual crossfade scale A (0.0 to 1.0)."""
+        if not args:
+            return
+        level = parse_osc_normalized(args[0])
+        self._execute_action("playback.manual_xfade", "a", level)
+
+    @make_method("/olc/playback/xfade/b")
+    def _playback_xfade_b(self, _address: str, args: list) -> None:
+        """Set manual crossfade scale B (0.0 to 1.0)."""
+        if not args:
+            return
+        level = parse_osc_normalized(args[0])
+        self._execute_action("playback.manual_xfade", "b", level)
+
+    @make_method("/olc/playback/xfade")
+    def _playback_xfade(self, _address: str, args: list) -> None:
+        """Adjust unified crossfade progress (0.0 = cue A, 1.0 = cue B)."""
+        if not args:
+            return
+        progress = parse_osc_normalized(args[0])
+        self._execute_action("playback.manual_xfade", "a", progress)
+        self._execute_action("playback.manual_xfade", "b", progress)
+
     @make_method("/olc/mainfader")
     def _mainfader(
         self,
@@ -1090,6 +1217,16 @@ class OSCDelegate:
         if self._is_momentary_press(args):
             self._execute_action("channel.level_minus")
 
+    @make_method("/olc/key/enter")
+    def _enter(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.execute")
+
+    @make_method("/olc/key/backspace")
+    def _backspace(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.backspace")
+
     @make_method("/olc/fader/pageupdate")
     @make_method("/olc/sync")
     def _sub_launch(self, _address: str, args: list) -> None:
@@ -1169,6 +1306,57 @@ class OSCDelegate:
                 self.app.emit("fader.flash_changed", fader_index, pressed)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_flash: {err}")
+
+    @make_method("/olc/independent/*/level")
+    def _independent_level(self, address: str, args: list) -> None:
+        """Set independent level (0.0 to 1.0)."""
+        if not args:
+            return
+        try:
+            number = int(address.split("/")[3])
+            level = parse_osc_normalized(args[0])
+            self._execute_action("independent.set_level", number, level)
+        except (IndexError, ValueError) as err:
+            print(f"[OSC Delegate] Error in independent_level: {err}")
+
+    @make_method("/olc/independent/*/button")
+    def _independent_button(self, address: str, args: list) -> None:
+        """Press or release independent button."""
+        try:
+            number = int(address.split("/")[3])
+            pressed = parse_osc_bool(args[0]) if args else True
+            level = 1.0 if pressed else 0.0
+            self._execute_action("independent.set_level", number, level)
+        except (IndexError, ValueError) as err:
+            print(f"[OSC Delegate] Error in independent_button: {err}")
+
+    @make_method("/olc/independent/dump")
+    def _independent_dump(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Send dump of all independents."""
+        if self.app.engine is None or sender_addr is None:
+            return
+        independents = getattr(self.app.lightshow, "independents", None)
+        if independents is None:
+            return
+        data = []
+        for inde in getattr(independents, "independents", []):
+            data.append(
+                {
+                    "number": int(inde.number),
+                    "level": float(inde.level),
+                    "text": str(inde.text),
+                    "type": str(getattr(inde, "inde_type", "knob")),
+                    "channels": sorted(list(inde.channels)),
+                }
+            )
+        self.app.engine.osc_subscriptions.send_direct(
+            sender_addr[0], sender_addr[1], "/olc/independent/dump", json_dumps(data)
+        )
 
     @make_method("/olc/patch/dimmer")
     def _patch_dimmer(self, address: str, args: list) -> None:

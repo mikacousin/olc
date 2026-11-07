@@ -1185,3 +1185,103 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
     delegate._fader_flash("/olc/fader/1/1/flash", [1])
     action = app.action_registry.get("fader.flash")
     assert action.get_feedback_state()["active"] is True
+
+
+def test_osc_key_enter_and_backspace() -> None:
+    """Test /olc/key/enter and /olc/key/backspace routes."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_backend.dmx = MagicMock()
+    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    app.backend = mock_backend
+
+    delegate = OSCDelegate(app)
+
+    # 1. Backspace route
+    app.commandline.set_string("123")
+    delegate._backspace("/olc/key/backspace", [1])
+    assert app.commandline.get_string() == "12"
+
+    # 2. Enter route executing command
+    app.commandline.set_string("1 at 50")
+    delegate._enter("/olc/key/enter", [1])
+    # Channel 1 selected and level 50 applied (or command executed)
+    assert app.commandline.get_string() == ""
+    assert mock_backend.dmx.levels["user"][0] == 128
+
+
+def test_osc_fader_flash_feedback() -> None:
+    """Test that fader flash changes publish feedback to /olc/fader/1/{id}/flash."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+    delegate = OSCDelegate(app)
+
+    # Trigger flash on fader 1
+    delegate._fader_flash("/olc/fader/1/1/flash", [1])
+    mock_engine.publish_osc.assert_any_call("faders", "/olc/fader/1/1/flash", 1)
+
+    # Release flash on fader 1
+    delegate._fader_flash("/olc/fader/1/1/flash", [0])
+    mock_engine.publish_osc.assert_any_call("faders", "/olc/fader/1/1/flash", 0)
+
+
+def test_osc_selected_pan_tilt_norm_feedback() -> None:
+    """Test that moving fixture telemetry publishes both degrees and normalized."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+    _delegate = OSCDelegate(app)
+
+    # Patch moving head fixture on channel 1
+    from olc.devices.builtin import create_moving_head_definition
+
+    app.lightshow.patch.patch_device(1, create_moving_head_definition(), 1, 1)
+
+    # Select fixture 1 and trigger parameter update (center = 0.5 normalized)
+    app.selected_channels = [1]
+    app.action_registry.execute("device.set_pan_tilt", 0.0, 0.0)
+
+    calls = [call[0] for call in mock_engine.publish_osc.call_args_list]
+    # Check that both degrees and norm were published
+    published_topics_addrs = [(c[0], c[1]) for c in calls if len(c) >= 2]
+    assert ("channels", "/olc/selected/pan") in published_topics_addrs
+    assert ("channels", "/olc/selected/pan/norm") in published_topics_addrs
+    assert ("channels", "/olc/selected/tilt") in published_topics_addrs
+    assert ("channels", "/olc/selected/tilt/norm") in published_topics_addrs
+
+
+def test_osc_manual_xfade_control_and_feedback() -> None:
+    """Test manual crossfade control routes and OSC position feedback."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+    delegate = OSCDelegate(app)
+
+    # 1. Move Scale A to 0.7
+    delegate._playback_xfade_a("/olc/playback/xfade/a", [0.7])
+    assert app.crossfade is not None
+    assert pytest.approx(app.crossfade.scale_a.get_value(), 0.01) == 0.7
+    mock_engine.publish_osc.assert_any_call(
+        "playback", "/olc/playback/xfade/a", pytest.approx(0.7, 0.01)
+    )
+
+    # 2. Move Scale B to 0.4
+    delegate._playback_xfade_b("/olc/playback/xfade/b", [0.4])
+    assert pytest.approx(app.crossfade.scale_b.get_value(), 0.01) == 0.4
+    mock_engine.publish_osc.assert_any_call(
+        "playback", "/olc/playback/xfade/b", pytest.approx(0.4, 0.01)
+    )
+
+    # 3. Unified crossfade route
+    delegate._playback_xfade("/olc/playback/xfade", [0.5])
+    assert pytest.approx(app.crossfade.scale_a.get_value(), 0.01) == 0.5
+    assert pytest.approx(app.crossfade.scale_b.get_value(), 0.01) == 0.5
