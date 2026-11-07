@@ -70,6 +70,9 @@ GDTF_ATTRIBUTE_MAP: dict[str, ChannelType] = {
     "Focus1": ChannelType.FOCUS,
     "Iris": ChannelType.IRIS,
     "Prism1": ChannelType.PRISM,
+    "Frost": ChannelType.FROST,
+    "Frost1": ChannelType.FROST,
+    "Frost2": ChannelType.FROST,
     "Control": ChannelType.MACRO,
     "Effects1": ChannelType.MACRO,
     "ColorMacro1": ChannelType.MACRO,
@@ -88,6 +91,7 @@ GDTF_PHYSICAL_DEFAULTS: dict[ChannelType, tuple[float, float, str]] = {
     ChannelType.COLOR_TEMP: (2700.0, 6500.0, "K"),
     ChannelType.INTENSITY: (0.0, 1.0, "%"),
     ChannelType.IRIS: (0.0, 100.0, "%"),
+    ChannelType.FROST: (0.0, 100.0, "%"),
 }
 
 _FIXTURE_TYPE_KEYWORDS: list[tuple[str, FixtureType]] = [

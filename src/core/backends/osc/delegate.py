@@ -359,6 +359,21 @@ class OSCDelegate:
                     self.app.engine.publish_osc(
                         "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
                     )
+                for ch_type, sub_path in (
+                    (ChannelType.ZOOM, "/olc/selected/zoom"),
+                    (ChannelType.FOCUS, "/olc/selected/focus"),
+                    (ChannelType.IRIS, "/olc/selected/iris"),
+                    (ChannelType.STROBE, "/olc/selected/strobe"),
+                    (ChannelType.FROST, "/olc/selected/frost"),
+                    (ChannelType.GOBO_WHEEL, "/olc/selected/gobo"),
+                    (ChannelType.PRISM, "/olc/selected/prism"),
+                ):
+                    if dev.get_channel(ch_type) is not None:
+                        val = dev.get_parameter_normalized(ch_type)
+                        if val is not None:
+                            self.app.engine.publish_osc(
+                                "channels", sub_path, float(val)
+                            )
                 has_color = any(
                     c.channel_type in COLOR_CHANNEL_TYPES for c in dev.channels
                 )
@@ -389,6 +404,21 @@ class OSCDelegate:
                     self.app.engine.publish_osc(
                         "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
                     )
+                for ch_type, sub_path in (
+                    (ChannelType.ZOOM, "/olc/selected/zoom"),
+                    (ChannelType.FOCUS, "/olc/selected/focus"),
+                    (ChannelType.IRIS, "/olc/selected/iris"),
+                    (ChannelType.STROBE, "/olc/selected/strobe"),
+                    (ChannelType.FROST, "/olc/selected/frost"),
+                    (ChannelType.GOBO_WHEEL, "/olc/selected/gobo"),
+                    (ChannelType.PRISM, "/olc/selected/prism"),
+                ):
+                    if dev.get_channel(ch_type) is not None:
+                        val = dev.get_parameter_normalized(ch_type)
+                        if val is not None:
+                            self.app.engine.publish_osc(
+                                "channels", sub_path, float(val)
+                            )
 
     def _on_device_color_changed(
         self, _channels: list[int], color: tuple[float, float, float] | None
@@ -589,17 +619,18 @@ class OSCDelegate:
             )
             self.app.engine.publish_osc("commandline", "/olc/cmd/status", status_msg)
 
-    def _execute_action(self, name: str, *args: object) -> object:
+    def _execute_action(self, name: str, *args: object, **kwargs: object) -> object:
         """Execute an action from the registry.
 
         Args:
             name: The action name.
             *args: Arguments for the action.
+            **kwargs: Keyword arguments for the action.
 
         Returns:
             The return value of the action.
         """
-        return self.app.action_registry.execute(name, *args)
+        return self.app.action_registry.execute(name, *args, **kwargs)
 
     @make_method("/olc/key/go")
     def _go(self, _address: str, _args: list) -> None:
@@ -1359,6 +1390,64 @@ class OSCDelegate:
         delta = float(args[0]) if args else 1.0
         self._execute_action("device.adjust_pan_tilt", 0.0, delta)
 
+    @make_method("/olc/wheel/zoom")
+    def _wheel_zoom(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures zoom relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "zoom", delta)
+
+    @make_method("/olc/wheel/focus")
+    def _wheel_focus(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures focus relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "focus", delta)
+
+    @make_method("/olc/wheel/iris")
+    def _wheel_iris(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures iris relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "iris", delta)
+
+    @make_method("/olc/wheel/strobe")
+    def _wheel_strobe(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures strobe relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "strobe", delta)
+
+    @make_method("/olc/wheel/frost")
+    def _wheel_frost(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures frost filter relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "frost", delta)
+
+    @make_method("/olc/wheel/gobo")
+    def _wheel_gobo(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures gobo wheel relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "gobo_wheel", delta)
+
+    @make_method("/olc/wheel/prism")
+    def _wheel_prism(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures prism relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "prism", delta)
+
+    @make_method("/olc/wheel/cct")
+    @make_method("/olc/wheel/kelvin")
+    def _wheel_kelvin(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures color temperature relatively."""
+        delta = float(args[0]) if args else 0.05
+        self._execute_action("device.adjust_parameter", "color_temp", delta)
+
+    @make_method("/olc/wheel/param/*")
+    def _wheel_param_generic(self, address: str, args: list) -> None:
+        """Adjust selected fixtures generic parameter relatively."""
+        parts = address.split("/")
+        if len(parts) >= 5:
+            param_name = parts[4]
+            delta = float(args[0]) if args else 0.05
+            self._execute_action("device.adjust_parameter", param_name, delta)
+
     @make_method("/olc/selected/pan")
     def _selected_pan(self, _address: str, args: list) -> None:
         """Set absolute pan coordinate in degrees on selected fixtures."""
@@ -1394,25 +1483,246 @@ class OSCDelegate:
             r, g, b = colorsys.hsv_to_rgb(h, s, v)
             self._execute_action("device.set_color", r, g, b)
 
+    @make_method("/olc/selected/zoom")
+    def _selected_zoom(self, _address: str, args: list) -> None:
+        """Set normalized zoom [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "zoom", norm)
+
+    @make_method("/olc/selected/zoom/degrees")
+    def _selected_zoom_degrees(self, _address: str, args: list) -> None:
+        """Set physical zoom angle in degrees on selected fixtures."""
+        if args:
+            deg = float(args[0])
+            self._execute_action("device.set_parameter", "zoom", deg, is_physical=True)
+
+    @make_method("/olc/selected/focus")
+    def _selected_focus(self, _address: str, args: list) -> None:
+        """Set normalized focus [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "focus", norm)
+
+    @make_method("/olc/selected/focus/meters")
+    def _selected_focus_meters(self, _address: str, args: list) -> None:
+        """Set physical focus distance in meters on selected fixtures."""
+        if args:
+            dist = float(args[0])
+            self._execute_action(
+                "device.set_parameter", "focus", dist, is_physical=True
+            )
+
+    @make_method("/olc/selected/iris")
+    def _selected_iris(self, _address: str, args: list) -> None:
+        """Set normalized iris aperture [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "iris", norm)
+
+    @make_method("/olc/selected/strobe")
+    def _selected_strobe(self, _address: str, args: list) -> None:
+        """Set normalized strobe frequency [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "strobe", norm)
+
+    @make_method("/olc/selected/strobe/hz")
+    def _selected_strobe_hz(self, _address: str, args: list) -> None:
+        """Set physical strobe frequency in Hz on selected fixtures."""
+        if args:
+            freq = float(args[0])
+            self._execute_action(
+                "device.set_parameter", "strobe", freq, is_physical=True
+            )
+
+    @make_method("/olc/selected/frost")
+    def _selected_frost(self, _address: str, args: list) -> None:
+        """Set normalized frost filter [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "frost", norm)
+
+    @make_method("/olc/selected/gobo")
+    def _selected_gobo(self, _address: str, args: list) -> None:
+        """Set gobo wheel normalized position or index on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "gobo_wheel", norm)
+
+    @make_method("/olc/selected/prism")
+    def _selected_prism(self, _address: str, args: list) -> None:
+        """Set prism normalized level or insertion on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "prism", norm)
+
     @make_method("/olc/selected/color/kelvin")
+    @make_method("/olc/selected/cct")
     def _selected_color_kelvin(self, _address: str, args: list) -> None:
         """Set color temperature in Kelvin on selected fixtures."""
         if args:
             k = float(args[0])
-            patch = getattr(self.app.lightshow, "patch", None)
-            targets = list(getattr(self.app, "selected_channels", []))
-            if patch is not None and targets:
-                for ch in targets:
-                    dev = patch.devices.get(ch)
-                    if dev is not None:
-                        dev.set_color_temp_kelvin(k)
-                backend = getattr(self.app, "backend", None)
-                backend_dmx = (
-                    getattr(backend, "dmx", None) if backend is not None else None
-                )
-                if backend_dmx is not None and type(backend_dmx).__name__ == "Dmx":
-                    backend_dmx.set_levels()
-                    backend_dmx.send()
+            self._execute_action(
+                "device.set_parameter", "color_temp", k, is_physical=True
+            )
+
+    @make_method("/olc/selected/param/*")
+    def _selected_param_generic(self, address: str, args: list) -> None:
+        """Set generic normalized parameter on selected fixtures."""
+        if not args:
+            return
+        parts = address.split("/")
+        if len(parts) >= 5:
+            param_name = parts[4]
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", param_name, norm)
+
+    @make_method("/olc/device/*/zoom")
+    def _device_zoom(self, address: str, args: list) -> None:
+        """Set normalized zoom for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "zoom", norm, channels=[ch])
+
+    @make_method("/olc/device/*/focus")
+    def _device_focus(self, address: str, args: list) -> None:
+        """Set normalized focus for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "focus", norm, channels=[ch])
+
+    @make_method("/olc/device/*/iris")
+    def _device_iris(self, address: str, args: list) -> None:
+        """Set normalized iris for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "iris", norm, channels=[ch])
+
+    @make_method("/olc/device/*/strobe")
+    def _device_strobe(self, address: str, args: list) -> None:
+        """Set normalized strobe for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "strobe", norm, channels=[ch])
+
+    @make_method("/olc/device/*/frost")
+    def _device_frost(self, address: str, args: list) -> None:
+        """Set normalized frost for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "frost", norm, channels=[ch])
+
+    @make_method("/olc/device/*/gobo")
+    def _device_gobo(self, address: str, args: list) -> None:
+        """Set normalized gobo for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "gobo_wheel", norm, channels=[ch])
+
+    @make_method("/olc/device/*/prism")
+    def _device_prism(self, address: str, args: list) -> None:
+        """Set normalized prism for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", "prism", norm, channels=[ch])
+
+    @make_method("/olc/device/*/pan")
+    def _device_pan(self, address: str, args: list) -> None:
+        """Set absolute pan coordinate in degrees for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        val = float(args[0])
+        self._execute_action("device.set_pan_tilt", val, None, channels=[ch])
+
+    @make_method("/olc/device/*/tilt")
+    def _device_tilt(self, address: str, args: list) -> None:
+        """Set absolute tilt coordinate in degrees for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        val = float(args[0])
+        self._execute_action("device.set_pan_tilt", None, val, channels=[ch])
+
+    @make_method("/olc/device/*/color/rgb")
+    def _device_color_rgb(self, address: str, args: list) -> None:
+        """Set RGB color for a specific device."""
+        if len(args) < 3:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        r = float(args[0])
+        g = float(args[1])
+        b = float(args[2])
+        self._execute_action("device.set_color", r, g, b, channels=[ch])
+
+    @make_method("/olc/device/*/param/*")
+    def _device_param_generic(self, address: str, args: list) -> None:
+        """Set generic normalized parameter for a specific device."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+            param_name = parts[5]
+        except (IndexError, ValueError):
+            return
+        norm = parse_osc_normalized(args[0])
+        self._execute_action("device.set_parameter", param_name, norm, channels=[ch])
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

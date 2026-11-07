@@ -88,6 +88,21 @@ def test_build_oscquery_tree_structure() -> None:
     assert color["hsv"]["TYPE"] == "fff"
     assert color["kelvin"]["RANGE"] == [{"MIN": 1000.0, "MAX": 20000.0}]
 
+    # Additional moving head wheels & selected nodes
+    wheel = olc["wheel"]["CONTENTS"]
+    assert wheel["zoom"]["ACCESS"] == ACCESS_WRITE_ONLY
+    assert wheel["frost"]["ACCESS"] == ACCESS_WRITE_ONLY
+    assert wheel["strobe"]["ACCESS"] == ACCESS_WRITE_ONLY
+
+    selected = olc["selected"]["CONTENTS"]
+    assert selected["zoom"]["RANGE"] == [{"MIN": 0.0, "MAX": 1.0}]
+    assert selected["frost"]["RANGE"] == [{"MIN": 0.0, "MAX": 1.0}]
+    assert selected["gobo"]["RANGE"] == [{"MIN": 0.0, "MAX": 1.0}]
+
+    # Device container
+    assert "device" in olc
+    assert olc["device"]["ACCESS"] == ACCESS_CONTAINER
+
 
 def test_find_node_by_path() -> None:
     """Test path matching and lookup inside OSCQuery tree."""

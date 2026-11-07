@@ -55,6 +55,7 @@ class ChannelType(Enum):
     FOCUS = "focus"
     IRIS = "iris"
     PRISM = "prism"
+    FROST = "frost"
     MACRO = "macro"
     RESET = "reset"
     COLOR_TEMP = "color_temp"

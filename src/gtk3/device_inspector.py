@@ -49,6 +49,7 @@ BEAM_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
         ChannelType.FOCUS,
         ChannelType.IRIS,
         ChannelType.STROBE,
+        ChannelType.FROST,
     }
 )
 

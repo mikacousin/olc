@@ -997,6 +997,16 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Return iris aperture in physical units, or None if no IRIS channel."""
         return self._get_physical_parameter(ChannelType.IRIS)
 
+    # Frost filter control
+    def set_frost(self, norm: float) -> None:
+        """Set frost filter level normalized [0.0..1.0]."""
+        self.set_parameter_normalized(ChannelType.FROST, norm)
+
+    @property
+    def frost(self) -> Optional[float]:
+        """Return frost filter level normalized [0.0..1.0], or None if no FROST."""
+        return self.get_parameter_normalized(ChannelType.FROST)
+
     @property
     def gobo(self) -> Optional[str | int]:
         """Return active gobo range label or DMX value if modified, else None."""

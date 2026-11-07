@@ -25,6 +25,7 @@ from olc.core.app import CoreApplication
 from olc.core.backends.osc.channels_grid import ChannelsGridManager
 from olc.core.backends.osc.delegate import OSCDelegate
 from olc.define import MAX_CHANNELS
+from olc.devices.channel import ChannelType
 
 
 def _setup_app_with_patch() -> tuple[CoreApplication, MagicMock]:
@@ -311,3 +312,101 @@ def test_osc_wheels_and_color_control_routes() -> None:
     delegate._wheel_intensity("/olc/wheel/intensity", [10])
     assert app.backend is not None and app.backend.dmx is not None
     assert app.backend.dmx.levels["user"][2] >= 0
+
+
+def test_device_parameter_actions_undo_redo() -> None:
+    """Test DeviceSetParameterAction and DeviceAdjustParameterAction with Undo/Redo."""
+    app, _ = _setup_app_with_patch()
+    spot = app.lightshow.patch.devices[2]
+
+    # 1. Set normalized zoom on channel 2
+    app.action_registry.execute("device.set_parameter", "zoom", 0.75, channels=[2])
+    norm_val = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_val is not None
+    assert abs(norm_val - 0.75) < 0.01
+
+    # Undo
+    app.history.undo()
+    norm_val_undo = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_val_undo is not None
+    assert abs(norm_val_undo - 0.0) < 0.01
+
+    # Redo
+    app.history.redo()
+    norm_val_redo = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_val_redo is not None
+    assert abs(norm_val_redo - 0.75) < 0.01
+
+    # 2. Adjust parameter relatively (delta = +0.1)
+    app.action_registry.execute("device.adjust_parameter", "zoom", 0.1, channels=[2])
+    norm_val_adj = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_val_adj is not None
+    assert abs(norm_val_adj - 0.85) < 0.01
+
+    # Undo relative adjust
+    app.history.undo()
+    norm_val_revert = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_val_revert is not None
+    assert abs(norm_val_revert - 0.75) < 0.01
+
+
+def test_osc_additional_parameters_routes() -> None:
+    """Test OSC delegate routes for beam wheels, selected and device endpoints."""
+    app, _ = _setup_app_with_patch()
+    delegate = OSCDelegate(app)
+    spot = app.lightshow.patch.devices[2]
+    rgb_dev = app.lightshow.patch.devices[3]
+
+    # Select spot (ch 2)
+    app.selected_channels = [2]
+
+    # 1. Wheels
+    delegate._wheel_zoom("/olc/wheel/zoom", [0.2])
+    norm_zoom = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_zoom is not None
+    assert abs(norm_zoom - 0.2) < 0.01
+
+    delegate._wheel_strobe("/olc/wheel/strobe", [0.3])
+    norm_strobe = spot.get_parameter_normalized(ChannelType.STROBE)
+    assert norm_strobe is not None
+    assert abs(norm_strobe - 0.3) < 0.01
+
+    # Generic wheel
+    delegate._wheel_param_generic("/olc/wheel/param/zoom", [-0.05])
+    norm_zoom2 = spot.get_parameter_normalized(ChannelType.ZOOM)
+    assert norm_zoom2 is not None
+    assert abs(norm_zoom2 - 0.15) < 0.01
+
+    # 2. Selected absolute
+    delegate._selected_zoom("/olc/selected/zoom", [0.6])
+    assert abs((spot.get_parameter_normalized(ChannelType.ZOOM) or 0.0) - 0.6) < 0.01
+
+    delegate._selected_zoom_degrees("/olc/selected/zoom/degrees", [25.0])
+    assert spot.zoom_degrees is not None
+    assert abs(spot.zoom_degrees - 25.0) < 0.5
+
+    delegate._selected_strobe("/olc/selected/strobe", [0.5])
+    assert abs((spot.get_parameter_normalized(ChannelType.STROBE) or 0.0) - 0.5) < 0.01
+
+    delegate._selected_strobe_hz("/olc/selected/strobe/hz", [15.0])
+    assert spot.strobe_hz is not None
+    assert abs(spot.strobe_hz - 15.0) < 0.5
+
+    # 3. Direct device targeting without selection
+    app.selected_channels = []  # Clear selection
+    delegate._device_zoom("/olc/device/2/zoom", [0.8])
+    assert abs((spot.get_parameter_normalized(ChannelType.ZOOM) or 0.0) - 0.8) < 0.01
+
+    delegate._device_pan("/olc/device/2/pan", [120.0])
+    assert abs(spot.pan_degrees - 120.0) < 0.01
+
+    delegate._device_tilt("/olc/device/2/tilt", [-30.0])
+    assert abs(spot.tilt_degrees - (-30.0)) < 0.01
+
+    delegate._device_color_rgb("/olc/device/3/color/rgb", [0.2, 0.4, 0.6])
+    assert abs(rgb_dev.color_srgb.r - 0.2) < 0.02
+    assert abs(rgb_dev.color_srgb.g - 0.4) < 0.02
+    assert abs(rgb_dev.color_srgb.b - 0.6) < 0.02
+
+    delegate._device_param_generic("/olc/device/2/param/zoom", [0.45])
+    assert abs((spot.get_parameter_normalized(ChannelType.ZOOM) or 0.0) - 0.45) < 0.01

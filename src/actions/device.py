@@ -355,3 +355,279 @@ class DeviceSetColorAction(Action):
             list(self.new_colors.keys()),
             (self.r, self.g, self.b),
         )
+
+
+_PARAM_NAME_MAP: dict[str, ChannelType] = {
+    "zoom": ChannelType.ZOOM,
+    "focus": ChannelType.FOCUS,
+    "iris": ChannelType.IRIS,
+    "strobe": ChannelType.STROBE,
+    "shutter": ChannelType.STROBE,
+    "frost": ChannelType.FROST,
+    "gobo": ChannelType.GOBO_WHEEL,
+    "gobo_wheel": ChannelType.GOBO_WHEEL,
+    "prism": ChannelType.PRISM,
+    "cct": ChannelType.COLOR_TEMP,
+    "kelvin": ChannelType.COLOR_TEMP,
+    "color_temp": ChannelType.COLOR_TEMP,
+    "color_wheel": ChannelType.COLOR_WHEEL,
+    "intensity": ChannelType.INTENSITY,
+    "pan": ChannelType.PAN,
+    "tilt": ChannelType.TILT,
+    "macro": ChannelType.MACRO,
+    "reset": ChannelType.RESET,
+}
+
+
+def _resolve_channel_type(param: str | ChannelType) -> ChannelType | None:
+    """Resolve string parameter name or ChannelType enum into ChannelType."""
+    if isinstance(param, ChannelType):
+        return param
+    if isinstance(param, str):
+        normalized = param.lower().strip()
+        if normalized in _PARAM_NAME_MAP:
+            return _PARAM_NAME_MAP[normalized]
+        try:
+            return ChannelType(normalized)
+        except ValueError:
+            return None
+    return None
+
+
+class DeviceSetParameterAction(Action):
+    """Action to set a normalized or physical parameter value on target devices."""
+
+    name = "device.set_parameter"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.parameter: str | ChannelType = ""
+        self.ch_type: ChannelType | None = None
+        self.value: float = 0.0
+        self.is_physical: bool = False
+        self.channels: list[int] | None = None
+        self.old_values: dict[int, float] = {}
+        self.new_values: dict[int, float] = {}
+
+    def configure(
+        self,
+        parameter: str | ChannelType,
+        value: float,
+        channels: list[int] | None = None,
+        is_physical: bool = False,
+    ) -> None:
+        """Configure target parameter and value.
+
+        Args:
+            parameter: ChannelType or parameter name (e.g. 'zoom', 'focus', 'iris').
+            value: Normalized value [0.0..1.0] or physical value if is_physical=True.
+            channels: Specific channel IDs, or None to use active selection.
+            is_physical: True if value is in physical units (degrees, meters, Hz).
+        """
+        self.parameter = parameter
+        self.ch_type = _resolve_channel_type(parameter)
+        self.value = float(value)
+        self.is_physical = is_physical
+        self.channels = list(channels) if channels is not None else None
+
+    def execute(self) -> None:
+        """Apply parameter value to target devices."""
+        if self.ch_type is None:
+            self.can_undo = False
+            return
+
+        targets = (
+            self.channels
+            if self.channels is not None
+            else list(getattr(self.app, "selected_channels", []))
+        )
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None or not targets:
+            self.can_undo = False
+            return
+
+        self.old_values = {}
+        self.new_values = {}
+
+        for ch in targets:
+            dev = patch.devices.get(ch)
+            if dev is None or dev.get_channel(self.ch_type) is None:
+                continue
+
+            old_norm = dev.get_parameter_normalized(self.ch_type)
+            self.old_values[ch] = old_norm if old_norm is not None else 0.0
+
+            if self.is_physical:
+                # Private method _set_physical_parameter maps physical to normalized
+                dev._set_physical_parameter(self.ch_type, self.value)  # pylint: disable=protected-access
+                new_norm = dev.get_parameter_normalized(self.ch_type)
+                self.new_values[ch] = new_norm if new_norm is not None else 0.0
+            else:
+                clamped = max(0.0, min(1.0, self.value))
+                dev.set_parameter_normalized(self.ch_type, clamped)
+                self.new_values[ch] = clamped
+
+        if not self.new_values:
+            self.can_undo = False
+            return
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.new_values.keys()))
+
+    def undo(self) -> None:
+        """Revert target devices to their previous parameter values."""
+        if self.ch_type is None:
+            return
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None:
+            return
+
+        for ch, old_val in self.old_values.items():
+            dev = patch.devices.get(ch)
+            if dev is not None:
+                dev.set_parameter_normalized(self.ch_type, old_val)
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.old_values.keys()))
+
+    def redo(self) -> None:
+        """Reapply target parameter values."""
+        if self.ch_type is None:
+            return
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None:
+            return
+
+        for ch, new_val in self.new_values.items():
+            dev = patch.devices.get(ch)
+            if dev is not None:
+                dev.set_parameter_normalized(self.ch_type, new_val)
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.new_values.keys()))
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return structured execution result for OSC/UI feedback."""
+        return {
+            "parameter": self.ch_type.value if self.ch_type is not None else "",
+            "value": self.value,
+            "channels": list(self.new_values.keys()),
+        }
+
+
+class DeviceAdjustParameterAction(Action):
+    """Action to adjust a normalized parameter relatively (jog-wheel) with Undo."""
+
+    name = "device.adjust_parameter"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.parameter: str | ChannelType = ""
+        self.ch_type: ChannelType | None = None
+        self.delta: float = 0.0
+        self.channels: list[int] | None = None
+        self.old_values: dict[int, float] = {}
+        self.new_values: dict[int, float] = {}
+
+    def configure(
+        self,
+        parameter: str | ChannelType,
+        delta: float,
+        channels: list[int] | None = None,
+    ) -> None:
+        """Configure relative delta adjustment.
+
+        Args:
+            parameter: ChannelType or parameter name (e.g. 'zoom', 'focus').
+            delta: Normalized delta to add (e.g. +0.05, -0.05).
+            channels: Specific channel IDs, or None to use active selection.
+        """
+        self.parameter = parameter
+        self.ch_type = _resolve_channel_type(parameter)
+        self.delta = float(delta)
+        self.channels = list(channels) if channels is not None else None
+
+    def execute(self) -> None:
+        """Apply relative adjustment to target devices."""
+        if self.ch_type is None:
+            self.can_undo = False
+            return
+
+        targets = (
+            self.channels
+            if self.channels is not None
+            else list(getattr(self.app, "selected_channels", []))
+        )
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None or not targets or self.delta == 0.0:
+            self.can_undo = False
+            return
+
+        self.old_values = {}
+        self.new_values = {}
+
+        for ch in targets:
+            dev = patch.devices.get(ch)
+            if dev is None or dev.get_channel(self.ch_type) is None:
+                continue
+
+            old_norm = dev.get_parameter_normalized(self.ch_type)
+            cur_norm = old_norm if old_norm is not None else 0.0
+            new_norm = max(0.0, min(1.0, cur_norm + self.delta))
+
+            self.old_values[ch] = cur_norm
+            dev.set_parameter_normalized(self.ch_type, new_norm)
+            self.new_values[ch] = new_norm
+
+        if not self.new_values:
+            self.can_undo = False
+            return
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.new_values.keys()))
+
+    def undo(self) -> None:
+        """Revert target devices to old parameter values."""
+        if self.ch_type is None:
+            return
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None:
+            return
+
+        for ch, old_val in self.old_values.items():
+            dev = patch.devices.get(ch)
+            if dev is not None:
+                dev.set_parameter_normalized(self.ch_type, old_val)
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.old_values.keys()))
+
+    def redo(self) -> None:
+        """Reapply adjusted parameter values."""
+        if self.ch_type is None:
+            return
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None:
+            return
+
+        for ch, new_val in self.new_values.items():
+            dev = patch.devices.get(ch)
+            if dev is not None:
+                dev.set_parameter_normalized(self.ch_type, new_val)
+
+        _update_dmx_and_send(self.app)
+        self.app.emit("device.parameters_changed", list(self.new_values.keys()))
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return structured execution result for OSC/UI feedback."""
+        return {
+            "parameter": self.ch_type.value if self.ch_type is not None else "",
+            "delta": self.delta,
+            "channels": list(self.new_values.keys()),
+        }
