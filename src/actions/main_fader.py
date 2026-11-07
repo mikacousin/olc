@@ -99,3 +99,10 @@ class MainFaderSetLevelAction(Action):
     def redo(self) -> None:
         """Re-apply the target Main Fader level."""
         self.execute()
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state for the Main Fader."""
+        return {
+            "level": self.level,
+            "active": self.level > 0.0,
+        }

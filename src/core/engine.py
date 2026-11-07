@@ -22,6 +22,7 @@ from typing import Callable
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
+from olc.core.backends.osc.mdns import MDNSAdvertiser
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
@@ -151,6 +152,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
         self.osc_server = None
         self.osc_client = None
+        self.osc_mdns: MDNSAdvertiser | None = None
         self.osc_subscriptions = OSCSubscriptionManager()
         self._osc_delegate = None
         self.app = None
@@ -631,9 +633,16 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.osc_server.start(), self._network_thread.loop
             )
 
+            # Start mDNS advertisement for zero-config OSC discovery
+            self.osc_mdns = MDNSAdvertiser()
+            self.osc_mdns.start(service_name="Open Lighting Console", port=server_port)
+
     def stop_osc(self) -> None:
         """Stop the OSC server and client."""
         with self._lock:
+            if self.osc_mdns is not None:
+                self.osc_mdns.stop()
+                self.osc_mdns = None
             if self.osc_server is not None:
                 # Stop the server asynchronously
                 self._network_thread.loop.call_soon_threadsafe(self.osc_server.stop)
@@ -701,6 +710,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 asyncio.run_coroutine_threadsafe(
                     self.osc_server.start(), self._network_thread.loop
                 )
+                if self.osc_mdns is not None:
+                    self.osc_mdns.start(
+                        service_name="Open Lighting Console", port=server_port
+                    )
 
     def register_osc_delegate(self, delegate: object) -> None:
         """Register a delegate for GUI-specific OSC callbacks."""

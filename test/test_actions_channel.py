@@ -121,10 +121,46 @@ def test_channel_set_level_action_feedback_and_repr() -> None:
     assert action.get_feedback_state() == {
         "channel": 15,
         "level": 200,
+        "normalized_level": 200 / 255.0,
         "active": True,
     }
 
     assert repr(action) == "<SetChannelLevelAction channel=15 level=200>"
+
+
+def test_channel_set_level_normalized_and_16bit_device() -> None:
+    """Test SetChannelLevelAction with normalized float and high-res device."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_backend.dmx = MagicMock()
+    user_levels = [-1] * 1024
+    mock_backend.dmx.levels = {"user": user_levels, "sequence": [0] * 1024}
+    app.backend = mock_backend
+
+    mock_device = MagicMock()
+    mock_device.fixture_id = 5
+    mock_device.set_intensity = MagicMock()
+    app.lightshow.patch.devices = {5: mock_device}
+
+    # Execute with normalized float 0.8
+    app.action_registry.execute("channel.set_level", 5, 0.8)
+    mock_device.set_intensity.assert_called_with(0.8)
+    assert mock_backend.dmx.levels["user"][4] == round(0.8 * 255.0)
+
+    action = app.action_registry.get("channel.set_level")
+    assert action.get_feedback_state() == {
+        "channel": 5,
+        "level": round(0.8 * 255.0),
+        "normalized_level": 0.8,
+        "active": True,
+    }
+
+    # Test release with -1.0
+    app.action_registry.execute("channel.set_level", 5, -1.0)
+    assert mock_backend.dmx.levels["user"][4] == -1
+    mock_device.set_intensity.assert_called_with(0.0)
 
 
 def test_channel_selection_actions_undo_redo() -> None:

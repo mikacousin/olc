@@ -30,19 +30,34 @@ class BaseChannelLevelAction(Action):
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
+        self.old_levels: dict[int, int | float] = {}
+        self.new_levels: dict[int, int | float] = {}
 
-    def _apply_levels(self, levels_dict: dict[int, int]) -> None:
-        """Apply a dict of {channel: level} to user DMX levels and emit events."""
+    def _apply_levels(self, levels_dict: dict[int, int | float]) -> None:
+        """Apply a dict of {channel: level} to user DMX levels and emit events.
+
+        Accepts either normalized float [0.0, 1.0] or 8-bit DMX int [0..255],
+        or -1 to release user override.
+        """
         backend = getattr(self.app, "backend", None)
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         patch = getattr(self.app.lightshow, "patch", None)
 
+        processed_levels: dict[int, tuple[int, float]] = {}
+        for ch, lvl in levels_dict.items():
+            if not 1 <= ch <= MAX_CHANNELS:
+                continue
+            if lvl < 0:
+                processed_levels[ch] = (-1, -1.0)
+            elif isinstance(lvl, float) and 0.0 <= lvl <= 1.0:
+                processed_levels[ch] = (round(lvl * 255.0), lvl)
+            else:
+                dmx_val = max(0, min(255, int(round(lvl))))
+                processed_levels[ch] = (dmx_val, dmx_val / 255.0)
+
         if dmx is not None:
-            for ch, lvl in levels_dict.items():
-                if 1 <= ch <= MAX_CHANNELS:
-                    dmx.levels["user"][ch - 1] = lvl
+            for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
+                dmx.levels["user"][ch - 1] = dmx_lvl
 
         if patch is not None:
             seq_arr = (
@@ -50,11 +65,11 @@ class BaseChannelLevelAction(Action):
                 if dmx is not None and isinstance(dmx.levels, dict)
                 else None
             )
-            for ch, lvl in levels_dict.items():
+            for ch, (_dmx_lvl, norm_lvl) in processed_levels.items():
                 dev = patch.get_device(ch)
                 if dev is not None and hasattr(dev, "set_intensity"):
-                    if lvl >= 0:
-                        dev.set_intensity(lvl / 255.0)
+                    if norm_lvl >= 0.0:
+                        dev.set_intensity(norm_lvl)
                     elif seq_arr is not None and 1 <= ch <= len(seq_arr):
                         dev.set_intensity(float(seq_arr[ch - 1]) / 255.0)
                     else:
@@ -64,8 +79,8 @@ class BaseChannelLevelAction(Action):
             self.app.lightshow.main_playback.update_channels()
             dmx.set_levels()
 
-        for ch, lvl in levels_dict.items():
-            self.app.emit("channel.level_changed", ch, lvl)
+        for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
+            self.app.emit("channel.level_changed", ch, dmx_lvl)
 
     def undo(self) -> None:
         """Undo the channel level changes."""
@@ -80,6 +95,8 @@ class SetChannelLevelAction(BaseChannelLevelAction):
     """Action to set the DMX user-override level of a channel.
 
     Supports Undo/Redo by capturing the previous user level.
+    Accepts normalized float [0.0, 1.0] (preserving 16/24-bit resolution)
+    or DMX integer [0..255] (or -1 to release).
     """
 
     name = "channel.set_level"
@@ -92,29 +109,30 @@ class SetChannelLevelAction(BaseChannelLevelAction):
         """
         super().__init__(app)
         self.channel: int = 1
-        self.level: int = -1
+        self.level: float | int = -1
 
     @property
-    def old_level(self) -> int:
+    def old_level(self) -> int | float:
         """The previous override level of the channel."""
         return self.old_levels.get(self.channel, -1)
 
     @old_level.setter
-    def old_level(self, val: int) -> None:
+    def old_level(self, val: int | float) -> None:
         self.old_levels[self.channel] = val
 
-    def configure(self, channel: int, level: int) -> None:
+    def configure(self, channel: int, level: float | int) -> None:
         """Configure the action with the target channel and level.
 
         Args:
             channel: The 1-indexed channel number (1 to MAX_CHANNELS).
-            level: The DMX intensity (0 to 255, or -1 to release override).
+            level: The intensity level as normalized float (0.0 to 1.0),
+                   DMX integer (0 to 255), or -1 to release override.
         """
         self.channel = channel
         self.level = level
 
     def execute(self) -> None:
-        """Execute the action, setting the DMX channel level."""
+        """Execute the action, setting the channel level."""
         channel = self.channel
         level = self.level
 
@@ -122,7 +140,12 @@ class SetChannelLevelAction(BaseChannelLevelAction):
             raise ValueError(
                 f"Channel index must be between 1 and {MAX_CHANNELS}. Got {channel}."
             )
-        if not -1 <= level <= 255:
+        if isinstance(level, (int, float)):
+            if level < -1:
+                raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
+            if level > 255:
+                raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
+        else:
             raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
 
         backend = getattr(self.app, "backend", None)
@@ -136,10 +159,17 @@ class SetChannelLevelAction(BaseChannelLevelAction):
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the channel."""
+        norm_val = (
+            float(self.level)
+            if isinstance(self.level, float) and 0.0 <= self.level <= 1.0
+            else (float(self.level) / 255.0 if self.level >= 0 else -1.0)
+        )
+        dmx_val = round(norm_val * 255.0) if norm_val >= 0.0 else -1
         return {
             "channel": self.channel,
-            "level": self.level,
-            "active": self.level > 0,
+            "level": dmx_val,
+            "normalized_level": norm_val,
+            "active": norm_val > 0.0,
         }
 
     def __repr__(self) -> str:

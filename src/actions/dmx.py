@@ -405,6 +405,13 @@ class DmxBlackoutAllAction(Action):
         """Re-apply target blackout state."""
         self.execute()
 
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state for Blackout All."""
+        return {
+            "blackout": self.target_state,
+            "active": self.target_state,
+        }
+
 
 def _normalize_protocol(protocol: str | Protocol | object) -> Protocol:
     """Normalize string or Protocol value to Protocol member.

@@ -138,9 +138,9 @@ def test_osc_delegate_telemetry_events() -> None:
         "commandline", "/olc/command_line", "1 THRU 10 @ 80"
     )
 
-    # 2. Test fader.level_changed telemetry
+    # 2. Test fader.level_changed telemetry (normalized float 0.0..1.0)
     app.emit("fader.level_changed", 3, 0.5)
-    mock_engine.publish_osc.assert_called_with("faders", "/olc/fader/1/3/level", 128)
+    mock_engine.publish_osc.assert_called_with("faders", "/olc/fader/1/3/level", 0.5)
 
     # 3. Test patch.changed telemetry
     app.emit("patch.changed")
@@ -1125,3 +1125,50 @@ def test_osc_playback_state_queries() -> None:
     mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
         "10.0.0.2", 8000, "/olc/playback/state", "idle"
     )
+
+
+def test_osc_normalized_routes_and_polymorphism() -> None:
+    """Test normalized float inputs and legacy DMX conversions across routes."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_backend.dmx = MagicMock()
+    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    mock_backend.dmx.blackout = False
+    app.backend = mock_backend
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+    delegate = OSCDelegate(app)
+
+    # 1. Main fader normalized float
+    delegate._mainfader("/olc/mainfader", [0.75])
+    action = app.action_registry.get("main_fader.set_level")
+    assert action.get_feedback_state()["level"] == 0.75
+
+    # 2. Main fader legacy DMX scale
+    delegate._mainfader("/olc/mainfader", [128])
+    action = app.action_registry.get("main_fader.set_level")
+    assert pytest.approx(action.get_feedback_state()["level"]) == 128 / 255.0
+
+    # 3. Channel level normalized float
+    delegate._channel_level("/olc/channel/3/level", [0.8])
+    action = app.action_registry.get("channel.set_level")
+    assert action.get_feedback_state()["normalized_level"] == 0.8
+    assert mock_backend.dmx.levels["user"][2] == round(0.8 * 255.0)
+
+    # 4. Channel level legacy DMX int
+    delegate._channel_level("/olc/channel/3/level", [200])
+    action = app.action_registry.get("channel.set_level")
+    assert action.get_feedback_state()["level"] == 200
+
+    # 5. Blackout bool / string
+    delegate._blackout("/olc/blackout", ["true"])
+    action = app.action_registry.get("dmx.blackout_all")
+    assert action.get_feedback_state()["blackout"] is True
+
+    # 6. Fader flash bool / int
+    delegate._fader_flash("/olc/fader/1/1/flash", [1])
+    action = app.action_registry.get("fader.flash")
+    assert action.get_feedback_state()["active"] is True

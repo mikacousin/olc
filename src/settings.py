@@ -173,6 +173,40 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
 
         osc_grid = typing.cast(Gtk.Grid, builder.get_object("osc_grid"))
         if osc_grid is not None:
+            separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+            separator.set_margin_top(6)
+            separator.set_margin_bottom(6)
+            osc_grid.attach(separator, 0, 6, 2, 1)
+
+            info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            info_box.set_margin_start(10)
+            info_box.set_margin_end(10)
+            info_box.set_margin_top(4)
+            info_box.set_margin_bottom(6)
+
+            self.label_osc_mdns = Gtk.Label()
+            self.label_osc_mdns.set_halign(Gtk.Align.START)
+            self.label_osc_mdns.set_use_markup(True)
+            self.label_osc_mdns.set_markup(
+                f"<span foreground='#888888'>○</span> <b>{_('mDNS Discovery:')}</b> "
+                f"<i>{_('Inactive')}</i>"
+            )
+            info_box.pack_start(self.label_osc_mdns, False, False, 0)
+
+            label_norm_info = Gtk.Label(
+                label=_(
+                    "All fader and channel levels are exchanged on a "
+                    "normalized 0.0 - 1.0 scale."
+                )
+            )
+            label_norm_info.set_halign(Gtk.Align.START)
+            label_norm_info.set_line_wrap(True)
+            label_norm_info.set_max_width_chars(70)
+            label_norm_info.get_style_context().add_class("dim-label")
+            info_box.pack_start(label_norm_info, False, False, 0)
+
+            osc_grid.attach(info_box, 0, 7, 2, 1)
+
             frame = Gtk.Frame(label=_("Active Dynamic Subscribers (Pub/Sub)"))
             frame_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             frame_box.set_margin_start(6)
@@ -237,7 +271,7 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             action_box.pack_end(btn_refresh, False, False, 0)
 
             frame_box.pack_start(action_box, False, False, 0)
-            osc_grid.attach(frame, 0, 6, 2, 1)
+            osc_grid.attach(frame, 0, 8, 2, 1)
             frame.show_all()
 
             GLib.timeout_add_seconds(2, self._refresh_osc_subscribers)
@@ -742,11 +776,32 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             )
 
     def _refresh_osc_subscribers(self) -> bool:
-        """Periodic refresh of active OSC subscribers."""
+        """Periodic refresh of active OSC subscribers and mDNS status."""
         if not self.tabs or not self.tabs.tabs.get("settings"):
             return False
 
         engine = getattr(self.app, "engine", None)
+        if hasattr(self, "label_osc_mdns") and self.label_osc_mdns is not None:
+            if (
+                engine is not None
+                and getattr(engine, "osc_mdns", None) is not None
+                and engine.osc_mdns.is_active
+            ):
+                port = getattr(engine.osc_mdns, "port", 9000)
+                name = getattr(engine.osc_mdns, "service_name", "Open Lighting Console")
+                title = _("mDNS Discovery:")
+                self.label_osc_mdns.set_markup(
+                    f"<span foreground='#2ec27e'>●</span> <b>{title}</b> "
+                    f"{name}._osc._udp.local (Port {port})"
+                )
+            else:
+                title = _("mDNS Discovery:")
+                inactive_msg = _("Inactive (OSC server stopped)")
+                self.label_osc_mdns.set_markup(
+                    f"<span foreground='#888888'>○</span> <b>{title}</b> "
+                    f"<i>{inactive_msg}</i>"
+                )
+
         if engine is None:
             return True
 

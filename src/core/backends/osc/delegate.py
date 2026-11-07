@@ -20,6 +20,7 @@ import typing
 from json import dumps as json_dumps
 
 from olc.core.backends.osc.channels_grid import ChannelsGridManager
+from olc.core.backends.osc.parser import parse_osc_bool, parse_osc_normalized
 from olc.core.osc import make_method
 from olc.core.selection import SelectAddAction, SelectRemoveAction
 from olc.define import MAX_FADER_PAGE
@@ -112,14 +113,14 @@ class OSCDelegate:
                 self.app.engine.publish_osc(
                     "faders",
                     f"/olc/fader/1/{fader.index}/level",
-                    round(fader.level * 255),
+                    float(fader.level),
                 )
 
     def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
         """Send OSC feedback when a fader level changes."""
         if self.app.engine is not None:
             self.app.engine.publish_osc(
-                "faders", f"/olc/fader/1/{fader_index}/level", round(level * 255)
+                "faders", f"/olc/fader/1/{fader_index}/level", float(level)
             )
 
     def _on_fader_changed(self, page: int, index: int) -> None:
@@ -134,7 +135,7 @@ class OSCDelegate:
                 self.app.engine.publish_osc(
                     "faders",
                     f"/olc/fader/1/{index}/level",
-                    round(fader.level * 255),
+                    float(fader.level),
                 )
 
     def _on_commandline_changed(self, keystring: str) -> None:
@@ -327,6 +328,11 @@ class OSCDelegate:
         if cell_idx is not None:
             info = self.channels_grid.get_cell_info(cell_idx)
             self._send_cell_telemetry(info)
+
+        norm_lvl = max(0.0, float(_level) / 255.0) if _level >= 0 else 0.0
+        self.app.engine.publish_osc(
+            "channels", f"/olc/channel/{channel}/level", norm_lvl
+        )
 
     def _on_channels_selected_changed(self, channels: list[int]) -> None:
         """Publish updated selection states on visible cells and selected fixtures."""
@@ -703,11 +709,8 @@ class OSCDelegate:
     ) -> None:
         """Set or query the Main Fader level."""
         if args:
-            try:
-                val = float(args[0])
-                self._execute_action("main_fader.set_level", val)
-            except (ValueError, TypeError):
-                pass
+            norm_val = parse_osc_normalized(args[0])
+            self._execute_action("main_fader.set_level", norm_val)
         elif self.app.engine is not None and sender_addr is not None:
             lvl = float(getattr(self.app, "main_fader_level", 1.0))
             self.app.engine.osc_subscriptions.send_direct(
@@ -723,11 +726,7 @@ class OSCDelegate:
     ) -> None:
         """Set or toggle the scenic blackout state."""
         if args:
-            raw_state = args[0]
-            if isinstance(raw_state, str):
-                target_state = raw_state.lower() in ("1", "true", "on")
-            else:
-                target_state = bool(raw_state)
+            target_state = parse_osc_bool(args[0])
             self._execute_action("dmx.blackout_all", target_state)
         else:
             self._execute_action("dmx.blackout_all")
@@ -860,24 +859,24 @@ class OSCDelegate:
     def _fader_level(self, address: str, args: list) -> None:
         try:
             fader_index = int(address.split("/")[4])
-            level = args[0]
+            level = parse_osc_normalized(args[0]) if args else 0.0
 
             fader_bank = self.app.lightshow.fader_bank
             if self.app is not None and hasattr(self.app, "action_registry"):
                 self.app.action_registry.execute(
-                    "fader.set_level", fader_bank.active_page, fader_index, level / 255
+                    "fader.set_level", fader_bank.active_page, fader_index, level
                 )
             else:
                 fader = fader_bank.get_fader(fader_index)
-                fader.set_level(level / 255)
-                self.app.emit("fader.level_changed", fader_index, level / 255)
+                fader.set_level(level)
+                self.app.emit("fader.level_changed", fader_index, level)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_level: {err}")
 
     @make_method("/olc/fader/1/*/flash")
     def _fader_flash(self, address: str, args: list) -> None:
         try:
-            pressed = bool(args[0])
+            pressed = parse_osc_bool(args[0]) if args else True
             fader_index = int(address.split("/")[4])
             fader_bank = self.app.lightshow.fader_bank
             if self.app is not None and hasattr(self.app, "action_registry"):
@@ -1275,8 +1274,7 @@ class OSCDelegate:
     @make_method("/olc/cell/*/touch")
     def _cell_touch(self, address: str, args: list) -> None:
         """Touch interaction on a grid cell (toggles selection)."""
-        state = args[0] if args else 1
-        if not bool(state):
+        if not parse_osc_bool(args[0] if args else True):
             return
 
         parts = address.split("/")
@@ -1306,16 +1304,13 @@ class OSCDelegate:
 
         ch = self.channels_grid.get_channel_for_cell(cell_idx)
         if ch is not None:
-            raw_val = float(args[0])
-            target_level = int(raw_val) if raw_val > 1.0 else round(raw_val * 255.0)
-            target_level = max(0, min(255, target_level))
-            self._execute_action("channel.set_level", ch, target_level)
+            norm_level = parse_osc_normalized(args[0])
+            self._execute_action("channel.set_level", ch, norm_level)
 
     @make_method("/olc/channel/*/touch")
     def _channel_touch(self, address: str, args: list) -> None:
         """Touch interaction on an absolute channel (toggles selection)."""
-        state = args[0] if args else 1
-        if not bool(state):
+        if not parse_osc_bool(args[0] if args else True):
             return
 
         parts = address.split("/")
@@ -1341,10 +1336,8 @@ class OSCDelegate:
         except (IndexError, ValueError):
             return
 
-        raw_val = float(args[0])
-        target_level = int(raw_val) if raw_val > 1.0 else round(raw_val * 255.0)
-        target_level = max(0, min(255, target_level))
-        self._execute_action("channel.set_level", ch, target_level)
+        norm_level = parse_osc_normalized(args[0])
+        self._execute_action("channel.set_level", ch, norm_level)
 
     @make_method("/olc/wheel/intensity")
     def _wheel_intensity(self, _address: str, args: list) -> None:
