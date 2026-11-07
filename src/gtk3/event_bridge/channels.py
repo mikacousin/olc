@@ -48,6 +48,27 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
             "show.user_levels_restored",
             lambda: self._run_idle(self._on_user_levels_reset),
         )
+        self.app.core.subscribe(
+            "device.parameters_changed",
+            lambda channels: self._run_idle(self._on_device_changed_ui, channels),
+        )
+        self.app.core.subscribe(
+            "device.color_changed",
+            lambda channels, _color=None: self._run_idle(
+                self._on_device_changed_ui, channels
+            ),
+        )
+
+    def _on_device_changed_ui(self, channels: list[int]) -> bool:
+        """Redraw affected channel widgets when fixture parameters or colors change."""
+        if self.app.window and self.app.window.live_view:
+            channels_view = self.app.window.live_view.channels_view
+            for ch in channels or []:
+                widget = channels_view.get_channel_widget(ch)
+                if widget is not None:
+                    widget.queue_draw()
+            channels_view.flowbox.queue_draw()
+        return False
 
     def _on_channel_level_ui(self, channel: int, level: int) -> bool:
         """Safely update a channel widget in the GTK main thread.

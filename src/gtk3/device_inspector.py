@@ -18,9 +18,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+import threading
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 
 from olc.devices.color import sRGB
 from olc.devices.color_pick import (
@@ -79,6 +80,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_color_warning: str = ""
         self._color_solver = ColorSolver()
         self._updating_ui: bool = False
+        self._syncing_devices: bool = False
 
         self._build_header()
         self._build_ifcb_sections()
@@ -89,6 +91,13 @@ class DeviceInspectorWidget(Gtk.Box):
             )
             self.app.core.subscribe(
                 "channel.level_changed", self._on_core_channel_level_changed
+            )
+            self.app.core.subscribe(
+                "device.parameters_changed",
+                self._on_core_device_parameters_changed,
+            )
+            self.app.core.subscribe(
+                "device.color_changed", self._on_core_device_color_changed
             )
             self.set_selected_channels(self.app.core.selected_channels)
         else:
@@ -279,21 +288,55 @@ class DeviceInspectorWidget(Gtk.Box):
         self.stack.add_titled(self.color_page, "color", "COLOR [0/0]")
 
         # Page 3: BEAM & GOBOS
-        self.beam_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.beam_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.beam_page.set_margin_start(6)
         self.beam_page.set_margin_end(6)
         self.beam_page.set_margin_top(4)
 
         beam_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.beam_header_label = Gtk.Label(label="BEAM & OPTICS [0/0]", xalign=0)
+        beam_box.pack_start(self.beam_header_label, False, False, 0)
+
         self.zoom_value_label = Gtk.Label(label="Zoom: --", xalign=0)
         self.zoom_scale = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, 5.0, 60.0, 0.5
         )
         self.zoom_scale.connect("value-changed", self._on_zoom_scale_changed)
-        beam_box.pack_start(self.beam_header_label, False, False, 0)
         beam_box.pack_start(self.zoom_value_label, False, False, 0)
         beam_box.pack_start(self.zoom_scale, False, False, 0)
+
+        self.focus_value_label = Gtk.Label(label="Focus: --", xalign=0)
+        self.focus_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.5, 50.0, 0.5
+        )
+        self.focus_scale.connect("value-changed", self._on_focus_scale_changed)
+        beam_box.pack_start(self.focus_value_label, False, False, 0)
+        beam_box.pack_start(self.focus_scale, False, False, 0)
+
+        self.iris_value_label = Gtk.Label(label="Iris: --", xalign=0)
+        self.iris_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
+        )
+        self.iris_scale.connect("value-changed", self._on_iris_scale_changed)
+        beam_box.pack_start(self.iris_value_label, False, False, 0)
+        beam_box.pack_start(self.iris_scale, False, False, 0)
+
+        self.strobe_value_label = Gtk.Label(label="Strobe: --", xalign=0)
+        self.strobe_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.0, 25.0, 0.5
+        )
+        self.strobe_scale.connect("value-changed", self._on_strobe_scale_changed)
+        beam_box.pack_start(self.strobe_value_label, False, False, 0)
+        beam_box.pack_start(self.strobe_scale, False, False, 0)
+
+        self.frost_value_label = Gtk.Label(label="Frost: --", xalign=0)
+        self.frost_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
+        )
+        self.frost_scale.connect("value-changed", self._on_frost_scale_changed)
+        beam_box.pack_start(self.frost_value_label, False, False, 0)
+        beam_box.pack_start(self.frost_scale, False, False, 0)
+
         self.beam_page.pack_start(beam_box, False, False, 0)
 
         self.beam_page.pack_start(
@@ -304,8 +347,22 @@ class DeviceInspectorWidget(Gtk.Box):
         self.gobos_header_label = Gtk.Label(label="GOBOS & EFFECTS [0/0]", xalign=0)
         self.gobo_combo = Gtk.ComboBoxText()
         self.gobo_combo.connect("changed", self._on_gobo_combo_changed)
+        self.gobo_value_label = Gtk.Label(label="Gobo: --", xalign=0)
+        self.gobo_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
+        )
+        self.gobo_scale.connect("value-changed", self._on_gobo_scale_changed)
+        self.prism_value_label = Gtk.Label(label="Prism: --", xalign=0)
+        self.prism_scale = Gtk.Scale.new_with_range(
+            Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
+        )
+        self.prism_scale.connect("value-changed", self._on_prism_scale_changed)
         gobo_box.pack_start(self.gobos_header_label, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
+        gobo_box.pack_start(self.gobo_value_label, False, False, 0)
+        gobo_box.pack_start(self.gobo_scale, False, False, 0)
+        gobo_box.pack_start(self.prism_value_label, False, False, 0)
+        gobo_box.pack_start(self.prism_scale, False, False, 0)
         self.beam_page.pack_start(gobo_box, False, False, 0)
 
         self.stack.add_titled(self.beam_page, "beam", "BEAM & GOBOS [0/0]")
@@ -316,45 +373,113 @@ class DeviceInspectorWidget(Gtk.Box):
     # Selection & Lead Fixture Management
     # -------------------------------------------------------------------------
 
-    def _on_core_selection_changed(self, channel_ids: list[int]) -> None:
-        self.set_selected_channels(channel_ids)
+    @staticmethod
+    def _run_on_main_thread(func: Callable[..., Any], *args: object) -> None:
+        """Run callback immediately on main thread or schedule via GLib.idle_add."""
+        if threading.current_thread() is threading.main_thread():
+            func(*args)
+        else:
 
-    def _on_core_channel_level_changed(self, channel_id: int, _level: int) -> None:
-        if self._updating_ui:
+            def _idle_cb() -> bool:
+                func(*args)
+                return False
+
+            GLib.idle_add(_idle_cb)
+
+    def _on_core_selection_changed(self, channel_ids: list[int]) -> None:
+        self._run_on_main_thread(self.set_selected_channels, list(channel_ids))
+
+    def _on_core_channel_level_changed(self, channel_id: int, level: int) -> None:
+        self._run_on_main_thread(self._apply_channel_level_update, channel_id, level)
+
+    def _apply_channel_level_update(self, channel_id: int, level: int) -> None:
+        if self._updating_ui or self._syncing_devices:
             return
-        if any(dev.device_id == channel_id for dev in self.selected_devices):
+        matched = [dev for dev in self.selected_devices if dev.device_id == channel_id]
+        if not matched:
+            return
+        eff_lvl = max(0, int(level))
+        if self.app is not None and hasattr(self.app, "core"):
+            backend = getattr(self.app.core, "backend", None)
+            dmx = getattr(backend, "dmx", None) if backend is not None else None
+            if dmx is not None and 1 <= channel_id <= len(dmx.levels["user"]):
+                comp_lvl, _ = dmx.get_composite_level(channel_id - 1)
+                eff_lvl = int(comp_lvl)
+        for dev in matched:
+            dev.set_intensity(eff_lvl / 255.0)
+        self.refresh_ui()
+
+    def _on_core_device_parameters_changed(self, channel_ids: list[int]) -> None:
+        self._run_on_main_thread(
+            self._apply_device_update, list(channel_ids) if channel_ids else []
+        )
+
+    def _on_core_device_color_changed(
+        self, channel_ids: list[int], _color: object = None
+    ) -> None:
+        self._run_on_main_thread(
+            self._apply_device_update, list(channel_ids) if channel_ids else []
+        )
+
+    def _apply_device_update(self, channel_ids: list[int]) -> None:
+        if self._updating_ui or self._syncing_devices:
+            return
+        if not channel_ids or any(
+            dev.device_id in channel_ids for dev in self.selected_devices
+        ):
             self.refresh_ui()
 
     def _sync_devices_to_live_and_dmx(
-        self, devices: list[LightingDevice], sync_intensity: bool = False
+        self,
+        devices: list[LightingDevice],
+        sync_intensity: bool = False,
+        is_color: bool = False,
     ) -> None:
         """Synchronize modified device parameters to Core DMX engine and LiveView."""
         if self.app is None or not hasattr(self.app, "core"):
             return
         core = self.app.core
-        if sync_intensity:
-            channels_dict = {
-                dev.device_id: round(dev.intensity * 255)
-                for dev in devices
-                if self._has_intensity(dev) and dev.device_id >= 1
-            }
-            if channels_dict and getattr(core, "action_registry", None) is not None:
-                core.action_registry.execute("channel.set_multi_levels", channels_dict)
-        else:
-            backend = getattr(core, "backend", None)
-            dmx = getattr(backend, "dmx", None) if backend is not None else None
-            if dmx is not None:
-                dmx.set_levels()
-
-        window = getattr(self.app, "window", None)
-        live_view = getattr(window, "live_view", None) if window is not None else None
-        if live_view is not None:
-            for dev in devices:
-                live_view.update_channel_widget(
-                    dev.device_id, round(dev.intensity * 255)
-                )
+        self._syncing_devices = True
+        try:
             if sync_intensity:
-                live_view.channels_view.flowbox.invalidate_filter()
+                channels_dict = {
+                    dev.device_id: round(dev.intensity * 255)
+                    for dev in devices
+                    if self._has_intensity(dev) and dev.device_id >= 1
+                }
+                if channels_dict and getattr(core, "action_registry", None) is not None:
+                    core.action_registry.execute(
+                        "channel.set_multi_levels", channels_dict
+                    )
+            else:
+                backend = getattr(core, "backend", None)
+                dmx = getattr(backend, "dmx", None) if backend is not None else None
+                if dmx is not None:
+                    dmx.set_levels()
+                    if type(dmx).__name__ == "Dmx":
+                        dmx.send()
+                dev_ids = [dev.device_id for dev in devices if dev.device_id >= 1]
+                if dev_ids:
+                    if is_color:
+                        lead = self.lead_device or devices[0]
+                        c = lead.color_srgb
+                        core.emit("device.color_changed", dev_ids, (c.r, c.g, c.b))
+                    else:
+                        core.emit("device.parameters_changed", dev_ids)
+
+            window = getattr(self.app, "window", None)
+            live_view = (
+                getattr(window, "live_view", None) if window is not None else None
+            )
+            if live_view is not None:
+                for dev in devices:
+                    live_view.update_channel_widget(
+                        dev.device_id, round(dev.intensity * 255)
+                    )
+                if sync_intensity:
+                    live_view.channels_view.flowbox.invalidate_filter()
+        finally:
+            self._syncing_devices = False
 
     def set_selected_channels(self, channel_ids: list[int]) -> None:
         """Resolve channel IDs through PatchManager.devices and update inspector."""
@@ -514,9 +639,21 @@ class DeviceInspectorWidget(Gtk.Box):
         if p == "focus" and dev.get_channel(ChannelType.FOCUS) is not None:
             f = dev.focus_meters
             return round(f, 1) if f is not None else None
+        if p == "iris" and dev.get_channel(ChannelType.IRIS) is not None:
+            ir = dev.get_parameter_percent(ChannelType.IRIS)
+            return round(ir, 1) if ir is not None else None
         if p == "strobe" and dev.get_channel(ChannelType.STROBE) is not None:
             s = dev.strobe_hz
             return round(s, 1) if s is not None else None
+        if p == "frost" and dev.get_channel(ChannelType.FROST) is not None:
+            fr = dev.get_parameter_percent(ChannelType.FROST)
+            return round(fr, 1) if fr is not None else None
+        if p == "gobo" and dev.get_channel(ChannelType.GOBO_WHEEL) is not None:
+            gb = dev.get_parameter_percent(ChannelType.GOBO_WHEEL)
+            return round(gb, 1) if gb is not None else None
+        if p == "prism" and dev.get_channel(ChannelType.PRISM) is not None:
+            pr = dev.get_parameter_percent(ChannelType.PRISM)
+            return round(pr, 1) if pr is not None else None
         return None
 
     def is_parameter_disparate(self, param_name: str) -> bool:
@@ -546,8 +683,14 @@ class DeviceInspectorWidget(Gtk.Box):
             return "N/A"
 
         p = param_name.lower()
-        if p == "intensity":
+        if p in ("intensity", "iris", "frost", "prism"):
             base = f"{val}%"
+        elif p == "gobo":
+            gobo_label = lead.gobo if lead.gobo is not None else None
+            if isinstance(gobo_label, str):
+                base = f"{gobo_label} ({val}%)"
+            else:
+                base = f"{val}%"
         elif p in ("pan", "tilt", "zoom"):
             base = f"{val}°"
         elif p == "focus":
@@ -797,7 +940,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
-        self._sync_devices_to_live_and_dmx(color_devs)
+        self._sync_devices_to_live_and_dmx(color_devs, is_color=True)
         self.refresh_ui()
         return outcome.delta_e
 
@@ -816,7 +959,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
-        self._sync_devices_to_live_and_dmx(color_devs)
+        self._sync_devices_to_live_and_dmx(color_devs, is_color=True)
         self.refresh_ui()
         return outcome.delta_e
 
@@ -848,7 +991,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
-        self._sync_devices_to_live_and_dmx(color_devs)
+        self._sync_devices_to_live_and_dmx(color_devs, is_color=True)
         self.refresh_ui()
 
     def apply_emitter_level(self, channel_type: ChannelType, level: float) -> None:
@@ -870,7 +1013,7 @@ class DeviceInspectorWidget(Gtk.Box):
         else:
             for dev in eligible:
                 dev.set_emitter_level(channel_type, target)
-        self._sync_devices_to_live_and_dmx(eligible)
+        self._sync_devices_to_live_and_dmx(eligible, is_color=True)
         self.refresh_ui()
 
     def fan_color(
@@ -906,7 +1049,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.last_delta_e = outcome.mean_delta_e
         self.last_worst_delta_e = outcome.worst_delta_e
         self.last_color_warning = outcome.warning
-        self._sync_devices_to_live_and_dmx(color_devs)
+        self._sync_devices_to_live_and_dmx(color_devs, is_color=True)
         self.refresh_ui()
         return outcome.delta_e
 
@@ -945,6 +1088,34 @@ class DeviceInspectorWidget(Gtk.Box):
         self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
+    def apply_normalized_parameter(
+        self, channel_type: ChannelType, norm: float
+    ) -> None:
+        """Apply normalized [0.0..1.0] parameter to eligible devices."""
+        eligible = [
+            d for d in self.selected_devices if d.get_channel(channel_type) is not None
+        ]
+        if not eligible:
+            return
+
+        target = max(0.0, min(1.0, float(norm)))
+        if self.edit_mode == "relative":
+            ref_dev = self.lead_device if self.lead_device in eligible else eligible[0]
+            assert ref_dev is not None
+            ref_val = ref_dev.get_parameter_normalized(channel_type) or 0.0
+            delta = target - float(ref_val)
+            for dev in eligible:
+                cur_val = dev.get_parameter_normalized(channel_type) or 0.0
+                dev.set_parameter_normalized(
+                    channel_type, max(0.0, min(1.0, float(cur_val) + delta))
+                )
+        else:
+            for dev in eligible:
+                dev.set_parameter_normalized(channel_type, target)
+
+        self._sync_devices_to_live_and_dmx(eligible)
+        self.refresh_ui()
+
     def apply_discrete_range(self, channel_type: ChannelType, range_label: str) -> int:
         """Activate a named ChannelRange on all compatible selected devices."""
         activated_count = 0
@@ -974,6 +1145,38 @@ class DeviceInspectorWidget(Gtk.Box):
         if self._updating_ui:
             return
         self.apply_physical_parameter(ChannelType.ZOOM, scale.get_value())
+
+    def _on_focus_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_physical_parameter(ChannelType.FOCUS, scale.get_value())
+
+    def _on_iris_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_normalized_parameter(ChannelType.IRIS, scale.get_value() / 100.0)
+
+    def _on_strobe_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_physical_parameter(ChannelType.STROBE, scale.get_value())
+
+    def _on_frost_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_normalized_parameter(ChannelType.FROST, scale.get_value() / 100.0)
+
+    def _on_gobo_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_normalized_parameter(
+            ChannelType.GOBO_WHEEL, scale.get_value() / 100.0
+        )
+
+    def _on_prism_scale_changed(self, scale: Gtk.Scale) -> None:
+        if self._updating_ui:
+            return
+        self.apply_normalized_parameter(ChannelType.PRISM, scale.get_value() / 100.0)
 
     def _on_wheel_color_picked(self, r: float, g: float, b: float) -> None:
         if self._updating_ui:
@@ -1006,7 +1209,7 @@ class DeviceInspectorWidget(Gtk.Box):
         if label:
             self.apply_discrete_range(ChannelType.GOBO_WHEEL, label)
 
-    def refresh_ui(  # pylint: disable=too-many-locals,too-many-statements
+    def refresh_ui(  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         self,
     ) -> None:
         """Synchronize all IFCB section headers, badges, and widgets with selection."""
@@ -1070,12 +1273,59 @@ class DeviceInspectorWidget(Gtk.Box):
             self.zoom_value_label.set_text(
                 f"Zoom: {self.format_parameter_display('zoom')}"
             )
+            self.focus_value_label.set_text(
+                f"Focus: {self.format_parameter_display('focus')}"
+            )
+            self.iris_value_label.set_text(
+                f"Iris: {self.format_parameter_display('iris')}"
+            )
+            self.strobe_value_label.set_text(
+                f"Strobe: {self.format_parameter_display('strobe')}"
+            )
+            self.frost_value_label.set_text(
+                f"Frost: {self.format_parameter_display('frost')}"
+            )
+            self.gobo_value_label.set_text(
+                f"Gobo: {self.format_parameter_display('gobo')}"
+            )
+            self.prism_value_label.set_text(
+                f"Prism: {self.format_parameter_display('prism')}"
+            )
 
             lead = self.lead_device
             if lead is not None and self._has_intensity(lead):
                 self.intensity_scale.set_value(lead.intensity_percent)
             if lead is not None and lead.zoom_degrees is not None:
                 self.zoom_scale.set_value(lead.zoom_degrees)
+            if lead is not None and lead.focus_meters is not None:
+                self.focus_scale.set_value(lead.focus_meters)
+            if lead is not None:
+                iris_pct = lead.get_parameter_percent(ChannelType.IRIS)
+                if iris_pct is not None:
+                    self.iris_scale.set_value(iris_pct)
+                if lead.strobe_hz is not None:
+                    self.strobe_scale.set_value(lead.strobe_hz)
+                frost_pct = lead.get_parameter_percent(ChannelType.FROST)
+                if frost_pct is not None:
+                    self.frost_scale.set_value(frost_pct)
+                gobo_pct = lead.get_parameter_percent(ChannelType.GOBO_WHEEL)
+                if gobo_pct is not None:
+                    self.gobo_scale.set_value(gobo_pct)
+                prism_pct = lead.get_parameter_percent(ChannelType.PRISM)
+                if prism_pct is not None:
+                    self.prism_scale.set_value(prism_pct)
+
+                gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
+                self.gobo_combo.remove_all()
+                if gobo_ch is not None and gobo_ch.ranges:
+                    active_idx = -1
+                    act_range = gobo_ch.active_range
+                    for idx, r in enumerate(gobo_ch.ranges):
+                        self.gobo_combo.append_text(r.label)
+                        if act_range is not None and r.label == act_range.label:
+                            active_idx = idx
+                    if active_idx >= 0:
+                        self.gobo_combo.set_active(active_idx)
 
             self.pan_tilt_pad.queue_draw()
             color_devs = [d for d in self.selected_devices if self._has_color(d)]
@@ -1092,6 +1342,15 @@ class DeviceInspectorWidget(Gtk.Box):
                     lead_color.r, lead_color.g, lead_color.b, cie=lead_cie
                 )
                 self.color_picker.set_devices_context(ref, color_devs)
+                if (
+                    ref.color_temp_kelvin is not None
+                    and not self.color_picker._kelvin_dragging
+                ):
+                    self.color_picker._silent = True
+                    try:
+                        self.color_picker.kelvin.set_value(ref.color_temp_kelvin)
+                    finally:
+                        self.color_picker._silent = False
                 self.color_picker.set_match(
                     self.last_worst_delta_e, self.last_color_warning
                 )
@@ -1128,4 +1387,10 @@ class DeviceInspectorWidget(Gtk.Box):
             )
             self.app.core.unsubscribe(
                 "channel.level_changed", self._on_core_channel_level_changed
+            )
+            self.app.core.unsubscribe(
+                "device.parameters_changed", self._on_core_device_parameters_changed
+            )
+            self.app.core.unsubscribe(
+                "device.color_changed", self._on_core_device_color_changed
             )

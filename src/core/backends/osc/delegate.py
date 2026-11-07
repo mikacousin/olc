@@ -25,6 +25,7 @@ from olc.core.osc import make_method
 from olc.core.selection import SelectAddAction, SelectRemoveAction
 from olc.define import MAX_FADER_PAGE
 from olc.devices.builtin import create_dimmer_definition
+from olc.devices.color_pick import KELVIN_MAX, KELVIN_MIN, kelvin_to_srgb
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType
 from olc.sequence import get_cue
 
@@ -45,8 +46,10 @@ class OSCDelegate:
         self.channels_grid = ChannelsGridManager(app)
         self.app.subscribe("fader.page_changed", self._on_fader_page_changed)
         self.app.subscribe("fader.level_changed", self._on_fader_level_changed)
+        self.app.subscribe("fader.flash_changed", self._on_fader_flash_changed)
         self.app.subscribe("fader.changed", self._on_fader_changed)
         self.app.subscribe("commandline.changed", self._on_commandline_changed)
+        self.app.subscribe("commandline.error", self._on_commandline_error)
         self.app.subscribe("patch.changed", self._on_patch_changed)
         self.app.subscribe("channel.level_changed", self._on_channel_level_changed)
         self.app.subscribe(
@@ -67,11 +70,25 @@ class OSCDelegate:
         self.app.subscribe("playback.go_back_triggered", self._on_playback_triggered)
         self.app.subscribe("playback.goto_triggered", self._on_playback_triggered)
         self.app.subscribe("playback.step_changed", self._on_playback_triggered)
+        self.app.subscribe(
+            "playback.sequence_plus_triggered", self._on_playback_triggered
+        )
+        self.app.subscribe(
+            "playback.sequence_minus_triggered", self._on_playback_triggered
+        )
         self.app.subscribe("playback.pause_triggered", self._on_pause_triggered)
         self.app.subscribe(
             "main_fader.level_changed", self._on_main_fader_level_changed
         )
         self.app.subscribe("dmx.blackout_all_changed", self._on_blackout_changed)
+        self.app.subscribe("show.loaded", self._on_show_changed)
+        self.app.subscribe("show.new", self._on_show_changed)
+        self.app.subscribe("cue.created", self._on_cues_changed)
+        self.app.subscribe("cue.updated", self._on_cues_changed)
+        self.app.subscribe("cue.deleted", self._on_cues_changed)
+        self.app.subscribe("step.inserted", self._on_cues_changed)
+        self.app.subscribe("step.updated", self._on_cues_changed)
+        self.app.subscribe("step.deleted", self._on_cues_changed)
 
     def _send_patch_status(
         self,
@@ -98,14 +115,51 @@ class OSCDelegate:
     def _on_patch_changed(self) -> None:
         """Send OSC notification when the patch changes."""
         if self.app.engine is not None:
+            self._send_channels_page()
             count = len(self.app.lightshow.patch.devices)
             self.app.engine.publish_osc("patch", "/olc/patch/changed", count)
+
+    def _send_faders_page(self, sender_addr: tuple[str, int] | None = None) -> None:
+        """Send active fader page and all fader labels and levels."""
+        if self.app.engine is None:
+            return
+        fader_bank = self.app.lightshow.fader_bank
+        page = fader_bank.active_page
+        page_lbl = f"Page {page}"
+        if sender_addr is not None:
+            host, port = sender_addr
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/fader/page", page
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/fader/page/label", page_lbl
+            )
+        self.app.engine.publish_osc("faders", "/olc/fader/page", page)
+        self.app.engine.publish_osc("faders", "/olc/fader/page/label", page_lbl)
+        for fader in fader_bank.faders[page].values():
+            lbl_path = f"/olc/fader/1/{fader.index}/label"
+            lvl_path = f"/olc/fader/1/{fader.index}/level"
+            lbl_txt = fader.text or f"Fader {fader.index}"
+            lvl_val = float(fader.level)
+            if sender_addr is not None:
+                host, port = sender_addr
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, lbl_path, lbl_txt
+                )
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, lvl_path, lvl_val
+                )
+            self.app.engine.publish_osc("faders", lbl_path, fader.text)
+            self.app.engine.publish_osc("faders", lvl_path, lvl_val)
 
     def _on_fader_page_changed(self, page: int) -> None:
         """Send OSC feedback when the active fader page changes."""
         if self.app.engine is not None:
             fader_bank = self.app.lightshow.fader_bank
             self.app.engine.publish_osc("faders", "/olc/fader/page", page)
+            self.app.engine.publish_osc(
+                "faders", "/olc/fader/page/label", f"Page {page}"
+            )
             for fader in fader_bank.faders[page].values():
                 self.app.engine.publish_osc(
                     "faders", f"/olc/fader/1/{fader.index}/label", fader.text
@@ -119,9 +173,14 @@ class OSCDelegate:
     def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
         """Send OSC feedback when a fader level changes."""
         if self.app.engine is not None:
+            self._send_channels_page()
             self.app.engine.publish_osc(
                 "faders", f"/olc/fader/1/{fader_index}/level", float(level)
             )
+
+    def _on_fader_flash_changed(self, _fader_index: int, _pressed: bool) -> None:
+        """Refresh channel grid telemetry when a fader flash state changes."""
+        self._send_channels_page()
 
     def _on_fader_changed(self, page: int, index: int) -> None:
         """Send OSC feedback when a fader label or assignment changes."""
@@ -142,6 +201,19 @@ class OSCDelegate:
         """Send OSC feedback when the logical command line changes."""
         if self.app.engine is not None:
             self.app.engine.publish_osc("commandline", "/olc/command_line", keystring)
+
+    def _on_commandline_error(self, err_msg: str) -> None:
+        """Send OSC status feedback when a command line error occurs."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc("commandline", "/olc/cmd/status", str(err_msg))
+
+    def _on_show_changed(self, *_args: object) -> None:
+        """Synchronize all OSC telemetry when a show is created or loaded."""
+        self.send_full_sync()
+
+    def _on_cues_changed(self, *_args: object) -> None:
+        """Refresh playback telemetry when cues or sequence steps are modified."""
+        self._send_playback_telemetry()
 
     def _get_playback_telemetry(self) -> dict[str, typing.Any]:
         """Extract current playback cue and state information."""
@@ -325,14 +397,148 @@ class OSCDelegate:
         if self.app.engine is None:
             return
         cell_idx = self.channels_grid.get_cell_for_channel(channel)
+        norm_lvl = max(0.0, float(_level) / 255.0) if _level >= 0 else 0.0
         if cell_idx is not None:
             info = self.channels_grid.get_cell_info(cell_idx)
             self._send_cell_telemetry(info)
+            norm_lvl = float(info["level"])
 
-        norm_lvl = max(0.0, float(_level) / 255.0) if _level >= 0 else 0.0
         self.app.engine.publish_osc(
             "channels", f"/olc/channel/{channel}/level", norm_lvl
         )
+        selected_channels = getattr(self.app, "selected_channels", [])
+        if channel in selected_channels:
+            self.app.engine.publish_osc("channels", "/olc/selected/intensity", norm_lvl)
+
+    def _publish_color_components(
+        self,
+        r: float,
+        g: float,
+        b: float,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Publish RGB tuple, individual R/G/B channels, and Hue/Sat components."""
+        if self.app.engine is None:
+            return
+        rf, gf, bf = float(r), float(g), float(b)
+        hf, sf, _vf = colorsys.rgb_to_hsv(
+            max(0.0, min(1.0, rf)),
+            max(0.0, min(1.0, gf)),
+            max(0.0, min(1.0, bf)),
+        )
+        if sender_addr is not None:
+            host, port = sender_addr
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/rgb", rf, gf, bf
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/r", rf
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/g", gf
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/b", bf
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/hue", float(hf)
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/selected/color/sat", float(sf)
+            )
+        self.app.engine.publish_osc("channels", "/olc/selected/color/rgb", rf, gf, bf)
+        self.app.engine.publish_osc("channels", "/olc/selected/color/r", rf)
+        self.app.engine.publish_osc("channels", "/olc/selected/color/g", gf)
+        self.app.engine.publish_osc("channels", "/olc/selected/color/b", bf)
+        self.app.engine.publish_osc("channels", "/olc/selected/color/hue", float(hf))
+        self.app.engine.publish_osc("channels", "/olc/selected/color/sat", float(sf))
+
+    def _send_selected_fixture_telemetry(
+        self,
+        channels: list[int],
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Publish parameters and color of the last selected fixture."""
+        if self.app.engine is None or not channels:
+            return
+        last_ch = channels[-1]
+        backend = getattr(self.app, "backend", None)
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+        if backend_dmx is not None and 1 <= last_ch <= 1024:
+            try:
+                comp_lvl, _ = backend_dmx.get_composite_level(last_ch - 1)
+                mult = float(getattr(backend_dmx, "effective_intensity_mult", 1.0))
+                int_norm = round(min(255.0, max(0.0, comp_lvl * mult)) / 255.0, 3)
+                if sender_addr is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/selected/intensity",
+                        float(int_norm),
+                    )
+                self.app.engine.publish_osc(
+                    "channels", "/olc/selected/intensity", float(int_norm)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is None:
+            return
+        dev = patch.devices.get(last_ch)
+        if dev is None:
+            return
+
+        if dev.get_channel(ChannelType.PAN) is not None:
+            pan_val = float(dev.pan_degrees)
+            if sender_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    sender_addr[0], sender_addr[1], "/olc/selected/pan", pan_val
+                )
+            self.app.engine.publish_osc("channels", "/olc/selected/pan", pan_val)
+        if dev.get_channel(ChannelType.TILT) is not None:
+            tilt_val = float(dev.tilt_degrees)
+            if sender_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    sender_addr[0], sender_addr[1], "/olc/selected/tilt", tilt_val
+                )
+            self.app.engine.publish_osc("channels", "/olc/selected/tilt", tilt_val)
+        for ch_type, sub_path in (
+            (ChannelType.ZOOM, "/olc/selected/zoom"),
+            (ChannelType.FOCUS, "/olc/selected/focus"),
+            (ChannelType.IRIS, "/olc/selected/iris"),
+            (ChannelType.STROBE, "/olc/selected/strobe"),
+            (ChannelType.FROST, "/olc/selected/frost"),
+            (ChannelType.GOBO_WHEEL, "/olc/selected/gobo"),
+            (ChannelType.PRISM, "/olc/selected/prism"),
+        ):
+            if dev.get_channel(ch_type) is not None:
+                val = dev.get_parameter_normalized(ch_type)
+                if val is not None:
+                    f_val = float(val)
+                    if sender_addr is not None:
+                        self.app.engine.osc_subscriptions.send_direct(
+                            sender_addr[0], sender_addr[1], sub_path, f_val
+                        )
+                    self.app.engine.publish_osc("channels", sub_path, f_val)
+        if dev.get_channel(ChannelType.COLOR_TEMP) is not None:
+            kelvin_val = getattr(dev, "color_temp_kelvin", None)
+            if kelvin_val is not None:
+                kf = float(kelvin_val)
+                if sender_addr is not None:
+                    self.app.engine.osc_subscriptions.send_direct(
+                        sender_addr[0],
+                        sender_addr[1],
+                        "/olc/selected/color/kelvin",
+                        kf,
+                    )
+                self.app.engine.publish_osc(
+                    "channels", "/olc/selected/color/kelvin", kf
+                )
+        has_color = any(c.channel_type in COLOR_CHANNEL_TYPES for c in dev.channels)
+        if has_color:
+            srgb = dev.color_srgb
+            self._publish_color_components(srgb.r, srgb.g, srgb.b, sender_addr)
 
     def _on_channels_selected_changed(self, channels: list[int]) -> None:
         """Publish updated selection states on visible cells and selected fixtures."""
@@ -346,92 +552,22 @@ class OSCDelegate:
                 "channels", f"/olc/cell/{cell_idx}/selected", is_sel
             )
 
-        patch = getattr(self.app.lightshow, "patch", None)
-        if patch is not None and channels:
-            last_ch = channels[-1]
-            dev = patch.devices.get(last_ch)
-            if dev is not None:
-                if dev.get_channel(ChannelType.PAN) is not None:
-                    self.app.engine.publish_osc(
-                        "channels", "/olc/selected/pan", float(dev.pan_degrees)
-                    )
-                if dev.get_channel(ChannelType.TILT) is not None:
-                    self.app.engine.publish_osc(
-                        "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
-                    )
-                for ch_type, sub_path in (
-                    (ChannelType.ZOOM, "/olc/selected/zoom"),
-                    (ChannelType.FOCUS, "/olc/selected/focus"),
-                    (ChannelType.IRIS, "/olc/selected/iris"),
-                    (ChannelType.STROBE, "/olc/selected/strobe"),
-                    (ChannelType.FROST, "/olc/selected/frost"),
-                    (ChannelType.GOBO_WHEEL, "/olc/selected/gobo"),
-                    (ChannelType.PRISM, "/olc/selected/prism"),
-                ):
-                    if dev.get_channel(ch_type) is not None:
-                        val = dev.get_parameter_normalized(ch_type)
-                        if val is not None:
-                            self.app.engine.publish_osc(
-                                "channels", sub_path, float(val)
-                            )
-                has_color = any(
-                    c.channel_type in COLOR_CHANNEL_TYPES for c in dev.channels
-                )
-                if has_color:
-                    srgb = dev.color_srgb
-                    self.app.engine.publish_osc(
-                        "channels",
-                        "/olc/selected/color/rgb",
-                        float(srgb.r),
-                        float(srgb.g),
-                        float(srgb.b),
-                    )
+        self._send_selected_fixture_telemetry(channels)
 
     def _on_device_parameters_changed(self, channels: list[int]) -> None:
         """Publish updated coordinates when fixture parameters change."""
-        if self.app.engine is None:
-            return
-        patch = getattr(self.app.lightshow, "patch", None)
-        if patch is not None and channels:
-            last_ch = channels[-1]
-            dev = patch.devices.get(last_ch)
-            if dev is not None:
-                if dev.get_channel(ChannelType.PAN) is not None:
-                    self.app.engine.publish_osc(
-                        "channels", "/olc/selected/pan", float(dev.pan_degrees)
-                    )
-                if dev.get_channel(ChannelType.TILT) is not None:
-                    self.app.engine.publish_osc(
-                        "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
-                    )
-                for ch_type, sub_path in (
-                    (ChannelType.ZOOM, "/olc/selected/zoom"),
-                    (ChannelType.FOCUS, "/olc/selected/focus"),
-                    (ChannelType.IRIS, "/olc/selected/iris"),
-                    (ChannelType.STROBE, "/olc/selected/strobe"),
-                    (ChannelType.FROST, "/olc/selected/frost"),
-                    (ChannelType.GOBO_WHEEL, "/olc/selected/gobo"),
-                    (ChannelType.PRISM, "/olc/selected/prism"),
-                ):
-                    if dev.get_channel(ch_type) is not None:
-                        val = dev.get_parameter_normalized(ch_type)
-                        if val is not None:
-                            self.app.engine.publish_osc(
-                                "channels", sub_path, float(val)
-                            )
+        self._send_selected_fixture_telemetry(channels)
 
     def _on_device_color_changed(
         self, _channels: list[int], color: tuple[float, float, float] | None
     ) -> None:
         """Publish updated color when fixture color changes."""
-        if self.app.engine is not None and color is not None:
-            self.app.engine.publish_osc(
-                "channels",
-                "/olc/selected/color/rgb",
-                float(color[0]),
-                float(color[1]),
-                float(color[2]),
-            )
+        if self.app.engine is None:
+            return
+        if color is not None:
+            self._publish_color_components(color[0], color[1], color[2])
+        elif _channels:
+            self._send_selected_fixture_telemetry(_channels)
 
     def _send_cell_telemetry(
         self, info: dict[str, typing.Any], sender_addr: tuple[str, int] | None = None
@@ -462,15 +598,43 @@ class OSCDelegate:
             return
 
         page_info = self.channels_grid.page_info
+        cur_p, tot_p, start_ch, end_ch = page_info
+        page_lbl = f"Page {cur_p}/{tot_p} (Ch {start_ch}-{end_ch})"
         if sender_addr is not None:
             self.app.engine.osc_subscriptions.send_direct(
                 sender_addr[0], sender_addr[1], "/olc/channels/page/info", *page_info
             )
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/channels/page/label", page_lbl
+            )
         self.app.engine.publish_osc("channels", "/olc/channels/page/info", *page_info)
+        self.app.engine.publish_osc("channels", "/olc/channels/page/label", page_lbl)
 
         for cell_idx in range(1, self.channels_grid.grid_size + 1):
             info = self.channels_grid.get_cell_info(cell_idx)
             self._send_cell_telemetry(info, sender_addr)
+
+    def send_full_sync(self, sender_addr: tuple[str, int] | None = None) -> None:
+        """Send full state synchronization for all OSC topics."""
+        if self.app.engine is None:
+            return
+        self._send_playback_telemetry(sender_addr)
+        self._send_channels_page(sender_addr)
+        self._send_faders_page(sender_addr)
+        selected = getattr(self.app, "selected_channels", [])
+        if selected:
+            self._send_selected_fixture_telemetry(selected, sender_addr)
+        cmd_str = self.app.commandline.get_string()
+        if sender_addr is not None:
+            host, port = sender_addr
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/command_line", cmd_str
+            )
+            self.app.engine.osc_subscriptions.send_direct(
+                host, port, "/olc/cmd/status", "OK"
+            )
+        self.app.engine.publish_osc("commandline", "/olc/command_line", cmd_str)
+        self.app.engine.publish_osc("commandline", "/olc/cmd/status", "OK")
 
     @make_method("/olc/subscribe")
     def _subscribe(
@@ -486,7 +650,23 @@ class OSCDelegate:
         if self.app.engine is None:
             return
 
-        topic = str(args[0]).strip().lower() if args else "all"
+        valid_topics = (
+            "patch",
+            "faders",
+            "playback",
+            "channels",
+            "commandline",
+            "all",
+        )
+        if (
+            args
+            and isinstance(args[0], str)
+            and args[0].strip().lower() in valid_topics
+        ):
+            topic = args[0].strip().lower()
+        else:
+            topic = "all"
+
         host = sender_addr[0] if sender_addr else "127.0.0.1"
         port = sender_addr[1] if sender_addr else 8000
 
@@ -495,6 +675,10 @@ class OSCDelegate:
                 port = int(args[1])
             except (ValueError, TypeError):
                 pass
+        elif args and not isinstance(args[0], str):
+            osc_cli = getattr(self.app.engine, "osc_client", None)
+            if osc_cli is not None and hasattr(osc_cli, "_addr"):
+                port = int(osc_cli._addr[1])
 
         self.app.engine.osc_subscriptions.subscribe(host, port, topic)
         self.app.engine.osc_subscriptions.send_direct(
@@ -504,6 +688,8 @@ class OSCDelegate:
             "osc.subscribers_changed",
             self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
         )
+
+        target_addr = (host, port) if sender_addr is not None else None
 
         if topic in ("patch", "all"):
             devices = sorted(
@@ -526,15 +712,29 @@ class OSCDelegate:
             )
 
         if topic in ("playback", "all"):
-            self._send_playback_telemetry(sender_addr)
+            self._send_playback_telemetry(target_addr)
             dump_json = self._get_cues_dump_json()
-            if sender_addr is not None:
+            if target_addr is not None:
                 self.app.engine.osc_subscriptions.send_direct(
                     host, port, "/olc/playback/dump", dump_json
                 )
 
         if topic in ("channels", "all"):
-            self._send_channels_page(sender_addr)
+            self._send_channels_page(target_addr)
+            selected = getattr(self.app, "selected_channels", [])
+            if selected:
+                self._send_selected_fixture_telemetry(selected, target_addr)
+
+        if topic in ("faders", "all"):
+            self._send_faders_page(target_addr)
+
+        if topic in ("commandline", "all"):
+            cmd_str = self.app.commandline.get_string()
+            if target_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    host, port, "/olc/command_line", cmd_str
+                )
+            self.app.engine.publish_osc("commandline", "/olc/command_line", cmd_str)
 
     @make_method("/olc/unsubscribe")
     def _unsubscribe(
@@ -567,6 +767,7 @@ class OSCDelegate:
         )
 
     @make_method("/olc/ping")
+    @make_method("/ping")
     def _ping(
         self,
         _address: str,
@@ -613,11 +814,12 @@ class OSCDelegate:
         self._execute_action("commandline.set", clean_cmd)
         result = self._execute_action("commandline.execute")
 
-        if self.app.engine is not None and hasattr(result, "success"):
-            status_msg = (
-                "OK" if result.success else str(getattr(result, "message", "Error"))
-            )
-            self.app.engine.publish_osc("commandline", "/olc/cmd/status", status_msg)
+        if (
+            self.app.engine is not None
+            and hasattr(result, "success")
+            and result.success
+        ):
+            self.app.engine.publish_osc("commandline", "/olc/cmd/status", "OK")
 
     def _execute_action(self, name: str, *args: object, **kwargs: object) -> object:
         """Execute an action from the registry.
@@ -632,33 +834,48 @@ class OSCDelegate:
         """
         return self.app.action_registry.execute(name, *args, **kwargs)
 
+    @staticmethod
+    def _is_momentary_press(args: list) -> bool:
+        """Return True if a momentary key/button OSC payload represents a press."""
+        return not args or parse_osc_bool(args[0])
+
     @make_method("/olc/key/go")
-    def _go(self, _address: str, _args: list) -> None:
-        self._execute_action("playback.go")
+    def _go(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("playback.go")
 
     @make_method("/olc/key/pause")
-    def _pause(self, _address: str, _args: list) -> None:
-        self._execute_action("playback.pause")
+    def _pause(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("playback.pause")
 
     @make_method("/olc/key/goback")
-    def _goback(self, _address: str, _args: list) -> None:
-        self._execute_action("playback.go_back")
+    def _goback(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("playback.go_back")
 
     @make_method("/olc/key/seq+")
-    def _seq_plus(self, _address: str, _args: list) -> None:
-        self._execute_action("playback.sequence_plus")
+    def _seq_plus(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("playback.sequence_plus")
 
     @make_method("/olc/key/seq-")
-    def _seq_minus(self, _address: str, _args: list) -> None:
-        self._execute_action("playback.sequence_minus")
+    def _seq_minus(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("playback.sequence_minus")
 
     @make_method("/olc/playback/goto_cue")
     @make_method("/olc/playback/goto")
     def _playback_goto_cue(self, _address: str, args: list) -> None:
         """Jump to a specific cue, with optional fade override time."""
-        if not args:
+        cmd_str = self.app.commandline.get_string().strip()
+        if cmd_str and (not args or (len(args) == 1 and args[0] in (1, 1.0, True))):
+            target: object = cmd_str
+            self.app.commandline.set_string("")
+        elif not args or (len(args) == 1 and not parse_osc_bool(args[0])):
             return
-        target = args[0]
+        else:
+            target = args[0]
         override_time = float(args[1]) if len(args) >= 2 else None
         self._execute_action("playback.goto", target, override_time)
 
@@ -769,91 +986,115 @@ class OSCDelegate:
             )
 
     @make_method("/olc/key/clear")
-    def _clear(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.clear")
+    def _clear(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.clear")
 
     @make_method("/olc/key/1")
-    def _1(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "1")
+    def _1(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "1")
 
     @make_method("/olc/key/2")
-    def _2(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "2")
+    def _2(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "2")
 
     @make_method("/olc/key/3")
-    def _3(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "3")
+    def _3(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "3")
 
     @make_method("/olc/key/4")
-    def _4(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "4")
+    def _4(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "4")
 
     @make_method("/olc/key/5")
-    def _5(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "5")
+    def _5(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "5")
 
     @make_method("/olc/key/6")
-    def _6(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "6")
+    def _6(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "6")
 
     @make_method("/olc/key/7")
-    def _7(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "7")
+    def _7(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "7")
 
     @make_method("/olc/key/8")
-    def _8(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "8")
+    def _8(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "8")
 
     @make_method("/olc/key/9")
-    def _9(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "9")
+    def _9(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "9")
 
     @make_method("/olc/key/0")
-    def _0(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", "0")
+    def _0(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "0")
 
     @make_method("/olc/key/.")
-    def _period(self, _address: str, _args: list) -> None:
-        self._execute_action("commandline.append_char", ".")
+    def _period(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", ".")
 
     @make_method("/olc/key/channel")
-    def _channel(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.select_active")
+    def _channel(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.select_active")
 
     @make_method("/olc/key/all")
-    def _all(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.select_all")
+    def _all(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.select_all")
 
     @make_method("/olc/key/level")
-    def _level(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.set_level_from_cmd")
+    def _level(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.set_level_from_cmd")
 
     @make_method("/olc/key/full")
-    def _full(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.set_level_full")
+    def _full(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.set_level_full")
 
     @make_method("/olc/key/thru")
-    def _thru(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.select_thru")
+    def _thru(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.select_thru")
 
     @make_method("/olc/key/+")
-    def _plus(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.select_add")
+    def _plus(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.select_add")
 
     @make_method("/olc/key/-")
-    def _minus(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.select_remove")
+    def _minus(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.select_remove")
 
     @make_method("/olc/key/+%")
-    def _pluspercent(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.level_plus")
+    def _pluspercent(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.level_plus")
 
     @make_method("/olc/key/-%")
-    def _minuspercent(self, _address: str, _args: list) -> None:
-        self._execute_action("channel.level_minus")
+    def _minuspercent(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("channel.level_minus")
 
     @make_method("/olc/fader/pageupdate")
-    def _sub_launch(self, _address: str, _args: list) -> None:
+    @make_method("/olc/sync")
+    def _sub_launch(self, _address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
         fader_bank = self.app.lightshow.fader_bank
         if self.app.engine is not None:
             self.app.engine.send_osc("/olc/fader/page", fader_bank.active_page)
@@ -861,9 +1102,12 @@ class OSCDelegate:
                 self.app.engine.send_osc(
                     f"/olc/fader/1/{fader.index}/label", fader.text
                 )
+            self.send_full_sync()
 
     @make_method("/olc/fader/page+")
-    def _fader_page_plus(self, _address: str, _args: list) -> None:
+    def _fader_page_plus(self, _address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
         fader_bank = self.app.lightshow.fader_bank
         target_page = fader_bank.active_page + 1
         if self.app is not None and hasattr(self.app, "action_registry"):
@@ -875,7 +1119,9 @@ class OSCDelegate:
             self.app.emit("fader.page_changed", target_page)
 
     @make_method("/olc/fader/page-")
-    def _fader_page_minus(self, _address: str, _args: list) -> None:
+    def _fader_page_minus(self, _address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
         fader_bank = self.app.lightshow.fader_bank
         target_page = fader_bank.active_page - 1
         if self.app is not None and hasattr(self.app, "action_registry"):
@@ -1252,10 +1498,12 @@ class OSCDelegate:
     def _channels_page_next(
         self,
         _address: str,
-        _args: list,
+        args: list,
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Advance to next channel page."""
+        if not self._is_momentary_press(args):
+            return
         self.channels_grid.next_page()
         self._send_channels_page(sender_addr)
 
@@ -1263,10 +1511,12 @@ class OSCDelegate:
     def _channels_page_prev(
         self,
         _address: str,
-        _args: list,
+        args: list,
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Go to previous channel page."""
+        if not self._is_momentary_press(args):
+            return
         self.channels_grid.prev_page()
         self._send_channels_page(sender_addr)
 
@@ -1448,6 +1698,15 @@ class OSCDelegate:
             delta = float(args[0]) if args else 0.05
             self._execute_action("device.adjust_parameter", param_name, delta)
 
+    @make_method("/olc/selected/intensity")
+    def _selected_intensity(self, _address: str, args: list) -> None:
+        """Set normalized intensity [0.0..1.0] on all selected channels."""
+        if not args:
+            return
+        norm_level = parse_osc_normalized(args[0])
+        for ch in list(getattr(self.app, "selected_channels", [])):
+            self._execute_action("channel.set_level", ch, norm_level)
+
     @make_method("/olc/selected/pan")
     def _selected_pan(self, _address: str, args: list) -> None:
         """Set absolute pan coordinate in degrees on selected fixtures."""
@@ -1462,6 +1721,18 @@ class OSCDelegate:
             val = float(args[0])
             self._execute_action("device.set_pan_tilt", None, val)
 
+    def _get_selected_srgb(self) -> tuple[float, float, float]:
+        """Return current (r, g, b) of the last selected fixture or (1, 1, 1)."""
+        selected = getattr(self.app, "selected_channels", [])
+        patch = getattr(self.app.lightshow, "patch", None)
+        if selected and patch is not None:
+            dev = patch.devices.get(selected[-1])
+            if dev is not None:
+                srgb = getattr(dev, "color_srgb", None)
+                if srgb is not None:
+                    return (float(srgb.r), float(srgb.g), float(srgb.b))
+        return (1.0, 1.0, 1.0)
+
     @make_method("/olc/selected/color/rgb")
     def _selected_color_rgb(self, _address: str, args: list) -> None:
         """Set RGB color on selected fixtures."""
@@ -1471,13 +1742,63 @@ class OSCDelegate:
             b = float(args[2])
             self._execute_action("device.set_color", r, g, b)
 
+    @make_method("/olc/selected/color/r")
+    def _selected_color_r(self, _address: str, args: list) -> None:
+        """Set red component [0.0..1.0] on selected fixtures."""
+        if args:
+            _, g, b = self._get_selected_srgb()
+            r = parse_osc_normalized(args[0])
+            self._execute_action("device.set_color", r, g, b)
+
+    @make_method("/olc/selected/color/g")
+    def _selected_color_g(self, _address: str, args: list) -> None:
+        """Set green component [0.0..1.0] on selected fixtures."""
+        if args:
+            r, _, b = self._get_selected_srgb()
+            g = parse_osc_normalized(args[0])
+            self._execute_action("device.set_color", r, g, b)
+
+    @make_method("/olc/selected/color/b")
+    def _selected_color_b(self, _address: str, args: list) -> None:
+        """Set blue component [0.0..1.0] on selected fixtures."""
+        if args:
+            r, g, _ = self._get_selected_srgb()
+            b = parse_osc_normalized(args[0])
+            self._execute_action("device.set_color", r, g, b)
+
+    @make_method("/olc/selected/color/hue")
+    def _selected_color_hue(self, _address: str, args: list) -> None:
+        """Set hue component [0.0..1.0] on selected fixtures."""
+        if args:
+            r, g, b = self._get_selected_srgb()
+            _, s, v = colorsys.rgb_to_hsv(r, g, b)
+            if v < 0.01:
+                v = 1.0
+            if s < 0.01:
+                s = 1.0
+            h = parse_osc_normalized(args[0])
+            nr, ng, nb = colorsys.hsv_to_rgb(h, s, v)
+            self._execute_action("device.set_color", nr, ng, nb)
+
+    @make_method("/olc/selected/color/sat")
+    def _selected_color_sat(self, _address: str, args: list) -> None:
+        """Set saturation component [0.0..1.0] on selected fixtures."""
+        if args:
+            r, g, b = self._get_selected_srgb()
+            h, _, v = colorsys.rgb_to_hsv(r, g, b)
+            if v < 0.01:
+                v = 1.0
+            s = parse_osc_normalized(args[0])
+            nr, ng, nb = colorsys.hsv_to_rgb(h, s, v)
+            self._execute_action("device.set_color", nr, ng, nb)
+
     @make_method("/olc/selected/color/hsv")
     def _selected_color_hsv(self, _address: str, args: list) -> None:
         """Set HSV color on selected fixtures (converts to RGB)."""
-        if len(args) >= 3:
+        if len(args) >= 2:
             h = float(args[0])
             s = float(args[1])
-            v = float(args[2])
+            v = float(args[2]) if len(args) >= 3 else 1.0
             if h > 1.0:
                 h = h / 360.0
             r, g, b = colorsys.hsv_to_rgb(h, s, v)
@@ -1557,15 +1878,50 @@ class OSCDelegate:
             norm = parse_osc_normalized(args[0])
             self._execute_action("device.set_parameter", "prism", norm)
 
+    def _apply_kelvin_to_selected(self, k: float) -> None:
+        """Apply Kelvin value (normalized 0..1 or physical K) to selected fixtures."""
+        if 0.0 <= k <= 1.0:
+            self._execute_action("device.set_parameter", "color_temp", k)
+            kelvin_val = KELVIN_MIN + k * (KELVIN_MAX - KELVIN_MIN)
+        else:
+            self._execute_action(
+                "device.set_parameter", "color_temp", k, is_physical=True
+            )
+            kelvin_val = k
+
+        patch = self.app.lightshow.patch
+        color_only_ids: list[int] = []
+        for ch_id in self.app.selected_channels:
+            dev = patch.devices.get(ch_id)
+            if dev is None:
+                continue
+            if dev.get_channel(ChannelType.COLOR_TEMP) is None and any(
+                dev.get_channel(ct) is not None for ct in COLOR_CHANNEL_TYPES
+            ):
+                color_only_ids.append(ch_id)
+        if color_only_ids:
+            r, g, b = kelvin_to_srgb(kelvin_val)
+            self._execute_action("device.set_color", r, g, b, channels=color_only_ids)
+
     @make_method("/olc/selected/color/kelvin")
     @make_method("/olc/selected/cct")
     def _selected_color_kelvin(self, _address: str, args: list) -> None:
         """Set color temperature in Kelvin on selected fixtures."""
         if args:
-            k = float(args[0])
-            self._execute_action(
-                "device.set_parameter", "color_temp", k, is_physical=True
-            )
+            self._apply_kelvin_to_selected(float(args[0]))
+
+    @make_method("/olc/selected/color/kelvin/*")
+    def _selected_color_kelvin_preset(self, address: str, args: list) -> None:
+        """Set color temperature preset in Kelvin."""
+        if not self._is_momentary_press(args):
+            return
+        parts = address.split("/")
+        if len(parts) >= 6:
+            try:
+                k = float(parts[5])
+                self._apply_kelvin_to_selected(k)
+            except ValueError:
+                pass
 
     @make_method("/olc/selected/param/*")
     def _selected_param_generic(self, address: str, args: list) -> None:

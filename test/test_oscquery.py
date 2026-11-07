@@ -45,6 +45,9 @@ def test_build_oscquery_tree_structure() -> None:
     assert tree["OSC_TRANSPORT"] == "UDP"
     assert tree["FULL_PATH"] == "/"
     assert tree["ACCESS"] == ACCESS_CONTAINER
+    assert "TEMPLATES" in tree
+    assert "TABLET" in tree["TEMPLATES"]
+    assert "PHONE" in tree["TEMPLATES"]
     assert "olc" in tree["CONTENTS"]
 
     olc = tree["CONTENTS"]["olc"]["CONTENTS"]
@@ -218,7 +221,31 @@ def test_oscquery_server_http_lifecycle_and_requests() -> None:
         await writer.wait_closed()
         assert "404 Not Found" in status
 
-        # 5. Stop Server
+        # 5. Request TouchOSC Template Download
+        reader, writer = await asyncio.open_connection("127.0.0.1", test_port)
+        writer.write(
+            b"GET /templates/OpenLightingConsole_Tablet.tosc HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n\r\n"
+        )
+        await writer.drain()
+        status, headers, body = await _read_http_response(reader)
+        writer.close()
+        await writer.wait_closed()
+        assert "200 OK" in status
+        assert "application/vnd.touchosc.layout" in headers.get("content-type", "")
+        assert "attachment" in headers.get("content-disposition", "")
+        assert len(body) > 1000
+
+        # 6. Request non-existent template
+        reader, writer = await asyncio.open_connection("127.0.0.1", test_port)
+        writer.write(b"GET /templates/unknown.tosc HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        await writer.drain()
+        status, _headers, _body = await _read_http_response(reader)
+        writer.close()
+        await writer.wait_closed()
+        assert "404 Not Found" in status
+
+        # 7. Stop Server
         await server.stop()
         assert server.is_running is False
 

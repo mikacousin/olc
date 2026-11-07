@@ -398,6 +398,31 @@ class _OSCProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         try:
             address, args = parse_message(data)
+            engine = getattr(self._server, "_engine", None)
+            if (
+                engine is not None
+                and (address.startswith("/olc/") or address == "/ping")
+                and address
+                not in (
+                    "/olc/unsubscribe",
+                    "/olc/subscribe",
+                    "/olc/channels/subscribe",
+                )
+            ):
+                sub_mgr = getattr(engine, "osc_subscriptions", None)
+                osc_cli = getattr(engine, "osc_client", None)
+                if sub_mgr is not None and not sub_mgr.refresh_keepalive(
+                    addr[0], addr[1]
+                ):
+                    reply_port = (
+                        osc_cli._addr[1]
+                        if osc_cli is not None and hasattr(osc_cli, "_addr")
+                        else 8000
+                    )
+                    if sub_mgr.subscribe(addr[0], reply_port, "all"):
+                        delegate = getattr(self._server, "_delegate", None)
+                        if delegate is not None and hasattr(delegate, "send_full_sync"):
+                            delegate.send_full_sync((addr[0], reply_port))
             self._server.dispatch(address, args, addr)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Server] Warning: Parse error from {addr}: {err}")

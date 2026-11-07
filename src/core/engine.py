@@ -637,7 +637,11 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
             # Start OSCQuery HTTP JSON introspection server
             http_port = server_port + 1
-            self.oscquery_server = OSCQueryServer(host="0.0.0.0", http_port=http_port)
+            self.oscquery_server = OSCQueryServer(
+                host="0.0.0.0",
+                http_port=http_port,
+                on_client_connected=self._on_oscquery_client_connected,
+            )
             asyncio.run_coroutine_threadsafe(
                 self.oscquery_server.start(http_port=http_port, osc_port=server_port),
                 self._network_thread.loop,
@@ -650,6 +654,25 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 port=server_port,
                 http_port=http_port,
             )
+
+            if enable_static_client and self._osc_delegate is not None:
+                sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
+                if callable(sync_fn):
+                    sync_fn((host, client_port))
+
+    def _on_oscquery_client_connected(self, client_ip: str) -> None:
+        """Auto-subscribe and sync an OSCQuery client when it connects over HTTP."""
+        if not client_ip:
+            return
+        reply_port = (
+            self.osc_client._addr[1]
+            if self.osc_client is not None and hasattr(self.osc_client, "_addr")
+            else 8000
+        )
+        self.osc_subscriptions.subscribe(client_ip, reply_port, "all")
+        sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
+        if callable(sync_fn):
+            sync_fn((client_ip, reply_port))
 
     def stop_osc(self) -> None:
         """Stop the OSC server, OSCQuery HTTP server, and client."""
@@ -697,6 +720,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.osc_subscriptions.subscribe(
                     target_host, target_port, "all", is_static=True
                 )
+                sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
+                if callable(sync_fn):
+                    sync_fn((target_host, target_port))
 
     def update_osc_client(self, host: str = "", port: int | None = None) -> None:
         """Update client IP or port settings."""
@@ -750,6 +776,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             self._osc_delegate = delegate
             if self.osc_server is not None:
                 self.osc_server.register_delegate(delegate)
+            if self.osc_subscriptions.get_subscribers_snapshot():
+                sync_fn = getattr(delegate, "send_full_sync", None)
+                if callable(sync_fn):
+                    sync_fn()
 
     def publish_osc(self, topic: str, path: str, *args: object) -> None:
         """Publish an OSC message to subscribers of a topic."""

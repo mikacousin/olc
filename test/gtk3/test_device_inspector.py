@@ -432,3 +432,70 @@ def test_color_picker_emits_cie_when_configured() -> None:
     picker._on_cie_xy_change(0.12, 0.34)
     picker._on_cie_xy_release()
     assert emitted_cie == [(0.12, 0.34)]
+
+
+def test_inspector_realtime_sync_with_osc_and_core_events() -> None:
+    """Test real-time two-way sync between Core/OSC events and DeviceInspectorWidget."""
+    from types import SimpleNamespace
+    from typing import cast
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+
+    core = CoreApplication(MagicMock())
+    spot_def = create_moving_head_definition()
+    rgb_def = create_rgbw_definition()
+    core.lightshow.patch.patch_device(1, spot_def, 1, 1, label="Spot 1")
+    core.lightshow.patch.patch_device(2, rgb_def, 1, 20, label="RGBW 2")
+    core.selected_channels = [1, 2]
+
+    fake_app = cast(Application, SimpleNamespace(core=core, window=None, tabs=None))
+    inspector = DeviceInspectorWidget(app=fake_app)
+
+    # 1. Simulate TouchOSC Pan/Tilt modification via Core action
+    core.action_registry.execute("device.set_pan_tilt", 45.0, -30.0, channels=[1])
+    assert "45.0°" in inspector.position_value_label.get_text()
+    assert "-30.0°" in inspector.position_value_label.get_text()
+
+    # 2. Simulate TouchOSC Color modification via Core action
+    core.action_registry.execute("device.set_color", 1.0, 0.0, 0.0, channels=[2])
+    assert "#FF0000" in inspector.color_value_label.get_text()
+
+    # 3. Simulate TouchOSC Beam parameter (Zoom & Strobe) modification
+    core.action_registry.execute(
+        "device.set_parameter", "zoom", 30.0, channels=[1], is_physical=True
+    )
+    assert inspector.zoom_scale.get_value() == pytest.approx(30.0, abs=0.5)
+    assert "30.0°" in inspector.zoom_value_label.get_text()
+
+    core.action_registry.execute(
+        "device.set_parameter", "strobe", 10.0, channels=[1], is_physical=True
+    )
+    assert inspector.strobe_scale.get_value() == pytest.approx(10.0, abs=0.5)
+    assert "10.0 Hz" in inspector.strobe_value_label.get_text()
+
+    # 4. Simulate TouchOSC Intensity level modification via Core event
+    core.emit("channel.level_changed", 1, 128)
+    assert inspector.intensity_scale.get_value() == pytest.approx(
+        128 / 255.0 * 100.0, abs=1.0
+    )
+
+    # 5. Reverse direction: modifying parameters in Inspector emits Core events
+    params_events: list[list[int]] = []
+    color_events: list[tuple[list[int], tuple[float, float, float]]] = []
+    core.subscribe(
+        "device.parameters_changed", lambda chs: params_events.append(list(chs))
+    )
+    core.subscribe(
+        "device.color_changed",
+        lambda chs, col: color_events.append((list(chs), col)),
+    )
+
+    inspector.set_pad_position(-90.0, 20.0)
+    assert [1] in params_events
+
+    inspector.apply_color_srgb(0.0, 1.0, 0.0)
+    assert len(color_events) == 1
+    assert color_events[0][0] == [2]
+
+    inspector.cleanup()

@@ -25,6 +25,7 @@ import asyncio
 import json
 import logging
 import typing
+from pathlib import Path
 from urllib.parse import urlparse
 
 logger = logging.getLogger("olc.osc.oscquery")
@@ -131,6 +132,16 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
         "ACCESS": ACCESS_CONTAINER,
         "OSC_PORT": osc_port,
         "OSC_TRANSPORT": "UDP",
+        "EXTENSIONS": {
+            "TEMPLATES": {
+                "tablet": "/templates/OpenLightingConsole_Tablet.tosc",
+                "phone": "/templates/OpenLightingConsole_Phone.tosc",
+            }
+        },
+        "TEMPLATES": {
+            "TABLET": "/templates/OpenLightingConsole_Tablet.tosc",
+            "PHONE": "/templates/OpenLightingConsole_Phone.tosc",
+        },
         "CONTENTS": {
             "olc": {
                 "DESCRIPTION": "Open Lighting Console root namespace",
@@ -555,10 +566,16 @@ def find_node_by_path(
 class OSCQueryServer:
     """Asynchronous HTTP JSON server implementing the OSCQuery protocol."""
 
-    def __init__(self, host: str = "0.0.0.0", http_port: int = 9001) -> None:
+    def __init__(
+        self,
+        host: str = "0.0.0.0",
+        http_port: int = 9001,
+        on_client_connected: typing.Callable[[str], None] | None = None,
+    ) -> None:
         self.host = host
         self.http_port = http_port
         self.osc_port = 9000
+        self.on_client_connected = on_client_connected
         self._server: typing.Optional[asyncio.Server] = None
         self._loop: typing.Optional[asyncio.AbstractEventLoop] = None
         self._running = False
@@ -614,6 +631,69 @@ class OSCQueryServer:
             if method != "GET":
                 resp = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n"
                 writer.write(resp.encode("utf-8"))
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
+                return
+
+            if self.on_client_connected is not None:
+                peername = writer.get_extra_info("peername")
+                if isinstance(peername, tuple) and len(peername) >= 1:
+                    try:
+                        self.on_client_connected(str(peername[0]))
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+
+            # Template download handling
+            if req_path.startswith("/templates/"):
+                raw_filename = req_path[len("/templates/") :].strip("/")
+                filename = Path(raw_filename).name
+                templates_dir = (
+                    Path(__file__).resolve().parents[4]
+                    / "data"
+                    / "templates"
+                    / "touchosc"
+                )
+                file_path = templates_dir / filename
+                if not file_path.exists() and filename in (
+                    "OpenLightingConsole_Tablet.tosc",
+                    "OpenLightingConsole_Phone.tosc",
+                ):
+                    try:
+                        from src.core.backends.osc.touchosc import (
+                            generate_all_templates,
+                        )
+
+                        generate_all_templates(str(templates_dir))
+                    except Exception as gen_err:
+                        logger.error(
+                            "Failed to auto-generate TouchOSC templates: %s",
+                            gen_err,
+                        )
+
+                if file_path.is_file():
+                    content = file_path.read_bytes()
+                    header = (
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: application/vnd.touchosc.layout\r\n"
+                        f'Content-Disposition: attachment; filename="{filename}"\r\n'
+                        "Access-Control-Allow-Origin: *\r\n"
+                        f"Content-Length: {len(content)}\r\n\r\n"
+                    )
+                    writer.write(header.encode("utf-8") + content)
+                    await writer.drain()
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+
+                body = b'{"error": "Template not found"}'
+                resp = (
+                    "HTTP/1.1 404 Not Found\r\n"
+                    "Content-Type: application/json; charset=utf-8\r\n"
+                    "Access-Control-Allow-Origin: *\r\n"
+                    f"Content-Length: {len(body)}\r\n\r\n"
+                ).encode("utf-8") + body
+                writer.write(resp)
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
