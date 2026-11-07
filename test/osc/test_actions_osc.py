@@ -1212,6 +1212,46 @@ def test_osc_key_enter_and_backspace() -> None:
     assert mock_backend.dmx.levels["user"][0] == 128
 
 
+def test_osc_keypad_sentence_building() -> None:
+    """Test typing full sentence via keypad (1 -> AT -> 50 -> ENTER)."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_backend.dmx = MagicMock()
+    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    app.backend = mock_backend
+
+    delegate = OSCDelegate(app)
+
+    # Type "1 AT 50"
+    delegate._1("/olc/key/1", [1])
+    assert app.commandline.get_string() == "1"
+
+    delegate._level("/olc/key/at", [1])
+    assert app.commandline.get_string() == "1 AT "
+
+    delegate._5("/olc/key/5", [1])
+    delegate._0("/olc/key/0", [1])
+    assert app.commandline.get_string() == "1 AT 50"
+
+    delegate._enter("/olc/key/enter", [1])
+    assert app.commandline.get_string() == ""
+    assert mock_backend.dmx.levels["user"][0] == 128
+
+    # Test THRU and FULL: "1 THRU 3 AT FULL"
+    delegate._1("/olc/key/1", [1])
+    delegate._thru("/olc/key/thru", [1])
+    assert app.commandline.get_string() == "1 THRU "
+    delegate._3("/olc/key/3", [1])
+    delegate._full("/olc/key/full", [1])
+    assert app.commandline.get_string() == "1 THRU 3 AT FULL"
+    delegate._enter("/olc/key/enter", [1])
+    assert mock_backend.dmx.levels["user"][0] == 255
+    assert mock_backend.dmx.levels["user"][1] == 255
+    assert mock_backend.dmx.levels["user"][2] == 255
+
+
 def test_osc_fader_flash_feedback() -> None:
     """Test that fader flash changes publish feedback to /olc/fader/1/{id}/flash."""
     settings = MagicMock()

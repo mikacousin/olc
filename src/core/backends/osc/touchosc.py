@@ -1117,7 +1117,7 @@ def build_tablet_template() -> TOSCNode:
             ("4", "/olc/key/4"),
             ("5", "/olc/key/5"),
             ("6", "/olc/key/6"),
-            ("AT", "/olc/key/level"),
+            ("AT", "/olc/key/at"),
         ],
         [
             ("1", "/olc/key/1"),
@@ -1669,7 +1669,7 @@ def build_phone_template() -> TOSCNode:
             ("4", "/olc/key/4"),
             ("5", "/olc/key/5"),
             ("6", "/olc/key/6"),
-            ("AT", "/olc/key/level"),
+            ("AT", "/olc/key/at"),
         ],
         [
             ("1", "/olc/key/1"),

@@ -1175,47 +1175,88 @@ class OSCDelegate:
     @make_method("/olc/key/channel")
     def _channel(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.select_active")
+            self._execute_action("commandline.append_char", "CHANNEL ")
 
     @make_method("/olc/key/all")
     def _all(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.select_all")
+            self._execute_action("commandline.append_char", "ALL")
 
+    @make_method("/olc/key/at")
     @make_method("/olc/key/level")
     def _level(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.set_level_from_cmd")
+            self._execute_action("commandline.append_char", " AT ")
 
     @make_method("/olc/key/full")
     def _full(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.set_level_full")
+            self._execute_action("commandline.append_char", " AT FULL")
 
     @make_method("/olc/key/thru")
     def _thru(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.select_thru")
+            self._execute_action("commandline.append_char", " THRU ")
 
     @make_method("/olc/key/+")
     def _plus(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.select_add")
+            self._execute_action("commandline.append_char", " + ")
 
     @make_method("/olc/key/-")
     def _minus(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.select_remove")
+            self._execute_action("commandline.append_char", " - ")
 
     @make_method("/olc/key/+%")
     def _pluspercent(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.level_plus")
+            self._execute_action("commandline.append_char", " AT + 10")
 
     @make_method("/olc/key/-%")
     def _minuspercent(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
-            self._execute_action("channel.level_minus")
+            self._execute_action("commandline.append_char", " AT - 10")
+
+    @make_method("/olc/key/out")
+    def _out(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " AT OUT")
+
+    @make_method("/olc/key/cue")
+    def _cue_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "CUE ")
+
+    @make_method("/olc/key/record")
+    def _record_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "RECORD CUE ")
+
+    @make_method("/olc/key/update")
+    def _update_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "UPDATE CUE ")
+
+    @make_method("/olc/key/delete")
+    def _delete_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "DELETE ")
+
+    @make_method("/olc/key/time")
+    def _time_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " TIME ")
+
+    @make_method("/olc/key/delay")
+    def _delay_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " DELAY ")
+
+    @make_method("/olc/key/group")
+    def _group_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "GROUP ")
 
     @make_method("/olc/key/enter")
     def _enter(self, _address: str, args: list) -> None:

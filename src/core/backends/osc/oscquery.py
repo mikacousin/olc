@@ -245,6 +245,18 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                                 "ACCESS": ACCESS_WRITE_ONLY,
                                 "TYPE": "",
                             },
+                            "at": {
+                                "DESCRIPTION": "Append AT operator to command line",
+                                "FULL_PATH": "/olc/key/at",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
+                            "thru": {
+                                "DESCRIPTION": "Append THRU operator to command line",
+                                "FULL_PATH": "/olc/key/thru",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
                         },
                     },
                     "playback": {
