@@ -14,13 +14,17 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import colorsys
 import re
 import typing
 from json import dumps as json_dumps
 
+from olc.core.backends.osc.channels_grid import ChannelsGridManager
 from olc.core.osc import make_method
+from olc.core.selection import SelectAddAction, SelectRemoveAction
 from olc.define import MAX_FADER_PAGE
 from olc.devices.builtin import create_dimmer_definition
+from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType
 from olc.sequence import get_cue
 
 if typing.TYPE_CHECKING:
@@ -37,11 +41,20 @@ class OSCDelegate:
 
     def __init__(self, app: CoreApplication) -> None:
         self.app = app
+        self.channels_grid = ChannelsGridManager(app)
         self.app.subscribe("fader.page_changed", self._on_fader_page_changed)
         self.app.subscribe("fader.level_changed", self._on_fader_level_changed)
         self.app.subscribe("fader.changed", self._on_fader_changed)
         self.app.subscribe("commandline.changed", self._on_commandline_changed)
         self.app.subscribe("patch.changed", self._on_patch_changed)
+        self.app.subscribe("channel.level_changed", self._on_channel_level_changed)
+        self.app.subscribe(
+            "channels.selected_changed", self._on_channels_selected_changed
+        )
+        self.app.subscribe(
+            "device.parameters_changed", self._on_device_parameters_changed
+        )
+        self.app.subscribe("device.color_changed", self._on_device_color_changed)
         self.app.subscribe("playback.transition_progress", self._on_transition_progress)
         self.app.subscribe("playback.goback_progress", self._on_goback_progress)
         self.app.subscribe(
@@ -279,11 +292,13 @@ class OSCDelegate:
         if self.app.engine is not None:
             self.app.engine.publish_osc("playback", "/olc/playback/progress", 1.0)
             self._send_playback_telemetry()
+            self._send_channels_page()
             self.app.engine.publish_osc("playback", "/olc/playback/progress", 0.0)
 
     def _on_playback_triggered(self, _data: object = None) -> None:
         """Publish updated telemetry when a playback action is triggered."""
         self._send_playback_telemetry()
+        self._send_channels_page()
 
     def _on_pause_triggered(self, feedback: dict[str, typing.Any]) -> None:
         """Publish pause state change."""
@@ -296,11 +311,130 @@ class OSCDelegate:
         """Publish Main Fader level changes."""
         if self.app.engine is not None:
             self.app.engine.publish_osc("playback", "/olc/mainfader", float(level))
+            self._send_channels_page()
 
     def _on_blackout_changed(self, state: bool) -> None:
         """Publish Blackout state changes."""
         if self.app.engine is not None:
             self.app.engine.publish_osc("playback", "/olc/blackout", 1 if state else 0)
+            self._send_channels_page()
+
+    def _on_channel_level_changed(self, channel: int, _level: int) -> None:
+        """Publish updated cell level and color if channel is on current page."""
+        if self.app.engine is None:
+            return
+        cell_idx = self.channels_grid.get_cell_for_channel(channel)
+        if cell_idx is not None:
+            info = self.channels_grid.get_cell_info(cell_idx)
+            self._send_cell_telemetry(info)
+
+    def _on_channels_selected_changed(self, channels: list[int]) -> None:
+        """Publish updated selection states on visible cells and selected fixtures."""
+        if self.app.engine is None:
+            return
+
+        for cell_idx in range(1, self.channels_grid.grid_size + 1):
+            ch = self.channels_grid.get_channel_for_cell(cell_idx)
+            is_sel = 1 if (ch is not None and ch in channels) else 0
+            self.app.engine.publish_osc(
+                "channels", f"/olc/cell/{cell_idx}/selected", is_sel
+            )
+
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is not None and channels:
+            last_ch = channels[-1]
+            dev = patch.devices.get(last_ch)
+            if dev is not None:
+                if dev.get_channel(ChannelType.PAN) is not None:
+                    self.app.engine.publish_osc(
+                        "channels", "/olc/selected/pan", float(dev.pan_degrees)
+                    )
+                if dev.get_channel(ChannelType.TILT) is not None:
+                    self.app.engine.publish_osc(
+                        "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
+                    )
+                has_color = any(
+                    c.channel_type in COLOR_CHANNEL_TYPES for c in dev.channels
+                )
+                if has_color:
+                    srgb = dev.color_srgb
+                    self.app.engine.publish_osc(
+                        "channels",
+                        "/olc/selected/color/rgb",
+                        float(srgb.r),
+                        float(srgb.g),
+                        float(srgb.b),
+                    )
+
+    def _on_device_parameters_changed(self, channels: list[int]) -> None:
+        """Publish updated coordinates when fixture parameters change."""
+        if self.app.engine is None:
+            return
+        patch = getattr(self.app.lightshow, "patch", None)
+        if patch is not None and channels:
+            last_ch = channels[-1]
+            dev = patch.devices.get(last_ch)
+            if dev is not None:
+                if dev.get_channel(ChannelType.PAN) is not None:
+                    self.app.engine.publish_osc(
+                        "channels", "/olc/selected/pan", float(dev.pan_degrees)
+                    )
+                if dev.get_channel(ChannelType.TILT) is not None:
+                    self.app.engine.publish_osc(
+                        "channels", "/olc/selected/tilt", float(dev.tilt_degrees)
+                    )
+
+    def _on_device_color_changed(
+        self, _channels: list[int], color: tuple[float, float, float] | None
+    ) -> None:
+        """Publish updated color when fixture color changes."""
+        if self.app.engine is not None and color is not None:
+            self.app.engine.publish_osc(
+                "channels",
+                "/olc/selected/color/rgb",
+                float(color[0]),
+                float(color[1]),
+                float(color[2]),
+            )
+
+    def _send_cell_telemetry(
+        self, info: dict[str, typing.Any], sender_addr: tuple[str, int] | None = None
+    ) -> None:
+        """Send individual cell telemetry."""
+        if self.app.engine is None:
+            return
+        cell_idx = info["cell"]
+        prefix = f"/olc/cell/{cell_idx}"
+
+        messages = [
+            (f"{prefix}/channel", info["channel"]),
+            (f"{prefix}/level", float(info["level"])),
+            (f"{prefix}/label", str(info["label"])),
+            (f"{prefix}/selected", int(info["selected"])),
+            (f"{prefix}/color", str(info["color"])),
+        ]
+        for addr, val in messages:
+            if sender_addr is not None:
+                self.app.engine.osc_subscriptions.send_direct(
+                    sender_addr[0], sender_addr[1], addr, val
+                )
+            self.app.engine.publish_osc("channels", addr, val)
+
+    def _send_channels_page(self, sender_addr: tuple[str, int] | None = None) -> None:
+        """Send full channels page info and all cell states."""
+        if self.app.engine is None:
+            return
+
+        page_info = self.channels_grid.page_info
+        if sender_addr is not None:
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/channels/page/info", *page_info
+            )
+        self.app.engine.publish_osc("channels", "/olc/channels/page/info", *page_info)
+
+        for cell_idx in range(1, self.channels_grid.grid_size + 1):
+            info = self.channels_grid.get_cell_info(cell_idx)
+            self._send_cell_telemetry(info, sender_addr)
 
     @make_method("/olc/subscribe")
     def _subscribe(
@@ -362,6 +496,9 @@ class OSCDelegate:
                 self.app.engine.osc_subscriptions.send_direct(
                     host, port, "/olc/playback/dump", dump_json
                 )
+
+        if topic in ("channels", "all"):
+            self._send_channels_page(sender_addr)
 
     @make_method("/olc/unsubscribe")
     def _unsubscribe(
@@ -1046,6 +1183,243 @@ class OSCDelegate:
                 sender_addr[0], sender_addr[1], "/olc/patch/dump", dump_json
             )
         self.app.engine.publish_osc("patch", "/olc/patch/dump", dump_json)
+
+    @make_method("/olc/channels/subscribe")
+    def _channels_subscribe(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Subscribe to channels topic with custom grid size and start channel."""
+        if self.app.engine is None:
+            return
+
+        if len(args) >= 1:
+            try:
+                self.channels_grid.grid_size = int(args[0])
+            except (ValueError, TypeError):
+                pass
+        if len(args) >= 2:
+            try:
+                self.channels_grid.start_channel = int(args[1])
+            except (ValueError, TypeError):
+                pass
+
+        host = sender_addr[0] if sender_addr else "127.0.0.1"
+        port = sender_addr[1] if sender_addr else 8000
+        self.app.engine.osc_subscriptions.subscribe(host, port, "channels")
+        self.app.engine.osc_subscriptions.send_direct(
+            host, port, "/olc/subscribe/status", "OK", "channels"
+        )
+        self.app.emit(
+            "osc.subscribers_changed",
+            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+        )
+        self._send_channels_page(sender_addr)
+
+    @make_method("/olc/channels/page/+")
+    def _channels_page_next(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Advance to next channel page."""
+        self.channels_grid.next_page()
+        self._send_channels_page(sender_addr)
+
+    @make_method("/olc/channels/page/-")
+    def _channels_page_prev(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Go to previous channel page."""
+        self.channels_grid.prev_page()
+        self._send_channels_page(sender_addr)
+
+    @make_method("/olc/channels/start")
+    def _channels_start(
+        self,
+        _address: str,
+        args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Jump to a specific start channel."""
+        if args:
+            try:
+                self.channels_grid.start_channel = int(args[0])
+            except (ValueError, TypeError):
+                pass
+        self._send_channels_page(sender_addr)
+
+    @make_method("/olc/channels/dump")
+    def _channels_dump(
+        self,
+        _address: str,
+        _args: list,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Dump JSON representation of current channels page."""
+        if self.app.engine is None:
+            return
+        dump_json = self.channels_grid.get_page_snapshot_json()
+        if sender_addr is not None:
+            self.app.engine.osc_subscriptions.send_direct(
+                sender_addr[0], sender_addr[1], "/olc/channels/dump", dump_json
+            )
+        self.app.engine.publish_osc("channels", "/olc/channels/dump", dump_json)
+
+    @make_method("/olc/cell/*/touch")
+    def _cell_touch(self, address: str, args: list) -> None:
+        """Touch interaction on a grid cell (toggles selection)."""
+        state = args[0] if args else 1
+        if not bool(state):
+            return
+
+        parts = address.split("/")
+        try:
+            cell_idx = int(parts[3])
+        except (IndexError, ValueError):
+            return
+
+        ch = self.channels_grid.get_channel_for_cell(cell_idx)
+        if ch is not None:
+            selected = getattr(self.app, "selected_channels", [])
+            if ch in selected:
+                self.app.live_selection.execute_action(SelectRemoveAction, ch)
+            else:
+                self.app.live_selection.execute_action(SelectAddAction, ch)
+
+    @make_method("/olc/cell/*/level")
+    def _cell_level(self, address: str, args: list) -> None:
+        """Set level for the channel associated with a cell."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            cell_idx = int(parts[3])
+        except (IndexError, ValueError):
+            return
+
+        ch = self.channels_grid.get_channel_for_cell(cell_idx)
+        if ch is not None:
+            raw_val = float(args[0])
+            target_level = int(raw_val) if raw_val > 1.0 else round(raw_val * 255.0)
+            target_level = max(0, min(255, target_level))
+            self._execute_action("channel.set_level", ch, target_level)
+
+    @make_method("/olc/channel/*/touch")
+    def _channel_touch(self, address: str, args: list) -> None:
+        """Touch interaction on an absolute channel (toggles selection)."""
+        state = args[0] if args else 1
+        if not bool(state):
+            return
+
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+
+        selected = getattr(self.app, "selected_channels", [])
+        if ch in selected:
+            self.app.live_selection.execute_action(SelectRemoveAction, ch)
+        else:
+            self.app.live_selection.execute_action(SelectAddAction, ch)
+
+    @make_method("/olc/channel/*/level")
+    def _channel_level(self, address: str, args: list) -> None:
+        """Set level directly for an absolute channel."""
+        if not args:
+            return
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+
+        raw_val = float(args[0])
+        target_level = int(raw_val) if raw_val > 1.0 else round(raw_val * 255.0)
+        target_level = max(0, min(255, target_level))
+        self._execute_action("channel.set_level", ch, target_level)
+
+    @make_method("/olc/wheel/intensity")
+    def _wheel_intensity(self, _address: str, args: list) -> None:
+        """Adjust selected channels level relatively with encoder wheel."""
+        delta = float(args[0]) if args else 1.0
+        step = round(abs(delta))
+        direction = 1 if delta >= 0 else -1
+        self._execute_action("channel.wheel_adjust", step, direction)
+
+    @make_method("/olc/wheel/pan")
+    def _wheel_pan(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures pan relatively in degrees."""
+        delta = float(args[0]) if args else 1.0
+        self._execute_action("device.adjust_pan_tilt", delta, 0.0)
+
+    @make_method("/olc/wheel/tilt")
+    def _wheel_tilt(self, _address: str, args: list) -> None:
+        """Adjust selected fixtures tilt relatively in degrees."""
+        delta = float(args[0]) if args else 1.0
+        self._execute_action("device.adjust_pan_tilt", 0.0, delta)
+
+    @make_method("/olc/selected/pan")
+    def _selected_pan(self, _address: str, args: list) -> None:
+        """Set absolute pan coordinate in degrees on selected fixtures."""
+        if args:
+            val = float(args[0])
+            self._execute_action("device.set_pan_tilt", val, None)
+
+    @make_method("/olc/selected/tilt")
+    def _selected_tilt(self, _address: str, args: list) -> None:
+        """Set absolute tilt coordinate in degrees on selected fixtures."""
+        if args:
+            val = float(args[0])
+            self._execute_action("device.set_pan_tilt", None, val)
+
+    @make_method("/olc/selected/color/rgb")
+    def _selected_color_rgb(self, _address: str, args: list) -> None:
+        """Set RGB color on selected fixtures."""
+        if len(args) >= 3:
+            r = float(args[0])
+            g = float(args[1])
+            b = float(args[2])
+            self._execute_action("device.set_color", r, g, b)
+
+    @make_method("/olc/selected/color/hsv")
+    def _selected_color_hsv(self, _address: str, args: list) -> None:
+        """Set HSV color on selected fixtures (converts to RGB)."""
+        if len(args) >= 3:
+            h = float(args[0])
+            s = float(args[1])
+            v = float(args[2])
+            if h > 1.0:
+                h = h / 360.0
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+            self._execute_action("device.set_color", r, g, b)
+
+    @make_method("/olc/selected/color/kelvin")
+    def _selected_color_kelvin(self, _address: str, args: list) -> None:
+        """Set color temperature in Kelvin on selected fixtures."""
+        if args:
+            k = float(args[0])
+            patch = getattr(self.app.lightshow, "patch", None)
+            targets = list(getattr(self.app, "selected_channels", []))
+            if patch is not None and targets:
+                for ch in targets:
+                    dev = patch.devices.get(ch)
+                    if dev is not None:
+                        dev.set_color_temp_kelvin(k)
+                backend = getattr(self.app, "backend", None)
+                backend_dmx = (
+                    getattr(backend, "dmx", None) if backend is not None else None
+                )
+                if backend_dmx is not None and type(backend_dmx).__name__ == "Dmx":
+                    backend_dmx.set_levels()
+                    backend_dmx.send()
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

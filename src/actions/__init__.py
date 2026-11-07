@@ -57,6 +57,11 @@ from olc.actions.curve import (
     CurveSetLimitAction,
     CurveUpdatePointsAction,
 )
+from olc.actions.device import (
+    DevicePanTiltAdjustAction,
+    DeviceSetColorAction,
+    DeviceSetPanTiltAction,
+)
 from olc.actions.dmx import (
     DmxBlackoutAllAction,
     DmxClearUserOutputsAction,
@@ -267,6 +272,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DmxClearUserOutputsAction,
         DmxBlackoutAllAction,
         MainFaderSetLevelAction,
+        DevicePanTiltAdjustAction,
+        DeviceSetPanTiltAction,
+        DeviceSetColorAction,
         OscToggleAction,
         OscSetConfigAction,
         OscToggleStaticClientAction,
