@@ -706,9 +706,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             fine_ch.set_value(val_16 & 0xFF)
             self._param_last_raw[channel_type] = val_16
         else:
-            val_8 = round(clamped_norm * 255.0)
-            coarse_ch.set_value(val_8)
-            self._param_last_raw[channel_type] = val_8
+            coarse_ch.set_normalized(clamped_norm)
+            self._param_last_raw[channel_type] = coarse_ch.value
 
     def set_parameter_percent(self, channel_type: ChannelType, percent: float) -> None:
         """Set parameter percent [0.0..100.0] across 8/16/24-bit channels."""

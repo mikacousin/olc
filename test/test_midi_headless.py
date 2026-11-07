@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 
 import mido
 import numpy as np
+import pytest
 
 from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS
@@ -79,6 +80,7 @@ def test_midi_headless_execution() -> None:
     # 4. Test Manual Crossfade in headless mode
     midi.xfade._xfade(midi.xfade.fader_out, 180)
     assert core_app.crossfade is not None
-    assert core_app.crossfade.scale_a.get_value() == 180
+    assert core_app.crossfade.scale_a.value_255 == 180
+    assert core_app.crossfade.scale_a.get_value() == pytest.approx(180 / 255.0)
 
     midi.stop()

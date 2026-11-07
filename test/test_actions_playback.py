@@ -211,14 +211,14 @@ def test_manual_xfade_action_execution() -> None:
     # Execute fader A
     app.action_registry.execute("playback.manual_xfade", "a", 150)
     assert mock_crossfade.manual is True
-    mock_scale_a.set_value.assert_called_once_with(150)
+    mock_scale_a.set_value.assert_called_once_with(150 / 255.0)
     mock_crossfade.scale_moved.assert_called_once_with(mock_scale_a)
     assert xfade_events == [("a", 150)]
 
     # Execute fader B with clamping
     mock_crossfade.scale_moved.reset_mock()
     app.action_registry.execute("playback.manual_xfade", "crossfade_in", 300)
-    mock_scale_b.set_value.assert_called_once_with(255)
+    mock_scale_b.set_value.assert_called_once_with(1.0)
     mock_crossfade.scale_moved.assert_called_once_with(mock_scale_b)
     assert xfade_events == [("a", 150), ("b", 255)]
 

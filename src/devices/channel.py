@@ -379,6 +379,15 @@ class Channel:  # pylint: disable=too-many-instance-attributes, too-many-public-
         """Set level from percentage [0.0..100.0]."""
         self.value = round(max(0.0, min(100.0, percent)) / 100.0 * 255.0)
 
+    @property
+    def normalized_value(self) -> float:
+        """Return channel level normalized to [0.0..1.0]."""
+        return self.value / 255.0
+
+    def set_normalized(self, norm: float) -> None:
+        """Set channel level from normalized float [0.0..1.0]."""
+        self.value = round(max(0.0, min(1.0, float(norm))) * 255.0)
+
     def dmx_to_physical(self, dmx_value: Optional[int] = None) -> float:
         """Convert an 8-bit DMX value [0..255] to a physical value."""
         val = self.value if dmx_value is None else max(0, min(255, dmx_value))

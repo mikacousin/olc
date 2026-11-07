@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Mapping
 from enum import StrEnum
 
 import numpy as np
@@ -55,14 +56,14 @@ class Independent:
         number: int,
         independents: Independents,
         text: str = "",
-        levels: dict[int, int] | None = None,
+        levels: Mapping[int, int | float] | None = None,
         inde_type: IndependentType = IndependentType.KNOB,
     ) -> None:
         self.number = number
         self.independents = independents
         self.level = 0.0
         self.channels = set()
-        self.levels = levels or {}
+        self.levels: dict[int, int | float] = dict(levels) if levels else {}
         self.text = text
         self.inde_type = inde_type
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
@@ -80,13 +81,13 @@ class Independent:
             if level:
                 self.channels.add(channel)
 
-    def set_levels(self, levels: dict[int, int]) -> None:
-        """Define channels and levels
+    def set_levels(self, levels: Mapping[int, int | float]) -> None:
+        """Define channels and levels.
 
         Args:
-            levels (Dict[int, int]): channels levels
+            levels: channels levels (normalized float [0.0..1.0] or int [0..255])
         """
-        self.levels = levels
+        self.levels = dict(levels)
         self.channels = {channel for channel, level in levels.items() if level}
 
     def set_level(self, value: float) -> None:
@@ -99,9 +100,10 @@ class Independent:
         self.update_dmx()
 
     def update_dmx(self) -> None:
-        """Update DMX levels"""
+        """Update DMX levels."""
         for channel, level in self.levels.items():
-            self.dmx[channel - 1] = round(level * self.level)
+            norm_lvl = float(level) / 255.0 if float(level) > 1.0 else float(level)
+            self.dmx[channel - 1] = round(norm_lvl * self.level * 255.0)
         self.independents.update_dmx()
         if self.app and hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()

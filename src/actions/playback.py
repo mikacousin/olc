@@ -273,21 +273,23 @@ class PlaybackManualXFadeAction(Action):
             return
 
         crossfade.manual = True
-        val = min(max(int(self.value), 0), 255)
+        raw_val = float(self.value)
+        norm_val = max(0.0, min(1.0, raw_val / 255.0 if raw_val > 1.0 else raw_val))
+        val_255 = round(norm_val * 255.0)
         fader_key = (
             "a" if str(self.fader).lower() in ("a", "crossfade_out", "out") else "b"
         )
         scale = crossfade.scale_a if fader_key == "a" else crossfade.scale_b
-        scale.set_value(val)
+        scale.set_value(norm_val)
         crossfade.scale_moved(scale)
 
         vc = getattr(self.app, "virtual_console", None)
         if vc is not None:
             vc_scale = vc.scale_a if fader_key == "a" else vc.scale_b
             if hasattr(vc_scale, "set_value"):
-                vc_scale.set_value(val)
+                vc_scale.set_value(val_255)
 
-        self.app.emit("playback.xfade_moved", fader_key, val)
+        self.app.emit("playback.xfade_moved", fader_key, val_255)
 
 
 def _is_device_channel_modified(dev: typing.Any, ch_type_val: str) -> bool:  # noqa: ANN401

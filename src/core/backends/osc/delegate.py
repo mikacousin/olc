@@ -1714,12 +1714,26 @@ class OSCDelegate:
             val = float(args[0])
             self._execute_action("device.set_pan_tilt", val, None)
 
+    @make_method("/olc/selected/pan/norm")
+    def _selected_pan_norm(self, _address: str, args: list) -> None:
+        """Set normalized pan [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "pan", norm)
+
     @make_method("/olc/selected/tilt")
     def _selected_tilt(self, _address: str, args: list) -> None:
         """Set absolute tilt coordinate in degrees on selected fixtures."""
         if args:
             val = float(args[0])
             self._execute_action("device.set_pan_tilt", None, val)
+
+    @make_method("/olc/selected/tilt/norm")
+    def _selected_tilt_norm(self, _address: str, args: list) -> None:
+        """Set normalized tilt [0.0..1.0] on selected fixtures."""
+        if args:
+            norm = parse_osc_normalized(args[0])
+            self._execute_action("device.set_parameter", "tilt", norm)
 
     def _get_selected_srgb(self) -> tuple[float, float, float]:
         """Return current (r, g, b) of the last selected fixture or (1, 1, 1)."""

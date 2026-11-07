@@ -293,6 +293,13 @@ def test_osc_wheels_and_color_control_routes() -> None:
     delegate._selected_tilt("/olc/selected/tilt", [-45.0])
     assert spot.tilt_degrees == -45.0
 
+    # Normalized Pan & Tilt [0.0..1.0]
+    delegate._selected_pan_norm("/olc/selected/pan/norm", [0.5])
+    assert abs((spot.get_parameter_normalized(ChannelType.PAN) or 0.0) - 0.5) < 0.01
+
+    delegate._selected_tilt_norm("/olc/selected/tilt/norm", [0.75])
+    assert abs((spot.get_parameter_normalized(ChannelType.TILT) or 0.0) - 0.75) < 0.01
+
     # Select RGB LED on Ch 3
     app.selected_channels = [3]
     rgb_dev = app.lightshow.patch.devices[3]

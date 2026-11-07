@@ -27,28 +27,40 @@ if typing.TYPE_CHECKING:
 
 
 class Scale:
-    """For faders"""
+    """For crossfade faders with normalized [0.0..1.0] internal representation."""
 
     def __init__(self) -> None:
-        self.value = 0
+        self.value: float = 0.0
         self.moved = False
 
     def set_value(self, value: int | float) -> None:
-        """Set scale value
+        """Set scale value.
+
+        Accepts either normalized float [0.0..1.0] or 8-bit integer [0..255].
+        Values > 1.0 are automatically normalized by dividing by 255.0.
 
         Args:
             value: int | float
         """
-        if 0 <= value < 256:
-            self.value = value
+        val = float(value)
+        if val > 1.0:
+            norm_val = max(0.0, min(1.0, val / 255.0))
+        else:
+            norm_val = max(0.0, min(1.0, val))
+        self.value = norm_val
 
-    def get_value(self) -> int | float:
-        """Return scale value
+    def get_value(self) -> float:
+        """Return normalized scale value [0.0..1.0].
 
         Returns:
-            int
+            float in range [0.0..1.0]
         """
         return self.value
+
+    @property
+    def value_255(self) -> int:
+        """Return scale value as 8-bit integer [0..255] for legacy UI widgets."""
+        return round(self.value * 255.0)
 
 
 class CrossFade:
@@ -135,7 +147,7 @@ class CrossFade:
 
         self._takeover_background_thread(main_pb)
 
-        if level not in (255, 0):
+        if level > 0.0 and level < 1.0:
             main_pb.on_go = True
 
         if scale in (self.scale_a, self.scale_b):
@@ -148,15 +160,15 @@ class CrossFade:
             self.update_slider(scale, level)
 
         if (
-            self.scale_a.get_value() == 255
-            and self.scale_b.get_value() == 255
+            self.scale_a.get_value() >= 1.0
+            and self.scale_b.get_value() >= 1.0
             and self.scale_a.moved
             and self.scale_b.moved
         ):
             # In and Out Crossfades at Full
             self.at_full()
 
-        if self.scale_a.get_value() == 0 and self.scale_b.get_value() == 0:
+        if self.scale_a.get_value() <= 0.0 and self.scale_b.get_value() <= 0.0:
             # Stop crossfade if return to 0
             if not main_pb.on_go:
                 return
@@ -236,7 +248,8 @@ class CrossFade:
         step = main_pb.steps[step_idx]
         total_time = step.total_time * 1000
         wait = step.wait * 1000
-        position = (level / 255) * total_time
+        norm_level = level / 255.0 if float(level) > 1.0 else float(level)
+        position = norm_level * total_time
 
         self._update_ui_transition(scale, position, total_time, step_idx)
 
@@ -255,7 +268,7 @@ class CrossFade:
         user_levels = self.app.backend.dmx.levels["user"]
 
         # Update levels
-        if position >= wait or level == 0:
+        if position >= wait or norm_level == 0.0:
             sequence_levels = self.app.backend.dmx.levels["sequence"]
             current_lvls = sequence_levels.astype(np.float64)
 
@@ -296,8 +309,8 @@ class CrossFade:
         if main_pb.patch is None or not resolved.device_values:
             return
 
-        pos_a = (self.scale_a.get_value() / 255.0) * total_time
-        pos_b = (self.scale_b.get_value() / 255.0) * total_time
+        pos_a = self.scale_a.get_value() * total_time
+        pos_b = self.scale_b.get_value() * total_time
         wait_ms = step.wait * 1000.0
         start_states = self._start_device_states or {}
 

@@ -18,6 +18,7 @@ independent.rename)."""
 from __future__ import annotations
 
 import typing
+from collections.abc import Mapping
 
 from olc.core.action import Action
 from olc.independent import IndependentType
@@ -74,10 +75,10 @@ class IndependentUpdateChannelsAction(Action):
         """
         super().__init__(app)
         self.number: int = 1
-        self.levels: dict[int, int] = {}
-        self.old_levels: dict[int, int] = {}
+        self.levels: dict[int, int | float] = {}
+        self.old_levels: dict[int, int | float] = {}
 
-    def configure(self, number: int, levels: dict[int, int]) -> None:
+    def configure(self, number: int, levels: Mapping[int, int | float]) -> None:
         """Configure the action parameters.
 
         Args:
@@ -85,7 +86,7 @@ class IndependentUpdateChannelsAction(Action):
             levels: Channel levels dict.
         """
         self.number = number
-        self.levels = levels
+        self.levels = dict(levels)
 
     def execute(self) -> None:
         """Apply the channels level configuration."""
