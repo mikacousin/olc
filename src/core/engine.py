@@ -23,6 +23,7 @@ from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.backends.osc.mdns import MDNSAdvertiser
+from olc.core.backends.osc.oscquery import OSCQueryServer
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
@@ -153,6 +154,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self.osc_server = None
         self.osc_client = None
         self.osc_mdns: MDNSAdvertiser | None = None
+        self.oscquery_server: OSCQueryServer | None = None
         self.osc_subscriptions = OSCSubscriptionManager()
         self._osc_delegate = None
         self.app = None
@@ -633,13 +635,30 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.osc_server.start(), self._network_thread.loop
             )
 
-            # Start mDNS advertisement for zero-config OSC discovery
+            # Start OSCQuery HTTP JSON introspection server
+            http_port = server_port + 1
+            self.oscquery_server = OSCQueryServer(host="0.0.0.0", http_port=http_port)
+            asyncio.run_coroutine_threadsafe(
+                self.oscquery_server.start(http_port=http_port, osc_port=server_port),
+                self._network_thread.loop,
+            )
+
+            # Start mDNS advertisement for zero-config OSC and OSCQuery discovery
             self.osc_mdns = MDNSAdvertiser()
-            self.osc_mdns.start(service_name="Open Lighting Console", port=server_port)
+            self.osc_mdns.start(
+                service_name="Open Lighting Console",
+                port=server_port,
+                http_port=http_port,
+            )
 
     def stop_osc(self) -> None:
-        """Stop the OSC server and client."""
+        """Stop the OSC server, OSCQuery HTTP server, and client."""
         with self._lock:
+            if self.oscquery_server is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.oscquery_server.stop(), self._network_thread.loop
+                )
+                self.oscquery_server = None
             if self.osc_mdns is not None:
                 self.osc_mdns.stop()
                 self.osc_mdns = None
@@ -710,9 +729,19 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 asyncio.run_coroutine_threadsafe(
                     self.osc_server.start(), self._network_thread.loop
                 )
+                http_port = server_port + 1
+                if self.oscquery_server is not None:
+                    asyncio.run_coroutine_threadsafe(
+                        self.oscquery_server.start(
+                            http_port=http_port, osc_port=server_port
+                        ),
+                        self._network_thread.loop,
+                    )
                 if self.osc_mdns is not None:
                     self.osc_mdns.start(
-                        service_name="Open Lighting Console", port=server_port
+                        service_name="Open Lighting Console",
+                        port=server_port,
+                        http_port=http_port,
                     )
 
     def register_osc_delegate(self, delegate: object) -> None:

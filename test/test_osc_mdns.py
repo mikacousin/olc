@@ -102,3 +102,25 @@ def test_mdns_advertiser_with_mocked_zeroconf() -> None:
         assert advertiser.is_active is False
         mock_zc.unregister_service.assert_called_once()
         mock_zc.close.assert_called_once()
+
+
+def test_mdns_advertiser_oscquery_dual_announcement() -> None:
+    """Test MDNSAdvertiser registers both _osc._udp and _oscjson._tcp with http_port."""
+    advertiser = MDNSAdvertiser()
+
+    mock_zc = MagicMock()
+    mock_service_info_cls = MagicMock()
+    mock_zc_mod = MagicMock()
+    mock_zc_mod.Zeroconf = MagicMock(return_value=mock_zc)
+    mock_zc_mod.ServiceInfo = mock_service_info_cls
+
+    with patch.dict("sys.modules", {"zeroconf": mock_zc_mod}):
+        started = advertiser.start("OLC Dual", port=9000, http_port=9001)
+        assert started is True
+        assert advertiser.http_port == 9001
+        # Both UDP and TCP services must be registered
+        assert mock_zc.register_service.call_count == 2
+
+        advertiser.stop()
+        assert mock_zc.unregister_service.call_count == 2
+        mock_zc.close.assert_called_once()

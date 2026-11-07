@@ -34,6 +34,7 @@ logger = logging.getLogger("olc.osc.mdns")
 MDNS_GROUP = "224.0.0.251"
 MDNS_PORT = 5353
 SERVICE_TYPE = "_osc._udp.local."
+OSCJSON_SERVICE_TYPE = "_oscjson._tcp.local."
 
 
 def _encode_dns_name(name: str) -> bytes:
@@ -64,18 +65,19 @@ def _build_response_packet(
     hostname: str,
     ip_address: str,
     properties: dict[str, str],
+    service_type: str = SERVICE_TYPE,
     ttl: int = 120,
 ) -> bytes:
-    """Build a complete DNS-SD response packet for _osc._udp service."""
+    """Build a complete DNS-SD response packet for a service."""
     # Header: ID=0, Flags=0x8400 (Authoritative Response, No error),
     # Questions=0, Answers=4 (PTR, SRV, TXT, A)
     header = struct.pack("!HHHHHH", 0, 0x8400, 0, 4, 0, 0)
 
-    full_service_name = f"{service_name}.{SERVICE_TYPE}"
+    full_service_name = f"{service_name}.{service_type}"
     target_host = f"{hostname}.local."
 
-    # 1. PTR Record: _osc._udp.local. -> <service_name>._osc._udp.local.
-    ptr_name = _encode_dns_name(SERVICE_TYPE)
+    # 1. PTR Record: <service_type> -> <service_name>.<service_type>
+    ptr_name = _encode_dns_name(service_type)
     ptr_rdata = _encode_dns_name(full_service_name)
     ptr_rr = (
         ptr_name + struct.pack("!HHIH", 0x000C, 0x0001, ttl, len(ptr_rdata)) + ptr_rdata
@@ -115,9 +117,11 @@ class _NativeMDNSResponder:
         service_name: str,
         port: int,
         properties: dict[str, str],
+        http_port: int | None = None,
     ) -> None:
         self.service_name = service_name
         self.port = port
+        self.http_port = http_port
         self.properties = properties
         self.hostname = socket.gethostname().split(".")[0]
         self.ip_address = self._resolve_local_ip()
@@ -175,39 +179,69 @@ class _NativeMDNSResponder:
         """Send multicast announcement response packet."""
         if self._sock is None:
             return
-        packet = _build_response_packet(
+        # 1. Announce _osc._udp
+        packet_udp = _build_response_packet(
             self.service_name,
             self.port,
             self.hostname,
             self.ip_address,
             self.properties,
+            service_type=SERVICE_TYPE,
             ttl=ttl,
         )
         try:
-            self._sock.sendto(packet, (MDNS_GROUP, MDNS_PORT))
+            self._sock.sendto(packet_udp, (MDNS_GROUP, MDNS_PORT))
         except OSError as err:
-            logger.debug("Failed to send mDNS multicast announcement: %s", err)
+            logger.debug("Failed to send mDNS UDP announcement: %s", err)
+
+        # 2. Announce _oscjson._tcp (OSCQuery) if enabled
+        if self.http_port is not None:
+            packet_tcp = _build_response_packet(
+                self.service_name,
+                self.http_port,
+                self.hostname,
+                self.ip_address,
+                self.properties,
+                service_type=OSCJSON_SERVICE_TYPE,
+                ttl=ttl,
+            )
+            try:
+                self._sock.sendto(packet_tcp, (MDNS_GROUP, MDNS_PORT))
+            except OSError as err:
+                logger.debug("Failed to send mDNS TCP announcement: %s", err)
 
     def _loop(self) -> None:
-        """Listen for incoming queries and answer _osc._udp queries."""
-        query_pattern = b"_osc\x04_udp"
+        """Listen for incoming queries and answer _osc._udp and _oscjson._tcp."""
+        query_pattern_udp = b"_osc\x04_udp"
+        query_pattern_tcp = b"_oscjson\x04_tcp"
         while self._running and self._sock is not None:
             try:
                 ready, _, _ = select.select([self._sock], [], [], 1.0)
                 if not ready:
                     continue
-                data, addr = self._sock.recvfrom(2048)
-                if query_pattern in data:
-                    # Respond with our service records
-                    resp = _build_response_packet(
+                data, _addr = self._sock.recvfrom(2048)
+                if query_pattern_udp in data:
+                    resp_udp = _build_response_packet(
                         self.service_name,
                         self.port,
                         self.hostname,
                         self.ip_address,
                         self.properties,
+                        service_type=SERVICE_TYPE,
                         ttl=120,
                     )
-                    self._sock.sendto(resp, (MDNS_GROUP, MDNS_PORT))
+                    self._sock.sendto(resp_udp, (MDNS_GROUP, MDNS_PORT))
+                if self.http_port is not None and query_pattern_tcp in data:
+                    resp_tcp = _build_response_packet(
+                        self.service_name,
+                        self.http_port,
+                        self.hostname,
+                        self.ip_address,
+                        self.properties,
+                        service_type=OSCJSON_SERVICE_TYPE,
+                        ttl=120,
+                    )
+                    self._sock.sendto(resp_tcp, (MDNS_GROUP, MDNS_PORT))
             except (OSError, ValueError):
                 break
 
@@ -235,6 +269,7 @@ class MDNSAdvertiser:
     def __init__(self) -> None:
         self.service_name = "Open Lighting Console"
         self.port: int = 9000
+        self.http_port: typing.Optional[int] = None
         self.properties: dict[str, str] = {
             "txtvers": "1",
             "name": "Open Lighting Console",
@@ -243,7 +278,7 @@ class MDNSAdvertiser:
         }
         self._active: bool = False
         self._zeroconf_instance: typing.Any = None
-        self._service_info: typing.Any = None
+        self._services_info: list[typing.Any] = []
         self._native_responder: typing.Optional[_NativeMDNSResponder] = None
 
     @property
@@ -255,13 +290,15 @@ class MDNSAdvertiser:
         self,
         service_name: str = "Open Lighting Console",
         port: int = 9000,
+        http_port: int | None = None,
         extra_properties: dict[str, str] | None = None,
     ) -> bool:
-        """Advertise the OSC service on the network.
+        """Advertise OSC and optional OSCQuery services on the network.
 
         Args:
             service_name: Visible service instance name.
             port: OSC server listening UDP port.
+            http_port: Optional OSCQuery HTTP server listening TCP port.
             extra_properties: Additional TXT record key-values.
 
         Returns:
@@ -272,6 +309,7 @@ class MDNSAdvertiser:
 
         self.service_name = service_name
         self.port = port
+        self.http_port = http_port
         if extra_properties:
             self.properties.update(extra_properties)
 
@@ -282,7 +320,10 @@ class MDNSAdvertiser:
             zc = Zeroconf()
             hostname = socket.gethostname().split(".")[0]
             server_fqdn = f"{hostname}.local."
-            info = ServiceInfo(
+            self._services_info = []
+
+            # 1a. Register _osc._udp
+            info_udp = ServiceInfo(
                 type_=SERVICE_TYPE,
                 name=f"{self.service_name}.{SERVICE_TYPE}",
                 addresses=[socket.inet_aton("0.0.0.0")],
@@ -290,14 +331,28 @@ class MDNSAdvertiser:
                 properties=self.properties,
                 server=server_fqdn,
             )
-            zc.register_service(info)
+            zc.register_service(info_udp)
+            self._services_info.append(info_udp)
+
+            # 1b. Register _oscjson._tcp (OSCQuery)
+            if self.http_port is not None:
+                info_tcp = ServiceInfo(
+                    type_=OSCJSON_SERVICE_TYPE,
+                    name=f"{self.service_name}.{OSCJSON_SERVICE_TYPE}",
+                    addresses=[socket.inet_aton("0.0.0.0")],
+                    port=self.http_port,
+                    properties=self.properties,
+                    server=server_fqdn,
+                )
+                zc.register_service(info_tcp)
+                self._services_info.append(info_tcp)
+
             self._zeroconf_instance = zc
-            self._service_info = info
             self._active = True
             logger.info(
-                "mDNS service '%s' registered via zeroconf library on port %d",
-                self.service_name,
+                "mDNS services registered via zeroconf (UDP port %d, HTTP port %s)",
                 self.port,
+                str(self.http_port),
             )
             return True
         except (ImportError, Exception) as err:  # pylint: disable=broad-exception-caught
@@ -311,12 +366,13 @@ class MDNSAdvertiser:
             service_name=self.service_name,
             port=self.port,
             properties=self.properties,
+            http_port=self.http_port,
         )
         if responder.start():
             self._native_responder = responder
             self._active = True
             logger.info(
-                "mDNS service '%s' registered via native responder on port %d",
+                "mDNS services registered via native responder (UDP %d, HTTP %s)",
                 self.service_name,
                 self.port,
             )
@@ -330,14 +386,18 @@ class MDNSAdvertiser:
         if not self._active:
             return
 
-        if self._zeroconf_instance is not None and self._service_info is not None:
+        if self._zeroconf_instance is not None:
+            for s_info in self._services_info:
+                try:
+                    self._zeroconf_instance.unregister_service(s_info)
+                except Exception as err:  # pylint: disable=broad-exception-caught
+                    logger.debug("Error unregistering service: %s", err)
             try:
-                self._zeroconf_instance.unregister_service(self._service_info)
                 self._zeroconf_instance.close()
             except Exception as err:  # pylint: disable=broad-exception-caught
                 logger.debug("Error while closing zeroconf: %s", err)
             self._zeroconf_instance = None
-            self._service_info = None
+            self._services_info = []
 
         if self._native_responder is not None:
             self._native_responder.stop()

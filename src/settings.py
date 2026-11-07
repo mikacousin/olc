@@ -788,11 +788,13 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 and engine.osc_mdns.is_active
             ):
                 port = getattr(engine.osc_mdns, "port", 9000)
+                http_port = getattr(engine.osc_mdns, "http_port", None)
                 name = getattr(engine.osc_mdns, "service_name", "Open Lighting Console")
                 title = _("mDNS Discovery:")
+                oscq_suffix = f" • OSCQuery :{http_port}" if http_port else ""
                 self.label_osc_mdns.set_markup(
                     f"<span foreground='#2ec27e'>●</span> <b>{title}</b> "
-                    f"{name}._osc._udp.local (Port {port})"
+                    f"{name}._osc._udp.local (Port {port}){oscq_suffix}"
                 )
             else:
                 title = _("mDNS Discovery:")

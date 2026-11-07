@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Coroutine
 from unittest.mock import MagicMock
 
 import gi
@@ -306,8 +308,19 @@ def test_window_key_press_delegation() -> None:
     assert win.on_window_key_press(MagicMock(), event) is False
 
 
-def test_osc_start_stop_reentrant_lock() -> None:
+def test_osc_start_stop_reentrant_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test repeated start_osc calls without deadlocking on CoreEngine._lock."""
+
+    # Ensure coroutines passed to threadsafe call are closed when loop is mocked
+    def mock_run_coroutine(
+        coro: Coroutine[object, object, object],
+        _loop: asyncio.AbstractEventLoop,
+    ) -> MagicMock:
+        coro.close()
+        return MagicMock()
+
+    monkeypatch.setattr("asyncio.run_coroutine_threadsafe", mock_run_coroutine)
+
     engine = CoreEngine(UniverseMap(1), monitor_port=5555, no_listen=True)
     engine._network_thread = MagicMock()  # pylint: disable=protected-access
 
