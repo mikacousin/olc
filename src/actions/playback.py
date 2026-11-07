@@ -227,17 +227,22 @@ class PlaybackGotoAction(Action):
         if not main_playback or not self.target:
             return
 
-        main_playback.goto(self.target, override_time=self.override_time)
+        if self.override_time is not None:
+            main_playback.goto(self.target, override_time=self.override_time)
+        else:
+            main_playback.goto(self.target)
         self.app.emit("playback.goto_triggered", self.get_feedback_state())
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state for the GOTO action."""
-        return {
+        state = {
             "active": False,
             "label": "GOTO",
             "target": self.target,
-            "override_time": self.override_time,
         }
+        if self.override_time is not None:
+            state["override_time"] = self.override_time
+        return state
 
 
 class PlaybackManualXFadeAction(Action):
