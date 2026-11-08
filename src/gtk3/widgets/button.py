@@ -32,13 +32,17 @@ class ButtonWidget(Gtk.Widget):
     RADIUS = 10
     FONT_SIZE = 10
 
-    def __init__(self, label: str = "", text: str = "None") -> None:
+    def __init__(
+        self, label: str = "", text: str = "None", shortcut_text: str = ""
+    ) -> None:
         Gtk.Widget.__init__(self)
         self.is_learning = False
 
         self.pressed = False
         self.label = label
         self.text = text
+        self.shortcut_text = shortcut_text
+        self.show_shortcut = False
 
         self.set_size_request(self.WIDTH, self.HEIGHT)
 
@@ -109,10 +113,23 @@ class ButtonWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(self.FONT_SIZE)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
+        y_offset = 3 if (self.show_shortcut and self.shortcut_text) else 0
         cr.move_to(
-            self.WIDTH / 2 - w / 2, self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2
+            self.WIDTH / 2 - w / 2,
+            self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2 - y_offset,
         )
         cr.show_text(self.label)
+
+        # Draw shortcut key badge if enabled
+        if self.show_shortcut and self.shortcut_text:
+            cr.set_source_rgb(1.0, 0.85, 0.2)  # warm gold / amber
+            badge_font_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
+            cr.set_font_size(badge_font_size)
+            (_bx, _by, bw, _bh, _bdx, _bdy) = cr.text_extents(self.shortcut_text)
+            badge_x = max(2.0, min(float(self.WIDTH - bw - 4), (self.WIDTH - bw) / 2.0))
+            cr.move_to(badge_x, float(self.HEIGHT - 5))
+            cr.show_text(self.shortcut_text)
+
         return False
 
     def do_realize(self) -> None:

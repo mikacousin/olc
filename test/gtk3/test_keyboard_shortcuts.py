@@ -388,6 +388,16 @@ def test_console_hotkeys_direct_letters(app_gui: Application) -> None:
     win._on_key_controller_pressed(controller, Gdk.KEY_n, 0, Gdk.ModifierType(0))
     assert cmdline.get_string() == "SNEAK "
 
+    # Test 'j' -> "ODD "
+    cmdline.clear()
+    win._on_key_controller_pressed(controller, Gdk.KEY_j, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "ODD "
+
+    # Test 'y' -> "DELAY "
+    cmdline.clear()
+    win._on_key_controller_pressed(controller, Gdk.KEY_y, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "DELAY "
+
 
 @pytest.mark.gui
 def test_console_hotkeys_shift_secondary_layer(app_gui: Application) -> None:
@@ -456,6 +466,16 @@ def test_console_hotkeys_ctrl_alt_pos_keypad(app_gui: Application) -> None:
     cmdline.clear()
     assert win._on_key_controller_pressed(controller, Gdk.KEY_n, 0, ctrl_alt) is True
     assert cmdline.get_string() == "SNEAK "
+
+    # Ctrl+Alt+J -> "ODD "
+    cmdline.clear()
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_j, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "ODD "
+
+    # Ctrl+Alt+Y -> "DELAY "
+    cmdline.clear()
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_y, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "DELAY "
 
     # Ctrl+B -> Blackout toggle action
     executed: list[str] = []

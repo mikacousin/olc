@@ -487,8 +487,10 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
                 (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
+                (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
                 (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
+                (Gdk.KEY_y, Gdk.KEY_Y): ("DELAY", True),
             }
             for keys, (kw, tr) in pos_map.items():
                 if keyval in keys:
@@ -722,8 +724,10 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
                 (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
+                (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
                 (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
+                (Gdk.KEY_y, Gdk.KEY_Y): ("DELAY", True),
             }
             for keys, (kw, tr) in direct_hotkeys.items():
                 if keyval in keys:

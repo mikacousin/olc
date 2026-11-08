@@ -31,10 +31,14 @@ class GoWidget(Gtk.Widget):
     radius: int
     pressed: bool
     go_active: bool
+    shortcut_text: str
+    show_shortcut: bool
 
-    def __init__(self) -> None:
+    def __init__(self, shortcut_text: str = "Space / ^G") -> None:
         super().__init__()
         self.is_learning = False
+        self.shortcut_text = shortcut_text
+        self.show_shortcut = False
 
         self.width = 100
         self.height = 50
@@ -86,10 +90,23 @@ class GoWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Go")
+        y_offset = 3 if (self.show_shortcut and self.shortcut_text) else 0
         cr.move_to(
-            self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
+            self.width / 2 - w / 2,
+            self.height / 2 - (h - (self.radius * 2)) / 2 - y_offset,
         )
         cr.show_text("Go")
+
+        # Draw shortcut key badge if enabled
+        if self.show_shortcut and self.shortcut_text:
+            cr.set_source_rgb(1.0, 0.85, 0.2)  # warm gold / amber
+            badge_font_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
+            cr.set_font_size(badge_font_size)
+            (_bx, _by, bw, _bh, _bdx, _bdy) = cr.text_extents(self.shortcut_text)
+            badge_x = max(2.0, min(float(self.width - bw - 4), (self.width - bw) / 2.0))
+            cr.move_to(badge_x, float(self.height - 5))
+            cr.show_text(self.shortcut_text)
+
         return False
 
     def do_realize(self) -> None:

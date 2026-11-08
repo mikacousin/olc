@@ -42,12 +42,16 @@ class VirtualConsoleWindow(Gtk.Window):
     app: Application
     commandline: CoreCommandLine
     blackout: Gtk.ToggleButton
+    midi: Gtk.ToggleButton
+    shortcuts_toggle: Gtk.ToggleButton
+    is_holding_f1: bool
     updating_blackout: bool
 
     # pylint: disable=too-many-statements
     def __init__(self, app: Application) -> None:
         self.app = app
         self.commandline = app.core.commandline
+        self.is_holding_f1 = False
         self.updating_fader = False
         self.updating_independent = False
         self.updating_blackout = False
@@ -57,6 +61,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # On close window
         self.connect("delete-event", self._close)
+        self.connect("focus-out-event", self._on_focus_out)
 
         # Header bar
         self.header = Gtk.HeaderBar()
@@ -76,6 +81,15 @@ class VirtualConsoleWindow(Gtk.Window):
         self.midi.connect("toggled", self._on_button_toggled, "MIDI")
         self.header.pack_end(self.midi)
 
+        # Keyboard shortcuts toggle button
+        self.shortcuts_toggle = Gtk.ToggleButton(label="⌨")
+        self.shortcuts_toggle.get_style_context().add_class("olc-shortcuts-toggle")
+        self.shortcuts_toggle.set_tooltip_text(
+            "Afficher les raccourcis clavier (ou maintenir F1)"
+        )
+        self.shortcuts_toggle.connect("toggled", self._on_shortcuts_toggled)
+        self.header.pack_end(self.shortcuts_toggle)
+
         # Initial blackout display state
         initial_blackout = bool(getattr(self.app.core, "blackout_active", False))
         backend = getattr(self.app.core, "backend", None)
@@ -87,33 +101,35 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad = Gtk.Grid()
         # self.num_pad.set_column_homogeneous(True)
         # self.num_pad.set_row_homogeneous(True)
-        self.zero = ButtonWidget(label="0", text="number_0")
+        self.zero = ButtonWidget(label="0", text="number_0", shortcut_text="0")
         self.zero.connect("clicked", self._on_zero)
-        self.one = ButtonWidget(label="1", text="number_1")
+        self.one = ButtonWidget(label="1", text="number_1", shortcut_text="1")
         self.one.connect("clicked", self._on_1)
-        self.two = ButtonWidget(label="2", text="number_2")
+        self.two = ButtonWidget(label="2", text="number_2", shortcut_text="2")
         self.two.connect("clicked", self._on_2)
-        self.three = ButtonWidget(label="3", text="number_3")
+        self.three = ButtonWidget(label="3", text="number_3", shortcut_text="3")
         self.three.connect("clicked", self._on_3)
-        self.four = ButtonWidget(label="4", text="number_4")
+        self.four = ButtonWidget(label="4", text="number_4", shortcut_text="4")
         self.four.connect("clicked", self._on_4)
-        self.five = ButtonWidget(label="5", text="number_5")
+        self.five = ButtonWidget(label="5", text="number_5", shortcut_text="5")
         self.five.connect("clicked", self._on_5)
-        self.six = ButtonWidget(label="6", text="number_6")
+        self.six = ButtonWidget(label="6", text="number_6", shortcut_text="6")
         self.six.connect("clicked", self._on_6)
-        self.seven = ButtonWidget(label="7", text="number_7")
+        self.seven = ButtonWidget(label="7", text="number_7", shortcut_text="7")
         self.seven.connect("clicked", self._on_7)
-        self.eight = ButtonWidget(label="8", text="number_8")
+        self.eight = ButtonWidget(label="8", text="number_8", shortcut_text="8")
         self.eight.connect("clicked", self._on_8)
-        self.nine = ButtonWidget(label="9", text="number_9")
+        self.nine = ButtonWidget(label="9", text="number_9", shortcut_text="9")
         self.nine.connect("clicked", self._on_9)
-        self.dot = ButtonWidget(label=".", text="dot")
+        self.dot = ButtonWidget(label=".", text="dot", shortcut_text=".")
         self.dot.connect("clicked", self._on_dot)
-        self.backspace = ButtonWidget(label="Backspace", text="backspace")
+        self.backspace = ButtonWidget(
+            label="Backspace", text="backspace", shortcut_text="⌫"
+        )
         self.backspace.connect("clicked", self._on_backspace)
-        self.clear = ButtonWidget(label="Clear", text="clear")
+        self.clear = ButtonWidget(label="Clear", text="clear", shortcut_text="Esc / ⇧C")
         self.clear.connect("clicked", self._on_clear)
-        self.enter = ButtonWidget(label="Enter", text="enter")
+        self.enter = ButtonWidget(label="Enter", text="enter", shortcut_text="↵ / Ent")
         self.enter.connect("clicked", self._on_enter)
 
         # Row 0: 7, 8, 9
@@ -140,9 +156,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.time_pad = Gtk.Grid()
         # self.time_pad.set_column_homogeneous(True)
         # self.time_pad.set_row_homogeneous(True)
-        self.time = ButtonWidget(label="Time", text="time")
+        self.time = ButtonWidget(label="Time", text="time", shortcut_text="I")
         self.time.connect("clicked", self._on_time)
-        self.delay = ButtonWidget(label="Delay", text="delay")
+        self.delay = ButtonWidget(label="Delay", text="delay", shortcut_text="Y")
         self.delay.connect("clicked", self._on_delay)
         self.time_pad.attach(self.time, 2, 0, 1, 1)
         self.time_pad.attach(self.delay, 2, 1, 1, 1)
@@ -151,11 +167,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_pad = Gtk.Grid()
         # self.seq_pad.set_column_homogeneous(True)
         # self.seq_pad.set_row_homogeneous(True)
-        self.seq = ButtonWidget(label="Seq", text="seq")
+        self.seq = ButtonWidget(label="Seq", text="seq", shortcut_text="S")
         self.seq.connect("clicked", self._on_seq)
         self.preset = ButtonWidget(label="Preset", text="preset")
         self.preset.connect("clicked", self._on_preset)
-        self.group = ButtonWidget(label="Group", text="group")
+        self.group = ButtonWidget(label="Group", text="group", shortcut_text="G")
         self.group.connect("clicked", self._on_group)
         self.seq_pad.attach(self.seq, 0, 2, 1, 1)
         self.seq_pad.attach(self.preset, 0, 3, 1, 1)
@@ -179,9 +195,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.rec_pad = Gtk.Grid()
         # self.rec_pad.set_column_homogeneous(True)
         # self.rec_pad.set_row_homogeneous(True)
-        self.update = ButtonWidget(label="Update", text="update")
+        self.update = ButtonWidget(
+            label="Update", text="update", shortcut_text="U / ⇧U"
+        )
         self.update.connect("clicked", self._on_update)
-        self.record = ButtonWidget(label="Record", text="record")
+        self.record = ButtonWidget(
+            label="Record", text="record", shortcut_text="R / ⇧R"
+        )
         self.record.connect("clicked", self._on_record)
         self.track = ButtonWidget(label="Track", text="track")
         self.track.connect("clicked", self._on_track)
@@ -199,39 +219,43 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad = Gtk.Grid()
         # self.thru_pad.set_column_homogeneous(True)
         # self.thru_pad.set_row_homogeneous(True)
-        self.thru = ButtonWidget(label="Thru", text="thru")
+        self.thru = ButtonWidget(label="Thru", text="thru", shortcut_text="T")
         self.thru.connect("clicked", self._on_thru)
-        self.plus = ButtonWidget(label="+", text="plus")
+        self.plus = ButtonWidget(label="+", text="plus", shortcut_text="+")
         self.plus.connect("clicked", self._on_plus)
-        self.minus = ButtonWidget(label="-", text="minus")
+        self.minus = ButtonWidget(label="-", text="minus", shortcut_text="-")
         self.minus.connect("clicked", self._on_minus)
 
-        self.all = ButtonWidget(label="All", text="all")
+        self.all = ButtonWidget(label="All", text="all", shortcut_text="M")
         self.all.connect("clicked", self._on_all)
-        self.odd = ButtonWidget(label="Odd", text="odd")
+        self.odd = ButtonWidget(label="Odd", text="odd", shortcut_text="J")
         self.odd.connect("clicked", self._on_odd)
-        self.even = ButtonWidget(label="Even", text="even")
+        self.even = ButtonWidget(label="Even", text="even", shortcut_text="E")
         self.even.connect("clicked", self._on_even)
 
-        self.at_level = ButtonWidget(label="At", text="at")
+        self.at_level = ButtonWidget(label="At", text="at", shortcut_text="A")
         self.at_level.connect("clicked", self._on_at)
-        self.full = ButtonWidget(label="Full", text="full")
+        self.full = ButtonWidget(label="Full", text="full", shortcut_text="F / ⇧A")
         self.full.connect("clicked", self._on_full)
-        self.out = ButtonWidget(label="Out", text="out")
+        self.out = ButtonWidget(label="Out", text="out", shortcut_text="O / ⇧O")
         self.out.connect("clicked", self._on_out)
 
-        self.percent_plus = ButtonWidget(label="+%", text="percent_plus")
+        self.percent_plus = ButtonWidget(
+            label="+%", text="percent_plus", shortcut_text="^↑"
+        )
         self.percent_plus.connect("clicked", self._on_percent_plus)
-        self.percent_minus = ButtonWidget(label="-%", text="percent_minus")
+        self.percent_minus = ButtonWidget(
+            label="-%", text="percent_minus", shortcut_text="^↓"
+        )
         self.percent_minus.connect("clicked", self._on_percent_minus)
-        self.block = ButtonWidget(label="Block", text="block")
+        self.block = ButtonWidget(label="Block", text="block", shortcut_text="B")
         self.block.connect("clicked", self._on_block)
 
-        self.delete = ButtonWidget(label="Delete", text="delete")
+        self.delete = ButtonWidget(label="Delete", text="delete", shortcut_text="D")
         self.delete.connect("clicked", self._on_delete)
-        self.goto = ButtonWidget(label="Goto", text="goto")
+        self.goto = ButtonWidget(label="Goto", text="goto", shortcut_text="⇧Q")
         self.goto.connect("clicked", self._on_goto)
-        self.sneak = ButtonWidget(label="Sneak", text="sneak")
+        self.sneak = ButtonWidget(label="Sneak", text="sneak", shortcut_text="N")
         self.sneak.connect("clicked", self._on_sneak)
 
         # Row 0: Thru, +, -
@@ -259,13 +283,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.modify_pad = Gtk.Grid()
         # self.modify_pad.set_column_homogeneous(True)
         # self.modify_pad.set_row_homogeneous(True)
-        self.up = ButtonWidget(label="^", text="up")
+        self.up = ButtonWidget(label="^", text="up", shortcut_text="↑")
         self.up.connect("clicked", self._on_up)
-        self.down = ButtonWidget(label="v", text="down")
+        self.down = ButtonWidget(label="v", text="down", shortcut_text="↓")
         self.down.connect("clicked", self._on_down)
-        self.left = ButtonWidget(label="<", text="left")
+        self.left = ButtonWidget(label="<", text="left", shortcut_text="←")
         self.left.connect("clicked", self._on_left)
-        self.right = ButtonWidget(label=">", text="right")
+        self.right = ButtonWidget(label=">", text="right", shortcut_text="→")
         self.right.connect("clicked", self._on_right)
         self.modify_pad.attach(self.up, 1, 0, 1, 1)
         self.modify_pad.attach(self.left, 0, 1, 1, 1)
@@ -356,11 +380,15 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
-        self.go_button = GoWidget()
+        self.go_button = GoWidget(shortcut_text="Space / ^G")
         self.go_button.connect("clicked", self._on_go)
-        self.seq_plus = ButtonWidget(label="Next Cue", text="playback.sequence_plus")
+        self.seq_plus = ButtonWidget(
+            label="Next Cue", text="playback.sequence_plus", shortcut_text="Alt+↓"
+        )
         self.seq_plus.connect("clicked", self._on_seq_plus)
-        self.seq_minus = ButtonWidget(label="Prev Cue", text="playback.sequence_minus")
+        self.seq_minus = ButtonWidget(
+            label="Prev Cue", text="playback.sequence_minus", shortcut_text="Alt+↑"
+        )
         self.seq_minus.connect("clicked", self._on_seq_minus)
         self.goback = ButtonWidget(label="Go Back", text="playback.go_back")
         self.goback.connect("clicked", self._on_go_back)
@@ -455,6 +483,18 @@ class VirtualConsoleWindow(Gtk.Window):
         self.key_controller = Gtk.EventControllerKey.new(self)
         self.key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         self.key_controller.connect("key-pressed", self._on_key_controller_pressed)
+        self.key_controller.connect("key-released", self._on_key_controller_released)
+
+    def _on_shortcuts_toggled(self, _btn: Gtk.ToggleButton) -> None:
+        """Handle toggling the display of keyboard shortcuts."""
+        self.queue_draw()
+
+    def _on_focus_out(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Reset F1 hold state if window loses focus."""
+        if self.is_holding_f1:
+            self.is_holding_f1 = False
+            self.queue_draw()
+        return False
 
     def _on_key_controller_pressed(
         self,
@@ -477,6 +517,12 @@ class VirtualConsoleWindow(Gtk.Window):
         Returns:
             True if event handled, False otherwise.
         """
+        if keyval == Gdk.KEY_F1:
+            if not self.is_holding_f1:
+                self.is_holding_f1 = True
+                self.queue_draw()
+            return True
+
         modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
         if bool(modifiers & Gdk.ModifierType.CONTROL_MASK) and keyval in (
             Gdk.KEY_w,
@@ -496,6 +542,31 @@ class VirtualConsoleWindow(Gtk.Window):
                     controller, keyval, keycode, state
                 )
             )
+        return False
+
+    def _on_key_controller_released(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        _state: Gdk.ModifierType,
+    ) -> bool:
+        """Handle key release events for Virtual Console.
+
+        Args:
+            _controller: Gtk EventControllerKey.
+            keyval: Key value.
+            _keycode: Hardware keycode.
+            _state: Modifier state.
+
+        Returns:
+            True if event handled, False otherwise.
+        """
+        if keyval == Gdk.KEY_F1:
+            if self.is_holding_f1:
+                self.is_holding_f1 = False
+                self.queue_draw()
+            return True
         return False
 
     @property
@@ -1256,17 +1327,23 @@ class VirtualConsoleWindow(Gtk.Window):
                 midi_fader.set_state(int(value))
 
     def queue_draw(self) -> None:
-        """Synchronize learning states before drawing."""
+        """Synchronize learning states and shortcut display before drawing."""
+        show_sc = bool(
+            (hasattr(self, "shortcuts_toggle") and self.shortcuts_toggle.get_active())
+            or getattr(self, "is_holding_f1", False)
+        )
         if hasattr(self, "go_button") and self.go_button:
             is_learning = False
             if self.app.midi and self.app.midi.learning == "playback.go":
                 is_learning = True
             self.go_button.is_learning = is_learning
+            self.go_button.show_shortcut = show_sc
         if hasattr(self, "pause") and self.pause:
             is_learning = False
             if self.app.midi and self.app.midi.learning == "playback.pause":
                 is_learning = True
             self.pause.is_learning = is_learning
+            self.pause.show_shortcut = show_sc
 
         for attr in list(self.__dict__.values()) + list(self.independent_widgets):
             if isinstance(attr, ButtonWidget):
@@ -1278,6 +1355,9 @@ class VirtualConsoleWindow(Gtk.Window):
                 ):
                     is_learning = True
                 attr.is_learning = is_learning
+                attr.show_shortcut = show_sc
+
+        super().queue_draw()
 
     def update_independent_display(self, number: int, level: float) -> None:
         """Update independent slider or button state in GUI."""

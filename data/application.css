@@ -19,6 +19,12 @@ flowboxchild:selected {
   background-color: @olc-active-red;
 }
 
+.olc-shortcuts-toggle:checked {
+  background-image: none;
+  background-color: #555555;
+  color: #ffd700;
+}
+
 .olc-blackout-toggle {
   font-weight: bold;
 }
