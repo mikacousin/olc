@@ -30,8 +30,17 @@ _CellEditableType: typing.Any = Gtk.CellEditable
 
 
 def _is_text_editing(widget: Gtk.Widget | None) -> bool:
-    """Return True if widget is an editable text entry or cell."""
-    return bool(widget and isinstance(widget, (Gtk.Entry, _CellEditableType)))
+    """Return True if widget is an editable text entry, view, or treeview cell."""
+    if not widget:
+        return False
+    if isinstance(widget, (Gtk.Entry, Gtk.TextView, _CellEditableType)):
+        return True
+    if isinstance(widget, Gtk.TreeView):
+        return any(
+            isinstance(child, (Gtk.Entry, Gtk.TextView, _CellEditableType))
+            for child in widget.get_children()
+        )
+    return False
 
 
 if typing.TYPE_CHECKING:
@@ -125,18 +134,32 @@ class Window(Gtk.ApplicationWindow):
         Returns:
             Active tab
         """
+        live_view = getattr(self, "live_view", None)
+        playback = getattr(self, "playback", None)
+        if not live_view or not playback:
+            return None
         widget = self.get_focus()
         while widget:
-            if widget in (self.live_view, self.playback):
+            if widget in (live_view, playback):
                 break
             widget = widget.get_parent()
         if not widget:
             return None
-        notebook_id = "live" if widget is self.live_view else "playback"
-        if self.app.core.tabs:
+        notebook_id = "live" if widget is live_view else "playback"
+        if (
+            getattr(self, "app", None)
+            and getattr(self.app, "core", None)
+            and getattr(self.app.core, "tabs", None)
+        ):
             self.app.core.tabs.active_notebook = notebook_id
         any_widget = typing.cast(typing.Any, widget)
-        return any_widget.get_nth_page(any_widget.get_current_page())
+        if hasattr(any_widget, "get_nth_page") and hasattr(
+            any_widget, "get_current_page"
+        ):
+            page_idx = any_widget.get_current_page()
+            if isinstance(page_idx, int) and page_idx >= 0:
+                return any_widget.get_nth_page(page_idx)
+        return None
 
     def toggle_focus(self) -> None:
         """Toggle focus Left/Right"""
@@ -327,16 +350,28 @@ class Window(Gtk.ApplicationWindow):
 
     def _get_active_page(self) -> Gtk.Widget | None:
         """Return the currently active notebook page widget."""
-        page = self.get_active_tab()
+        try:
+            page = self.get_active_tab()
+        except (AttributeError, TypeError):
+            page = None
         if page is not None:
             return page
         active_nb = "live"
-        if hasattr(self.app, "core") and self.app.core.tabs:
+        if (
+            hasattr(self, "app")
+            and getattr(self.app, "core", None)
+            and getattr(self.app.core, "tabs", None)
+        ):
             active_nb = getattr(self.app.core.tabs, "active_notebook", "live") or "live"
-        notebook = self.playback if active_nb == "playback" else self.live_view
-        idx = notebook.get_current_page()
-        if idx >= 0:
-            return notebook.get_nth_page(idx)
+        notebook = (
+            getattr(self, "playback", None)
+            if active_nb == "playback"
+            else getattr(self, "live_view", None)
+        )
+        if notebook is not None and hasattr(notebook, "get_current_page"):
+            idx = notebook.get_current_page()
+            if isinstance(idx, int) and idx >= 0 and hasattr(notebook, "get_nth_page"):
+                return notebook.get_nth_page(idx)
         return None
 
     def _get_active_channels_view(self) -> ChannelsView:
@@ -544,6 +579,45 @@ class Window(Gtk.ApplicationWindow):
             if tc:
                 tc.update_display()
 
+    def is_text_editing_active(self) -> bool:
+        """Return True if focus is on a text widget or cell editing is active."""
+        focused = self.get_focus()
+        if _is_text_editing(focused):
+            return True
+        try:
+            page = self._get_active_page()
+        except (AttributeError, TypeError):
+            page = None
+        treeviews: list[Gtk.TreeView] = []
+        if page is not None:
+            for attr in ("treeview", "treeview1", "treeview2", "devices_treeview"):
+                tv = getattr(page, attr, None)
+                if isinstance(tv, Gtk.TreeView):
+                    treeviews.append(tv)
+        tabs_manager = getattr(self, "tabs_manager", None)
+        if tabs_manager is not None and hasattr(tabs_manager, "tabs"):
+            tabs_dict = getattr(tabs_manager, "tabs", None)
+            if isinstance(tabs_dict, dict):
+                for tab_widget in tabs_dict.values():
+                    if tab_widget is not None and tab_widget is not page:
+                        for attr in (
+                            "treeview",
+                            "treeview1",
+                            "treeview2",
+                            "devices_treeview",
+                        ):
+                            tv = getattr(tab_widget, attr, None)
+                            if isinstance(tv, Gtk.TreeView):
+                                treeviews.append(tv)
+        for tv in treeviews:
+            if hasattr(tv, "get_children"):
+                if any(
+                    isinstance(child, (Gtk.Entry, Gtk.TextView, _CellEditableType))
+                    for child in tv.get_children()
+                ):
+                    return True
+        return False
+
     def _on_key_controller_pressed(  # pylint: disable=too-many-return-statements,too-many-branches
         self,
         _controller: Gtk.EventControllerKey,
@@ -565,7 +639,7 @@ class Window(Gtk.ApplicationWindow):
             self.app.core.action_registry.execute("playback.go")
             return True
 
-        if _is_text_editing(self.get_focus()):
+        if self.is_text_editing_active():
             return False
 
         if bool(

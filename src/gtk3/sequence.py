@@ -222,6 +222,7 @@ class SequenceTab(Gtk.Grid):
             if i in edit_callbacks:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", edit_callbacks[i])
+                renderer.connect("editing-started", self._on_editing_started)
 
             column = Gtk.TreeViewColumn(column_title, renderer)
             column.add_attribute(renderer, "text", i)
@@ -459,6 +460,16 @@ class SequenceTab(Gtk.Grid):
         self.window.app.core.action_registry.execute(
             "step.update_text", sequence.index, step, text
         )
+
+    def _on_editing_started(
+        self,
+        _renderer: Gtk.CellRenderer,
+        editable: Gtk.CellEditable,
+        _path: str,
+    ) -> None:
+        """Grab focus on editable when cell editing begins."""
+        if isinstance(editable, Gtk.Widget):
+            editable.grab_focus()
 
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select cue"""

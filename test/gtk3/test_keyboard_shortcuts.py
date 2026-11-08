@@ -447,3 +447,134 @@ def test_console_text_entry_focus_isolation(
         controller, Gdk.KEY_g, 0, Gdk.ModifierType.CONTROL_MASK
     )
     assert ctrl_g_res is True
+
+
+@pytest.mark.gui
+def test_cue_treeview_cell_editing_space(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure editing a cue text in CuesEditionTab does not trigger GO on space."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+    cmdline = app_gui.core.commandline
+
+    cmdline.clear()
+    app_gui.open_memories()
+    process_events()
+
+    from olc.gtk3.cue import CuesEditionTab
+
+    cues_tab = win.tabs_manager.tabs["memories"]
+    assert isinstance(cues_tab, CuesEditionTab)
+    if len(app_gui.core.lightshow.cues) == 0:
+        from olc.cue import Cue
+
+        app_gui.core.lightshow.cues.append(Cue(0, 1.0, text="Test Cue"))
+        cues_tab.refresh()
+        process_events()
+
+    tree = cues_tab.treeview
+    col = tree.get_column(1)  # Text column
+    assert col is not None
+    cells = col.get_cells()
+    assert len(cells) > 0
+
+    # Pre-select cue so cursor-changed doesn't re-trigger cue.select
+    app_gui.core.action_registry.execute("cue.select", (1.0, 0))
+    process_events()
+
+    tree.grab_focus()
+    tree.set_cursor_on_cell(Gtk.TreePath.new_first(), col, cells[0], True)
+    process_events()
+
+    executed_actions: list[str] = []
+    orig_execute = app_gui.core.action_registry.execute
+
+    def spy_execute(name: str, *args: object, **kwargs: object) -> object:
+        executed_actions.append(name)
+        return orig_execute(name, *args, **kwargs)
+
+    monkeypatch.setattr(app_gui.core.action_registry, "execute", spy_execute)
+
+    # 0. Global app accelerators do not include bare "space" for GO
+    assert "space" not in app_gui.get_accels_for_action("app.go")
+
+    # 1. Editing cell in CuesEditionTab: space returns False, playback.go is NOT called
+    assert win.is_text_editing_active() is True
+    res = win._on_key_controller_pressed(
+        controller, Gdk.KEY_space, 0, Gdk.ModifierType(0)
+    )
+    assert res is False
+    assert "playback.go" not in executed_actions
+
+    # 2. Even if win.get_focus() temporarily returns the TreeView itself while editing:
+    monkeypatch.setattr(win, "get_focus", lambda: tree)
+    assert win.is_text_editing_active() is True
+    res2 = win._on_key_controller_pressed(
+        controller, Gdk.KEY_space, 0, Gdk.ModifierType(0)
+    )
+    assert res2 is False
+    assert "playback.go" not in executed_actions
+
+
+@pytest.mark.gui
+def test_sequence_treeview_cell_editing_space(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure editing a cue text in SequenceTab does not trigger GO on space."""
+    from olc.gtk3.sequence import SequenceTab
+
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+
+    # 1. Open the Sequences Tab
+    app_gui.activate_action("sequences", None)
+    process_events()
+
+    seq_tab = win.tabs_manager.tabs["sequences"]
+    assert isinstance(seq_tab, SequenceTab)
+
+    # Select sequence 1 and insert a step
+    path1 = Gtk.TreePath.new_first()
+    seq_tab.treeview1.set_cursor(path1, None, False)
+    seq_tab.on_sequence_changed()
+    process_events()
+
+    model2 = seq_tab.treeview2.get_model()
+    if model2 is None or len(model2) == 0:
+        seq_tab._keypress_r()
+        process_events()
+
+    tree2 = seq_tab.treeview2
+    col_text = tree2.get_column(2)  # Column 2 is "Text"
+    assert col_text is not None
+    cells = col_text.get_cells()
+    assert len(cells) > 0
+
+    tree2.grab_focus()
+    tree2.set_cursor_on_cell(Gtk.TreePath.new_first(), col_text, cells[0], True)
+    process_events()
+
+    executed_actions: list[str] = []
+    orig_execute = app_gui.core.action_registry.execute
+
+    def spy_execute(name: str, *args: object, **kwargs: object) -> object:
+        executed_actions.append(name)
+        return orig_execute(name, *args, **kwargs)
+
+    monkeypatch.setattr(app_gui.core.action_registry, "execute", spy_execute)
+
+    assert win.is_text_editing_active() is True
+    res = win._on_key_controller_pressed(
+        controller, Gdk.KEY_space, 0, Gdk.ModifierType(0)
+    )
+    assert res is False
+    assert "playback.go" not in executed_actions
+
+    res = win._on_key_controller_pressed(
+        controller, Gdk.KEY_space, 0, Gdk.ModifierType(0)
+    )
+    assert res is False
+    assert "playback.go" not in executed_actions

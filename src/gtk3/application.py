@@ -160,7 +160,7 @@ class Application(Gtk.Application):
             lambda *_: self.core.action_registry.execute("playback.go"),
         )
         self.add_action(action)
-        self.set_accels_for_action("app.go", ["<Control>g", "space"])
+        self.set_accels_for_action("app.go", ["<Control>g"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
         action.connect(

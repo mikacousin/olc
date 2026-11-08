@@ -90,6 +90,7 @@ class CuesEditionTab(Gtk.Paned):
             if i == 1:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self._text_edited)
+                renderer.connect("editing-started", self._on_editing_started)
             column = Gtk.TreeViewColumn(column_title, renderer)
             column.add_attribute(renderer, "text", i)
 
@@ -133,7 +134,10 @@ class CuesEditionTab(Gtk.Paned):
                             break
                     if idx != -1:
                         path = Gtk.TreePath.new_from_indices([idx])
-                        self.treeview.set_cursor(path, None, False)
+                        cur_path, _ = self.treeview.get_cursor()
+                        # Avoid canceling active cell editing or redundant selection
+                        if cur_path != path and not self.treeview.get_children():
+                            self.treeview.set_cursor(path, None, False)
             else:
                 self.treeview.get_selection().unselect_all()
             self.channels_view._cache_time = 0.0  # pylint: disable=protected-access
@@ -194,6 +198,16 @@ class CuesEditionTab(Gtk.Paned):
         self.window.app.core.action_registry.execute(
             "cue.rename", cue.number, cue.sequence, text
         )
+
+    def _on_editing_started(
+        self,
+        _renderer: Gtk.CellRenderer,
+        editable: Gtk.CellEditable,
+        _path: str,
+    ) -> None:
+        """Grab focus on editable when cell editing begins."""
+        if isinstance(editable, Gtk.Widget):
+            editable.grab_focus()
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
