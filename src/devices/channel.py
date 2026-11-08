@@ -77,6 +77,37 @@ COLOR_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
     }
 )
 
+POSITION_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.PAN,
+        ChannelType.TILT,
+    }
+)
+
+BEAM_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.ZOOM,
+        ChannelType.FOCUS,
+        ChannelType.IRIS,
+        ChannelType.STROBE,
+        ChannelType.FROST,
+        ChannelType.GOBO_WHEEL,
+        ChannelType.PRISM,
+        ChannelType.MACRO,
+        ChannelType.RESET,
+    }
+)
+
+CATEGORY_CHANNEL_TYPES: dict[str, frozenset[ChannelType]] = {
+    "position": POSITION_CHANNEL_TYPES,
+    "pos": POSITION_CHANNEL_TYPES,
+    "color": COLOR_CHANNEL_TYPES,
+    "colour": COLOR_CHANNEL_TYPES,
+    "beam": BEAM_CHANNEL_TYPES,
+    "intensity": frozenset({ChannelType.INTENSITY}),
+    "int": frozenset({ChannelType.INTENSITY}),
+}
+
 
 class MergeMode(Enum):
     """Semantic merge mode for a DMX channel."""
@@ -273,6 +304,7 @@ class Channel:  # pylint: disable=too-many-instance-attributes, too-many-public-
     address: int
     value: int = 0
     default_value: int = 0
+    highlight_value: Optional[int] = None
     fine: bool = False
     ultra_fine: bool = False
     label: str = ""
@@ -417,6 +449,19 @@ class Channel:  # pylint: disable=too-many-instance-attributes, too-many-public-
         """Reset value to default value."""
         self.value = self.default_value
 
+    def locate(self) -> None:
+        """Set channel to highlight/locate value or default."""
+        if self.highlight_value is not None:
+            self.value = self.highlight_value
+        elif self.channel_type == ChannelType.INTENSITY:
+            self.value = 255
+        elif self.channel_type == ChannelType.STROBE:
+            self.value = self.default_value if self.default_value != 0 else 255
+        elif self.channel_type in COLOR_CHANNEL_TYPES:
+            self.value = 255
+        else:
+            self.value = self.default_value
+
     def _clamp(self) -> None:
         self.value = max(0, min(255, self.value))
 
@@ -463,6 +508,8 @@ class Channel:  # pylint: disable=too-many-instance-attributes, too-many-public-
 
 
 __all__ = [
+    "BEAM_CHANNEL_TYPES",
+    "CATEGORY_CHANNEL_TYPES",
     "COLOR_CHANNEL_TYPES",
     "Channel",
     "ChannelRange",
@@ -470,5 +517,6 @@ __all__ = [
     "DmxAddress",
     "FixtureType",
     "MergeMode",
+    "POSITION_CHANNEL_TYPES",
     "get_default_merge_mode",
 ]

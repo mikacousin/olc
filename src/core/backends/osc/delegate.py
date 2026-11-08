@@ -2323,6 +2323,44 @@ class OSCDelegate:
         norm = parse_osc_normalized(args[0])
         self._execute_action("device.set_parameter", param_name, norm, channels=[ch])
 
+    @make_method("/olc/selected/home")
+    def _selected_home(self, _address: str, args: list) -> None:
+        """Reset selected fixtures to default Home values (intensity unchanged)."""
+        if args and float(args[0]) == 0.0:
+            return
+        self._execute_action("device.home")
+
+    @make_method("/olc/selected/locate")
+    def _selected_locate(self, _address: str, args: list) -> None:
+        """Locate selected fixtures to Home with full intensity."""
+        if args and float(args[0]) == 0.0:
+            return
+        self._execute_action("device.locate")
+
+    @make_method("/olc/device/*/home")
+    def _device_home(self, address: str, args: list) -> None:
+        """Reset specific fixture to default Home values."""
+        if args and float(args[0]) == 0.0:
+            return
+        parts = address.split("/")
+        try:
+            dev_id = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        self._execute_action("device.home", channels=[dev_id])
+
+    @make_method("/olc/device/*/locate")
+    def _device_locate(self, address: str, args: list) -> None:
+        """Locate specific fixture with full intensity."""
+        if args and float(args[0]) == 0.0:
+            return
+        parts = address.split("/")
+        try:
+            dev_id = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        self._execute_action("device.locate", channels=[dev_id])
+
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:
         print(f"[OSC Delegate] Unknown message: {address} with args {args}")

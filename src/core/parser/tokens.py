@@ -47,6 +47,8 @@ class TokenType(Enum):
     OUT = auto()
 
     # Moving lights & Attribute keywords
+    HOME = auto()
+    LOCATE = auto()
     POSITION = auto()
     BEAM = auto()
     PAN = auto()

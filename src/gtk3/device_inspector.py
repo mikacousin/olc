@@ -120,6 +120,20 @@ class DeviceInspectorWidget(Gtk.Box):
         self.selection_summary_label = Gtk.Label(label="No device selected", xalign=0)
         top_row.pack_start(self.selection_summary_label, True, True, 0)
 
+        self.home_btn = Gtk.Button(label="Home")
+        self.home_btn.set_tooltip_text(
+            "Reset selected fixtures to default parameters (intensity unchanged)"
+        )
+        self.home_btn.connect("clicked", lambda _b: self.home_selected_devices())
+        top_row.pack_end(self.home_btn, False, False, 0)
+
+        self.locate_btn = Gtk.Button(label="Locate")
+        self.locate_btn.set_tooltip_text(
+            "Locate selected fixtures with default parameters and full intensity"
+        )
+        self.locate_btn.connect("clicked", lambda _b: self.locate_selected_devices())
+        top_row.pack_end(self.locate_btn, False, False, 0)
+
         self.mode_toggle_btn = Gtk.ToggleButton(label="Mode: Relative (Delta)")
         self.mode_toggle_btn.set_active(False)
         self.mode_toggle_btn.connect("toggled", self._on_mode_btn_toggled)
@@ -816,6 +830,42 @@ class DeviceInspectorWidget(Gtk.Box):
         if points and not any(p["is_lead"] for p in points):
             points[0]["is_lead"] = True
         return points
+
+    def home_selected_devices(self, category: Optional[str] = None) -> None:
+        """Trigger device.home on selected devices."""
+        if not self.selected_devices:
+            return
+        core = getattr(self.app, "core", self.app) if self.app is not None else None
+        registry = getattr(core, "action_registry", getattr(core, "actions", None))
+        if registry is not None and hasattr(registry, "execute"):
+            targets = [dev.fixture_id for dev in self.selected_devices]
+            registry.execute("device.home", channels=targets, category=category)
+            self._sync_devices_to_live_and_dmx(self.selected_devices)
+            self.refresh_ui()
+            return
+        for dev in self.selected_devices:
+            dev.home(category)
+        self._sync_devices_to_live_and_dmx(self.selected_devices)
+        self.refresh_ui()
+
+    def locate_selected_devices(self) -> None:
+        """Trigger device.locate on selected devices."""
+        if not self.selected_devices:
+            return
+        core = getattr(self.app, "core", self.app) if self.app is not None else None
+        registry = getattr(core, "action_registry", getattr(core, "actions", None))
+        if registry is not None and hasattr(registry, "execute"):
+            targets = [dev.fixture_id for dev in self.selected_devices]
+            registry.execute("device.locate", channels=targets)
+            self._sync_devices_to_live_and_dmx(
+                self.selected_devices, sync_intensity=True
+            )
+            self.refresh_ui()
+            return
+        for dev in self.selected_devices:
+            dev.locate()
+        self._sync_devices_to_live_and_dmx(self.selected_devices, sync_intensity=True)
+        self.refresh_ui()
 
     def center_position(self) -> None:
         """Center Pan and Tilt to (0.0°, 0.0°) on all position-capable devices."""

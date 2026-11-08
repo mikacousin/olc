@@ -229,6 +229,7 @@ class GdtfImporter:
         fine_offset = offsets[1] - 1 if len(offsets) > 1 else None
         ultra_fine_offset = offsets[2] - 1 if len(offsets) > 2 else None
         default_val = ch.get("default", 0)
+        highlight_val = ch.get("highlight")
 
         all_functions: list[dict[str, Any]] = []
         for lc in ch.get("logical_channels", []):
@@ -263,6 +264,7 @@ class GdtfImporter:
                 offset=offset,
                 label=attr_name,
                 default_value=default_val,
+                highlight_value=highlight_val,
                 fine_offset=fine_offset,
                 ultra_fine_offset=ultra_fine_offset,
                 physical_min=phys_min,
@@ -283,6 +285,7 @@ class GdtfImporter:
             offset=offset,
             label=attr_name,
             default_value=default_val,
+            highlight_value=highlight_val,
             fine_offset=fine_offset,
             ultra_fine_offset=ultra_fine_offset,
             ranges=ranges,

@@ -38,7 +38,10 @@ from .color import (
     sRGB,
 )
 from .device import (
+    BEAM_CHANNEL_TYPES,
+    CATEGORY_CHANNEL_TYPES,
     COLOR_CHANNEL_TYPES,
+    POSITION_CHANNEL_TYPES,
     Channel,
     ChannelRange,
     ChannelType,
@@ -60,6 +63,8 @@ from .gdtf import (
 
 __all__ = [
     # device
+    "BEAM_CHANNEL_TYPES",
+    "CATEGORY_CHANNEL_TYPES",
     "DmxAddress",
     "ChannelType",
     "ChannelRange",
@@ -67,6 +72,7 @@ __all__ = [
     "FixtureType",
     "LightingDevice",
     "COLOR_CHANNEL_TYPES",
+    "POSITION_CHANNEL_TYPES",
     # fixture
     "ChannelDefinition",
     "DmxModeDefinition",

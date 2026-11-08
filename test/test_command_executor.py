@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from olc.core.app import CoreApplication
 from olc.core.parser.ast_nodes import SelectOnlyCommandNode
 from olc.core.parser.executor import CommandExecutor
@@ -485,3 +487,35 @@ def test_executor_noun_first_ifcb_and_goto_time_override() -> None:
     assert int(mock_backend.dmx.levels["sequence"][0]) == 128
     assert led.intensity == pytest.approx(128 / 255.0)
     assert led.color_srgb.to_hex().upper() == "#00FF00"
+
+
+def test_command_executor_home_and_locate() -> None:
+    from olc.actions import register_all_actions
+    from olc.devices import create_moving_head_definition
+
+    app = CoreApplication(MagicMock())
+    register_all_actions(app.action_registry)
+    mock_backend = MagicMock()
+    mock_backend.dmx = MagicMock()
+    app.backend = mock_backend
+
+    fix_def = create_moving_head_definition()
+    app.lightshow.patch.patch_device(1, fix_def, 1, 1)
+    dev = app.lightshow.patch.devices[1]
+
+    dev.set_intensity(0.5)
+    dev.set_position_degrees(50.0, 50.0)
+
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # Execute 1 HOME
+    res = executor.execute(parser.parse("1 HOME"))
+    assert res.success is True
+    assert dev.intensity == 0.5
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.1)
+
+    # Execute 1 LOCATE
+    res_loc = executor.execute(parser.parse("1 LOCATE"))
+    assert res_loc.success is True
+    assert dev.intensity == 1.0

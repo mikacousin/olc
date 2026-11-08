@@ -51,6 +51,8 @@ KEYWORDS: dict[str, TokenType] = {
     "UNBLOCK": TokenType.UNBLOCK,
     "DELETE": TokenType.DELETE,
     # ML Attributes & Families
+    "HOME": TokenType.HOME,
+    "LOCATE": TokenType.LOCATE,
     "POSITION": TokenType.POSITION,
     "POS": TokenType.POSITION,
     "BEAM": TokenType.BEAM,

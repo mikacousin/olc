@@ -630,8 +630,11 @@ def test_lighting_device_pan_tilt_physical_16bit() -> None:
     fix_def = create_moving_head_definition()
     dev = fix_def.instantiate(fixture_id=1, label="Spot1", universe=1, address=1)
 
-    assert dev.pan_degrees == pytest.approx(-270.0)
-    assert dev.tilt_degrees == pytest.approx(-135.0)
+    # Defaults to center (0.0°, 0.0°)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.01)
+    assert dev.tilt_degrees == pytest.approx(0.0, abs=0.01)
+    assert dev.pan_16bit == pytest.approx(32768, abs=2)
+    assert dev.tilt_16bit == pytest.approx(32768, abs=2)
 
     # Set center positions
     dev.set_position_degrees(0.0, 0.0)
@@ -702,14 +705,18 @@ def test_lighting_device_optical_strobe_cct_physical() -> None:
     fix_def = create_moving_head_definition()
     dev = fix_def.instantiate(fixture_id=3, label="OpticSpot", universe=1, address=1)
 
-    # Zoom (10 deg to 35 deg)
+    # Zoom (10 deg to 35 deg, default midpoint 50% = 22.5 deg)
+    assert dev.zoom_degrees == pytest.approx(22.5, abs=0.2)
+    dev.set_zoom_degrees(10.0)
     assert dev.zoom_degrees == pytest.approx(10.0, abs=0.1)
     dev.set_zoom_degrees(22.5)  # exact midpoint
     assert dev.zoom_degrees == pytest.approx(22.5, abs=0.2)
     dev.set_zoom_degrees(50.0)  # clamped to max
     assert dev.zoom_degrees == pytest.approx(35.0, abs=0.1)
 
-    # Shutter / Strobe (1 Hz to 25 Hz)
+    # Shutter / Strobe (1 Hz to 25 Hz, default open 255 = 25.0 Hz)
+    assert dev.strobe_hz == pytest.approx(25.0, abs=0.1)
+    dev.set_strobe_hz(1.0)
     assert dev.strobe_hz == pytest.approx(1.0, abs=0.1)
     dev.set_strobe_hz(13.0)  # midpoint
     assert dev.strobe_hz == pytest.approx(13.0, abs=0.2)
@@ -1080,3 +1087,52 @@ def test_fixture_name_and_address_range_str() -> None:
         fixture_type=FixtureType.GENERIC,
     )
     assert dev_empty.address_range_str == "-"
+
+
+def test_channel_definition_multibyte_defaults_and_highlight() -> None:
+    """Test 16-bit and 24-bit default and highlight slicing in ChannelDefinition."""
+    # 1. 16-bit channel (e.g. Pan with default 32768 -> coarse 128, fine 0)
+    ch_def_16 = ChannelDefinition(
+        channel_type=ChannelType.PAN,
+        offset=0,
+        fine_offset=1,
+        default_value=32768,
+        highlight_value=32768,
+    )
+    channels_16 = ch_def_16.to_channel(universe=1, base_address=1)
+    assert len(channels_16) == 2
+    assert channels_16[0].default_value == 128
+    assert channels_16[0].value == 128
+    assert channels_16[0].highlight_value == 128
+    assert channels_16[1].default_value == 0
+    assert channels_16[1].value == 0
+    assert channels_16[1].highlight_value == 0
+
+    # 2. 24-bit channel (default 8388608 -> coarse 128, fine 0, ultra 0)
+    ch_def_24 = ChannelDefinition(
+        channel_type=ChannelType.PAN,
+        offset=0,
+        fine_offset=1,
+        ultra_fine_offset=2,
+        default_value=8388608,
+        highlight_value=8388608,
+    )
+    channels_24 = ch_def_24.to_channel(universe=1, base_address=10)
+    assert len(channels_24) == 3
+    assert channels_24[0].default_value == 128
+    assert channels_24[1].default_value == 0
+    assert channels_24[2].default_value == 0
+
+    # 3. Channel locate method
+    ch_int = Channel(
+        channel_type=ChannelType.INTENSITY,
+        universe=1,
+        address=1,
+        default_value=0,
+        highlight_value=255,
+    )
+    assert ch_int.value == 0
+    ch_int.locate()
+    assert ch_int.value == 255
+    ch_int.reset()
+    assert ch_int.value == 0

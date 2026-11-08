@@ -53,6 +53,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
     offset: int
     label: str = ""
     default_value: int = 0
+    highlight_value: Optional[int] = None
     fine_offset: Optional[int] = None
     ultra_fine_offset: Optional[int] = None
     ranges: list[ChannelRange] = field(default_factory=list)
@@ -81,13 +82,58 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                 addr = ((addr - 1) % 512) + 1
             return univ, addr
 
+        is_24bit = self.ultra_fine_offset is not None
+        is_16bit = self.fine_offset is not None and not is_24bit
+
+        if is_24bit:
+            coarse_def = (self.default_value >> 16) & 0xFF
+            fine_def = (self.default_value >> 8) & 0xFF
+            ultra_def = self.default_value & 0xFF
+            if self.highlight_value is not None:
+                coarse_hl: Optional[int] = (self.highlight_value >> 16) & 0xFF
+                fine_hl: Optional[int] = (self.highlight_value >> 8) & 0xFF
+                ultra_hl: Optional[int] = self.highlight_value & 0xFF
+            else:
+                coarse_hl = fine_hl = ultra_hl = None
+        elif is_16bit:
+            if self.default_value > 255:
+                coarse_def = (self.default_value >> 8) & 0xFF
+                fine_def = self.default_value & 0xFF
+            else:
+                coarse_def = self.default_value & 0xFF
+                fine_def = 0
+            if self.highlight_value is not None:
+                if self.highlight_value > 255:
+                    coarse_hl = (self.highlight_value >> 8) & 0xFF
+                    fine_hl = self.highlight_value & 0xFF
+                else:
+                    coarse_hl = self.highlight_value & 0xFF
+                    fine_hl = 0
+            else:
+                coarse_hl = fine_hl = None
+            ultra_def = 0
+            ultra_hl = None
+        else:
+            coarse_def = self.default_value & 0xFF
+            fine_def = 0
+            ultra_def = 0
+            coarse_hl = (
+                self.highlight_value & 0xFF
+                if self.highlight_value is not None
+                else None
+            )
+            fine_hl = None
+            ultra_hl = None
+
         u, a = resolve(universe, base_address + self.offset)
         channels = [
             Channel(
                 channel_type=self.channel_type,
                 universe=u,
                 address=a,
-                default_value=self.default_value,
+                value=coarse_def,
+                default_value=coarse_def,
+                highlight_value=coarse_hl,
                 label=self.label,
                 ranges=list(self.ranges),
                 physical_min=self.physical_min,
@@ -104,7 +150,9 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                     channel_type=self.channel_type,
                     universe=uf,
                     address=af,
-                    default_value=0,
+                    value=fine_def,
+                    default_value=fine_def,
+                    highlight_value=fine_hl,
                     fine=True,
                     label=f"{self.label}_fine",
                     physical_min=self.physical_min,
@@ -121,7 +169,9 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                     channel_type=self.channel_type,
                     universe=uu,
                     address=au,
-                    default_value=0,
+                    value=ultra_def,
+                    default_value=ultra_def,
+                    highlight_value=ultra_hl,
                     fine=False,
                     ultra_fine=True,
                     label=f"{self.label}_ultra_fine",
@@ -141,6 +191,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
             "offset": self.offset,
             "label": self.label,
             "default_value": self.default_value,
+            "highlight_value": self.highlight_value,
             "fine_offset": self.fine_offset,
             "ultra_fine_offset": self.ultra_fine_offset,
             "physical_min": self.physical_min,
@@ -164,6 +215,11 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
             offset=int(data["offset"]),
             label=str(data.get("label", "")),
             default_value=int(data.get("default_value", 0)),
+            highlight_value=(
+                int(data["highlight_value"])
+                if data.get("highlight_value") is not None
+                else None
+            ),
             fine_offset=(
                 int(data["fine_offset"])
                 if data.get("fine_offset") is not None

@@ -59,6 +59,8 @@ from olc.actions.curve import (
 )
 from olc.actions.device import (
     DeviceAdjustParameterAction,
+    DeviceHomeAction,
+    DeviceLocateAction,
     DevicePanTiltAdjustAction,
     DeviceSetColorAction,
     DeviceSetPanTiltAction,
@@ -279,6 +281,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DeviceSetColorAction,
         DeviceSetParameterAction,
         DeviceAdjustParameterAction,
+        DeviceHomeAction,
+        DeviceLocateAction,
         OscToggleAction,
         OscSetConfigAction,
         OscToggleStaticClientAction,

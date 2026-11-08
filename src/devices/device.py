@@ -22,7 +22,10 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .channel import (
+    BEAM_CHANNEL_TYPES,
+    CATEGORY_CHANNEL_TYPES,
     COLOR_CHANNEL_TYPES,
+    POSITION_CHANNEL_TYPES,
     Channel,
     ChannelRange,
     ChannelType,
@@ -1036,6 +1039,77 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         for k in self._base_emitters:
             self._base_emitters[k] = 0.0
 
+    def home(
+        self,
+        categories: Optional[set[str] | str | set[ChannelType]] = None,
+    ) -> None:
+        """Reset parameters to defaults, leaving intensity untouched unless specified.
+
+        Args:
+            categories: Category name(s) ("position", "color", "beam", "intensity")
+                        or specific ChannelType(s) to home.
+                        If None, resets all non-intensity parameters.
+        """
+        target_types: set[ChannelType] = set()
+        if categories is not None:
+            cats = (
+                {categories}
+                if isinstance(categories, (str, ChannelType))
+                else set(categories)
+            )
+            for c in cats:
+                if isinstance(c, ChannelType):
+                    target_types.add(c)
+                elif isinstance(c, str):
+                    c_lower = c.lower()
+                    if c_lower in CATEGORY_CHANNEL_TYPES:
+                        target_types.update(CATEGORY_CHANNEL_TYPES[c_lower])
+        else:
+            # All non-intensity channels
+            target_types = {
+                ch.channel_type
+                for ch in self.channels
+                if ch.channel_type != ChannelType.INTENSITY
+            }
+
+        for ch in self.channels:
+            if ch.channel_type in target_types:
+                ch.reset()
+
+        # Invalidate/update internal state caches
+        if any(t in POSITION_CHANNEL_TYPES for t in target_types):
+            self._param_normalized.pop("pan", None)
+            self._param_normalized.pop("tilt", None)
+            self._param_last_raw.pop("pan", None)
+            self._param_last_raw.pop("tilt", None)
+
+        if any(t in COLOR_CHANNEL_TYPES for t in target_types):
+            any_color_def_255 = any(
+                ch.channel_type in COLOR_CHANNEL_TYPES and ch.default_value > 0
+                for ch in self.channels
+            )
+            col_level = 1.0 if any_color_def_255 else 0.0
+            self._target_color = sRGB(col_level, col_level, col_level)
+            self._target_cie = CIExyY(0.3127, 0.3290, col_level)
+            for k in self._base_emitters:
+                self._base_emitters[k] = col_level
+
+        for t in target_types:
+            self._param_normalized.pop(t.value, None)
+            self._param_last_raw.pop(t.value, None)
+
+    def locate(self) -> None:
+        """Reset fixture to home values and bring intensity to full / open."""
+        self.home()
+        if self.has_physical_dimmer:
+            self.set_intensity(1.0)
+            shutter_ch = self.get_channel(ChannelType.STROBE)
+            if shutter_ch is not None:
+                shutter_ch.reset()
+        else:
+            self.set_color_rgb_float(1.0, 1.0, 1.0)
+            self.set_intensity(1.0)
+
     def _apply_color_param(self, value: Any) -> None:  # noqa: ANN401
         """Apply color parameter from hex string or RGB tuple."""
         if isinstance(value, str):
@@ -1306,6 +1380,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
 
 __all__ = [
+    "BEAM_CHANNEL_TYPES",
+    "CATEGORY_CHANNEL_TYPES",
     "COLOR_CHANNEL_TYPES",
     "Channel",
     "ChannelRange",
@@ -1314,5 +1390,6 @@ __all__ = [
     "FixtureType",
     "LightingDevice",
     "MergeMode",
+    "POSITION_CHANNEL_TYPES",
     "get_default_merge_mode",
 ]

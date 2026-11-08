@@ -327,6 +327,7 @@ def test_device_parameter_actions_undo_redo() -> None:
     spot = app.lightshow.patch.devices[2]
 
     # 1. Set normalized zoom on channel 2
+    init_zoom = spot.get_parameter_normalized(ChannelType.ZOOM) or 0.0
     app.action_registry.execute("device.set_parameter", "zoom", 0.75, channels=[2])
     norm_val = spot.get_parameter_normalized(ChannelType.ZOOM)
     assert norm_val is not None
@@ -336,7 +337,7 @@ def test_device_parameter_actions_undo_redo() -> None:
     app.history.undo()
     norm_val_undo = spot.get_parameter_normalized(ChannelType.ZOOM)
     assert norm_val_undo is not None
-    assert abs(norm_val_undo - 0.0) < 0.01
+    assert abs(norm_val_undo - init_zoom) < 0.01
 
     # Redo
     app.history.redo()
@@ -366,6 +367,8 @@ def test_osc_additional_parameters_routes() -> None:
 
     # Select spot (ch 2)
     app.selected_channels = [2]
+    spot.set_parameter_normalized(ChannelType.ZOOM, 0.0)
+    spot.set_parameter_normalized(ChannelType.STROBE, 0.0)
 
     # 1. Wheels
     delegate._wheel_zoom("/olc/wheel/zoom", [0.2])

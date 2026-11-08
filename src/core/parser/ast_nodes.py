@@ -94,6 +94,21 @@ class IntensityCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
+class HomeCommandNode(CommandNode):
+    """Command to reset fixture parameters to Home defaults (e.g. 1 HOME)."""
+
+    selection: SelectionNode | None = None
+    category: str | None = None
+
+
+@dataclasses.dataclass
+class LocateCommandNode(CommandNode):
+    """Command to locate fixtures at Home with full intensity (e.g. 1 LOCATE)."""
+
+    selection: SelectionNode | None = None
+
+
+@dataclasses.dataclass
 class AttributeCommandNode(CommandNode):
     """Command setting moving light attributes (e.g. 1 PAN 45 TILT -30 COLOR RED)."""
 

@@ -29,7 +29,9 @@ from olc.core.parser.ast_nodes import (
     DeleteCueCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
+    HomeCommandNode,
     IntensityCommandNode,
+    LocateCommandNode,
     RecordCueCommandNode,
     SelectionItemNode,
     SelectionNode,
@@ -116,6 +118,12 @@ class CommandExecutor:
 
         if isinstance(node, DeleteCueCommandNode):
             return self._execute_delete_cue(node)
+
+        if isinstance(node, HomeCommandNode):
+            return self._execute_home(node)
+
+        if isinstance(node, LocateCommandNode):
+            return self._execute_locate(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -338,6 +346,51 @@ class CommandExecutor:
                     dev.apply_device_values({"color": color_hex})
             except ValueError:
                 pass
+
+    def _execute_home(self, node: HomeCommandNode) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected for HOME")
+
+        if node.selection is not None:
+            self.app.selected_channels = list(channels)
+
+        registry = getattr(
+            self.app, "action_registry", getattr(self.app, "actions", None)
+        )
+        if registry is None:
+            return CommandResult(False, "Action registry not available")
+
+        registry.execute("device.home", channels=channels, category=node.category)
+
+        cat_str = f" {node.category.upper()}" if node.category else ""
+        return CommandResult(
+            True,
+            f"Homed{cat_str} on {len(channels)} fixture(s)",
+            affected_channels=channels,
+        )
+
+    def _execute_locate(self, node: LocateCommandNode) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected for LOCATE")
+
+        if node.selection is not None:
+            self.app.selected_channels = list(channels)
+
+        registry = getattr(
+            self.app, "action_registry", getattr(self.app, "actions", None)
+        )
+        if registry is None:
+            return CommandResult(False, "Action registry not available")
+
+        registry.execute("device.locate", channels=channels)
+
+        return CommandResult(
+            True,
+            f"Located {len(channels)} fixture(s) at full",
+            affected_channels=channels,
+        )
 
     def _capture_live_cue_state(
         self, lightshow: LightShow

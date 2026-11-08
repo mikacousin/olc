@@ -1325,3 +1325,35 @@ def test_osc_manual_xfade_control_and_feedback() -> None:
     delegate._playback_xfade("/olc/playback/xfade", [0.5])
     assert pytest.approx(app.crossfade.scale_a.get_value(), 0.01) == 0.5
     assert pytest.approx(app.crossfade.scale_b.get_value(), 0.01) == 0.5
+
+
+def test_osc_device_home_and_locate() -> None:
+    """Test /olc/selected/home, /olc/selected/locate, and /olc/device/{id}/home."""
+    from olc.devices.builtin import create_moving_head_definition
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    delegate = OSCDelegate(app)
+
+    app.lightshow.patch.patch_device(1, create_moving_head_definition(), 1, 1)
+    dev = app.lightshow.patch.devices[1]
+
+    # Alter fixture
+    dev.set_intensity(0.5)
+    dev.set_position_degrees(50.0, 30.0)
+    app.selected_channels = [1]
+
+    # 1. /olc/selected/home
+    delegate._selected_home("/olc/selected/home", [1.0])
+    assert dev.intensity == 0.5
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.1)
+
+    # 2. /olc/selected/locate
+    dev.set_intensity(0.0)
+    delegate._selected_locate("/olc/selected/locate", [1.0])
+    assert dev.intensity == 1.0
+
+    # 3. /olc/device/1/home
+    dev.set_position_degrees(-40.0, -20.0)
+    delegate._device_home("/olc/device/1/home", [1.0])
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.1)

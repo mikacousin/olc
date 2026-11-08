@@ -499,3 +499,34 @@ def test_inspector_realtime_sync_with_osc_and_core_events() -> None:
     assert color_events[0][0] == [2]
 
     inspector.cleanup()
+
+
+def test_inspector_home_and_locate_buttons(app_gui: Application) -> None:
+    """Test Home and Locate buttons on Device Inspector widget."""
+    core = app_gui.core
+    core.lightshow.patch.patch_device(1, create_moving_head_definition(), 1, 1)
+    mh = core.lightshow.patch.devices[1]
+
+    inspector = DeviceInspectorWidget(app=app_gui)
+    inspector.set_selected_devices([mh])
+
+    # Alter pan/tilt and intensity
+    inspector.apply_intensity_percent(50.0)
+    mh.set_position_degrees(45.0, 30.0)
+
+    # Click Home button
+    inspector.home_btn.clicked()
+    process_events()
+
+    assert mh.intensity == pytest.approx(0.5, abs=0.01)
+    assert mh.pan_degrees == pytest.approx(0.0, abs=0.1)
+
+    # Click Locate button
+    inspector.apply_intensity_percent(0.0)
+    inspector.locate_btn.clicked()
+    process_events()
+
+    assert mh.intensity == 1.0
+    assert mh.pan_degrees == pytest.approx(0.0, abs=0.1)
+
+    inspector.cleanup()

@@ -27,7 +27,9 @@ from olc.core.parser.ast_nodes import (
     DeleteCueCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
+    HomeCommandNode,
     IntensityCommandNode,
+    LocateCommandNode,
     RecordCueCommandNode,
     SelectOnlyCommandNode,
     UnblockCueCommandNode,
@@ -325,3 +327,36 @@ def test_parser_record_cue_ifcb_times() -> None:
     assert TokenType.POSITION in expected_after_rec
     assert TokenType.COLOR in expected_after_rec
     assert TokenType.BEAM in expected_after_rec
+
+
+def test_parser_home_and_locate() -> None:
+    parser = CommandParser()
+
+    # 1. Standalone HOME / LOCATE
+    n1 = parser.parse("HOME")
+    assert isinstance(n1, HomeCommandNode)
+    assert n1.selection is None
+    assert n1.category is None
+
+    n2 = parser.parse("LOCATE")
+    assert isinstance(n2, LocateCommandNode)
+    assert n2.selection is None
+
+    # 2. Selection + HOME / LOCATE
+    n3 = parser.parse("1 HOME")
+    assert isinstance(n3, HomeCommandNode)
+    assert n3.selection is not None
+    assert n3.category is None
+
+    n4 = parser.parse("1 THRU 5 LOCATE")
+    assert isinstance(n4, LocateCommandNode)
+    assert n4.selection is not None
+
+    # 3. Category filtering (POSITION HOME, COLOR HOME, HOME BEAM)
+    n5 = parser.parse("1 POSITION HOME")
+    assert isinstance(n5, HomeCommandNode)
+    assert n5.category == "position"
+
+    n6 = parser.parse("HOME COLOR")
+    assert isinstance(n6, HomeCommandNode)
+    assert n6.category == "color"

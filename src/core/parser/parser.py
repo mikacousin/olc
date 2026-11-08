@@ -28,7 +28,9 @@ from olc.core.parser.ast_nodes import (
     DeleteCueCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
+    HomeCommandNode,
     IntensityCommandNode,
+    LocateCommandNode,
     RecordCueCommandNode,
     SelectionItemNode,
     SelectionNode,
@@ -171,6 +173,33 @@ class CommandParser:
         if tok.type == TokenType.DELETE:
             return self._parse_delete_cue()
 
+        # Standalone LOCATE / HOME (implicit selection)
+        if tok.type == TokenType.LOCATE:
+            self.advance()
+            return LocateCommandNode(selection=None)
+
+        if tok.type == TokenType.HOME:
+            self.advance()
+            cat = None
+            if self.peek().type in (
+                TokenType.POSITION,
+                TokenType.COLOR,
+                TokenType.BEAM,
+            ):
+                cat = self.advance().raw_text.lower()
+            return HomeCommandNode(selection=None, category=cat)
+
+        if tok.type in (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
+            if (
+                self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].type == TokenType.HOME
+            ):
+                cat_tok = self.advance()
+                self.advance()  # consume HOME
+                return HomeCommandNode(
+                    selection=None, category=cat_tok.raw_text.lower()
+                )
+
         # Check if command starts directly with an intensity or attribute
         # (implicit selection on currently active fixtures)
         if tok.type == TokenType.AT or tok.type in ATTRIBUTE_TOKENS:
@@ -181,6 +210,32 @@ class CommandParser:
 
         if self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
+
+        if self.peek().type == TokenType.LOCATE:
+            self.advance()
+            return LocateCommandNode(selection=selection)
+
+        if self.peek().type == TokenType.HOME:
+            self.advance()
+            cat = None
+            if self.peek().type in (
+                TokenType.POSITION,
+                TokenType.COLOR,
+                TokenType.BEAM,
+            ):
+                cat = self.advance().raw_text.lower()
+            return HomeCommandNode(selection=selection, category=cat)
+
+        if self.peek().type in (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
+            if (
+                self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].type == TokenType.HOME
+            ):
+                cat_tok = self.advance()
+                self.advance()  # consume HOME
+                return HomeCommandNode(
+                    selection=selection, category=cat_tok.raw_text.lower()
+                )
 
         return self._parse_action_clause(selection)
 

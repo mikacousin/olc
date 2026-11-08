@@ -128,6 +128,11 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.groups.clear()
     app.core.lightshow.cues.clear()
     app.core.lightshow.patch.patch_empty()
+    if app.core.backend and getattr(app.core.backend, "dmx", None):
+        dmx = app.core.backend.dmx
+        dmx.levels["user"].fill(-1)
+        dmx.levels["sequence"].fill(0.0)
+        dmx.levels["faders"].fill(0.0)
 
     # 2. Close any open tabs
     if app.tabs:

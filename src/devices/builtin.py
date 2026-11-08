@@ -39,6 +39,8 @@ def create_dimmer_definition(fine: bool = False) -> FixtureDefinition:
                 channel_type=ChannelType.INTENSITY,
                 offset=0,
                 label="Dimmer",
+                default_value=0,
+                highlight_value=255,
             )
         ],
         description="Standard 1-channel 8-bit dimmer",
@@ -52,6 +54,8 @@ def create_dimmer_definition(fine: bool = False) -> FixtureDefinition:
                 offset=0,
                 fine_offset=1,
                 label="Dimmer",
+                default_value=0,
+                highlight_value=65535,
             )
         ],
         description="High-resolution 2-channel 16-bit dimmer",
@@ -74,9 +78,15 @@ def create_rgb_definition() -> FixtureDefinition:
     mode = DmxModeDefinition(
         name="RGB 3ch",
         channel_defs=[
-            ChannelDefinition(ChannelType.RED, offset=0, label="Red"),
-            ChannelDefinition(ChannelType.GREEN, offset=1, label="Green"),
-            ChannelDefinition(ChannelType.BLUE, offset=2, label="Blue"),
+            ChannelDefinition(
+                ChannelType.RED, offset=0, label="Red", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.GREEN, offset=1, label="Green", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.BLUE, offset=2, label="Blue", highlight_value=255
+            ),
         ],
         description="Standard 3-channel RGB fixture",
     )
@@ -105,10 +115,18 @@ def create_rgbw_definition() -> FixtureDefinition:
     mode = DmxModeDefinition(
         name="RGBW 4ch",
         channel_defs=[
-            ChannelDefinition(ChannelType.RED, offset=0, label="Red"),
-            ChannelDefinition(ChannelType.GREEN, offset=1, label="Green"),
-            ChannelDefinition(ChannelType.BLUE, offset=2, label="Blue"),
-            ChannelDefinition(ChannelType.WHITE, offset=3, label="White"),
+            ChannelDefinition(
+                ChannelType.RED, offset=0, label="Red", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.GREEN, offset=1, label="Green", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.BLUE, offset=2, label="Blue", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.WHITE, offset=3, label="White", highlight_value=255
+            ),
         ],
         description="Standard 4-channel RGBW fixture",
     )
@@ -138,10 +156,18 @@ def create_rgba_definition() -> FixtureDefinition:
     mode = DmxModeDefinition(
         name="RGBA 4ch",
         channel_defs=[
-            ChannelDefinition(ChannelType.RED, offset=0, label="Red"),
-            ChannelDefinition(ChannelType.GREEN, offset=1, label="Green"),
-            ChannelDefinition(ChannelType.BLUE, offset=2, label="Blue"),
-            ChannelDefinition(ChannelType.AMBER, offset=3, label="Amber"),
+            ChannelDefinition(
+                ChannelType.RED, offset=0, label="Red", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.GREEN, offset=1, label="Green", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.BLUE, offset=2, label="Blue", highlight_value=255
+            ),
+            ChannelDefinition(
+                ChannelType.AMBER, offset=3, label="Amber", highlight_value=255
+            ),
         ],
         description="Standard 4-channel RGBA fixture",
     )
@@ -176,6 +202,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 offset=0,
                 fine_offset=1,
                 label="Pan",
+                default_value=32768,
+                highlight_value=32768,
                 physical_min=-270.0,
                 physical_max=270.0,
                 physical_unit="deg",
@@ -185,6 +213,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 offset=2,
                 fine_offset=3,
                 label="Tilt",
+                default_value=32768,
+                highlight_value=32768,
                 physical_min=-135.0,
                 physical_max=135.0,
                 physical_unit="deg",
@@ -194,6 +224,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 offset=4,
                 fine_offset=5,
                 label="Dimmer",
+                default_value=0,
+                highlight_value=65535,
                 physical_min=0.0,
                 physical_max=1.0,
                 physical_unit="%",
@@ -202,6 +234,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 ChannelType.STROBE,
                 offset=6,
                 label="Shutter",
+                default_value=255,
+                highlight_value=255,
                 physical_min=1.0,
                 physical_max=25.0,
                 physical_unit="Hz",
@@ -210,6 +244,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 ChannelType.ZOOM,
                 offset=7,
                 label="Zoom",
+                default_value=128,
+                highlight_value=128,
                 physical_min=10.0,
                 physical_max=35.0,
                 physical_unit="deg",
@@ -227,6 +263,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 fine_offset=1,
                 ultra_fine_offset=2,
                 label="Pan",
+                default_value=8388608,
+                highlight_value=8388608,
                 physical_min=-270.0,
                 physical_max=270.0,
                 physical_unit="deg",
@@ -237,6 +275,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 fine_offset=4,
                 ultra_fine_offset=5,
                 label="Tilt",
+                default_value=8388608,
+                highlight_value=8388608,
                 physical_min=-135.0,
                 physical_max=135.0,
                 physical_unit="deg",
@@ -247,6 +287,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 fine_offset=7,
                 ultra_fine_offset=8,
                 label="Dimmer",
+                default_value=0,
+                highlight_value=16777215,
                 physical_min=0.0,
                 physical_max=1.0,
                 physical_unit="%",
@@ -255,6 +297,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 ChannelType.STROBE,
                 offset=9,
                 label="Shutter",
+                default_value=255,
+                highlight_value=255,
                 physical_min=1.0,
                 physical_max=25.0,
                 physical_unit="Hz",
@@ -263,6 +307,8 @@ def create_moving_head_definition() -> FixtureDefinition:
                 ChannelType.ZOOM,
                 offset=10,
                 label="Zoom",
+                default_value=128,
+                highlight_value=128,
                 physical_min=10.0,
                 physical_max=35.0,
                 physical_unit="deg",

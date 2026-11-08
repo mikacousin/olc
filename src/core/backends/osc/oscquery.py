@@ -516,6 +516,23 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                         "FULL_PATH": "/olc/selected",
                         "ACCESS": ACCESS_CONTAINER,
                         "CONTENTS": {
+                            "home": {
+                                "DESCRIPTION": (
+                                    "Reset selected fixtures to default Home values"
+                                ),
+                                "FULL_PATH": "/olc/selected/home",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "T",
+                            },
+                            "locate": {
+                                "DESCRIPTION": (
+                                    "Locate selected fixtures with default "
+                                    "parameters and full intensity"
+                                ),
+                                "FULL_PATH": "/olc/selected/locate",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "T",
+                            },
                             "pan": {
                                 "DESCRIPTION": "Set absolute Pan angle in degrees",
                                 "FULL_PATH": "/olc/selected/pan",
