@@ -231,6 +231,12 @@ def test_virtual_console_commandline_buttons() -> None:
         "commandline.append_char", " BLOCK"
     )
 
+    vc.commandline.get_string.return_value = ""
+    vc._on_sneak(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", "SNEAK "
+    )
+
 
 def test_virtual_console_button_sensitivity() -> None:
     """Test VirtualConsoleWindow updates button sensitivity based on command text."""
@@ -272,6 +278,7 @@ def test_virtual_console_button_sensitivity() -> None:
         "block",
         "delete",
         "goto",
+        "sneak",
     ]
     for b in buttons:
         setattr(vc, b, ButtonWidget(b))
@@ -287,13 +294,15 @@ def test_virtual_console_button_sensitivity() -> None:
         TokenType.RECORD,
         TokenType.GOTO,
         TokenType.DELETE,
+        TokenType.SNEAK,
     ]
     vc.update_button_sensitivity()
 
-    # Digits and All, Delete, Goto should be sensitive
+    # Digits and All, Delete, Goto, Sneak should be sensitive
     assert vc.one.get_sensitive() is True
     assert vc.all.get_sensitive() is True
     assert vc.delete.get_sensitive() is True
+    assert vc.sneak.get_sensitive() is True
     # Enter and Thru should NOT be sensitive when empty
     assert vc.enter.get_sensitive() is False
     assert vc.thru.get_sensitive() is False
@@ -316,6 +325,7 @@ def test_virtual_console_button_sensitivity() -> None:
     assert vc.thru.get_sensitive() is True
     assert vc.at_level.get_sensitive() is True
     assert vc.delete.get_sensitive() is False
+    assert vc.sneak.get_sensitive() is False
 
     # 3. Test ButtonWidget respects sensitive state on press and release
     btn = ButtonWidget("Test")

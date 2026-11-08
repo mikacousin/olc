@@ -60,6 +60,7 @@ SIMPLE_ACTION_MAPPING = {
     "number_8": ("eight", None, "8", None),
     "number_9": ("nine", None, "9", None),
     "dot": ("dot", None, ".", None),
+    "sneak": ("sneak", None, " SNEAK ", None),
 }
 
 
@@ -89,6 +90,7 @@ class MidiNotes:
             "preset": [0, -1],
             "track": [0, -1],
             "goto": [0, -1],
+            "sneak": [0, -1],
             "clear": [0, -1],
             "dot": [0, -1],
             "right": [0, -1],

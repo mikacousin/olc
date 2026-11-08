@@ -231,6 +231,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.delete.connect("clicked", self._on_delete)
         self.goto = ButtonWidget(label="Goto", text="goto")
         self.goto.connect("clicked", self._on_goto)
+        self.sneak = ButtonWidget(label="Sneak", text="sneak")
+        self.sneak.connect("clicked", self._on_sneak)
 
         # Row 0: Thru, +, -
         self.thru_pad.attach(self.thru, 0, 0, 1, 1)
@@ -248,9 +250,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad.attach(self.percent_plus, 0, 3, 1, 1)
         self.thru_pad.attach(self.percent_minus, 1, 3, 1, 1)
         self.thru_pad.attach(self.block, 2, 3, 1, 1)
-        # Row 4: Delete, Goto
+        # Row 4: Delete, Goto, Sneak
         self.thru_pad.attach(self.delete, 0, 4, 1, 1)
         self.thru_pad.attach(self.goto, 1, 4, 1, 1)
+        self.thru_pad.attach(self.sneak, 2, 4, 1, 1)
 
         # Navigation Pad (Up, Down, Left, Right)
         self.modify_pad = Gtk.Grid()
@@ -558,6 +561,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.block.set_sensitive(TokenType.BLOCK in expected)
         self.delete.set_sensitive(TokenType.DELETE in expected or is_empty)
         self.goto.set_sensitive(TokenType.GOTO in expected or is_empty)
+        self.sneak.set_sensitive(TokenType.SNEAK in expected or is_empty)
 
         self.queue_draw()
 
@@ -758,6 +762,18 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.core.action_registry.execute("commandline.append_char", "DELETE ")
+
+    def _on_sneak(self, _widget: Gtk.Widget) -> None:
+        """Sneak"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "sneak"
+            self.queue_draw()
+        else:
+            curr = self.commandline.get_string()
+            prefix = " " if curr and not curr.endswith(" ") else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}SNEAK "
+            )
 
     def _on_full(self, _widget: Gtk.Widget) -> None:
         """Full"""
