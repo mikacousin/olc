@@ -19,6 +19,7 @@ from __future__ import annotations
 import gi
 
 gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.fixture_library import (  # noqa: E402
@@ -129,6 +130,54 @@ def test_fixture_library_tab_new_and_filter(app_gui: Application) -> None:
     process_events()
 
     # Clean up created fixture
+    fixtures_tab._on_delete_clicked(fixtures_tab.btn_delete)
+    process_events()
+    fixtures_tab.cleanup()
+
+
+def test_fixture_library_tab_inspector_panels(app_gui: Application) -> None:
+    """Test editing via right-hand Inspector panels for channels and ranges."""
+    fixtures_tab = FixtureLibraryTab(app=app_gui)
+    process_events()
+
+    # Load Generic:Moving Head Spot
+    spot_def = fixtures_tab.fixture_library.get("Generic", "Moving Head Spot")
+    fixtures_tab.load_definition(spot_def)
+    process_events()
+
+    # Duplicate to make editable
+    fixtures_tab._on_duplicate_clicked(fixtures_tab.btn_duplicate)
+    process_events()
+
+    # Select first channel (Pan)
+    fixtures_tab.channels_tree.get_selection().select_path(Gtk.TreePath.new_first())
+    process_events()
+
+    # Channel Inspector should be populated with Pan
+    assert fixtures_tab.entry_ch_label.get_text() == "Pan"
+    assert fixtures_tab.spin_ch_offset.get_value() == 1.0
+
+    # Modify Pan Home value via Inspector and click Update Channel
+    fixtures_tab.spin_ch_home.set_value(45000)
+    fixtures_tab._on_update_channel_clicked(fixtures_tab.btn_update_ch)
+    process_events()
+
+    active = fixtures_tab.active_definition
+    assert active is not None
+    assert active.default_mode().channel_defs[0].default_value == 45000
+
+    # Add range slot via Range Inspector
+    fixtures_tab.entry_rng_label.set_text("Position A")
+    fixtures_tab.spin_rng_min.set_value(0)
+    fixtures_tab.spin_rng_max.set_value(127)
+    fixtures_tab.spin_rng_snap.set_value(64)
+    fixtures_tab._on_add_range_clicked(fixtures_tab.btn_add_rng)
+    process_events()
+
+    assert len(active.default_mode().channel_defs[0].ranges) == 1
+    assert active.default_mode().channel_defs[0].ranges[0].label == "Position A"
+
+    # Clean up
     fixtures_tab._on_delete_clicked(fixtures_tab.btn_delete)
     process_events()
     fixtures_tab.cleanup()

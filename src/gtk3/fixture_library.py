@@ -122,7 +122,7 @@ class FixtureLibraryTab(Gtk.Box):
 
     def _build_ui(self) -> None:
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        paned.set_position(380)
+        paned.set_position(220)
 
         left_box = self._build_catalog_pane()
         right_box = self._build_editor_pane()
@@ -134,14 +134,14 @@ class FixtureLibraryTab(Gtk.Box):
 
     def _build_catalog_pane(self) -> Gtk.Box:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        box.set_margin_start(6)
-        box.set_margin_end(6)
-        box.set_margin_top(6)
-        box.set_margin_bottom(6)
+        box.set_margin_start(4)
+        box.set_margin_end(4)
+        box.set_margin_top(4)
+        box.set_margin_bottom(4)
 
         # Search bar
         self.search_entry = Gtk.SearchEntry()
-        self.search_entry.set_placeholder_text(_("Search fixture models..."))
+        self.search_entry.set_placeholder_text(_("Search fixtures..."))
         self.search_entry.connect("search-changed", self._on_search_changed)
         box.pack_start(self.search_entry, False, False, 2)
 
@@ -165,12 +165,10 @@ class FixtureLibraryTab(Gtk.Box):
         sel.connect("changed", self._on_catalog_selection_changed)
 
         cols = [
-            ("Manufacturer", COL_CAT_MANUFACTURER, 110),
-            ("Model", COL_CAT_MODEL, 130),
-            ("Type", COL_CAT_TYPE, 90),
-            ("Modes", COL_CAT_MODES, 50),
-            ("Source", COL_CAT_SOURCE, 70),
-            ("Used", COL_CAT_USED, 45),
+            ("Mfg", COL_CAT_MANUFACTURER, 75),
+            ("Model", COL_CAT_MODEL, 90),
+            ("Type", COL_CAT_TYPE, 65),
+            ("Used", COL_CAT_USED, 35),
         ]
         for title, col_idx, width in cols:
             renderer = Gtk.CellRendererText()
@@ -185,21 +183,25 @@ class FixtureLibraryTab(Gtk.Box):
         scroll.add(self.cat_tree)
         box.pack_start(scroll, True, True, 2)
 
-        # Catalog Action Toolbar
-        tbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        self.btn_import_gdtf = Gtk.Button(label=_("Import .gdtf"))
+        # Catalog Action Toolbar (compact buttons)
+        tbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=3)
+        self.btn_import_gdtf = Gtk.Button(label=_("GDTF"))
+        self.btn_import_gdtf.set_tooltip_text(_("Import GDTF File"))
         self.btn_import_gdtf.connect("clicked", self._on_import_gdtf_clicked)
         tbar.pack_start(self.btn_import_gdtf, False, False, 0)
 
         self.btn_new = Gtk.Button(label=_("New"))
+        self.btn_new.set_tooltip_text(_("Create New Custom Fixture"))
         self.btn_new.connect("clicked", self._on_new_clicked)
         tbar.pack_start(self.btn_new, False, False, 0)
 
         self.btn_duplicate = Gtk.Button(label=_("Duplicate"))
+        self.btn_duplicate.set_tooltip_text(_("Duplicate Selected Profile to Edit"))
         self.btn_duplicate.connect("clicked", self._on_duplicate_clicked)
         tbar.pack_start(self.btn_duplicate, False, False, 0)
 
         self.btn_delete = Gtk.Button(label=_("Delete"))
+        self.btn_delete.set_tooltip_text(_("Delete Selected User Profile"))
         self.btn_delete.connect("clicked", self._on_delete_clicked)
         tbar.pack_end(self.btn_delete, False, False, 0)
 
@@ -207,36 +209,37 @@ class FixtureLibraryTab(Gtk.Box):
         return box
 
     def _build_editor_pane(self) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        box.set_margin_start(8)
-        box.set_margin_end(8)
-        box.set_margin_top(6)
-        box.set_margin_bottom(6)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.set_margin_start(6)
+        box.set_margin_end(6)
+        box.set_margin_top(4)
+        box.set_margin_bottom(4)
 
-        # Top Header Box
-        header_grid = Gtk.Grid(column_spacing=8, row_spacing=6)
+        # Top Header Box (Compact Grid)
+        header_grid = Gtk.Grid(column_spacing=6, row_spacing=4)
         box.pack_start(header_grid, False, False, 0)
 
         # Thumbnail
         self.thumbnail_image = Gtk.Image.new_from_icon_name(
-            "applications-multimedia", Gtk.IconSize.DIALOG
+            "applications-multimedia", Gtk.IconSize.DND
         )
+        self.thumbnail_image.set_size_request(38, 38)
         header_grid.attach(self.thumbnail_image, 0, 0, 1, 2)
 
         # Manufacturer Entry
-        header_grid.attach(Gtk.Label(label=_("Manufacturer:"), xalign=0), 1, 0, 1, 1)
+        header_grid.attach(Gtk.Label(label=_("Mfg:"), xalign=0), 1, 0, 1, 1)
         self.entry_mfg = Gtk.Entry()
-        self.entry_mfg.set_width_chars(18)
+        self.entry_mfg.set_width_chars(12)
         header_grid.attach(self.entry_mfg, 2, 0, 1, 1)
 
         # Model Entry
         header_grid.attach(Gtk.Label(label=_("Model:"), xalign=0), 3, 0, 1, 1)
         self.entry_model = Gtk.Entry()
-        self.entry_model.set_width_chars(20)
+        self.entry_model.set_width_chars(14)
         header_grid.attach(self.entry_model, 4, 0, 1, 1)
 
         # Type Combo
-        header_grid.attach(Gtk.Label(label=_("Fixture Type:"), xalign=0), 1, 1, 1, 1)
+        header_grid.attach(Gtk.Label(label=_("Type:"), xalign=0), 1, 1, 1, 1)
         self.combo_type = Gtk.ComboBoxText()
         for ft in FixtureType:
             self.combo_type.append(ft.value, ft.value.replace("_", " ").title())
@@ -249,11 +252,11 @@ class FixtureLibraryTab(Gtk.Box):
         header_grid.attach(self.entry_notes, 4, 1, 1, 1)
 
         # Status Banner & Actions
-        action_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        action_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.lbl_status = Gtk.Label(label="", xalign=0)
         action_bar.pack_start(self.lbl_status, True, True, 0)
 
-        self.btn_apply = Gtk.Button(label=_("Apply Changes to Show"))
+        self.btn_apply = Gtk.Button(label=_("Apply to Show"))
         self.btn_apply.get_style_context().add_class("suggested-action")
         self.btn_apply.connect("clicked", self._on_apply_clicked)
         action_bar.pack_end(self.btn_apply, False, False, 0)
@@ -281,17 +284,15 @@ class FixtureLibraryTab(Gtk.Box):
         return box
 
     # -------------------------------------------------------------------------
-    # Sub-View 1: Modes & Channels
+    # Sub-View 1: Modes & Channels (Paned: Channels List | Channel Inspector)
     # -------------------------------------------------------------------------
 
     def _build_modes_page(self) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
         # Mode Selection & Management Toolbar
-        mode_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        mode_bar.pack_start(
-            Gtk.Label(label=_("Active Mode:"), xalign=0), False, False, 0
-        )
+        mode_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        mode_bar.pack_start(Gtk.Label(label=_("Mode:"), xalign=0), False, False, 0)
 
         self.combo_modes = Gtk.ComboBoxText()
         self.combo_modes.connect("changed", self._on_mode_combo_changed)
@@ -300,35 +301,40 @@ class FixtureLibraryTab(Gtk.Box):
         self.lbl_mode_footprint = Gtk.Label(label="", xalign=0)
         mode_bar.pack_start(self.lbl_mode_footprint, False, False, 4)
 
-        self.btn_add_mode = Gtk.Button(label=_("Add Mode"))
+        self.btn_add_mode = Gtk.Button(label=_("+ Mode"))
+        self.btn_add_mode.set_tooltip_text(_("Add New DMX Mode"))
         self.btn_add_mode.connect("clicked", self._on_add_mode_clicked)
         mode_bar.pack_start(self.btn_add_mode, False, False, 0)
 
-        self.btn_dup_mode = Gtk.Button(label=_("Duplicate Mode"))
+        self.btn_dup_mode = Gtk.Button(label=_("Duplicate"))
+        self.btn_dup_mode.set_tooltip_text(_("Duplicate Active Mode"))
         self.btn_dup_mode.connect("clicked", self._on_duplicate_mode_clicked)
         mode_bar.pack_start(self.btn_dup_mode, False, False, 0)
 
-        self.btn_del_mode = Gtk.Button(label=_("Delete Mode"))
+        self.btn_del_mode = Gtk.Button(label=_("Delete"))
+        self.btn_del_mode.set_tooltip_text(_("Delete Active Mode"))
         self.btn_del_mode.connect("clicked", self._on_delete_mode_clicked)
         mode_bar.pack_start(self.btn_del_mode, False, False, 0)
 
-        box.pack_start(mode_bar, False, False, 2)
-
-        # Mode Description
-        desc_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        desc_bar.pack_start(
-            Gtk.Label(label=_("Mode Name / Desc:"), xalign=0), False, False, 0
-        )
+        mode_bar.pack_start(Gtk.Label(label=_("Name:"), xalign=0), False, False, 2)
         self.entry_mode_name = Gtk.Entry()
-        self.entry_mode_name.set_width_chars(15)
-        desc_bar.pack_start(self.entry_mode_name, False, False, 0)
+        self.entry_mode_name.set_width_chars(10)
+        mode_bar.pack_start(self.entry_mode_name, False, False, 0)
 
         self.entry_mode_desc = Gtk.Entry()
+        self.entry_mode_desc.set_placeholder_text(_("Mode description"))
         self.entry_mode_desc.set_hexpand(True)
-        desc_bar.pack_start(self.entry_mode_desc, True, True, 0)
-        box.pack_start(desc_bar, False, False, 2)
+        mode_bar.pack_start(self.entry_mode_desc, True, True, 0)
 
-        # Channels TreeView
+        page_box.pack_start(mode_bar, False, False, 2)
+
+        # Paned: Channels Table (Left) | Channel Inspector (Right)
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.set_position(360)
+
+        # Left: Channels Table
+        left_ch_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+
         self.channels_store = Gtk.ListStore(
             int,  # COL_CH_INDEX (index in channel_defs)
             str,  # COL_CH_OFFSET (1-based relative DMX offset)
@@ -350,17 +356,13 @@ class FixtureLibraryTab(Gtk.Box):
         sel.connect("changed", self._on_channel_selection_changed)
 
         ch_cols = [
-            ("#", COL_CH_OFFSET, 40),
-            ("Fine", COL_CH_FINE, 40),
-            ("Ultra", COL_CH_ULTRA, 40),
-            ("Label", COL_CH_LABEL, 110),
-            ("Type", COL_CH_TYPE, 100),
-            ("Home", COL_CH_HOME, 55),
-            ("Locate", COL_CH_LOCATE, 55),
-            ("Min", COL_CH_MIN, 50),
-            ("Max", COL_CH_MAX, 50),
-            ("Unit", COL_CH_UNIT, 40),
-            ("Merge", COL_CH_MERGE, 50),
+            ("#", COL_CH_OFFSET, 35),
+            ("Label", COL_CH_LABEL, 95),
+            ("Type", COL_CH_TYPE, 75),
+            ("Home", COL_CH_HOME, 50),
+            ("Locate", COL_CH_LOCATE, 50),
+            ("Min", COL_CH_MIN, 45),
+            ("Max", COL_CH_MAX, 45),
         ]
         for title, col_idx, min_w in ch_cols:
             renderer = Gtk.CellRendererText()
@@ -370,101 +372,126 @@ class FixtureLibraryTab(Gtk.Box):
             col.set_min_width(min_w)
             self.channels_tree.append_column(col)
 
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        scroll.add(self.channels_tree)
-        box.pack_start(scroll, True, True, 2)
+        scroll_tree = Gtk.ScrolledWindow()
+        scroll_tree.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll_tree.add(self.channels_tree)
+        left_ch_box.pack_start(scroll_tree, True, True, 0)
 
-        # Channel Edit Bar (Quick controls for selected channel)
-        ch_edit_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        ch_row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        ch_actions_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.btn_add_ch = Gtk.Button(label=_("+ Add Channel"))
+        self.btn_add_ch.connect("clicked", self._on_add_channel_clicked)
+        ch_actions_bar.pack_start(self.btn_add_ch, False, False, 0)
 
-        ch_row1.pack_start(Gtk.Label(label=_("Offset:"), xalign=0), False, False, 0)
-        self.spin_ch_offset = Gtk.SpinButton.new_with_range(1, 512, 1)
-        self.spin_ch_offset.set_width_chars(4)
-        ch_row1.pack_start(self.spin_ch_offset, False, False, 0)
+        self.btn_del_ch = Gtk.Button(label=_("- Remove Channel"))
+        self.btn_del_ch.connect("clicked", self._on_delete_channel_clicked)
+        ch_actions_bar.pack_start(self.btn_del_ch, False, False, 0)
 
-        ch_row1.pack_start(Gtk.Label(label=_("Fine:"), xalign=0), False, False, 0)
-        self.spin_ch_fine = Gtk.SpinButton.new_with_range(0, 512, 1)
-        self.spin_ch_fine.set_width_chars(4)
-        ch_row1.pack_start(self.spin_ch_fine, False, False, 0)
+        left_ch_box.pack_start(ch_actions_bar, False, False, 2)
+        paned.pack1(left_ch_box, True, False)
 
-        ch_row1.pack_start(Gtk.Label(label=_("Label:"), xalign=0), False, False, 0)
+        # Right: Channel Inspector Form
+        inspector_scroll = Gtk.ScrolledWindow()
+        inspector_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        inspector_scroll.set_min_content_width(230)
+
+        insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        insp_box.set_margin_start(8)
+        insp_box.set_margin_end(8)
+        insp_box.set_margin_top(4)
+        insp_box.set_margin_bottom(4)
+
+        lbl_insp_title = Gtk.Label(xalign=0)
+        lbl_insp_title.set_markup("<b>" + _("Channel Properties") + "</b>")
+        insp_box.pack_start(lbl_insp_title, False, False, 2)
+
+        grid = Gtk.Grid(column_spacing=6, row_spacing=4)
+
+        # Label
+        grid.attach(Gtk.Label(label=_("Label:"), xalign=0), 0, 0, 1, 1)
         self.entry_ch_label = Gtk.Entry()
-        self.entry_ch_label.set_width_chars(14)
-        ch_row1.pack_start(self.entry_ch_label, False, False, 0)
+        self.entry_ch_label.set_hexpand(True)
+        grid.attach(self.entry_ch_label, 1, 0, 1, 1)
 
-        ch_row1.pack_start(Gtk.Label(label=_("Type:"), xalign=0), False, False, 0)
+        # Type
+        grid.attach(Gtk.Label(label=_("Type:"), xalign=0), 0, 1, 1, 1)
         self.combo_ch_type = Gtk.ComboBoxText()
         for ct in ChannelType:
             self.combo_ch_type.append(ct.value, ct.value.replace("_", " ").title())
-        ch_row1.pack_start(self.combo_ch_type, False, False, 0)
+        self.combo_ch_type.set_hexpand(True)
+        grid.attach(self.combo_ch_type, 1, 1, 1, 1)
 
-        ch_row1.pack_start(Gtk.Label(label=_("Merge:"), xalign=0), False, False, 0)
+        # Offset & Fine
+        grid.attach(Gtk.Label(label=_("Offset:"), xalign=0), 0, 2, 1, 1)
+        self.spin_ch_offset = Gtk.SpinButton.new_with_range(1, 512, 1)
+        grid.attach(self.spin_ch_offset, 1, 2, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("Fine (16b):"), xalign=0), 0, 3, 1, 1)
+        self.spin_ch_fine = Gtk.SpinButton.new_with_range(0, 512, 1)
+        self.spin_ch_fine.set_tooltip_text(_("0 = None (8-bit single channel)"))
+        grid.attach(self.spin_ch_fine, 1, 3, 1, 1)
+
+        # Merge Rule
+        grid.attach(Gtk.Label(label=_("Merge:"), xalign=0), 0, 4, 1, 1)
         self.combo_ch_merge = Gtk.ComboBoxText()
         self.combo_ch_merge.append("htp", "HTP")
         self.combo_ch_merge.append("ltp", "LTP")
-        ch_row1.pack_start(self.combo_ch_merge, False, False, 0)
+        grid.attach(self.combo_ch_merge, 1, 4, 1, 1)
 
-        ch_edit_box.pack_start(ch_row1, False, False, 0)
-
-        ch_row2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        ch_row2.pack_start(Gtk.Label(label=_("Home:"), xalign=0), False, False, 0)
+        # Home & Locate
+        grid.attach(Gtk.Label(label=_("Home:"), xalign=0), 0, 5, 1, 1)
         self.spin_ch_home = Gtk.SpinButton.new_with_range(0, 16777215, 1)
-        self.spin_ch_home.set_width_chars(6)
-        ch_row2.pack_start(self.spin_ch_home, False, False, 0)
+        grid.attach(self.spin_ch_home, 1, 5, 1, 1)
 
-        ch_row2.pack_start(Gtk.Label(label=_("Locate:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("Locate:"), xalign=0), 0, 6, 1, 1)
         self.spin_ch_locate = Gtk.SpinButton.new_with_range(-1, 16777215, 1)
-        self.spin_ch_locate.set_width_chars(6)
-        ch_row2.pack_start(self.spin_ch_locate, False, False, 0)
+        self.spin_ch_locate.set_tooltip_text(_("-1 = Same as Home"))
+        grid.attach(self.spin_ch_locate, 1, 6, 1, 1)
 
-        ch_row2.pack_start(Gtk.Label(label=_("Min:"), xalign=0), False, False, 0)
+        # Physical Min, Max & Unit
+        grid.attach(Gtk.Label(label=_("Phys Min:"), xalign=0), 0, 7, 1, 1)
         self.spin_ch_min = Gtk.SpinButton.new_with_range(-10000.0, 10000.0, 0.5)
         self.spin_ch_min.set_digits(1)
-        self.spin_ch_min.set_width_chars(6)
-        ch_row2.pack_start(self.spin_ch_min, False, False, 0)
+        grid.attach(self.spin_ch_min, 1, 7, 1, 1)
 
-        ch_row2.pack_start(Gtk.Label(label=_("Max:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("Phys Max:"), xalign=0), 0, 8, 1, 1)
         self.spin_ch_max = Gtk.SpinButton.new_with_range(-10000.0, 10000.0, 0.5)
         self.spin_ch_max.set_digits(1)
-        self.spin_ch_max.set_width_chars(6)
-        ch_row2.pack_start(self.spin_ch_max, False, False, 0)
+        grid.attach(self.spin_ch_max, 1, 8, 1, 1)
 
-        ch_row2.pack_start(Gtk.Label(label=_("Unit:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("Unit:"), xalign=0), 0, 9, 1, 1)
         self.entry_ch_unit = Gtk.Entry()
-        self.entry_ch_unit.set_width_chars(4)
-        ch_row2.pack_start(self.entry_ch_unit, False, False, 0)
+        self.entry_ch_unit.set_placeholder_text(_("deg, %, lux..."))
+        grid.attach(self.entry_ch_unit, 1, 9, 1, 1)
+
+        insp_box.pack_start(grid, False, False, 4)
 
         self.btn_update_ch = Gtk.Button(label=_("Update Channel"))
         self.btn_update_ch.connect("clicked", self._on_update_channel_clicked)
-        ch_row2.pack_start(self.btn_update_ch, False, False, 0)
+        insp_box.pack_start(self.btn_update_ch, False, False, 4)
 
-        self.btn_add_ch = Gtk.Button(label=_("Add Channel"))
-        self.btn_add_ch.connect("clicked", self._on_add_channel_clicked)
-        ch_row2.pack_start(self.btn_add_ch, False, False, 0)
+        inspector_scroll.add(insp_box)
+        paned.pack2(inspector_scroll, False, False)
 
-        self.btn_del_ch = Gtk.Button(label=_("Remove Channel"))
-        self.btn_del_ch.connect("clicked", self._on_delete_channel_clicked)
-        ch_row2.pack_end(self.btn_del_ch, False, False, 0)
-
-        ch_edit_box.pack_start(ch_row2, False, False, 0)
-        box.pack_start(ch_edit_box, False, False, 4)
-
-        return box
+        page_box.pack_start(paned, True, True, 2)
+        return page_box
 
     # -------------------------------------------------------------------------
-    # Sub-View 2: Channel Ranges (Gobos / Wheels / Strobe)
+    # Sub-View 2: Channel Ranges (Paned: Slots Table | Slot Inspector)
     # -------------------------------------------------------------------------
 
     def _build_ranges_page(self) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.lbl_range_context = Gtk.Label(
             label=_("Select a channel in Modes & Channels to view/edit its ranges"),
             xalign=0,
         )
-        box.pack_start(self.lbl_range_context, False, False, 4)
+        page_box.pack_start(self.lbl_range_context, False, False, 2)
 
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.set_position(360)
+
+        # Left: Ranges Table
+        left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.ranges_store = Gtk.ListStore(
             str,  # COL_RNG_LABEL
             int,  # COL_RNG_MIN
@@ -472,11 +499,15 @@ class FixtureLibraryTab(Gtk.Box):
             int,  # COL_RNG_SNAP
         )
         self.ranges_tree = Gtk.TreeView(model=self.ranges_store)
+        sel = self.ranges_tree.get_selection()
+        sel.set_mode(Gtk.SelectionMode.SINGLE)
+        sel.connect("changed", self._on_range_selection_changed)
+
         range_cols = [
-            ("Label / Slot", 180),
-            ("DMX Min", 80),
-            ("DMX Max", 80),
-            ("Snap Value", 80),
+            ("Label / Slot", 120),
+            ("Min", 50),
+            ("Max", 50),
+            ("Snap", 50),
         ]
         for idx, (title, w) in enumerate(range_cols):
             renderer = Gtk.CellRendererText()
@@ -486,45 +517,73 @@ class FixtureLibraryTab(Gtk.Box):
             self.ranges_tree.append_column(col)
 
         scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         scroll.add(self.ranges_tree)
-        box.pack_start(scroll, True, True, 2)
+        left_box.pack_start(scroll, True, True, 0)
 
-        # Range Edit Controls
-        r_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        r_bar.pack_start(Gtk.Label(label=_("Slot Label:"), xalign=0), False, False, 0)
-        self.entry_rng_label = Gtk.Entry()
-        self.entry_rng_label.set_width_chars(16)
-        r_bar.pack_start(self.entry_rng_label, False, False, 0)
-
-        r_bar.pack_start(Gtk.Label(label=_("Min:"), xalign=0), False, False, 0)
-        self.spin_rng_min = Gtk.SpinButton.new_with_range(0, 255, 1)
-        r_bar.pack_start(self.spin_rng_min, False, False, 0)
-
-        r_bar.pack_start(Gtk.Label(label=_("Max:"), xalign=0), False, False, 0)
-        self.spin_rng_max = Gtk.SpinButton.new_with_range(0, 255, 1)
-        r_bar.pack_start(self.spin_rng_max, False, False, 0)
-
-        r_bar.pack_start(Gtk.Label(label=_("Snap:"), xalign=0), False, False, 0)
-        self.spin_rng_snap = Gtk.SpinButton.new_with_range(0, 255, 1)
-        r_bar.pack_start(self.spin_rng_snap, False, False, 0)
-
-        self.btn_add_rng = Gtk.Button(label=_("Add Range"))
+        r_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.btn_add_rng = Gtk.Button(label=_("+ Add Range"))
         self.btn_add_rng.connect("clicked", self._on_add_range_clicked)
-        r_bar.pack_start(self.btn_add_rng, False, False, 0)
+        r_actions.pack_start(self.btn_add_rng, False, False, 0)
 
-        self.btn_del_rng = Gtk.Button(label=_("Remove Range"))
+        self.btn_del_rng = Gtk.Button(label=_("- Remove Range"))
         self.btn_del_rng.connect("clicked", self._on_delete_range_clicked)
-        r_bar.pack_end(self.btn_del_rng, False, False, 0)
+        r_actions.pack_start(self.btn_del_rng, False, False, 0)
 
-        box.pack_start(r_bar, False, False, 2)
-        return box
+        left_box.pack_start(r_actions, False, False, 2)
+        paned.pack1(left_box, True, False)
+
+        # Right: Range Inspector
+        insp_scroll = Gtk.ScrolledWindow()
+        insp_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        insp_scroll.set_min_content_width(220)
+
+        insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        insp_box.set_margin_start(8)
+        insp_box.set_margin_end(8)
+        insp_box.set_margin_top(4)
+        insp_box.set_margin_bottom(4)
+
+        lbl_title = Gtk.Label(xalign=0)
+        lbl_title.set_markup("<b>" + _("Slot / Range Properties") + "</b>")
+        insp_box.pack_start(lbl_title, False, False, 2)
+
+        grid = Gtk.Grid(column_spacing=6, row_spacing=4)
+        grid.attach(Gtk.Label(label=_("Slot Label:"), xalign=0), 0, 0, 1, 1)
+        self.entry_rng_label = Gtk.Entry()
+        self.entry_rng_label.set_hexpand(True)
+        grid.attach(self.entry_rng_label, 1, 0, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("DMX Min:"), xalign=0), 0, 1, 1, 1)
+        self.spin_rng_min = Gtk.SpinButton.new_with_range(0, 255, 1)
+        grid.attach(self.spin_rng_min, 1, 1, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("DMX Max:"), xalign=0), 0, 2, 1, 1)
+        self.spin_rng_max = Gtk.SpinButton.new_with_range(0, 255, 1)
+        grid.attach(self.spin_rng_max, 1, 2, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("Snap Value:"), xalign=0), 0, 3, 1, 1)
+        self.spin_rng_snap = Gtk.SpinButton.new_with_range(0, 255, 1)
+        grid.attach(self.spin_rng_snap, 1, 3, 1, 1)
+
+        insp_box.pack_start(grid, False, False, 4)
+
+        self.btn_update_rng = Gtk.Button(label=_("Update Range"))
+        self.btn_update_rng.connect("clicked", self._on_update_range_clicked)
+        insp_box.pack_start(self.btn_update_rng, False, False, 4)
+
+        insp_scroll.add(insp_box)
+        paned.pack2(insp_scroll, False, False)
+
+        page_box.pack_start(paned, True, True, 2)
+        return page_box
 
     # -------------------------------------------------------------------------
-    # Sub-View 3: Color Profile (CIE 1931)
+    # Sub-View 3: Color Profile (Paned: Emitters Table | Emitter Inspector)
     # -------------------------------------------------------------------------
 
     def _build_color_page(self) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.lbl_color_info = Gtk.Label(
             label=_("CIE 1931 xyY Color Calibration & Emitters"), xalign=0
@@ -543,8 +602,13 @@ class FixtureLibraryTab(Gtk.Box):
         )
         top_bar.pack_end(self.btn_preset_rgbw, False, False, 0)
 
-        box.pack_start(top_bar, False, False, 4)
+        page_box.pack_start(top_bar, False, False, 2)
 
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.set_position(360)
+
+        # Left: Emitters Table
+        left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.emitters_store = Gtk.ListStore(
             str,  # COL_EM_NAME
             str,  # COL_EM_ATTR
@@ -554,13 +618,16 @@ class FixtureLibraryTab(Gtk.Box):
             float,  # COL_EM_NM
         )
         self.emitters_tree = Gtk.TreeView(model=self.emitters_store)
+        sel = self.emitters_tree.get_selection()
+        sel.set_mode(Gtk.SelectionMode.SINGLE)
+        sel.connect("changed", self._on_emitter_selection_changed)
+
         em_cols = [
-            ("Emitter Name", COL_EM_NAME, 120),
-            ("GDTF Attribute", COL_EM_ATTR, 120),
-            ("CIE x", COL_EM_X, 70),
-            ("CIE y", COL_EM_Y, 70),
-            ("Luminance (Y)", COL_EM_LUM, 90),
-            ("Dominant nm", COL_EM_NM, 80),
+            ("Emitter", COL_EM_NAME, 80),
+            ("GDTF Attr", COL_EM_ATTR, 90),
+            ("x", COL_EM_X, 45),
+            ("y", COL_EM_Y, 45),
+            ("Y", COL_EM_LUM, 45),
         ]
         for title, idx, w in em_cols:
             renderer = Gtk.CellRendererText()
@@ -570,41 +637,69 @@ class FixtureLibraryTab(Gtk.Box):
             self.emitters_tree.append_column(col)
 
         scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         scroll.add(self.emitters_tree)
-        box.pack_start(scroll, True, True, 2)
+        left_box.pack_start(scroll, True, True, 0)
 
-        # Emitter Edit Bar
-        em_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        em_bar.pack_start(Gtk.Label(label=_("Name:"), xalign=0), False, False, 0)
+        em_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.btn_add_em = Gtk.Button(label=_("+ Add Emitter"))
+        self.btn_add_em.connect("clicked", self._on_add_emitter_clicked)
+        em_actions.pack_start(self.btn_add_em, False, False, 0)
+
+        self.btn_del_em = Gtk.Button(label=_("- Remove Emitter"))
+        self.btn_del_em.connect("clicked", self._on_delete_emitter_clicked)
+        em_actions.pack_start(self.btn_del_em, False, False, 0)
+
+        left_box.pack_start(em_actions, False, False, 2)
+        paned.pack1(left_box, True, False)
+
+        # Right: Emitter Inspector
+        insp_scroll = Gtk.ScrolledWindow()
+        insp_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        insp_scroll.set_min_content_width(220)
+
+        insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        insp_box.set_margin_start(8)
+        insp_box.set_margin_end(8)
+        insp_box.set_margin_top(4)
+        insp_box.set_margin_bottom(4)
+
+        lbl_title = Gtk.Label(xalign=0)
+        lbl_title.set_markup("<b>" + _("Emitter Calibration") + "</b>")
+        insp_box.pack_start(lbl_title, False, False, 2)
+
+        grid = Gtk.Grid(column_spacing=6, row_spacing=4)
+        grid.attach(Gtk.Label(label=_("Name:"), xalign=0), 0, 0, 1, 1)
         self.entry_em_name = Gtk.Entry()
-        self.entry_em_name.set_width_chars(8)
-        em_bar.pack_start(self.entry_em_name, False, False, 0)
+        self.entry_em_name.set_hexpand(True)
+        grid.attach(self.entry_em_name, 1, 0, 1, 1)
 
-        em_bar.pack_start(Gtk.Label(label=_("x:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("CIE x:"), xalign=0), 0, 1, 1, 1)
         self.spin_em_x = Gtk.SpinButton.new_with_range(0.0, 1.0, 0.01)
         self.spin_em_x.set_digits(4)
-        em_bar.pack_start(self.spin_em_x, False, False, 0)
+        grid.attach(self.spin_em_x, 1, 1, 1, 1)
 
-        em_bar.pack_start(Gtk.Label(label=_("y:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("CIE y:"), xalign=0), 0, 2, 1, 1)
         self.spin_em_y = Gtk.SpinButton.new_with_range(0.0, 1.0, 0.01)
         self.spin_em_y.set_digits(4)
-        em_bar.pack_start(self.spin_em_y, False, False, 0)
+        grid.attach(self.spin_em_y, 1, 2, 1, 1)
 
-        em_bar.pack_start(Gtk.Label(label=_("Y:"), xalign=0), False, False, 0)
+        grid.attach(Gtk.Label(label=_("Luminance (Y):"), xalign=0), 0, 3, 1, 1)
         self.spin_em_lum = Gtk.SpinButton.new_with_range(0.0, 1000.0, 1.0)
         self.spin_em_lum.set_digits(1)
-        em_bar.pack_start(self.spin_em_lum, False, False, 0)
+        grid.attach(self.spin_em_lum, 1, 3, 1, 1)
 
-        self.btn_add_em = Gtk.Button(label=_("Add Emitter"))
-        self.btn_add_em.connect("clicked", self._on_add_emitter_clicked)
-        em_bar.pack_start(self.btn_add_em, False, False, 0)
+        insp_box.pack_start(grid, False, False, 4)
 
-        self.btn_del_em = Gtk.Button(label=_("Remove Emitter"))
-        self.btn_del_em.connect("clicked", self._on_delete_emitter_clicked)
-        em_bar.pack_end(self.btn_del_em, False, False, 0)
+        self.btn_update_em = Gtk.Button(label=_("Update Emitter"))
+        self.btn_update_em.connect("clicked", self._on_update_emitter_clicked)
+        insp_box.pack_start(self.btn_update_em, False, False, 4)
 
-        box.pack_start(em_bar, False, False, 2)
-        return box
+        insp_scroll.add(insp_box)
+        paned.pack2(insp_scroll, False, False)
+
+        page_box.pack_start(paned, True, True, 2)
+        return page_box
 
     # -------------------------------------------------------------------------
     # Catalog Loading & Filtering
@@ -773,10 +868,30 @@ class FixtureLibraryTab(Gtk.Box):
         self.btn_add_ch.set_sensitive(sensitive)
         self.btn_del_ch.set_sensitive(sensitive)
         self.btn_update_ch.set_sensitive(sensitive)
+        self.spin_ch_offset.set_sensitive(sensitive)
+        self.spin_ch_fine.set_sensitive(sensitive)
+        self.entry_ch_label.set_sensitive(sensitive)
+        self.combo_ch_type.set_sensitive(sensitive)
+        self.combo_ch_merge.set_sensitive(sensitive)
+        self.spin_ch_home.set_sensitive(sensitive)
+        self.spin_ch_locate.set_sensitive(sensitive)
+        self.spin_ch_min.set_sensitive(sensitive)
+        self.spin_ch_max.set_sensitive(sensitive)
+        self.entry_ch_unit.set_sensitive(sensitive)
         self.btn_add_rng.set_sensitive(sensitive)
         self.btn_del_rng.set_sensitive(sensitive)
+        self.btn_update_rng.set_sensitive(sensitive)
+        self.entry_rng_label.set_sensitive(sensitive)
+        self.spin_rng_min.set_sensitive(sensitive)
+        self.spin_rng_max.set_sensitive(sensitive)
+        self.spin_rng_snap.set_sensitive(sensitive)
         self.btn_add_em.set_sensitive(sensitive)
         self.btn_del_em.set_sensitive(sensitive)
+        self.btn_update_em.set_sensitive(sensitive)
+        self.entry_em_name.set_sensitive(sensitive)
+        self.spin_em_x.set_sensitive(sensitive)
+        self.spin_em_y.set_sensitive(sensitive)
+        self.spin_em_lum.set_sensitive(sensitive)
         self.btn_preset_rgb.set_sensitive(sensitive)
         self.btn_preset_rgbw.set_sensitive(sensitive)
 
@@ -884,6 +999,8 @@ class FixtureLibraryTab(Gtk.Box):
         for rng in ch_def.ranges:
             snap = rng.snap_value or rng.value_min
             self.ranges_store.append([rng.label, rng.value_min, rng.value_max, snap])
+        if len(self.ranges_store) > 0:
+            self.ranges_tree.get_selection().select_path(Gtk.TreePath.new_first())
 
     def _refresh_color_emitters(self) -> None:
         self.emitters_store.clear()
@@ -900,6 +1017,8 @@ class FixtureLibraryTab(Gtk.Box):
                     float(em.dominant_wavelength),
                 ]
             )
+        if len(self.emitters_store) > 0:
+            self.emitters_tree.get_selection().select_path(Gtk.TreePath.new_first())
 
     # -------------------------------------------------------------------------
     # Channel and Mode Manipulation Handlers
@@ -1060,6 +1179,40 @@ class FixtureLibraryTab(Gtk.Box):
                 ch_def.ranges.pop(r_idx)
                 self._load_channel_ranges(ch_def)
 
+    def _on_range_selection_changed(self, selection: Gtk.TreeSelection) -> None:
+        model, tree_iter = selection.get_selected()
+        if tree_iter is None:
+            return
+        lbl = str(model.get_value(tree_iter, COL_RNG_LABEL))
+        min_v = int(model.get_value(tree_iter, COL_RNG_MIN))
+        max_v = int(model.get_value(tree_iter, COL_RNG_MAX))
+        snap_v = int(model.get_value(tree_iter, COL_RNG_SNAP))
+        self.entry_rng_label.set_text(lbl)
+        self.spin_rng_min.set_value(min_v)
+        self.spin_rng_max.set_value(max_v)
+        self.spin_rng_snap.set_value(snap_v)
+
+    def _on_update_range_clicked(self, _button: Gtk.Button) -> None:
+        r_model, r_iter = self.ranges_tree.get_selection().get_selected()
+        ch_model, ch_iter = self.channels_tree.get_selection().get_selected()
+        if r_iter is None or ch_iter is None or not self.active_definition:
+            return
+        ch_idx = int(ch_model.get_value(ch_iter, COL_CH_INDEX))
+        mode_name = self.combo_modes.get_active_text()
+        if not mode_name:
+            return
+        ch_def = self.active_definition.get_mode(mode_name).channel_defs[ch_idx]
+        path = r_model.get_path(r_iter)
+        if path:
+            r_idx = path.get_indices()[0]
+            if r_idx < len(ch_def.ranges):
+                rng = ch_def.ranges[r_idx]
+                rng.label = self.entry_rng_label.get_text().strip() or rng.label
+                rng.value_min = int(self.spin_rng_min.get_value())
+                rng.value_max = int(self.spin_rng_max.get_value())
+                rng.snap_value = int(self.spin_rng_snap.get_value())
+                self._load_channel_ranges(ch_def)
+
     def _apply_color_preset(self, preset: str) -> None:
         if not self.active_definition:
             return
@@ -1106,6 +1259,38 @@ class FixtureLibraryTab(Gtk.Box):
             em_idx = path.get_indices()[0]
             if em_idx < len(self.active_definition.color_profile.emitters):
                 self.active_definition.color_profile.emitters.pop(em_idx)
+                self._refresh_color_emitters()
+
+    def _on_emitter_selection_changed(self, selection: Gtk.TreeSelection) -> None:
+        model, tree_iter = selection.get_selected()
+        if tree_iter is None:
+            return
+        name = str(model.get_value(tree_iter, COL_EM_NAME))
+        x = float(model.get_value(tree_iter, COL_EM_X))
+        y = float(model.get_value(tree_iter, COL_EM_Y))
+        lum = float(model.get_value(tree_iter, COL_EM_LUM))
+        self.entry_em_name.set_text(name)
+        self.spin_em_x.set_value(x)
+        self.spin_em_y.set_value(y)
+        self.spin_em_lum.set_value(lum)
+
+    def _on_update_emitter_clicked(self, _button: Gtk.Button) -> None:
+        model, tree_iter = self.emitters_tree.get_selection().get_selected()
+        if (
+            tree_iter is None
+            or not self.active_definition
+            or not self.active_definition.color_profile
+        ):
+            return
+        path = model.get_path(tree_iter)
+        if path:
+            em_idx = path.get_indices()[0]
+            if em_idx < len(self.active_definition.color_profile.emitters):
+                em = self.active_definition.color_profile.emitters[em_idx]
+                em.name = self.entry_em_name.get_text().strip() or em.name
+                em.cie.x = float(self.spin_em_x.get_value())
+                em.cie.y = float(self.spin_em_y.get_value())
+                em.cie.Y = float(self.spin_em_lum.get_value())
                 self._refresh_color_emitters()
 
     # -------------------------------------------------------------------------
