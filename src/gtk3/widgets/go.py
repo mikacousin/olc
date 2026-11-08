@@ -87,7 +87,9 @@ class GoWidget(Gtk.Widget):
         rounded_rectangle(cr, area, self.radius)
         # Draw Go
         cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(10)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Go")
         y_offset = 3 if (self.show_shortcut and self.shortcut_text) else 0
