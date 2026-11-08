@@ -27,6 +27,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.device_inspector import DeviceInspectorWidget
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.fader import FaderTab
+    from olc.gtk3.fixture_library import FixtureLibraryTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.history import HistoryTab
     from olc.gtk3.independent import IndependentsTab
@@ -43,6 +44,7 @@ if typing.TYPE_CHECKING:
         | DeviceInspectorWidget
         | DMXOutputsTab
         | FaderTab
+        | FixtureLibraryTab
         | GroupTab
         | HistoryTab
         | IndependentsTab
@@ -76,6 +78,7 @@ class Tabs:
             "curves": None,
             "device_inspector": None,
             "faders": None,
+            "fixtures": None,
             "groups": None,
             "history": None,
             "indes": None,

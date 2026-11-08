@@ -85,6 +85,11 @@ from olc.actions.fader import (
     FaderSetLevelAction,
     FaderSetPageAction,
 )
+from olc.actions.fixture import (
+    FixtureDeleteAction,
+    FixtureImportGdtfAction,
+    FixtureUpsertAction,
+)
 from olc.actions.group import (
     DeleteGroupAction,
     GroupRenameAction,
@@ -283,6 +288,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DeviceAdjustParameterAction,
         DeviceHomeAction,
         DeviceLocateAction,
+        FixtureUpsertAction,
+        FixtureDeleteAction,
+        FixtureImportGdtfAction,
         OscToggleAction,
         OscSetConfigAction,
         OscToggleStaticClientAction,

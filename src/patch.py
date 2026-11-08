@@ -24,7 +24,13 @@ import numpy as np
 
 from olc.define import DEFAULT_UNIVERSES, MAX_CHANNELS
 from olc.devices.builtin import create_dimmer_definition
-from olc.devices.device import Channel, ChannelType, FixtureType, LightingDevice
+from olc.devices.device import (
+    COLOR_CHANNEL_TYPES,
+    Channel,
+    ChannelType,
+    FixtureType,
+    LightingDevice,
+)
 from olc.devices.fixture import FixtureDefinition
 
 if typing.TYPE_CHECKING:
@@ -658,6 +664,78 @@ class PatchManager:
                 )
 
         return new_dev
+
+    def count_devices_using_definition(self, manufacturer: str, model: str) -> int:
+        """Count patched devices using the given manufacturer and model."""
+        m_lower = manufacturer.strip().lower()
+        mod_lower = model.strip().lower()
+        return sum(
+            1
+            for dev in self.devices.values()
+            if dev.manufacturer.strip().lower() == m_lower
+            and dev.model.strip().lower() == mod_lower
+        )
+
+    def sync_devices_with_definition(
+        self,
+        fdef: FixtureDefinition,
+        old_manufacturer: Optional[str] = None,
+        old_model: Optional[str] = None,
+    ) -> list[int]:
+        """Synchronize existing patched devices when their definition is updated."""
+        m_match = (old_manufacturer or fdef.manufacturer).strip().lower()
+        mod_match = (old_model or fdef.model).strip().lower()
+
+        matching_ids = [
+            dev_id
+            for dev_id, dev in list(self.devices.items())
+            if dev.manufacturer.strip().lower() == m_match
+            and dev.model.strip().lower() == mod_match
+        ]
+
+        synced_ids: list[int] = []
+        for dev_id in matching_ids:
+            old_dev = self.devices.get(dev_id)
+            if old_dev is None:
+                continue
+
+            # Check if mode still exists in updated definition
+            target_mode = old_dev.mode_name
+            if target_mode not in fdef.mode_names():
+                target_mode = fdef.default_mode().name
+
+            # Preserve current runtime state
+            curr_intensity = old_dev.intensity
+            old_color = old_dev.color_srgb
+            old_pan = old_dev.pan_degrees
+            old_tilt = old_dev.tilt_degrees
+            old_label = old_dev.label
+            old_group = old_dev.group
+
+            new_dev = self.exchange_fixture(
+                device_id=dev_id,
+                new_fixture_def=fdef,
+                new_mode_name=target_mode,
+                universe=old_dev.universe,
+                address=old_dev.address,
+                label=old_label,
+                force=True,
+            )
+            new_dev.group = old_group
+            new_dev.set_intensity(curr_intensity)
+            if hasattr(new_dev, "set_position_degrees") and (
+                old_pan != 0.0 or old_tilt != 0.0
+            ):
+                new_dev.set_position_degrees(old_pan, old_tilt)
+            has_color = any(
+                c.channel_type in COLOR_CHANNEL_TYPES for c in new_dev.channels
+            )
+            if hasattr(new_dev, "set_color_srgb") and has_color:
+                new_dev.set_color_srgb(old_color.r, old_color.g, old_color.b)
+
+            synced_ids.append(dev_id)
+
+        return synced_ids
 
     @staticmethod
     def _get_mode_physical_limits(

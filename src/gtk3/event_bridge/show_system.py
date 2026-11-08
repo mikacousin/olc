@@ -291,6 +291,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "groups": app.open_groups,
                 "indes": app.open_independents,
                 "device_inspector": app.open_device_inspector,
+                "fixtures": getattr(app, "open_fixtures", lambda: None),
                 "curves": app.open_curves,
                 "faders": app.open_faders,
                 "settings": app.open_settings,

@@ -44,6 +44,7 @@ from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
 from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
+from olc.gtk3.fixture_library import FixtureLibraryTab  # noqa: E402
 from olc.gtk3.group import GroupTab  # noqa: E402
 from olc.gtk3.history import HistoryTab  # noqa: E402
 from olc.gtk3.independent import IndependentsTab  # noqa: E402
@@ -222,6 +223,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.save", ["<Control>s"])
         self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
         self.set_accels_for_action("app.patch_channels", ["<Control>p"])
+        self.set_accels_for_action("app.fixtures", ["<Shift><Control>p"])
         self.set_accels_for_action("app.dmx_outputs", ["<Control>d"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
@@ -343,6 +345,7 @@ class Application(Gtk.Application):
             "export_ascii": "_export_ascii",
             "dmx_outputs": "dmx_outputs",
             "patch_channels": "patch_channels",
+            "fixtures": "fixtures_cb",
             "curves": "curves",
             "memories": "memories_cb",
             "groups": "groups_cb",
@@ -694,6 +697,22 @@ class Application(Gtk.Application):
                 "device_inspector",
                 DeviceInspectorWidget,
                 _("Device Inspector"),
+                self,
+            )
+
+    def fixtures_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Create Fixtures Library Tab"""
+        self.core.action_registry.execute("gui.tab_open", "fixtures")
+
+    def open_fixtures(self) -> None:
+        """Open Fixtures Library tab UI."""
+        if self.tabs:
+            self.tabs.open(
+                "fixtures",
+                FixtureLibraryTab,
+                _("Fixtures"),
                 self,
             )
 

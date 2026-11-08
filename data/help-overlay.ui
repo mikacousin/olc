@@ -102,6 +102,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="fixtures">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">Fixtures Library</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="dmx_outputs">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;D</property>

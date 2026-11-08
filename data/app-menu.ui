@@ -36,6 +36,10 @@
       <attribute name="action">app.patch_channels</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Fixtures</attribute>
+      <attribute name="action">app.fixtures</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">DMX Outputs</attribute>
       <attribute name="action">app.dmx_outputs</attribute>
     </item>

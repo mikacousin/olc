@@ -24,7 +24,6 @@ from gi.repository import Gdk, Gtk
 
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import populate_builtin_library
-from olc.devices.gdtf import GdtfImporter
 from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
 from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
@@ -36,7 +35,7 @@ if typing.TYPE_CHECKING:
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.devices.device import LightingDevice
-    from olc.devices.fixture import FixtureDefinition, FixtureLibrary
+    from olc.devices.fixture import FixtureLibrary
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
@@ -104,7 +103,6 @@ class PatchChannelsTab(Gtk.Box):
     add_device_btn: Gtk.Button
     remove_device_btn: Gtk.Button
     exchange_btn: Gtk.Button
-    import_gdtf_btn: Gtk.Button
     curve_column: Optional[Gtk.TreeViewColumn]
     curve_popover: CurveSelectionPopover
     _active_curve_device_id: Optional[int]
@@ -171,10 +169,6 @@ class PatchChannelsTab(Gtk.Box):
         self.exchange_btn = Gtk.Button(label="Fixture Exchange")
         self.exchange_btn.connect("clicked", self._on_exchange_clicked)
         self.toolbar.pack_start(self.exchange_btn, False, False, 0)
-
-        self.import_gdtf_btn = Gtk.Button(label="Import .gdtf")
-        self.import_gdtf_btn.connect("clicked", self._on_import_gdtf_clicked)
-        self.toolbar.pack_start(self.import_gdtf_btn, False, False, 0)
 
         # Global patch operations (packed on the right)
         self.unpatch_all_btn = Gtk.Button(label="Unpatch all")
@@ -670,13 +664,6 @@ class PatchChannelsTab(Gtk.Box):
         self.app.core.emit("patch.changed")
         return dev
 
-    def import_gdtf(self, file_path: str) -> FixtureDefinition:
-        """Import a .gdtf file and register it in the local fixture library."""
-        importer = GdtfImporter()
-        fdef = importer.load(file_path)
-        self.fixture_library.register(fdef)
-        return fdef
-
     # -------------------------------------------------------------------------
     # Toolbar Callbacks
     # -------------------------------------------------------------------------
@@ -802,33 +789,6 @@ class PatchChannelsTab(Gtk.Box):
         msg_dialog.format_secondary_text(body)
         msg_dialog.run()
         msg_dialog.destroy()
-
-    def _on_import_gdtf_clicked(self, _button: Gtk.Button) -> None:
-        chooser = Gtk.FileChooserDialog(
-            title="Import GDTF Fixture File",
-            parent=self.window,
-            action=Gtk.FileChooserAction.OPEN,
-        )
-        chooser.add_buttons(
-            Gtk.STOCK_CANCEL,
-            Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_OPEN,
-            Gtk.ResponseType.OK,
-        )
-        file_filter = Gtk.FileFilter()
-        file_filter.set_name("GDTF files (*.gdtf)")
-        file_filter.add_pattern("*.gdtf")
-        chooser.add_filter(file_filter)
-
-        response = chooser.run()
-        if response == Gtk.ResponseType.OK:
-            filename = chooser.get_filename()
-            if filename:
-                try:
-                    self.import_gdtf(filename)
-                except Exception:  # pylint: disable=broad-exception-caught
-                    pass
-        chooser.destroy()
 
     def _on_patch_1on1_clicked(self, _button: Gtk.Button) -> None:
         """Prompt confirmation and execute 1:1 patch."""

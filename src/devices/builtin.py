@@ -23,6 +23,7 @@ from .fixture import (
     DmxModeDefinition,
     FixtureDefinition,
     FixtureLibrary,
+    load_user_fixtures,
 )
 
 
@@ -70,6 +71,7 @@ def create_dimmer_definition(fine: bool = False) -> FixtureDefinition:
         fixture_type=FixtureType.DIMMER,
         dmx_modes=modes,
         notes="Standard generic dimmer fixture",
+        is_builtin=True,
     )
 
 
@@ -107,6 +109,7 @@ def create_rgb_definition() -> FixtureDefinition:
         dmx_modes=[mode],
         color_profile=color_profile,
         notes="Generic 3-channel RGB LED fixture",
+        is_builtin=True,
     )
 
 
@@ -148,6 +151,7 @@ def create_rgbw_definition() -> FixtureDefinition:
         dmx_modes=[mode],
         color_profile=color_profile,
         notes="Generic 4-channel RGBW LED fixture",
+        is_builtin=True,
     )
 
 
@@ -189,6 +193,7 @@ def create_rgba_definition() -> FixtureDefinition:
         dmx_modes=[mode],
         color_profile=color_profile,
         notes="Generic 4-channel RGBA LED fixture",
+        is_builtin=True,
     )
 
 
@@ -325,6 +330,7 @@ def create_moving_head_definition() -> FixtureDefinition:
         fixture_type=FixtureType.MOVING_HEAD,
         dmx_modes=[mode_16bit, mode_24bit],
         notes="Generic moving head spot with 16-bit and 24-bit modes",
+        is_builtin=True,
     )
 
 
@@ -339,4 +345,5 @@ def populate_builtin_library(
     lib.register(create_rgbw_definition())
     lib.register(create_rgba_definition())
     lib.register(create_moving_head_definition())
+    load_user_fixtures(lib)
     return lib

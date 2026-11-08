@@ -54,6 +54,10 @@ from .fixture import (
     DmxModeDefinition,
     FixtureDefinition,
     FixtureLibrary,
+    delete_user_fixture,
+    get_user_fixtures_dir,
+    load_user_fixtures,
+    save_user_fixture,
 )
 from .gdtf import (
     GDTF_ATTRIBUTE_MAP,
@@ -78,6 +82,10 @@ __all__ = [
     "DmxModeDefinition",
     "FixtureDefinition",
     "FixtureLibrary",
+    "get_user_fixtures_dir",
+    "save_user_fixture",
+    "delete_user_fixture",
+    "load_user_fixtures",
     # builtin
     "create_dimmer_definition",
     "create_moving_head_definition",

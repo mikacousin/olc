@@ -20,8 +20,13 @@ Also provides the FixtureLibrary registry.
 from __future__ import annotations
 
 import base64
+import json
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
+
+import platformdirs
 
 from .color import FixtureColorProfile
 from .device import (
@@ -302,6 +307,7 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
         gdtf_id: str = "",
         thumbnail: Optional[bytes] = None,
         notes: str = "",
+        is_builtin: bool = False,
     ) -> None:
         self.manufacturer = manufacturer
         self.model = model
@@ -311,6 +317,7 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
         self.gdtf_id = gdtf_id
         self.thumbnail = thumbnail
         self.notes = notes
+        self.is_builtin = bool(is_builtin)
 
     @property
     def full_name(self) -> str:
@@ -373,6 +380,7 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
             "fixture_type": self.fixture_type.value,
             "gdtf_id": self.gdtf_id,
             "notes": self.notes,
+            "is_builtin": self.is_builtin,
             "dmx_modes": [m.to_dict() for m in self.dmx_modes],
         }
         if self.color_profile is not None:
@@ -407,7 +415,22 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
             gdtf_id=str(data.get("gdtf_id", "")),
             thumbnail=thumbnail,
             notes=str(data.get("notes", "")),
+            is_builtin=bool(data.get("is_builtin", False)),
         )
+
+    def clone(
+        self,
+        new_manufacturer: Optional[str] = None,
+        new_model: Optional[str] = None,
+    ) -> FixtureDefinition:
+        """Create a deep clone with is_builtin=False."""
+        data = self.to_dict()
+        if new_manufacturer is not None:
+            data["manufacturer"] = str(new_manufacturer).strip()
+        if new_model is not None:
+            data["model"] = str(new_model).strip()
+        data["is_builtin"] = False
+        return FixtureDefinition.from_dict(data)
 
     @property
     def has_color_profile(self) -> bool:
@@ -506,6 +529,18 @@ class FixtureLibrary:
                 return d
         return None
 
+    def unregister(self, manufacturer: str, model: str) -> Optional[FixtureDefinition]:
+        """Unregister a fixture definition. Raises ValueError if it is built-in."""
+        key = self._key(manufacturer, model)
+        defn = self._definitions.get(key)
+        if defn is None:
+            return None
+        if defn.is_builtin:
+            raise ValueError(
+                f"Cannot delete built-in fixture definition '{defn.full_name}'."
+            )
+        return self._definitions.pop(key, None)
+
     def all(self) -> list[FixtureDefinition]:
         """Return all registered fixture definitions."""
         return list(self._definitions.values())
@@ -519,3 +554,70 @@ class FixtureLibrary:
 
     def __repr__(self) -> str:
         return f"<FixtureLibrary {len(self)} fixtures>"
+
+
+def get_user_fixtures_dir() -> Path:
+    """Return the directory path for local user fixtures (XDG data dir)."""
+    env_dir = os.environ.get("OLC_USER_FIXTURES_DIR")
+    if env_dir:
+        return Path(env_dir)
+    return Path(platformdirs.user_data_dir("olc")) / "fixtures"
+
+
+def _fixture_filename(manufacturer: str, model: str) -> str:
+    """Generate safe filename for a fixture definition."""
+    clean_m = "".join(
+        c if c.isalnum() or c in ("-", "_") else "_" for c in manufacturer
+    )
+    clean_mod = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in model)
+    return f"{clean_m}__{clean_mod}.json"
+
+
+def save_user_fixture(defn: FixtureDefinition) -> Optional[Path]:
+    """Save a user fixture definition to local disk. Built-in fixtures are ignored."""
+    if defn.is_builtin:
+        return None
+    try:
+        fixtures_dir = get_user_fixtures_dir()
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+        file_path = fixtures_dir / _fixture_filename(defn.manufacturer, defn.model)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(defn.to_dict(), f, indent=2)
+        return file_path
+    except OSError:
+        return None
+
+
+def delete_user_fixture(manufacturer: str, model: str) -> bool:
+    """Delete a user fixture file from local disk."""
+    try:
+        fixtures_dir = get_user_fixtures_dir()
+        file_path = fixtures_dir / _fixture_filename(manufacturer, model)
+        if file_path.exists():
+            file_path.unlink()
+            return True
+        return False
+    except OSError:
+        return False
+
+
+def load_user_fixtures(library: FixtureLibrary) -> int:
+    """Load all saved user fixtures from the local user fixtures directory."""
+    fixtures_dir = get_user_fixtures_dir()
+    if not fixtures_dir.exists() or not fixtures_dir.is_dir():
+        return 0
+    loaded = 0
+    try:
+        for file_path in fixtures_dir.glob("*.json"):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["is_builtin"] = False
+                fdef = FixtureDefinition.from_dict(data)
+                library.register(fdef)
+                loaded += 1
+            except Exception:
+                continue
+    except OSError:
+        pass
+    return loaded
