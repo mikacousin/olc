@@ -32,6 +32,8 @@ COLOR_ERROR = "#FF5252"  # Red underline for unrecognized characters
 
 SELECTION_KEYWORDS = frozenset(
     {
+        "CHANNEL",
+        "CHAN",
         "THRU",
         "GROUP",
         "ALL",

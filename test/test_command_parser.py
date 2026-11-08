@@ -51,6 +51,42 @@ def test_parser_select_only() -> None:
     assert node.selection.filter_mode == "all"
 
 
+def test_parser_channel_keyword_syntax() -> None:
+    """Test explicit CHANNEL and CHAN keywords for selection."""
+    parser = CommandParser()
+
+    # CHANNEL single channel
+    node1 = parser.parse("CHANNEL 5")
+    assert isinstance(node1, SelectOnlyCommandNode)
+    assert len(node1.selection.items) == 1
+    assert isinstance(node1.selection.items[0], ChannelNumberNode)
+    assert node1.selection.items[0].channel == 5
+
+    # CHANNEL with range and AT FULL
+    node2 = parser.parse("CHANNEL 1 THRU 10 AT FULL")
+    assert isinstance(node2, IntensityCommandNode)
+    assert node2.level == 100.0
+    assert node2.selection is not None
+    assert len(node2.selection.items) == 1
+    assert isinstance(node2.selection.items[0], ChannelRangeNode)
+    assert node2.selection.items[0].start == 1
+    assert node2.selection.items[0].end == 10
+
+    # CHAN abbreviation with AT OUT
+    node3 = parser.parse("CHAN 2 AT OUT")
+    assert isinstance(node3, IntensityCommandNode)
+    assert node3.level == 0.0
+    assert node3.selection is not None
+    assert len(node3.selection.items) == 1
+    assert isinstance(node3.selection.items[0], ChannelNumberNode)
+    assert node3.selection.items[0].channel == 2
+
+    # Multiple channels with CHANNEL keyword
+    node4 = parser.parse("CHANNEL 1 + CHANNEL 3 THRU 5")
+    assert isinstance(node4, SelectOnlyCommandNode)
+    assert len(node4.selection.items) == 2
+
+
 def test_parser_complex_selection() -> None:
     parser = CommandParser()
     node = parser.parse("1 + 3 THRU 5 + GROUP 2 - 4 ODD")

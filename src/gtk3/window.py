@@ -358,11 +358,34 @@ class Window(Gtk.ApplicationWindow):
             self.playback.grid,
         )
 
+    def _append_console_keyword(
+        self, keyword: str, trailing_space: bool = True
+    ) -> None:
+        """Append a keyword to the command line with intelligent spacing.
+
+        Avoids leading whitespace on an empty command line and ensures a single
+        space separator between consecutive tokens.
+        """
+        curr = self.app.core.commandline.get_string()
+        prefix = ""
+        if curr and not curr.endswith(" "):
+            prefix = " "
+        suffix = " " if trailing_space else ""
+        text = f"{prefix}{keyword}{suffix}"
+        self.app.core.action_registry.execute("commandline.append_char", text)
+
     def _handle_modifier_shortcuts(  # pylint: disable=too-many-return-statements
         self, keyval: int, modifiers: int
     ) -> bool:
         """Handle Ctrl / Alt keyboard shortcuts before GTK accelerators."""
+        # Control-only shortcuts
         if modifiers == int(Gdk.ModifierType.CONTROL_MASK):
+            if keyval in (Gdk.KEY_b, Gdk.KEY_B):
+                self.app.core.action_registry.execute("dmx.blackout_all")
+                return True
+            if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+                self.app.core.action_registry.execute("commandline.execute")
+                return True
             if keyval in (Gdk.KEY_f, Gdk.KEY_F):
                 cv = self._get_active_channels_view()
                 cv.toggle_view_mode()
@@ -383,6 +406,8 @@ class Window(Gtk.ApplicationWindow):
                 cv.level_minus()
                 cv.update()
                 return True
+
+        # Alt-only shortcuts
         elif modifiers == int(Gdk.ModifierType.MOD1_MASK):
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():
@@ -406,6 +431,35 @@ class Window(Gtk.ApplicationWindow):
                 self.app.core.action_registry.execute("playback.sequence_plus")
                 self.app.core.action_registry.execute("commandline.clear")
                 return True
+
+        # POS / Stream Deck shortcuts: Ctrl + Alt combinations
+        ctrl_alt = int(Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
+        if modifiers == ctrl_alt:
+            pos_map = {
+                (Gdk.KEY_c, Gdk.KEY_C): ("CHANNEL", True),
+                (Gdk.KEY_q, Gdk.KEY_Q): ("CUE", True),
+                (Gdk.KEY_a, Gdk.KEY_A): ("AT", True),
+                (Gdk.KEY_t, Gdk.KEY_T): ("THRU", True),
+                (Gdk.KEY_g, Gdk.KEY_G): ("GROUP", True),
+                (Gdk.KEY_r, Gdk.KEY_R): ("RECORD", True),
+                (Gdk.KEY_u, Gdk.KEY_U): ("UPDATE", True),
+                (Gdk.KEY_f, Gdk.KEY_F): ("FULL", True),
+                (Gdk.KEY_o, Gdk.KEY_O): ("OUT", True),
+                (Gdk.KEY_h, Gdk.KEY_H): ("HOME", True),
+                (Gdk.KEY_l, Gdk.KEY_L): ("LOCATE", True),
+                (Gdk.KEY_i, Gdk.KEY_I): ("TIME", True),
+                (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
+                (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
+                (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
+                (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
+                (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
+                (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
+            }
+            for keys, (kw, tr) in pos_map.items():
+                if keyval in keys:
+                    self._append_console_keyword(kw, trailing_space=tr)
+                    return True
+
         return False
 
     def _handle_navigation_keys(  # pylint: disable=too-many-return-statements,too-many-branches
@@ -554,6 +608,52 @@ class Window(Gtk.ApplicationWindow):
         nav_handled = self._handle_navigation_keys(keyval, modifiers)
         if nav_handled is not None:
             return nav_handled
+
+        # Shift secondary layer
+        if modifiers == int(Gdk.ModifierType.SHIFT_MASK):
+            shift_hotkeys = {
+                (Gdk.KEY_q, Gdk.KEY_Q): ("GOTO CUE", True),
+                (Gdk.KEY_r, Gdk.KEY_R): ("RECORD CUE", True),
+                (Gdk.KEY_u, Gdk.KEY_U): ("UPDATE CUE", True),
+                (Gdk.KEY_a, Gdk.KEY_A): ("AT FULL", False),
+                (Gdk.KEY_o, Gdk.KEY_O): ("AT OUT", False),
+                (Gdk.KEY_h, Gdk.KEY_H): ("HOME", False),
+                (Gdk.KEY_l, Gdk.KEY_L): ("LOCATE", False),
+            }
+            if keyval in (Gdk.KEY_c, Gdk.KEY_C):
+                self._clear_on_escape()
+                return True
+            for keys, (kw, tr) in shift_hotkeys.items():
+                if keyval in keys:
+                    self._append_console_keyword(kw, trailing_space=tr)
+                    return True
+
+        # Single-key console hotkeys when no modifiers are active
+        if modifiers == 0:
+            direct_hotkeys = {
+                (Gdk.KEY_c, Gdk.KEY_C): ("CHANNEL", True),
+                (Gdk.KEY_q, Gdk.KEY_Q): ("CUE", True),
+                (Gdk.KEY_a, Gdk.KEY_A): ("AT", True),
+                (Gdk.KEY_t, Gdk.KEY_T): ("THRU", True),
+                (Gdk.KEY_g, Gdk.KEY_G): ("GROUP", True),
+                (Gdk.KEY_r, Gdk.KEY_R): ("RECORD", True),
+                (Gdk.KEY_u, Gdk.KEY_U): ("UPDATE", True),
+                (Gdk.KEY_f, Gdk.KEY_F): ("FULL", False),
+                (Gdk.KEY_o, Gdk.KEY_O): ("OUT", False),
+                (Gdk.KEY_h, Gdk.KEY_H): ("HOME", False),
+                (Gdk.KEY_l, Gdk.KEY_L): ("LOCATE", False),
+                (Gdk.KEY_i, Gdk.KEY_I): ("TIME", True),
+                (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
+                (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
+                (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
+                (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
+                (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
+                (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
+            }
+            for keys, (kw, tr) in direct_hotkeys.items():
+                if keyval in keys:
+                    self._append_console_keyword(kw, trailing_space=tr)
+                    return True
 
         # Keypad digits (KP_0 .. KP_9)
         if Gdk.KEY_KP_0 <= keyval <= Gdk.KEY_KP_9:

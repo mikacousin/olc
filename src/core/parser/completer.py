@@ -39,6 +39,7 @@ class CompletionResult:
 
 
 TOKEN_TO_KEYWORD: dict[TokenType, str] = {
+    TokenType.CHANNEL: "CHANNEL",
     TokenType.THRU: "THRU",
     TokenType.AT: "AT",
     TokenType.FULL: "FULL",

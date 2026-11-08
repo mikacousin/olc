@@ -36,6 +36,7 @@ class TokenType(Enum):
     AT = auto()
 
     # Selection keywords
+    CHANNEL = auto()
     THRU = auto()
     GROUP = auto()
     ALL = auto()

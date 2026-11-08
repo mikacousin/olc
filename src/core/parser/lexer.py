@@ -30,6 +30,8 @@ class LexerError(Exception):
 
 
 KEYWORDS: dict[str, TokenType] = {
+    "CHANNEL": TokenType.CHANNEL,
+    "CHAN": TokenType.CHANNEL,
     "THRU": TokenType.THRU,
     "AT": TokenType.AT,
     "FULL": TokenType.FULL,

@@ -472,6 +472,11 @@ class CommandParser:
     def _parse_selection_item(self) -> SelectionItemNode:
         tok = self.peek()
 
+        # Optional CHANNEL / CHAN prefix (e.g. CHANNEL 1, CHAN 1 THRU 10)
+        if tok.type == TokenType.CHANNEL:
+            self.advance()
+            tok = self.peek()
+
         if tok.type == TokenType.ALL:
             self.advance()
             return AllSelectionNode()
@@ -739,6 +744,7 @@ class CommandParser:
         trimmed = text.strip()
         if not trimmed:
             return [
+                TokenType.CHANNEL,
                 TokenType.NUMBER,
                 TokenType.CUE,
                 TokenType.GROUP,
@@ -791,7 +797,7 @@ class CommandParser:
             return [TokenType.NUMBER]
 
         if last.type in (TokenType.PLUS, TokenType.MINUS):
-            return [TokenType.NUMBER, TokenType.GROUP]
+            return [TokenType.CHANNEL, TokenType.NUMBER, TokenType.GROUP]
 
         if last.type == TokenType.AT:
             return [

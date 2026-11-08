@@ -278,3 +278,172 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
 
     dmx_accels = app_gui.get_accels_for_action("app.dmx_outputs")
     assert any(a in dmx_accels for a in ("<Control>d", "<Primary>d"))
+
+
+@pytest.mark.gui
+def test_console_hotkeys_direct_letters(app_gui: Application) -> None:
+    """Test single-key hotkeys (C=CHANNEL, Q=CUE, A=AT, T=THRU, F=FULL, Enter)."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+    cmdline = app_gui.core.commandline
+
+    cmdline.clear()
+    assert cmdline.get_string() == ""
+
+    # Press 'c' -> "CHANNEL "
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_c, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert cmdline.get_string() == "CHANNEL "
+
+    # Press '1'
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_1, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert cmdline.get_string() == "CHANNEL 1"
+
+    # Press 't' -> " THRU "
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_t, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert cmdline.get_string() == "CHANNEL 1 THRU "
+
+    # Press '1', '0'
+    win._on_key_controller_pressed(controller, Gdk.KEY_1, 0, Gdk.ModifierType(0))
+    win._on_key_controller_pressed(controller, Gdk.KEY_0, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "CHANNEL 1 THRU 10"
+
+    # Press 'a' -> " AT "
+    win._on_key_controller_pressed(controller, Gdk.KEY_a, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "CHANNEL 1 THRU 10 AT "
+
+    # Press 'f' -> "FULL"
+    win._on_key_controller_pressed(controller, Gdk.KEY_f, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "CHANNEL 1 THRU 10 AT FULL"
+
+    # Press Return -> executes command and clears command line
+    win._on_key_controller_pressed(controller, Gdk.KEY_Return, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == ""
+
+    # Test 'q' -> "CUE "
+    win._on_key_controller_pressed(controller, Gdk.KEY_q, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "CUE "
+
+
+@pytest.mark.gui
+def test_console_hotkeys_shift_secondary_layer(app_gui: Application) -> None:
+    """Test Shift combinations (Shift+Q -> GOTO CUE, Shift+C -> CLEAR, etc.)."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+    cmdline = app_gui.core.commandline
+
+    cmdline.clear()
+
+    # Shift+Q -> "GOTO CUE "
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_Q, 0, Gdk.ModifierType.SHIFT_MASK
+        )
+        is True
+    )
+    assert cmdline.get_string() == "GOTO CUE "
+
+    # Shift+C -> Clear
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_C, 0, Gdk.ModifierType.SHIFT_MASK
+        )
+        is True
+    )
+    assert cmdline.get_string() == ""
+
+    # Shift+R -> "RECORD CUE "
+    win._on_key_controller_pressed(
+        controller, Gdk.KEY_R, 0, Gdk.ModifierType.SHIFT_MASK
+    )
+    assert cmdline.get_string() == "RECORD CUE "
+
+    cmdline.clear()
+    # Direct selection then Shift+A ("AT FULL")
+    win._on_key_controller_pressed(controller, Gdk.KEY_1, 0, Gdk.ModifierType(0))
+    win._on_key_controller_pressed(
+        controller, Gdk.KEY_A, 0, Gdk.ModifierType.SHIFT_MASK
+    )
+    assert cmdline.get_string() == "1 AT FULL"
+
+
+@pytest.mark.gui
+def test_console_hotkeys_ctrl_alt_pos_keypad(app_gui: Application) -> None:
+    """Test programmable keypad combinations with Ctrl+Alt modifiers."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+    cmdline = app_gui.core.commandline
+
+    ctrl_alt = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK
+
+    cmdline.clear()
+    # Ctrl+Alt+C -> "CHANNEL "
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_c, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "CHANNEL "
+
+    # Ctrl+Alt+Q -> "CUE "
+    cmdline.clear()
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_q, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "CUE "
+
+    # Ctrl+B -> Blackout toggle action
+    executed: list[str] = []
+    orig_exec = app_gui.core.action_registry.execute
+
+    def spy_exec(name: str, *args: object, **kwargs: object) -> object:
+        executed.append(name)
+        return orig_exec(name, *args, **kwargs)
+
+    app_gui.core.action_registry.execute = spy_exec  # type: ignore[assignment]
+    try:
+        assert (
+            win._on_key_controller_pressed(
+                controller, Gdk.KEY_b, 0, Gdk.ModifierType.CONTROL_MASK
+            )
+            is True
+        )
+        assert "dmx.blackout_all" in executed
+    finally:
+        app_gui.core.action_registry.execute = orig_exec  # type: ignore[assignment]
+
+
+@pytest.mark.gui
+def test_console_text_entry_focus_isolation(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure typing into a Gtk.Entry does not trigger console hotkeys."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+    cmdline = app_gui.core.commandline
+
+    cmdline.clear()
+    entry = Gtk.Entry()
+    win.add(entry)
+    entry.show()
+    entry.grab_focus()
+    process_events()
+
+    monkeypatch.setattr(win, "get_focus", lambda: entry)
+
+    # In text entry, pressing 'c' should return False so the Entry receives the letter
+    res = win._on_key_controller_pressed(controller, Gdk.KEY_c, 0, Gdk.ModifierType(0))
+    assert res is False
+    assert cmdline.get_string() == ""
+
+    # Universal shortcut Ctrl+G still triggers GO even when text editing
+    ctrl_g_res = win._on_key_controller_pressed(
+        controller, Gdk.KEY_g, 0, Gdk.ModifierType.CONTROL_MASK
+    )
+    assert ctrl_g_res is True
