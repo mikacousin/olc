@@ -55,7 +55,9 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Step text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Step")
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
@@ -69,7 +71,9 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Cue text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Cue")
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
@@ -83,7 +87,9 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
@@ -98,7 +104,9 @@ class TrackChannelsHeader(Gtk.Widget):
 
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+            cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
             cr.set_font_size(12)
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
@@ -228,7 +236,9 @@ class TrackChannelsWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.step))
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
@@ -253,7 +263,9 @@ class TrackChannelsWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         # Draw Cue number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.number))
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
@@ -278,7 +290,9 @@ class TrackChannelsWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         (_x, _y, _w, h, _dx, _dy) = cr.text_extents(self.text)
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
@@ -326,7 +340,7 @@ class TrackChannelsWidget(Gtk.Widget):
                     color.get("blue", 0.9),
                 )
                 cr.select_font_face(
-                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )
                 cr.set_font_size(12)
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)

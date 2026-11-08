@@ -114,7 +114,7 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.stroke()
 
             cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
             )
             cr.set_font_size(9.0)
             cr.move_to(px + 6.0, py - 4.0)
@@ -137,7 +137,9 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.line_to(px, py + 10.0)
             cr.stroke()
 
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+            cr.select_font_face(
+                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            )
             cr.set_font_size(10.0)
             cr.move_to(px + 8.0, py + 4.0)
             cr.show_text(f"#{pt['device_id']}")

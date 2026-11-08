@@ -114,14 +114,18 @@ class GroupWidget(Gtk.Widget):
 
         # draw group number
         cr.set_source_rgb(0.5, 0.5, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(12)
         cr.move_to(50, 15)
         txt = str(int(self.number)) if self.number.is_integer() else str(self.number)
         cr.show_text(txt)
         # draw group name
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+        )
         cr.move_to(8, 32)
         if len(self.name) > 10:
             cr.show_text(self.name[:10])

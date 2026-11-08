@@ -161,14 +161,18 @@ class RotaryEncoderWidget(Gtk.DrawingArea):
         cr.fill()
 
         # Center parameter label & physical value readout
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(9.5)
         cr.set_source_rgba(0.75, 0.82, 0.88, 0.95)
         ext_lbl = cr.text_extents(self.label)
         cr.move_to(cx - ext_lbl.width / 2.0 - ext_lbl.x_bearing, cy - 3.0)
         cr.show_text(self.label)
 
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+        )
         cr.set_font_size(9.0)
         cr.set_source_rgb(0.95, 0.95, 0.95)
         disp = self.value_text.replace(" [Multi]", "")

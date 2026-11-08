@@ -145,7 +145,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(11 * self.scale)
         text = f"{self.universe}.{self.output}"
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
@@ -193,7 +195,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
         if ch_num <= 0:
             return
 
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         base_font_size = 11.0 * self.scale
         cr.set_font_size(base_font_size)
 
@@ -271,7 +275,7 @@ class DMXOutputWidget(Gtk.DrawingArea):
             ):
                 cr.set_source_rgb(0.7, 0.7, 0.7)
                 cr.select_font_face(
-                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )
                 cr.set_font_size(10 * self.scale)
                 level = self.backend.dmx.frame[index][self.output - 1]

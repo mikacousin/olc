@@ -128,7 +128,9 @@ class EditCurveWidget(Gtk.DrawingArea):
         cr.line_to(width - self.delta, height - self.delta)
         cr.stroke()
         cr.set_line_width(1)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(8)
         for x in range(0, 256, 10):
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)

@@ -152,13 +152,13 @@ class CommandLineWidget:
         cursor = '<span foreground="#888888">_</span>'
         if not text:
             self.command_label.set_markup(
-                f'<span font_family="Monaco, monospace">{cursor}</span>'
+                f'<span font_family="DejaVu Sans, monospace">{cursor}</span>'
             )
             return
 
         markup = highlight_commandline_markup(text)
         self.command_label.set_markup(
-            f'<span font_family="Monaco, monospace">{markup}{cursor}</span>'
+            f'<span font_family="DejaVu Sans, monospace">{markup}{cursor}</span>'
         )
 
     def destroy(self) -> None:

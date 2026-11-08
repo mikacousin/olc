@@ -63,7 +63,7 @@ class MainFaderWidget(Gtk.Widget):
                     self.label = f"Main Fader {round(mf_val * 100)}%"
                     cr.set_source_rgb(0.8, 0.3, 0.3)
                 cr.select_font_face(
-                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )
                 cr.set_font_size(11)
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)

@@ -58,7 +58,9 @@ class CurveValues(Gtk.DrawingArea):
         if curve is None:
             return
         self.set_size_request(1000, 240)
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
         cr.set_font_size(8)
         x = 0
         for row in range(8):
