@@ -291,11 +291,9 @@ def test_virtual_console_ctrl_w_closes_window_without_sequence_step(
 
     initial_pos = app_gui.core.lightshow.main_playback.position
 
-    event_ctrl_w = Gdk.EventKey()
-    event_ctrl_w.keyval = Gdk.KEY_w
-    event_ctrl_w.state = Gdk.ModifierType.CONTROL_MASK
-
-    handled = vc.on_key_press_event(vc, event_ctrl_w)
+    handled = vc._on_key_controller_pressed(
+        vc.key_controller, Gdk.KEY_w, 0, Gdk.ModifierType.CONTROL_MASK
+    )
     process_events()
 
     assert handled is True
@@ -303,16 +301,14 @@ def test_virtual_console_ctrl_w_closes_window_without_sequence_step(
     assert app_gui.core.lightshow.main_playback.position == initial_pos
 
 
-def test_window_on_key_press_event_ignores_ctrl_w(app_gui: Application) -> None:
-    """Test that main Window.on_key_press_event ignores keys with Control modifier."""
+def test_window_key_controller_ignores_ctrl_w(app_gui: Application) -> None:
+    """Test that main Window._on_key_controller_pressed ignores keys with Control."""
     assert app_gui.window is not None
     initial_pos = app_gui.core.lightshow.main_playback.position
 
-    event_ctrl_w = Gdk.EventKey()
-    event_ctrl_w.keyval = Gdk.KEY_w
-    event_ctrl_w.state = Gdk.ModifierType.CONTROL_MASK
-
-    res = app_gui.window.on_key_press_event(app_gui.window, event_ctrl_w)
+    res = app_gui.window._on_key_controller_pressed(
+        app_gui.window.key_controller, Gdk.KEY_w, 0, Gdk.ModifierType.CONTROL_MASK
+    )
     process_events()
 
     assert res is False
@@ -328,11 +324,7 @@ def test_virtual_console_normal_key_delegates_to_live_view(
     assert app_gui.virtual_console is not None
     vc = app_gui.virtual_console
 
-    event_num = Gdk.EventKey()
-    event_num.keyval = Gdk.KEY_9
-    event_num.state = Gdk.ModifierType(0)
-
-    vc.on_key_press_event(vc, event_num)
+    vc._on_key_controller_pressed(vc.key_controller, Gdk.KEY_9, 0, Gdk.ModifierType(0))
     process_events()
 
     assert app_gui.core.commandline.get_string() == "9"

@@ -448,25 +448,34 @@ class VirtualConsoleWindow(Gtk.Window):
         self.app.core.subscribe("commandline.changed", self._on_commandline_changed)
         self.update_button_sensitivity()
 
-        # Send keyboard events to a dispatch function
-        self.connect("key_press_event", self.on_key_press_event)
+        # Handle keyboard events via modern EventControllerKey
+        self.key_controller = Gtk.EventControllerKey.new(self)
+        self.key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        self.key_controller.connect("key-pressed", self._on_key_controller_pressed)
 
-    def on_key_press_event(self, widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
+    def _on_key_controller_pressed(
+        self,
+        controller: Gtk.EventControllerKey,
+        keyval: int,
+        keycode: int,
+        state: Gdk.ModifierType,
+    ) -> bool:
         """Handle keyboard events for Virtual Console.
 
         Closes the window on Control+W, ignores Control/Alt combinations,
         and delegates standard keys to the main window live view.
 
         Args:
-            widget: Gtk Widget.
-            event: Gdk.EventKey.
+            controller: Gtk EventControllerKey.
+            keyval: Key value.
+            keycode: Hardware keycode.
+            state: Modifier state.
 
         Returns:
             True if event handled, False otherwise.
         """
-        state = getattr(event, "state", 0) or 0
         modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
-        if bool(modifiers & Gdk.ModifierType.CONTROL_MASK) and event.keyval in (
+        if bool(modifiers & Gdk.ModifierType.CONTROL_MASK) and keyval in (
             Gdk.KEY_w,
             Gdk.KEY_W,
         ):
@@ -479,7 +488,11 @@ class VirtualConsoleWindow(Gtk.Window):
             return False
 
         if self.app.window is not None:
-            return bool(self.app.window.on_key_press_event(widget, event))
+            return bool(
+                self.app.window._on_key_controller_pressed(
+                    controller, keyval, keycode, state
+                )
+            )
         return False
 
     @property

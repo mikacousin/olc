@@ -761,33 +761,6 @@ class Window(Gtk.ApplicationWindow):
 
         return False
 
-    def on_window_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
-        """Compatibility wrapper for legacy key-press event delegation."""
-        focused = self.get_focus()
-        if _is_text_editing(focused) and focused is not None:
-            return bool(focused.event(event))
-        return False
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget | None, event: Gdk.EventKey
-    ) -> bool:
-        """Handle legacy key-press event delegation by routing to key controller.
-
-        Args:
-            _widget: Gtk Widget or None
-            event: Gdk.EventKey
-
-        Returns:
-            True if event was handled, False otherwise.
-        """
-        state = getattr(event, "state", 0) or 0
-        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
-        keyval = getattr(event, "keyval", 0)
-        keycode = getattr(event, "hardware_keycode", 0)
-        return self._on_key_controller_pressed(
-            self.key_controller, keyval, keycode, Gdk.ModifierType(modifiers)
-        )
-
     def _keypress_exclam(self) -> None:
         """Level + (% level) of selected channels"""
         self.live_view.channels_view.level_plus()

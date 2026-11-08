@@ -32,7 +32,6 @@ from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.osc import EngineOSCServer  # noqa: E402
 from olc.core.universe_config import UniverseMap  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
-from olc.gtk3.window import Window  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
 
 
@@ -281,31 +280,6 @@ def test_settings_tab_client_ip_focus_out() -> None:
     assert res is False
     tab.app.core.action_registry.execute.assert_not_called()
     entry.set_text.assert_called_once_with("127.0.0.1")
-
-
-def test_window_key_press_delegation() -> None:
-    """Test on_window_key_press delegates to focused entry and allows global
-    shortcuts."""
-    win = Window.__new__(Window)
-    mock_entry = MagicMock(spec=Gtk.Entry)
-    win.get_focus = MagicMock(return_value=mock_entry)  # type: ignore[method-assign]
-
-    event = MagicMock()
-
-    # 1. Widget consumes event (e.g. space, text typing, Ctrl+C) -> returns True
-    mock_entry.event.return_value = True
-    assert win.on_window_key_press(MagicMock(), event) is True
-    mock_entry.event.assert_called_once_with(event)
-
-    # 2. Widget does not consume event (e.g. Ctrl+Z, Ctrl+Y, Ctrl+S) -> returns False
-    mock_entry.event.reset_mock()
-    mock_entry.event.return_value = False
-    assert win.on_window_key_press(MagicMock(), event) is False
-    mock_entry.event.assert_called_once_with(event)
-
-    # 3. Non-entry focused -> returns False immediately without calling event()
-    win.get_focus.return_value = MagicMock(spec=Gtk.Button)
-    assert win.on_window_key_press(MagicMock(), event) is False
 
 
 def test_osc_start_stop_reentrant_lock(monkeypatch: pytest.MonkeyPatch) -> None:
