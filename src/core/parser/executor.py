@@ -36,6 +36,7 @@ from olc.core.parser.ast_nodes import (
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
+    SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
@@ -118,6 +119,9 @@ class CommandExecutor:
 
         if isinstance(node, DeleteCueCommandNode):
             return self._execute_delete_cue(node)
+
+        if isinstance(node, SneakCommandNode):
+            return self._execute_sneak(node)
 
         if isinstance(node, HomeCommandNode):
             return self._execute_home(node)
@@ -392,6 +396,50 @@ class CommandExecutor:
             affected_channels=channels,
         )
 
+    def _execute_sneak(self, node: SneakCommandNode) -> CommandResult:
+        core = getattr(self.app, "core", self.app)
+        sneak_ctrl = getattr(core, "sneak_controller", None)
+        if sneak_ctrl is None:
+            return CommandResult(False, "Sneak controller not available")
+
+        # Case 1: Sneak independents
+        if node.independents is not None:
+            affected = sneak_ctrl.sneak_independents(
+                numbers=node.independents, duration=node.duration
+            )
+            time_str = (
+                f" in {node.duration:.1f}s"
+                if node.duration is not None
+                else f" in {sneak_ctrl.get_default_sneak_time():.1f}s"
+            )
+            return CommandResult(
+                True,
+                f"Sneaking independent(s) {affected}{time_str}",
+            )
+
+        # Case 2: Sneak channels
+        target_channels = (
+            self.resolve_selection(node.selection)
+            if node.selection is not None
+            else None
+        )
+        affected_ch = sneak_ctrl.sneak_channels(
+            channels=target_channels, duration=node.duration
+        )
+        if not affected_ch:
+            return CommandResult(True, "No manual levels to sneak")
+
+        time_str = (
+            f" in {node.duration:.1f}s"
+            if node.duration is not None
+            else f" in {sneak_ctrl.get_default_sneak_time():.1f}s"
+        )
+        return CommandResult(
+            True,
+            f"Sneaking {len(affected_ch)} channel(s){time_str}",
+            affected_channels=affected_ch,
+        )
+
     def _capture_live_cue_state(
         self, lightshow: LightShow
     ) -> tuple[dict[int, int], dict[int, dict[str, typing.Any]]]:
@@ -520,6 +568,26 @@ class CommandExecutor:
             self.app.emit("cue.updated", 1, node.cue_id)
             self.app.emit("step.updated", float(main_playback.index), existing_step_idx)
 
+        # If recording current active cue, release manual override on recorded channels
+        current_cue_num = None
+        if 0 <= main_playback.position < len(main_playback.steps):
+            s = main_playback.steps[main_playback.position]
+            if s and s.cue:
+                current_cue_num = s.cue.number
+        if current_cue_num is not None and current_cue_num == node.cue_id:
+            backend = getattr(self.app, "backend", None)
+            if backend and getattr(backend, "dmx", None):
+                user_levels = backend.dmx.levels.get("user")
+                if user_levels is not None:
+                    released = []
+                    for ch in cue.channels:
+                        if 1 <= ch <= len(user_levels):
+                            user_levels[ch - 1] = -1
+                            released.append(ch)
+                    backend.dmx.set_levels()
+                    if released:
+                        self.app.emit("channels.updated", released)
+
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
 
     def _execute_update_cue(  # pylint: disable=too-many-locals,too-many-branches
@@ -571,6 +639,28 @@ class CommandExecutor:
 
         lightshow.main_playback.update_channels()
         lightshow.set_modified()
+
+        # If updating current active cue, release manual override on updated channels
+        main_pb = lightshow.main_playback
+        current_cue_num = None
+        if 0 <= main_pb.position < len(main_pb.steps):
+            s = main_pb.steps[main_pb.position]
+            if s and s.cue:
+                current_cue_num = s.cue.number
+        if current_cue_num is not None and current_cue_num == cue_num:
+            backend = getattr(self.app, "backend", None)
+            if backend and getattr(backend, "dmx", None):
+                user_levels = backend.dmx.levels.get("user")
+                if user_levels is not None:
+                    released = []
+                    for ch in cue.channels:
+                        if 1 <= ch <= len(user_levels):
+                            user_levels[ch - 1] = -1
+                            released.append(ch)
+                    backend.dmx.set_levels()
+                    if released:
+                        self.app.emit("channels.updated", released)
+
         self.app.emit("cue.updated", 1, cue_num)
         return CommandResult(True, f"Updated Cue {cue_num}")
 

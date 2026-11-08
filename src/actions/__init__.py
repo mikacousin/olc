@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.actions.channel import (
+    ChannelSneakAction,
     ChannelWheelAdjustAction,
     LevelMinusAction,
     LevelPlusAction,
@@ -148,6 +149,7 @@ from olc.actions.playback import (
     PlaybackGotoAction,
     PlaybackManualXFadeAction,
     PlaybackRecordCueAction,
+    PlaybackSneakAction,
     PlaybackUpdateActiveStepAction,
     SequenceMinusAction,
     SequencePlusAction,
@@ -190,6 +192,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SelectAllChannelsAction,
         SetLevelFromCmdAction,
         SetLevelFullAction,
+        ChannelSneakAction,
         LevelPlusAction,
         LevelMinusAction,
         NewGroupAction,
@@ -265,6 +268,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         ChannelWheelAdjustAction,
         PlaybackManualXFadeAction,
         PlaybackRecordCueAction,
+        PlaybackSneakAction,
         PlaybackUpdateActiveStepAction,
         MidiPortToggleAction,
         MidiSetPortModeAction,

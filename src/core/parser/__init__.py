@@ -29,6 +29,7 @@ from olc.core.parser.ast_nodes import (
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
+    SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "SelectOnlyCommandNode",
     "SelectionItemNode",
     "SelectionNode",
+    "SneakCommandNode",
     "Token",
     "TokenType",
     "UnblockCueCommandNode",

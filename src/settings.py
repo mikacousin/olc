@@ -110,6 +110,17 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         widget4 = typing.cast(Gtk.SpinButton, builder.get_object("spin_go_back_time"))
         widget4.set_adjustment(adjustment)
         widget4.set_value(self.settings.get_double("go-back-time"))
+        adjustment_sneak = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=100,
+            step_increment=0.5,
+            page_increment=5,
+            page_size=0,
+        )
+        widget5 = typing.cast(Gtk.SpinButton, builder.get_object("spin_sneak_time"))
+        widget5.set_adjustment(adjustment_sneak)
+        widget5.set_value(self.settings.get_double("sneak-time"))
 
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
@@ -561,6 +572,10 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
     def _on_change_go_back_time(self, widget: Gtk.SpinButton) -> None:
         time = widget.get_value()
         self.settings.set_value("go-back-time", GLib.Variant("d", time))
+
+    def _on_change_sneak_time(self, widget: Gtk.SpinButton) -> None:
+        time = widget.get_value()
+        self.settings.set_value("sneak-time", GLib.Variant("d", time))
 
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)

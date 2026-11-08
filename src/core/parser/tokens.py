@@ -76,6 +76,8 @@ class TokenType(Enum):
     BLOCK = auto()
     UNBLOCK = auto()
     DELETE = auto()
+    SNEAK = auto()
+    INDEPENDENT = auto()
 
     # Identifiers (unrecognized words / custom labels)
     IDENT = auto()

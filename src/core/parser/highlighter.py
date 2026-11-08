@@ -57,6 +57,11 @@ COMMAND_KEYWORDS = frozenset(
         "BLOCK",
         "UNBLOCK",
         "DELETE",
+        "SNEAK",
+        "SNK",
+        "INDEPENDENT",
+        "INDE",
+        "IND",
     }
 )
 

@@ -32,6 +32,7 @@ from olc.core.parser.ast_nodes import (
     LocateCommandNode,
     RecordCueCommandNode,
     SelectOnlyCommandNode,
+    SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
@@ -396,3 +397,59 @@ def test_parser_home_and_locate() -> None:
     n6 = parser.parse("HOME COLOR")
     assert isinstance(n6, HomeCommandNode)
     assert n6.category == "color"
+
+
+def test_parser_sneak() -> None:
+    parser = CommandParser()
+
+    # 1. Standalone SNEAK
+    n1 = parser.parse("SNEAK")
+    assert isinstance(n1, SneakCommandNode)
+    assert n1.selection is None
+    assert n1.independents is None
+    assert n1.duration is None
+
+    # 2. SNEAK with duration
+    n2 = parser.parse("SNEAK TIME 3.5")
+    assert isinstance(n2, SneakCommandNode)
+    assert n2.selection is None
+    assert n2.duration == 3.5
+
+    # 3. Noun-first selection SNEAK
+    n3 = parser.parse("1 THRU 5 SNEAK")
+    assert isinstance(n3, SneakCommandNode)
+    assert n3.selection is not None
+    assert n3.duration is None
+
+    # 4. Verb-first SNEAK selection
+    n4 = parser.parse("SNEAK 1 THRU 5")
+    assert isinstance(n4, SneakCommandNode)
+    assert n4.selection is not None
+    assert n4.duration is None
+
+    # 5. Selection + SNEAK + TIME
+    n5 = parser.parse("1 + 3 SNEAK TIME 2")
+    assert isinstance(n5, SneakCommandNode)
+    assert n5.selection is not None
+    assert n5.duration == 2.0
+
+
+def test_parser_independent_sneak() -> None:
+    parser = CommandParser()
+
+    # 1. INDEPENDENT 1 SNEAK
+    n1 = parser.parse("INDEPENDENT 1 SNEAK")
+    assert isinstance(n1, SneakCommandNode)
+    assert n1.independents == [1]
+    assert n1.duration is None
+
+    # 2. INDEPENDENT 1 + 2 SNEAK TIME 4
+    n2 = parser.parse("INDEPENDENT 1 + 2 SNEAK TIME 4")
+    assert isinstance(n2, SneakCommandNode)
+    assert n2.independents == [1, 2]
+    assert n2.duration == 4.0
+
+    # 3. INDE abbreviation
+    n3 = parser.parse("INDE 3 SNEAK")
+    assert isinstance(n3, SneakCommandNode)
+    assert n3.independents == [3]

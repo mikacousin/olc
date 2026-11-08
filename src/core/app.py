@@ -26,6 +26,7 @@ from olc.core.history import HistoryManager
 from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
+from olc.core.sneak import SneakController
 from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
@@ -104,6 +105,7 @@ class CoreApplication(EventDispatcher):
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))
         self.history = HistoryManager(typing.cast(typing.Any, self))
+        self.sneak_controller = SneakController(typing.cast(typing.Any, self))
 
         # Logical selection states
         self.live_selection = SelectionManager(

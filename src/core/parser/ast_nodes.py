@@ -169,3 +169,12 @@ class DeleteCueCommandNode(CommandNode):
     """Command to delete a cue (e.g. DELETE CUE 4)."""
 
     cue_id: float
+
+
+@dataclasses.dataclass
+class SneakCommandNode(CommandNode):
+    """Command to sneak channels or independents over a duration."""
+
+    selection: SelectionNode | None = None
+    independents: list[int] | None = None
+    duration: float | None = None

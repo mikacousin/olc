@@ -384,8 +384,6 @@ class Sequence:
         # Jump to next Step
         position = self.position + 1
         if position < self.last - 1:  # Stop on the last cue
-            if self.backend is not None and self.backend.dmx is not None:
-                self.backend.dmx.levels["user"].fill(-1)
             self.load_step(position)
 
     def sequence_minus(self) -> None:
@@ -395,8 +393,6 @@ class Sequence:
         # Jump to previous Step
         position = self.position - 1
         if position >= 0:
-            if self.backend is not None and self.backend.dmx is not None:
-                self.backend.dmx.levels["user"].fill(-1)
             self.load_step(position)
 
     def goto(self, keystring: str, override_time: Optional[float] = None) -> None:
@@ -472,8 +468,6 @@ class Sequence:
 
                 if override_time is not None and override_time <= 0.0:
                     self.stop()
-                    if self.backend is not None and self.backend.dmx is not None:
-                        self.backend.dmx.levels["user"].fill(-1)
                     self.load_step(i)
                     self.position = i - 1
                     next_after = _next_step(typing.cast(typing.Any, self))

@@ -342,19 +342,13 @@ class ThreadGo(threading.Thread):
                     t_dark_ms = self._get_device_dark_time_ms(step, dev_id)
                     self.total_time = max(self.total_time, t_dark_ms + mib_dur_ms)
 
-    def _reset_user_overrides_and_sync(self) -> None:
-        """Reset user overrides to -1 and push final levels to DMX."""
+    def _sync_dmx_levels(self) -> None:
+        """Push final levels to DMX while preserving user overrides."""
         if (
             self.backend is not None
             and hasattr(self.backend, "dmx")
-            and hasattr(self.backend.dmx, "levels")
-            and "user" in self.backend.dmx.levels
+            and self.backend.dmx is not None
         ):
-            user_lvls = self.backend.dmx.levels["user"]
-            if hasattr(user_lvls, "fill"):
-                user_lvls.fill(-1)
-            else:
-                user_lvls[:] = [-1] * len(user_lvls)
             self.backend.dmx.set_levels()
 
     def _finalize_go(self) -> None:
@@ -394,7 +388,7 @@ class ThreadGo(threading.Thread):
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
 
-        self._reset_user_overrides_and_sync()
+        self._sync_dmx_levels()
 
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
@@ -746,19 +740,13 @@ class ThreadGoBack(threading.Thread):
             self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = _capture_device_states(self.sequence.patch)
 
-    def _reset_user_overrides_and_sync(self) -> None:
-        """Reset user overrides to -1 and push final levels to DMX."""
+    def _sync_dmx_levels(self) -> None:
+        """Push final levels to DMX while preserving user overrides."""
         if (
             self.backend is not None
             and hasattr(self.backend, "dmx")
-            and hasattr(self.backend.dmx, "levels")
-            and "user" in self.backend.dmx.levels
+            and self.backend.dmx is not None
         ):
-            user_lvls = self.backend.dmx.levels["user"]
-            if hasattr(user_lvls, "fill"):
-                user_lvls.fill(-1)
-            else:
-                user_lvls[:] = [-1] * len(user_lvls)
             self.backend.dmx.set_levels()
 
     def _finalize_goback(self, prev_step: int) -> None:
@@ -791,7 +779,7 @@ class ThreadGoBack(threading.Thread):
         if self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
-        self._reset_user_overrides_and_sync()
+        self._sync_dmx_levels()
 
         self.sequence.update_channels()
         self.sequence.position = prev_step

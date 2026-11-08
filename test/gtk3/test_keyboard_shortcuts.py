@@ -383,6 +383,11 @@ def test_console_hotkeys_direct_letters(app_gui: Application) -> None:
     win._on_key_controller_pressed(controller, Gdk.KEY_q, 0, Gdk.ModifierType(0))
     assert cmdline.get_string() == "CUE "
 
+    # Test 'n' -> "SNEAK "
+    cmdline.clear()
+    win._on_key_controller_pressed(controller, Gdk.KEY_n, 0, Gdk.ModifierType(0))
+    assert cmdline.get_string() == "SNEAK "
+
 
 @pytest.mark.gui
 def test_console_hotkeys_shift_secondary_layer(app_gui: Application) -> None:
@@ -446,6 +451,11 @@ def test_console_hotkeys_ctrl_alt_pos_keypad(app_gui: Application) -> None:
     cmdline.clear()
     assert win._on_key_controller_pressed(controller, Gdk.KEY_q, 0, ctrl_alt) is True
     assert cmdline.get_string() == "CUE "
+
+    # Ctrl+Alt+N -> "SNEAK "
+    cmdline.clear()
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_n, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "SNEAK "
 
     # Ctrl+B -> Blackout toggle action
     executed: list[str] = []

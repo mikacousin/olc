@@ -90,12 +90,18 @@ class Independent:
         self.levels = dict(levels)
         self.channels = {channel for channel, level in levels.items() if level}
 
-    def set_level(self, value: float) -> None:
+    def set_level(self, value: float, cancel_sneak: bool = True) -> None:
         """Set independent level
 
         Args:
             value: New level
+            cancel_sneak: Whether to cancel any in-progress sneak fade
         """
+        if cancel_sneak and self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            sneak_ctrl = getattr(core, "sneak_controller", None)
+            if sneak_ctrl is not None:
+                sneak_ctrl.cancel_independent(self.number)
         self.level = value
         self.update_dmx()
 

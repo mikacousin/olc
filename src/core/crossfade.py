@@ -19,7 +19,6 @@ import typing
 import numpy as np
 
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, ResolvedState, TrackingEngine
-from olc.define import MAX_CHANNELS
 from olc.sequence import _capture_device_states, _interpolate_device_states, get_cue
 
 if typing.TYPE_CHECKING:
@@ -194,8 +193,6 @@ class CrossFade:
 
         if self.app.backend and self.app.backend.dmx:
             dmx = self.app.backend.dmx
-            # Empty array of levels entered by user
-            dmx.levels["user"] = np.full(MAX_CHANNELS, -1, dtype=np.int16)
             n_ch = min(len(dmx.levels["sequence"]), len(resolved.channels))
             dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 

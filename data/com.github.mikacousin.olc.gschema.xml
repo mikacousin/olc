@@ -21,6 +21,11 @@
       <summary>Go Back Time</summary>
       <description></description>
     </key>
+    <key name="sneak-time" type="d">
+      <default>5.0</default>
+      <summary>Default Sneak Time</summary>
+      <description>Default fade time in seconds for the Sneak command</description>
+    </key>
     <key name="osc" type="b">
       <default>true</default>
       <summary>OSC</summary>

@@ -56,7 +56,11 @@ class BaseChannelLevelAction(Action):
                 processed_levels[ch] = (dmx_val, dmx_val / 255.0)
 
         if dmx is not None:
+            core = getattr(self.app, "core", self.app)
+            sneak_ctrl = getattr(core, "sneak_controller", None)
             for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
+                if sneak_ctrl is not None:
+                    sneak_ctrl.cancel_channel(ch)
                 dmx.levels["user"][ch - 1] = dmx_lvl
 
         if patch is not None:
@@ -532,3 +536,30 @@ class ChannelWheelAdjustAction(BaseRelativeLevelAction):
         else:
             delta = self.step if self.direction > 0 else -self.step
         self._apply_delta(delta, use_percent=False)
+
+
+class ChannelSneakAction(Action):
+    """Action to gradually release manual channel overrides (Sneak)."""
+
+    name = "channel.sneak"
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] | None = None
+        self.duration: float | None = None
+
+    def configure(
+        self,
+        channels: list[int] | None = None,
+        duration: float | None = None,
+    ) -> None:
+        """Configure channels to sneak and optional fade duration."""
+        self.channels = channels
+        self.duration = duration
+
+    def execute(self) -> None:
+        """Execute sneak on configured channels."""
+        core = getattr(self.app, "core", self.app)
+        sneak_ctrl = getattr(core, "sneak_controller", None)
+        if sneak_ctrl is not None:
+            sneak_ctrl.sneak_channels(self.channels, self.duration)

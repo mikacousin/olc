@@ -488,6 +488,7 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
+                (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
             }
             for keys, (kw, tr) in pos_map.items():
                 if keyval in keys:
@@ -722,6 +723,7 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
+                (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
             }
             for keys, (kw, tr) in direct_hotkeys.items():
                 if keyval in keys:

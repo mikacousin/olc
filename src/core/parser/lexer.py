@@ -52,6 +52,11 @@ KEYWORDS: dict[str, TokenType] = {
     "BLOCK": TokenType.BLOCK,
     "UNBLOCK": TokenType.UNBLOCK,
     "DELETE": TokenType.DELETE,
+    "SNEAK": TokenType.SNEAK,
+    "SNK": TokenType.SNEAK,
+    "INDEPENDENT": TokenType.INDEPENDENT,
+    "INDE": TokenType.INDEPENDENT,
+    "IND": TokenType.INDEPENDENT,
     # ML Attributes & Families
     "HOME": TokenType.HOME,
     "LOCATE": TokenType.LOCATE,

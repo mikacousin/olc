@@ -32,7 +32,11 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
         """Subscribe to Core events for channel levels and selection."""
         self.app.core.subscribe(
             "channel.level_changed",
-            lambda c, level: self._run_idle(self._on_channel_level_ui, c, level),
+            lambda c, _lvl=None: self._run_idle(self._on_channel_level_ui, c),
+        )
+        self.app.core.subscribe(
+            "channels.updated",
+            lambda channels: self._run_idle(self._on_channels_updated_ui, channels),
         )
         self.app.core.subscribe(
             "channels.selected_changed",
@@ -70,18 +74,30 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
             channels_view.flowbox.queue_draw()
         return False
 
-    def _on_channel_level_ui(self, channel: int, level: int) -> bool:
+    def _on_channel_level_ui(self, channel: int) -> bool:
         """Safely update a channel widget in the GTK main thread.
 
         Args:
             channel: Channel number.
-            level: DMX level.
 
         Returns:
             Always False (required for GLib.idle_add to remove the callback).
         """
         if self.app.window and self.app.window.live_view:
-            self.app.window.live_view.update_channel_widget(channel, level)
+            self.app.window.live_view.update_channel_widget(channel)
+        return False
+
+    def _on_channels_updated_ui(self, channels: list[int]) -> bool:
+        """Batch update channel widgets in the GTK main thread."""
+        if self.app.window and self.app.window.live_view:
+            live_view = self.app.window.live_view
+            for ch in channels or []:
+                live_view.update_channel_widget(ch)
+            if self.app.tabs and self.app.tabs.tabs.get("track_channels") is not None:
+                track_channels = typing.cast(
+                    "TrackChannelsTab", self.app.tabs.tabs["track_channels"]
+                )
+                track_channels.update_display()
         return False
 
     def _on_channels_selected_changed(self, selected_channels: list[int]) -> bool:

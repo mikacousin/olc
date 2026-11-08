@@ -79,6 +79,7 @@ class Dmx:
         self.frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
         # To test outputs
         self.user_outputs = {}
         # Callbacks for UI updates
@@ -121,15 +122,16 @@ class Dmx:
         )
         color_level = get_tracking_color(state)
         level = self.levels["sequence"][channel_idx]
-        if not main_pb.on_go and self.levels["user"][channel_idx] != -1:
+        if self.levels["user"][channel_idx] != -1:
             level = self.levels["user"][channel_idx]
             color_level = get_tracking_color(TrackingDisplayState.MANUAL)
-        if self.levels["faders"][channel_idx] > level:
-            level = self.levels["faders"][channel_idx]
-            color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-        if self.lightshow.independents.dmx[channel_idx] > level:
-            level = self.lightshow.independents.dmx[channel_idx]
-            color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
+        else:
+            if self.levels["faders"][channel_idx] > level:
+                level = self.levels["faders"][channel_idx]
+                color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
+            if self.lightshow.independents.dmx[channel_idx] > level:
+                level = self.lightshow.independents.dmx[channel_idx]
+                color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         return int(level), color_level
 
     def get_all_composite_levels(self) -> np.ndarray:
@@ -141,9 +143,8 @@ class Dmx:
         composite = self.levels["sequence"].copy()
         composite = np.maximum(composite, self.levels["faders"])
         composite = np.maximum(composite, self.lightshow.independents.dmx)
-        if not self.lightshow.main_playback.on_go:
-            user_mask = self.levels["user"] != -1
-            composite[user_mask] = self.levels["user"][user_mask]
+        user_mask = self.levels["user"] != -1
+        composite[user_mask] = self.levels["user"][user_mask]
         return composite
 
     @property
@@ -267,15 +268,22 @@ class Dmx:
             scaled = composite * self.effective_intensity_mult
             current_display_levels = np.round(scaled).astype(np.uint8)
 
+            user_levels = self.levels.get("user")
+            if user_levels is not None:
+                user_mask = user_levels != -1
+            else:
+                user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
+            user_changed = user_mask != self._old_user_mask
+
             changed_indices = np.where(
-                (current_display_levels != self._old_channel_levels)
-                & self.patch.is_patched_mask
+                (current_display_levels != self._old_channel_levels) | user_changed
             )[0]
 
             if len(changed_indices) > 0:
                 self._old_channel_levels[changed_indices] = current_display_levels[
                     changed_indices
                 ]
+                self._old_user_mask[changed_indices] = user_mask[changed_indices]
                 changed_channels = (changed_indices + 1).tolist()
                 GLib.idle_add(self.trigger_channels_update, changed_channels)
 

@@ -166,8 +166,15 @@ def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
         {"red": 0.95, "green": 0.35, "blue": 0.35},
     )
 
-    # Higher HTP fader overrides manual level and color -> Green
+    # Manual override takes priority over higher fader
     dmx.levels["faders"][0] = 210
+    assert dmx.get_composite_level(0) == (
+        180,
+        {"red": 0.95, "green": 0.35, "blue": 0.35},
+    )
+
+    # When manual override is released, higher HTP fader takes over -> Green
+    dmx.levels["user"][0] = -1
     assert dmx.get_composite_level(0) == (
         210,
         {"red": 0.4, "green": 0.7, "blue": 0.4},

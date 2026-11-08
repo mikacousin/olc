@@ -35,6 +35,7 @@ from olc.core.parser.ast_nodes import (
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
+    SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
@@ -173,6 +174,12 @@ class CommandParser:
         if tok.type == TokenType.DELETE:
             return self._parse_delete_cue()
 
+        if tok.type == TokenType.SNEAK:
+            return self._parse_sneak_command(selection=None)
+
+        if tok.type == TokenType.INDEPENDENT:
+            return self._parse_independent_command()
+
         # Standalone LOCATE / HOME (implicit selection)
         if tok.type == TokenType.LOCATE:
             self.advance()
@@ -211,6 +218,9 @@ class CommandParser:
         if self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
 
+        if self.peek().type == TokenType.SNEAK:
+            return self._parse_sneak_command(selection=selection)
+
         if self.peek().type == TokenType.LOCATE:
             self.advance()
             return LocateCommandNode(selection=selection)
@@ -238,6 +248,60 @@ class CommandParser:
                 )
 
         return self._parse_action_clause(selection)
+
+    # --- Sneak Commands ---
+
+    def _parse_optional_duration(self) -> float | None:
+        """Parse optional TIME <number> or <number> duration."""
+        if self.match(TokenType.TIME):
+            tok = self.expect(TokenType.NUMBER, "Expected duration number after TIME")
+            return float(tok.value)
+        if self.peek().type == TokenType.NUMBER:
+            tok = self.advance()
+            return float(tok.value)
+        return None
+
+    def _parse_sneak_command(
+        self, selection: SelectionNode | None = None
+    ) -> SneakCommandNode:
+        self.advance()  # consume SNEAK
+        if selection is None:
+            tok = self.peek()
+            if tok.type in (TokenType.NUMBER, TokenType.CHANNEL, TokenType.GROUP):
+                selection = self._parse_selection()
+        dur = self._parse_optional_duration()
+        return SneakCommandNode(selection=selection, independents=None, duration=dur)
+
+    def _parse_independent_command(self) -> CommandNode:
+        self.advance()  # consume INDEPENDENT
+        tok = self.peek()
+        indes: list[int] = []
+        if tok.type == TokenType.ALL:
+            self.advance()
+            indes = list(range(1, 10))
+        elif tok.type == TokenType.NUMBER:
+            num_tok = self.advance()
+            indes = [int(num_tok.value)]
+            while self.match(TokenType.PLUS):
+                next_num = self.expect(
+                    TokenType.NUMBER, "Expected independent number after +"
+                )
+                indes.append(int(next_num.value))
+        else:
+            raise CommandSyntaxError(
+                "Expected independent number (1-9) or ALL after INDEPENDENT",
+                tok.position,
+                tok,
+            )
+
+        if self.match(TokenType.SNEAK):
+            dur = self._parse_optional_duration()
+            return SneakCommandNode(selection=None, independents=indes, duration=dur)
+
+        peek_tok = self.peek()
+        raise CommandSyntaxError(
+            "Expected SNEAK after INDEPENDENT", peek_tok.position, peek_tok
+        )
 
     # --- Cue Commands ---
 
@@ -755,6 +819,8 @@ class CommandParser:
                 TokenType.BLOCK,
                 TokenType.UNBLOCK,
                 TokenType.DELETE,
+                TokenType.SNEAK,
+                TokenType.INDEPENDENT,
                 TokenType.AT,
             ]
 
@@ -771,6 +837,25 @@ class CommandParser:
         if not active_tokens:
             return []
 
+        first = active_tokens[0].type
+        if first == TokenType.SNEAK:
+            if len(active_tokens) == 1:
+                return [TokenType.TIME, TokenType.NUMBER]
+            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.TIME:
+                return [TokenType.NUMBER]
+            return []
+
+        if first == TokenType.INDEPENDENT:
+            if len(active_tokens) == 1:
+                return [TokenType.NUMBER, TokenType.ALL]
+            if active_tokens[-1].type in (TokenType.NUMBER, TokenType.ALL):
+                return [TokenType.SNEAK, TokenType.PLUS]
+            if active_tokens[-1].type == TokenType.SNEAK:
+                return [TokenType.TIME, TokenType.NUMBER]
+            if active_tokens[-1].type == TokenType.TIME:
+                return [TokenType.NUMBER]
+            return []
+
         cue_expected = self._get_cue_expected_tokens(active_tokens, text)
         if cue_expected is not None:
             return cue_expected
@@ -785,6 +870,7 @@ class CommandParser:
                 TokenType.ODD,
                 TokenType.EVEN,
                 TokenType.AT,
+                TokenType.SNEAK,
                 *ATTRIBUTE_TOKENS.keys(),
             ]
             # If the user is currently typing a multi-digit number (no trailing space),
