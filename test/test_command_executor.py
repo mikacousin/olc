@@ -519,3 +519,68 @@ def test_command_executor_home_and_locate() -> None:
     res_loc = executor.execute(parser.parse("1 LOCATE"))
     assert res_loc.success is True
     assert dev.intensity == 1.0
+
+
+def test_executor_relative_selection() -> None:
+    """Test relative selection (+, -, THRU, ODD/EVEN) modifying active selection."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # Initial selection: 1 THRU 3
+    executor.execute(parser.parse("1 THRU 3"))
+    assert app.selected_channels == [1, 2, 3]
+    assert app.last_selected_channel == 3
+
+    # Relative add: + 5
+    res1 = executor.execute(parser.parse("+ 5"))
+    assert res1.success is True
+    assert app.selected_channels == [1, 2, 3, 5]
+    assert app.last_selected_channel == 5
+
+    # Relative THRU: THRU 8 (from last 5 to 8)
+    res2 = executor.execute(parser.parse("THRU 8"))
+    assert res2.success is True
+    assert app.selected_channels == [1, 2, 3, 5, 6, 7, 8]
+    assert app.last_selected_channel == 8
+
+    # Relative exclude: - 2 - 6
+    res3 = executor.execute(parser.parse("- 2 - 6"))
+    assert res3.success is True
+    assert app.selected_channels == [1, 3, 5, 7, 8]
+
+    # Direct ODD filter
+    res4 = executor.execute(parser.parse("ODD"))
+    assert res4.success is True
+    assert app.selected_channels == [1, 3, 5, 7]
+
+    # Direct EVEN filter on [1, 3, 5, 7] -> empty
+    res5 = executor.execute(parser.parse("EVEN"))
+    assert res5.success is True
+    assert app.selected_channels == []
+
+
+def test_executor_relative_selection_with_intensity() -> None:
+    """Test relative selection combined with action clause (e.g. + 4 AT 50)."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [0] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # Initial selection: 1 and 2
+    executor.execute(parser.parse("1 + 2"))
+    assert app.selected_channels == [1, 2]
+
+    # + 4 AT 50 -> selection becomes [1, 2, 4] and all set to 50% (128)
+    res = executor.execute(parser.parse("+ 4 AT 50"))
+    assert res.success is True
+    assert app.selected_channels == [1, 2, 4]
+    for ch in [1, 2, 4]:
+        assert app.backend.dmx.levels["user"][ch - 1] == 128

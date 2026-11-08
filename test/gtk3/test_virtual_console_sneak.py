@@ -122,3 +122,40 @@ def test_virtual_console_sneak_midi_learning_and_dispatch(
     app_gui.core.commandline.set_string("")
     vc.close()
     process_events()
+
+
+def test_virtual_console_sneak_execution_with_active_selection(
+    app_gui: Application,
+) -> None:
+    """Test executing sneak from Virtual Console respects active channel selection."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    backend = app_gui.core.backend
+    assert backend is not None and backend.dmx is not None
+    backend.dmx.levels["user"][0] = 100
+    backend.dmx.levels["user"][1] = 100
+    backend.dmx.levels["user"][2] = 100
+
+    # Channels 1 and 2 are selected
+    app_gui.core.selected_channels = [1, 2]
+
+    # Click Sneak button, then type TIME 0 and execute
+    app_gui.core.commandline.set_string("")
+    vc.sneak.emit("clicked")
+    app_gui.core.commandline.add_string("TIME 0")
+    app_gui.core.commandline.execute()
+    process_events()
+
+    # Channels 1 and 2 are sneaked, channel 3 remains manual
+    assert backend.dmx.levels["user"][0] == -1
+    assert backend.dmx.levels["user"][1] == -1
+    assert backend.dmx.levels["user"][2] == 100
+
+    # Cleanup
+    backend.dmx.levels["user"][2] = -1
+    app_gui.core.selected_channels = []
+    vc.close()
+    process_events()

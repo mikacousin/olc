@@ -31,6 +31,7 @@ from olc.core.parser.ast_nodes import (
     IntensityCommandNode,
     LocateCommandNode,
     RecordCueCommandNode,
+    RelativeThruNode,
     SelectOnlyCommandNode,
     SneakCommandNode,
     UnblockCueCommandNode,
@@ -453,3 +454,61 @@ def test_parser_independent_sneak() -> None:
     n3 = parser.parse("INDE 3 SNEAK")
     assert isinstance(n3, SneakCommandNode)
     assert n3.independents == [3]
+
+
+def test_parser_relative_selection() -> None:
+    """Test relative selection with +, -, THRU and direct ODD/EVEN filters."""
+    parser = CommandParser()
+
+    # 1. Plus relative selection
+    cmd1 = parser.parse("+ 5")
+    assert isinstance(cmd1, SelectOnlyCommandNode)
+    assert cmd1.selection.is_relative is True
+    assert len(cmd1.selection.items) == 1
+    assert isinstance(cmd1.selection.items[0], ChannelNumberNode)
+    assert cmd1.selection.items[0].channel == 5
+
+    # 2. Minus relative selection
+    cmd2 = parser.parse("- 2")
+    assert isinstance(cmd2, SelectOnlyCommandNode)
+    assert cmd2.selection.is_relative is True
+    assert len(cmd2.selection.exclusions) == 1
+    assert isinstance(cmd2.selection.exclusions[0], ChannelNumberNode)
+    assert cmd2.selection.exclusions[0].channel == 2
+
+    # 3. Thru relative selection
+    cmd3 = parser.parse("THRU 10")
+    assert isinstance(cmd3, SelectOnlyCommandNode)
+    assert cmd3.selection.is_relative is True
+    assert len(cmd3.selection.items) == 1
+    assert isinstance(cmd3.selection.items[0], RelativeThruNode)
+    assert cmd3.selection.items[0].end == 10
+
+    # 4. Relative selection with action
+    cmd4 = parser.parse("+ 5 AT 80")
+    assert isinstance(cmd4, IntensityCommandNode)
+    assert cmd4.selection is not None
+    assert cmd4.selection.is_relative is True
+    assert cmd4.level == 80.0
+
+    # 5. Direct ODD selection
+    cmd5 = parser.parse("ODD")
+    assert isinstance(cmd5, SelectOnlyCommandNode)
+    assert cmd5.selection.is_relative is True
+    assert cmd5.selection.filter_mode == "odd"
+
+    # 6. Direct EVEN with AT FULL
+    cmd6 = parser.parse("EVEN AT FULL")
+    assert isinstance(cmd6, IntensityCommandNode)
+    assert cmd6.selection is not None
+    assert cmd6.selection.is_relative is True
+    assert cmd6.selection.filter_mode == "even"
+    assert cmd6.level == 100.0
+
+    # 7. Direct ODD with SNEAK
+    cmd7 = parser.parse("ODD SNEAK TIME 2")
+    assert isinstance(cmd7, SneakCommandNode)
+    assert cmd7.selection is not None
+    assert cmd7.selection.is_relative is True
+    assert cmd7.selection.filter_mode == "odd"
+    assert cmd7.duration == 2.0

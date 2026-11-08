@@ -33,6 +33,7 @@ from olc.core.parser.ast_nodes import (
     IntensityCommandNode,
     LocateCommandNode,
     RecordCueCommandNode,
+    RelativeThruNode,
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
@@ -140,6 +141,9 @@ class CommandExecutor:
 
         # 1. Resolve positive items
         included: set[int] = set()
+        if selection.is_relative:
+            included.update(getattr(self.app, "selected_channels", []))
+
         for item in selection.items:
             included.update(self._resolve_selection_item(item))
 
@@ -167,6 +171,17 @@ class CommandExecutor:
         if isinstance(item, ChannelRangeNode):
             low = min(item.start, item.end)
             high = max(item.start, item.end)
+            return {ch for ch in range(low, high + 1) if 1 <= ch <= MAX_CHANNELS}
+
+        if isinstance(item, RelativeThruNode):
+            last_sel = getattr(self.app, "last_selected_channel", None)
+            if last_sel is not None:
+                start_val = last_sel
+            else:
+                active = getattr(self.app, "selected_channels", [])
+                start_val = active[-1] if active else 1
+            low = min(start_val, item.end)
+            high = max(start_val, item.end)
             return {ch for ch in range(low, high + 1) if 1 <= ch <= MAX_CHANNELS}
 
         if isinstance(item, GroupSelectionNode):
@@ -211,7 +226,16 @@ class CommandExecutor:
     def _execute_select_only(self, node: SelectOnlyCommandNode) -> CommandResult:
         channels = self.resolve_selection(node.selection)
         self.app.selected_channels = list(channels)
-        self.app.last_selected_channel = channels[-1] if channels else None
+        last_sel: int | None = None
+        if node.selection.items:
+            last_item = node.selection.items[-1]
+            if isinstance(last_item, ChannelNumberNode):
+                last_sel = last_item.channel
+            elif isinstance(last_item, (ChannelRangeNode, RelativeThruNode)):
+                last_sel = last_item.end
+        if last_sel not in channels:
+            last_sel = channels[-1] if channels else None
+        self.app.last_selected_channel = last_sel
         self.app.emit("channels.selected_changed", channels)
         return CommandResult(
             True, f"Selected {len(channels)} channel(s)", affected_channels=channels
@@ -418,15 +442,23 @@ class CommandExecutor:
             )
 
         # Case 2: Sneak channels
-        target_channels = (
-            self.resolve_selection(node.selection)
-            if node.selection is not None
-            else None
-        )
+        if node.selection is not None:
+            target_channels: list[int] | None = self.resolve_selection(node.selection)
+            self.app.selected_channels = list(target_channels)
+            self.app.last_selected_channel = (
+                target_channels[-1] if target_channels else None
+            )
+            self.app.emit("channels.selected_changed", target_channels)
+        else:
+            active_sel = list(getattr(self.app, "selected_channels", []))
+            target_channels = active_sel if active_sel else None
+
         affected_ch = sneak_ctrl.sneak_channels(
             channels=target_channels, duration=node.duration
         )
         if not affected_ch:
+            if target_channels is not None:
+                return CommandResult(True, "No manual levels on selected channel(s)")
             return CommandResult(True, "No manual levels to sneak")
 
         time_str = (

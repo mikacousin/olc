@@ -49,6 +49,13 @@ class ChannelRangeNode(SelectionItemNode):
 
 
 @dataclasses.dataclass
+class RelativeThruNode(SelectionItemNode):
+    """Range of channels extending from last selected channel (e.g. THRU 10)."""
+
+    end: int
+
+
+@dataclasses.dataclass
 class GroupSelectionNode(SelectionItemNode):
     """Group of channels (e.g. GROUP 2)."""
 
@@ -67,6 +74,7 @@ class SelectionNode(ASTNode):
     items: list[SelectionItemNode] = dataclasses.field(default_factory=list)
     exclusions: list[SelectionItemNode] = dataclasses.field(default_factory=list)
     filter_mode: typing.Literal["all", "odd", "even"] = "all"
+    is_relative: bool = False
 
 
 # --- Command Nodes ---

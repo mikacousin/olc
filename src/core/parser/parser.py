@@ -32,6 +32,7 @@ from olc.core.parser.ast_nodes import (
     IntensityCommandNode,
     LocateCommandNode,
     RecordCueCommandNode,
+    RelativeThruNode,
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
@@ -207,13 +208,19 @@ class CommandParser:
                     selection=None, category=cat_tok.raw_text.lower()
                 )
 
+        # Relative selection starting with +, -, or THRU (applies to active selection)
+        if tok.type in (TokenType.PLUS, TokenType.MINUS, TokenType.THRU):
+            selection = self._parse_relative_selection()
+        # Relative odd/even filter starting directly on active selection
+        elif tok.type in (TokenType.ODD, TokenType.EVEN):
+            selection = self._parse_relative_filter_selection()
         # Check if command starts directly with an intensity or attribute
         # (implicit selection on currently active fixtures)
-        if tok.type == TokenType.AT or tok.type in ATTRIBUTE_TOKENS:
+        elif tok.type == TokenType.AT or tok.type in ATTRIBUTE_TOKENS:
             return self._parse_action_clause(selection=None)
-
-        # Otherwise, starts with channel selection
-        selection = self._parse_selection()
+        else:
+            # Otherwise, starts with channel selection
+            selection = self._parse_selection()
 
         if self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
@@ -533,6 +540,57 @@ class CommandParser:
             filter_mode=filter_mode,
         )
 
+    def _parse_relative_selection(self) -> SelectionNode:
+        """Parse a selection that starts relatively with +, -, or THRU."""
+        items: list[SelectionItemNode] = []
+        exclusions: list[SelectionItemNode] = []
+
+        if self.match(TokenType.PLUS):
+            items.append(self._parse_selection_item())
+        elif self.match(TokenType.MINUS):
+            exclusions.append(self._parse_selection_item())
+        elif self.match(TokenType.THRU):
+            end_tok = self.expect(
+                TokenType.NUMBER, "Expected target channel number after THRU"
+            )
+            items.append(RelativeThruNode(end=int(end_tok.value)))
+
+        # Subsequent additions (+) or exclusions (-)
+        while True:
+            if self.match(TokenType.PLUS):
+                items.append(self._parse_selection_item())
+            elif self.match(TokenType.MINUS):
+                exclusions.append(self._parse_selection_item())
+            else:
+                break
+
+        # Check for ODD / EVEN filter
+        filter_mode: typing.Literal["all", "odd", "even"] = "all"
+        if self.match(TokenType.ODD):
+            filter_mode = "odd"
+        elif self.match(TokenType.EVEN):
+            filter_mode = "even"
+
+        return SelectionNode(
+            items=items,
+            exclusions=exclusions,
+            filter_mode=filter_mode,
+            is_relative=True,
+        )
+
+    def _parse_relative_filter_selection(self) -> SelectionNode:
+        """Parse an odd/even filter applying directly to current selection."""
+        tok = self.advance()
+        filter_mode: typing.Literal["all", "odd", "even"] = (
+            "odd" if tok.type == TokenType.ODD else "even"
+        )
+        return SelectionNode(
+            items=[],
+            exclusions=[],
+            filter_mode=filter_mode,
+            is_relative=True,
+        )
+
     def _parse_selection_item(self) -> SelectionItemNode:
         tok = self.peek()
 
@@ -822,6 +880,11 @@ class CommandParser:
                 TokenType.SNEAK,
                 TokenType.INDEPENDENT,
                 TokenType.AT,
+                TokenType.PLUS,
+                TokenType.MINUS,
+                TokenType.THRU,
+                TokenType.ODD,
+                TokenType.EVEN,
             ]
 
         try:
@@ -878,6 +941,15 @@ class CommandParser:
             if last.type == TokenType.NUMBER and not text.endswith(" "):
                 res.append(TokenType.NUMBER)
             return res
+
+        if last.type in (TokenType.ODD, TokenType.EVEN):
+            return [
+                TokenType.AT,
+                TokenType.SNEAK,
+                TokenType.HOME,
+                TokenType.LOCATE,
+                *ATTRIBUTE_TOKENS.keys(),
+            ]
 
         if last.type == TokenType.THRU:
             return [TokenType.NUMBER]

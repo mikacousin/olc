@@ -231,6 +231,28 @@ def test_sneak_all_manual_channels_when_no_selection() -> None:
     assert dmx.levels["user"][2] == -1
 
 
+def test_sneak_only_selected_channels_when_selection_active() -> None:
+    """Test that bare 'SNEAK TIME 0' prioritizes currently active channel selection."""
+    app, dmx = _create_test_app()
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    dmx.levels["user"][0] = 100
+    dmx.levels["user"][1] = 150
+    dmx.levels["user"][2] = 200
+
+    # Active selection is channels 1 and 2
+    app.selected_channels = [1, 2]
+
+    res = executor.execute(parser.parse("SNEAK TIME 0"))
+    assert res.success is True
+    # Channels 1 and 2 are released
+    assert dmx.levels["user"][0] == -1
+    assert dmx.levels["user"][1] == -1
+    # Channel 3 was NOT selected, so its manual override persists
+    assert dmx.levels["user"][2] == 200
+
+
 def test_default_sneak_time_from_settings() -> None:
     """Verify that SneakController uses sneak-time from GSettings by default."""
     app, dmx = _create_test_app(sneak_time=3.5)
