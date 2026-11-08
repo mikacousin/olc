@@ -478,9 +478,8 @@ class VirtualConsoleWindow(Gtk.Window):
         ):
             return False
 
-        if self.app.window is not None and self.app.window.live_view is not None:
-            res = self.app.window.live_view.on_key_press_event(widget, event)
-            return bool(res)
+        if self.app.window is not None:
+            return bool(self.app.window.on_key_press_event(widget, event))
         return False
 
     @property

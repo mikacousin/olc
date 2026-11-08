@@ -7,21 +7,6 @@
 @define-color olc-match-approx #e0a030;
 @define-color olc-match-out #e05050;
 
-/* Disable default GTK focus navigation shortcuts on all windows */
-@binding-set unbind-keys {
-  unbind "Right";
-  unbind "Left";
-  unbind "Up";
-  unbind "Down";
-  unbind "Tab";
-  unbind "ISO_Left_Tab";
-  unbind "space";
-}
-
-window {
-  -gtk-key-bindings: unbind-keys;
-}
-
 /* Make flowbox child selection highlight transparent so Cairo rendering is unobstructed */
 flowboxchild:selected {
   outline-width: 0px;

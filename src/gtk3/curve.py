@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import typing
 from gettext import gettext as _
-from typing import Callable, Optional
+from typing import Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
@@ -523,26 +523,6 @@ class CurvesTab(Gtk.Paned):
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on clicked icon"""
         self.tabs.close("curves")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key has been pressed
-
-        Args:
-            event: Gdk.EventKey
-
-        Returns:
-            False or function
-        """
-        keyname = Gdk.keyval_name(event.keyval)
-
-        if keyname is None:
-            return False
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
 
     def _keypress_delete(self) -> None:
         """Delete selected point"""

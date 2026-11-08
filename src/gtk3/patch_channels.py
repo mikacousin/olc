@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import typing
 from gettext import gettext as _
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from gi.repository import Gdk, Gtk
 
@@ -834,52 +834,6 @@ class PatchChannelsTab(Gtk.Box):
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked."""
         self.tabs.close("patch_channels")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key press events.
-
-        Args:
-            event: Gdk.EventKey
-
-        Returns:
-            function() or False
-        """
-        widget = self.window.get_focus()
-        if widget and widget.get_path().is_type(Gtk.Entry):
-            return False
-
-        keyname = Gdk.keyval_name(event.keyval)
-
-        if keyname is None:
-            return False
-
-        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.app.core.action_registry.execute("commandline.append_char", keyname)
-
-        if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
-        ):
-            self.app.core.action_registry.execute(
-                "commandline.append_char", keyname[3:]
-            )
-
-        if keyname == "period":
-            self.app.core.action_registry.execute("commandline.append_char", ".")
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
 
     def _keypress_backspace(self) -> None:
         self.app.core.action_registry.execute("commandline.clear")

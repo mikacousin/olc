@@ -15,9 +15,8 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gtk
 
 from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
 
@@ -336,23 +335,3 @@ class FaderTab(Gtk.Box):
             vbox.add(hbox1)
             vbox.add(hbox2)
             self.stack.add_titled(vbox, str(page), f"Page {page}")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key has been pressed
-
-        Args:
-            event: Gdk.EventKey
-
-        Returns:
-            False or function
-        """
-        keyname = Gdk.keyval_name(event.keyval)
-
-        if keyname is None:
-            return False
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False

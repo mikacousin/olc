@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable
 
 from gi.repository import Gdk, GLib, Gtk
 
@@ -432,51 +431,6 @@ class GroupTab(Gtk.Paned):
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab with the icon clicked"""
         self.tabs.close("groups")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key has been pressed
-
-        Args:
-            event: Gdk.EventKey
-
-        Returns:
-            False or function
-        """
-        keyname = Gdk.keyval_name(event.keyval)
-
-        if keyname is None:
-            return False
-
-        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.app.core.action_registry.execute("commandline.append_char", keyname)
-
-        if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
-        ):
-            self.app.core.action_registry.execute(
-                "commandline.append_char", keyname[3:]
-            )
-
-        if keyname == "period":
-            self.app.core.action_registry.execute("commandline.append_char", ".")
-
-        # Channels View
-        self.channels_view.on_key_press(keyname)
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
 
     def _keypress_backspace(self) -> None:
         self.app.core.action_registry.execute("commandline.clear")

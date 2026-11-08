@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import typing
 from unittest.mock import MagicMock
 
 import gi
@@ -97,6 +98,55 @@ def test_go_shortcuts_ctrl_g_and_space_hybrid(
     assert ("playback.go", ()) in executed_actions
 
     app_gui.core.commandline.set_string("")
+
+
+@pytest.mark.gui
+def test_space_real_event_triggers_go_on_main_fader(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test real GDK space key event triggers playback.go when focus is on
+    a view or notebook.
+    """
+    assert app_gui.window is not None
+    win = app_gui.window
+    process_events()
+
+    executed_actions: list[str] = []
+    orig_execute = app_gui.core.action_registry.execute
+
+    def spy_execute(name: str, *args: object, **kwargs: object) -> object:
+        executed_actions.append(name)
+        return orig_execute(name, *args, **kwargs)
+
+    monkeypatch.setattr(app_gui.core.action_registry, "execute", spy_execute)
+    app_gui.core.commandline.set_string("")
+
+    win.live_view.grab_focus()
+    process_events()
+
+    disp = Gdk.Display.get_default()
+    assert disp is not None
+    seat = disp.get_default_seat()
+    assert seat is not None
+    kbd = seat.get_keyboard()
+    assert kbd is not None
+
+    ev = Gdk.Event.new(Gdk.EventType.KEY_PRESS)
+    ev.set_device(kbd)
+    event_key = typing.cast("Gdk.EventKey", ev)
+    event_key.keyval = Gdk.KEY_space
+    gdk_win = win.get_window()
+    assert gdk_win is not None
+    event_key.window = gdk_win
+    event_key.send_event = False
+    event_key.time = 0
+    event_key.state = Gdk.ModifierType(0)
+    event_key.hardware_keycode = 65
+
+    Gtk.main_do_event(ev)
+    process_events()
+
+    assert "playback.go" in executed_actions
 
 
 @pytest.mark.gui

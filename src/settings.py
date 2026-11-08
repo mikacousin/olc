@@ -19,7 +19,6 @@ import socket
 import time
 import typing
 from gettext import gettext as _
-from typing import Callable
 
 from gi.repository import Gdk, GLib, Gtk
 
@@ -349,25 +348,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         """Close Tab on close clicked"""
         if self.tabs is not None:
             self.tabs.close("settings")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key has been pressed
-
-        Args:
-            event: Gdk.EventKey
-
-        Returns:
-            False or function
-        """
-        keyname = Gdk.keyval_name(event.keyval)
-        if not keyname:
-            return False
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
 
     def on_combo_change(self, _widget: Gtk.Widget, path: str, text: str) -> None:
         """Change rotatives mode

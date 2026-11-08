@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable
 
 from gi.repository import Gdk, Gtk, Pango
 
@@ -107,8 +106,6 @@ class MainPlaybackView(Gtk.Notebook):
         self.append_page(self.grid, Gtk.Label(label="Main Playback"))
         self.set_tab_reorderable(self.grid, True)
         self.set_tab_detachable(self.grid, True)
-
-        self.connect("key_press_event", self.on_key_press_event)
 
     def _setup_sequential(self) -> None:
         """Setup the Sequential Widget parameters"""
@@ -457,37 +454,3 @@ class MainPlaybackView(Gtk.Notebook):
             step + 1
         ].channel_time
         self.sequential.queue_draw()
-
-    def on_key_press_event(
-        self, widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool | None:
-        """On key press event
-
-        Args:
-            widget: Gtk Widget
-            event: Gdk.EventKey
-
-        Returns:
-            function() to handle keys pressed
-        """
-        if not self.app:
-            return lambda: None
-        keyname = Gdk.keyval_name(event.keyval)
-        if self.app.window is not None:
-            if keyname == "Tab":
-                return self.app.window.toggle_focus()
-            if keyname == "ISO_Left_Tab":
-                return self.app.window.move_tab()
-        # Find open page in notebook to send keyboard events
-        page = self.get_current_page()
-        child = self.get_nth_page(page)
-        if (
-            self.app.tabs is not None
-            and child in self.app.tabs.tabs.values()
-            and child is not None
-            and hasattr(child, "on_key_press_event")
-        ):
-            return typing.cast(typing.Any, child).on_key_press_event(widget, event)
-        if self.app.window is not None:
-            return self.app.window.on_key_press_event(widget, event)
-        return False

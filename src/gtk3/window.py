@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import contextlib
 import typing
-from typing import Callable
 
 from gi.repository import Gdk, Gio, GLib, Gtk
 
@@ -771,55 +770,23 @@ class Window(Gtk.ApplicationWindow):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget | None, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Executed on key press event
+    ) -> bool:
+        """Handle legacy key-press event delegation by routing to key controller.
 
         Args:
+            _widget: Gtk Widget or None
             event: Gdk.EventKey
 
         Returns:
-            function() or False
+            True if event was handled, False otherwise.
         """
         state = getattr(event, "state", 0) or 0
         modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
-        if bool(
-            modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
-        ):
-            return False
-
-        keyname = Gdk.keyval_name(event.keyval)
-
-        if keyname is None:
-            return False
-
-        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.app.core.action_registry.execute("commandline.append_char", keyname)
-
-        if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
-        ):
-            self.app.core.action_registry.execute(
-                "commandline.append_char", keyname[3:]
-            )
-
-        if keyname == "period":
-            self.app.core.action_registry.execute("commandline.append_char", ".")
-
-        # Channels View
-        self.live_view.channels_view.on_key_press(keyname)
-
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
+        keyval = getattr(event, "keyval", 0)
+        keycode = getattr(event, "hardware_keycode", 0)
+        return self._on_key_controller_pressed(
+            self.key_controller, keyval, keycode, Gdk.ModifierType(modifiers)
+        )
 
     def _keypress_exclam(self) -> None:
         """Level + (% level) of selected channels"""
