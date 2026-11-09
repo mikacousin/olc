@@ -20,6 +20,7 @@ import typing
 
 from olc.core.parser.completer import CommandCompleter, CompletionResult
 from olc.core.parser.executor import CommandExecutor, CommandResult
+from olc.core.parser.lexer import CommandLexer
 from olc.core.parser.parser import CommandParser, CommandSyntaxError
 
 if typing.TYPE_CHECKING:
@@ -98,10 +99,27 @@ class CoreCommandLine:
         self.set_string("")
 
     def backspace(self) -> None:
-        """Remove the last character from the command line buffer."""
+        """Remove the last token or active digit from the command line buffer."""
         self.completer.reset_cycle()
-        if self._keystring:
+        if not self._keystring:
+            return
+
+        matches = list(CommandLexer._TOKEN_RE.finditer(self._keystring))
+        non_ws = [m for m in matches if m.lastgroup != "WHITESPACE"]
+        if not non_ws:
+            self.set_string("")
+            return
+
+        last_match = non_ws[-1]
+        has_trailing_ws = last_match.end() < len(self._keystring)
+
+        # If the last token is an active number without trailing space, erase by digit
+        if last_match.lastgroup == "NUMBER" and not has_trailing_ws:
             self.set_string(self._keystring[:-1])
+            return
+
+        # Otherwise, remove the full token and any trailing whitespace
+        self.set_string(self._keystring[: last_match.start()])
 
     def history_prev(self) -> None:
         """Recall previous command from history."""

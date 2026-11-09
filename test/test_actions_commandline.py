@@ -119,10 +119,14 @@ def test_commandline_execute_backspace_and_history() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # 1. Backspace
+    # 1. Backspace (digit-by-digit for active number, token-based for keywords)
     app.commandline.set_string("123")
     app.action_registry.execute("commandline.backspace")
     assert app.commandline.get_string() == "12"
+
+    app.commandline.set_string("CHANNEL ")
+    app.action_registry.execute("commandline.backspace")
+    assert app.commandline.get_string() == ""
 
     # 2. Execute command
     app.commandline.set_string("1 THRU 4")

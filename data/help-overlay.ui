@@ -210,7 +210,7 @@
               <object class="GtkShortcutsShortcut" id="backspace">
                 <property name="visible">1</property>
                 <property name="accelerator">BackSpace</property>
-                <property name="title" translatable="yes" context="shortcut window">Delete last character</property>
+                <property name="title" translatable="yes" context="shortcut window">Delete last token / character</property>
               </object>
             </child>
             <child>

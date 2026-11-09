@@ -126,13 +126,13 @@ class CommandLineExecuteAction(Action):
 
 
 class CommandLineBackspaceAction(Action):
-    """Action to remove the last character of the command line."""
+    """Action to remove the last token or active digit from the command line."""
 
     name = "commandline.backspace"
     can_undo = False
 
     def execute(self) -> None:
-        """Remove last character."""
+        """Remove last token or active digit."""
         self.app.commandline.backspace()
 
 
