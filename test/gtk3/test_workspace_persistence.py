@@ -90,40 +90,31 @@ def test_full_workspace_persistence_on_save_and_open(
     grp_tab.channels_view.set_view_mode_by_name("Patched")
     process_events()
 
-    # 3. Configure paned position
-    assert app_gui.window.paned is not None
-    app_gui.window.paned.set_position(500)
-    process_events()
-    expected_pos = app_gui.window.paned.get_position()
-
-    # 4. Save show to temporary file
+    # 3. Save show to temporary file
     save_path = str(tmp_path / "workspace_show.olc")
     app_gui.core.action_registry.execute("show.save", save_path)
     process_events()
     assert pathlib.Path(save_path).exists()
 
-    # 5. Reset via show.new
+    # 4. Reset via show.new
     app_gui.core.action_registry.execute("show.new")
     process_events()
     assert app_gui.tabs.tabs.get("memories") is None
     assert app_gui.tabs.tabs.get("groups") is None
 
-    # 6. Reopen saved show via show.open
+    # 5. Reopen saved show via show.open
     app_gui.core.action_registry.execute("show.open", save_path)
     process_events()
 
-    # 7. Verify tabs are restored
+    # 6. Verify tabs are restored
     restored_mem = app_gui.tabs.tabs.get("memories")
     restored_grp = app_gui.tabs.tabs.get("groups")
     assert isinstance(restored_mem, CuesEditionTab)
     assert isinstance(restored_grp, GroupTab)
 
-    # 8. Verify display parameters
+    # 7. Verify display parameters
     assert restored_mem.channels_view.get_view_mode_name() == "Active"
     assert restored_grp.channels_view.get_view_mode_name() == "Patched"
-
-    # 9. Verify paned position
-    assert app_gui.window.paned.get_position() == expected_pos
 
 
 def test_legacy_show_open_in_gui_applies_default_workspace(
@@ -154,3 +145,15 @@ def test_legacy_show_open_in_gui_applies_default_workspace(
 
     # Extra tab should have closed, leaving default layout
     assert app_gui.tabs.tabs.get("memories") is None
+
+
+def test_show_with_paned_positions_opens_cleanly(app_gui: Application) -> None:
+    """Test that opening a show with saved paned_positions succeeds cleanly."""
+    assert app_gui.window is not None
+
+    # Open doc/b.olc (which contains paned_positions in its workspace dictionary)
+    app_gui.core.action_registry.execute("show.open", "doc/b.olc")
+    process_events()
+
+    # Verify that settings from workspace are loaded cleanly and without error
+    assert app_gui.window.live_view.channels_view.get_view_mode_name() == "Patched"

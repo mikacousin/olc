@@ -77,7 +77,6 @@ def default_workspace() -> dict[str, typing.Any]:
             "live": {"tabs": ["channels"], "active_tab": "channels"},
             "playback": {"tabs": ["playback"], "active_tab": "playback"},
         },
-        "paned_positions": {"horizontal": 800, "vertical_live": 1100},
         "tab_settings": {"channels": {"view_mode": "All"}},
         "virtual_console": {"open": False},
     }

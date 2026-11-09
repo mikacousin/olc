@@ -354,13 +354,6 @@ class Tabs:
             else "playback"
         )
 
-        # Paned positions
-        paned_positions: dict[str, int] = {}
-        if hasattr(window, "paned") and window.paned is not None:
-            paned_positions["horizontal"] = window.paned.get_position()
-        if hasattr(window, "paned_chan") and window.paned_chan is not None:
-            paned_positions["vertical_live"] = window.paned_chan.get_position()
-
         # Virtual console state
         vc = getattr(self.app, "virtual_console", None)
         vc_open = bool(vc is not None and getattr(vc.props, "visible", False))
@@ -382,7 +375,6 @@ class Tabs:
                 "live": {"tabs": live_tabs, "active_tab": live_active},
                 "playback": {"tabs": playback_tabs, "active_tab": pb_active},
             },
-            "paned_positions": paned_positions,
             "tab_settings": tab_settings,
             "virtual_console": {"open": vc_open},
         }
@@ -493,22 +485,7 @@ class Tabs:
             if w is not None:
                 self._apply_tab_settings(t_name, w)
 
-        # 6. Restore Paned positions
-        paned_positions = state.get("paned_positions", {})
-        if (
-            "horizontal" in paned_positions
-            and hasattr(self.window, "paned")
-            and self.window.paned is not None
-        ):
-            self.window.paned.set_position(int(paned_positions["horizontal"]))
-        if (
-            "vertical_live" in paned_positions
-            and hasattr(self.window, "paned_chan")
-            and self.window.paned_chan is not None
-        ):
-            self.window.paned_chan.set_position(int(paned_positions["vertical_live"]))
-
-        # 7. Restore Virtual Console if requested
+        # 6. Restore Virtual Console if requested
         vc_state = state.get("virtual_console", {})
         if vc_state.get("open") is True:
             if hasattr(self.app, "open_virtual_console"):
@@ -519,14 +496,14 @@ class Tabs:
                 vc.destroy()
                 self.app.virtual_console = None
 
-        # 8. Focus active pane
+        # 7. Focus active pane
         active_pane = state.get("active_pane", "playback")
         target_nb = (
             self.window.live_view if active_pane == "live" else self.window.playback
         )
         target_nb.grab_focus()
 
-        # 9. Sync CoreTabs model
+        # 8. Sync CoreTabs model
         if getattr(self.app, "core", None) and hasattr(self.app.core, "tabs"):
             self.app.core.tabs.notebooks = {
                 "live": list(target_live_tabs),
