@@ -564,7 +564,28 @@
         <child>
           <object class="GtkShortcutsGroup" id="syntax_shift">
             <property name="visible">1</property>
-            <property name="title" translatable="yes" context="shortcut window">Shift Combined Syntax</property>
+            <property name="title" translatable="yes" context="shortcut window">Shift &amp; Alt Combined Syntax</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="shift_syntax_d">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;D</property>
+                <property name="title" translatable="yes" context="shortcut window">ADDRESS</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="shift_syntax_p">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">PARK</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_p">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">UNPARK</property>
+              </object>
+            </child>
             <child>
               <object class="GtkShortcutsShortcut" id="shift_syntax_q">
                 <property name="visible">1</property>

@@ -58,6 +58,10 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             lambda state: self._run_idle(self._on_blackout_all_changed, state),
         )
         self.app.core.subscribe(
+            "park.changed",
+            lambda *_: self._run_idle(self._safe_refresh_dmx_outputs),
+        )
+        self.app.core.subscribe(
             "universe.added",
             lambda universe: self._run_idle(self._on_universe_added, universe),
         )

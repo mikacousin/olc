@@ -82,6 +82,20 @@ class DMXOutputWidget(Gtk.DrawingArea):
         self._draw_output_level(cr, allocation)
         # Draw Curve (passive indicator)
         self._draw_curve(cr, allocation)
+        # Draw Park badge
+        self._draw_park_badge(cr, allocation)
+        return False
+
+    def _is_parked(self) -> bool:
+        """Check if this DMX output or its patched channel is parked."""
+        park_mgr = getattr(self.lightshow, "park", None)
+        if park_mgr is None:
+            return False
+        if park_mgr.is_address_parked(self.universe, self.output):
+            return True
+        occ = self.lightshow.patch.get_address_occupant(self.universe, self.output)
+        if occ is not None and park_mgr.is_channel_parked(occ):
+            return True
         return False
 
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
@@ -136,6 +150,10 @@ class DMXOutputWidget(Gtk.DrawingArea):
                     0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
                 )
                 rounded_rectangle_fill(cr, area, 10)
+        if self._is_parked():
+            cr.set_source_rgba(1.0, 0.7, 0.0, 0.8)
+            cr.set_line_width(1.5 * self.scale)
+            rounded_rectangle(cr, area, 10)
 
     def _draw_output_number(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output number.
@@ -267,25 +285,48 @@ class DMXOutputWidget(Gtk.DrawingArea):
             cr: Cairo context
             allocation: Widget allocation
         """
-        if self.universe in self.tab.patch.universes:
+        is_parked = self._is_parked()
+        if (
+            self.backend is not None
+            and getattr(self.backend, "dmx", None) is not None
+            and self.universe in self.tab.patch.universes
+        ):
             index = self.tab.patch.universes.index(self.universe)
-            if (
-                index < len(self.backend.dmx.frame)
-                and self.backend.dmx.frame[index][self.output - 1]
-            ):
-                cr.set_source_rgb(0.7, 0.7, 0.7)
-                cr.select_font_face(
-                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                )
-                cr.set_font_size(10 * self.scale)
-                level = self.backend.dmx.frame[index][self.output - 1]
-                text = str(level)
-                (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-                cr.move_to(
-                    allocation.width / 2 - width / 2,
-                    allocation.height / 2 - (height - 20) / 2,
-                )
-                cr.show_text(text)
+            if index < len(self.backend.dmx.frame):
+                level = int(self.backend.dmx.frame[index][self.output - 1])
+                if level > 0 or is_parked:
+                    if is_parked:
+                        cr.set_source_rgb(1.0, 0.7, 0.0)
+                    else:
+                        cr.set_source_rgb(0.7, 0.7, 0.7)
+                    cr.select_font_face(
+                        "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    )
+                    cr.set_font_size(10 * self.scale)
+                    text = str(level)
+                    (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+                    cr.move_to(
+                        allocation.width / 2 - width / 2,
+                        allocation.height / 2 - (height - 20) / 2,
+                    )
+                    cr.show_text(text)
+
+    def _draw_park_badge(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
+        """Draw 'P' badge if output or occupant channel is parked.
+
+        Args:
+            cr: Cairo context
+            allocation: Widget allocation
+        """
+        if not self._is_parked():
+            return
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
+        cr.set_font_size(10 * self.scale)
+        cr.set_source_rgb(1.0, 0.7, 0.0)
+        cr.move_to(allocation.width - 13 * self.scale, 14 * self.scale)
+        cr.show_text("P")
 
     def _draw_curve(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Dimmer Curve (passive visual indicator).

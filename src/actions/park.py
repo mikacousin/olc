@@ -40,6 +40,25 @@ def _refresh_dmx(app: CoreApplication) -> None:
         backend.dmx.send()
 
 
+def _clear_unpatched_addresses(
+    app: CoreApplication, addresses: typing.Iterable[tuple[int, int]]
+) -> None:
+    """Reset unpatched physical addresses to 0 in DMX frame."""
+    backend = getattr(app, "backend", None)
+    dmx = getattr(backend, "dmx", None) if backend is not None else None
+    if dmx is None or not hasattr(app, "lightshow"):
+        return
+    patch = getattr(app.lightshow, "patch", None)
+    if patch is None:
+        return
+    for u, o in addresses:
+        if patch.get_address_occupant(u, o) is None:
+            if u in patch.universes:
+                u_idx = patch.universes.index(u)
+                if u_idx < len(dmx.frame) and 1 <= o <= 512:
+                    dmx.frame[u_idx][o - 1] = 0
+
+
 class ChannelParkAction(Action):
     """Action to park one or more channels at a level (or current level)."""
 
@@ -193,14 +212,18 @@ class AddressParkAction(Action):
     def undo(self) -> None:
         """Undo address park."""
         park_mgr = self.app.lightshow.park
+        unparked_addrs = []
         for (u, o), old_lvl in self.old_parked.items():
             if old_lvl is None:
                 park_mgr.unpark_address(u, o)
                 self.app.emit("park.address_unparked", u, o)
+                unparked_addrs.append((u, o))
             else:
                 park_mgr.park_address(u, o, old_lvl)
                 self.app.emit("park.address_parked", u, o, old_lvl)
 
+        if unparked_addrs:
+            _clear_unpatched_addresses(self.app, unparked_addrs)
         _refresh_dmx(self.app)
         self.app.emit("park.changed", park_mgr.total_parked_count())
 
@@ -235,6 +258,7 @@ class AddressUnparkAction(Action):
             self.old_parked[(u, o)] = park_mgr.unpark_address(u, o)
             self.app.emit("park.address_unparked", u, o)
 
+        _clear_unpatched_addresses(self.app, self.addresses)
         _refresh_dmx(self.app)
         self.app.emit("park.changed", park_mgr.total_parked_count())
 
@@ -275,6 +299,7 @@ class ParkUnparkAllAction(Action):
         for u, o in self.old_addresses:
             self.app.emit("park.address_unparked", u, o)
 
+        _clear_unpatched_addresses(self.app, self.old_addresses.keys())
         _refresh_dmx(self.app)
         self.app.emit("park.changed", 0)
 
