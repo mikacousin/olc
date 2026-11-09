@@ -24,6 +24,7 @@ from olc.actions.channel import (
     SelectActiveChannelAction,
     SelectAddChannelAction,
     SelectAllChannelsAction,
+    SelectChannelsAction,
     SelectNoneChannelsAction,
     SelectRemoveChannelAction,
     SelectThruChannelAction,
@@ -185,6 +186,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
     actions_to_register = [
         SetChannelLevelAction,
         SetMultiChannelsLevelAction,
+        SelectChannelsAction,
         SelectActiveChannelAction,
         SelectThruChannelAction,
         SelectAddChannelAction,

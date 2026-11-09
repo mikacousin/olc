@@ -221,11 +221,14 @@ class CommandExecutor:
 
         return set()
 
+    def _get_registry(self) -> typing.Any:  # noqa: ANN401
+        """Get the application action registry if available."""
+        return getattr(self.app, "action_registry", getattr(self.app, "actions", None))
+
     # --- Command Implementations ---
 
     def _execute_select_only(self, node: SelectOnlyCommandNode) -> CommandResult:
         channels = self.resolve_selection(node.selection)
-        self.app.selected_channels = list(channels)
         last_sel: int | None = None
         if node.selection.items:
             last_item = node.selection.items[-1]
@@ -235,18 +238,43 @@ class CommandExecutor:
                 last_sel = last_item.end
         if last_sel not in channels:
             last_sel = channels[-1] if channels else None
-        self.app.last_selected_channel = last_sel
-        self.app.emit("channels.selected_changed", channels)
+
+        registry = self._get_registry()
+        if registry is not None and "channel.select_channels" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(
+                "channel.select_channels",
+                channels=channels,
+                last_selected=last_sel,
+            )
+        else:
+            self.app.selected_channels = list(channels)
+            self.app.last_selected_channel = last_sel
+            self.app.emit("channels.selected_changed", channels)
+
         return CommandResult(
             True, f"Selected {len(channels)} channel(s)", affected_channels=channels
         )
 
     def _execute_intensity(self, node: IntensityCommandNode) -> CommandResult:
         channels = self.resolve_selection(node.selection)
+        registry = self._get_registry()
+
         if node.selection is not None:
-            self.app.selected_channels = list(channels)
-            self.app.last_selected_channel = channels[-1] if channels else None
-            self.app.emit("channels.selected_changed", channels)
+            last_sel = channels[-1] if channels else None
+            if registry is not None and "channel.select_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "channel.select_channels",
+                    channels=channels,
+                    last_selected=last_sel,
+                )
+            else:
+                self.app.selected_channels = list(channels)
+                self.app.last_selected_channel = last_sel
+                self.app.emit("channels.selected_changed", channels)
 
         if not channels:
             return CommandResult(False, "No channels selected")
@@ -270,25 +298,31 @@ class CommandExecutor:
             target_level = max(0, min(255, target_level))
             levels_dict[ch] = target_level
 
+        if registry is not None and "channel.set_multi_levels" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(
+                "channel.set_multi_levels",
+                levels=levels_dict,
+            )
+        else:
+            for ch, target_level in levels_dict.items():
+                if backend and getattr(backend, "dmx", None):
+                    backend.dmx.levels["user"][ch - 1] = target_level
+                if (
+                    hasattr(self.app, "lightshow")
+                    and self.app.lightshow
+                    and hasattr(self.app.lightshow, "patch")
+                ):
+                    dev = self.app.lightshow.patch.get_device(ch)
+                    if dev is not None and hasattr(dev, "set_intensity"):
+                        dev.set_intensity(target_level / 255.0)
+                self.app.emit("channel.level_changed", ch, target_level)
+
             if backend and getattr(backend, "dmx", None):
-                backend.dmx.levels["user"][ch - 1] = target_level
-
-            # Update lighting device virtual dimmer or intensity if patched
-            if (
-                hasattr(self.app, "lightshow")
-                and self.app.lightshow
-                and hasattr(self.app.lightshow, "patch")
-            ):
-                dev = self.app.lightshow.patch.get_device(ch)
-                if dev is not None and hasattr(dev, "set_intensity"):
-                    dev.set_intensity(target_level / 255.0)
-
-            self.app.emit("channel.level_changed", ch, target_level)
-
-        if backend and getattr(backend, "dmx", None):
-            if hasattr(self.app, "lightshow") and self.app.lightshow.main_playback:
-                self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
+                if hasattr(self.app, "lightshow") and self.app.lightshow.main_playback:
+                    self.app.lightshow.main_playback.update_channels()
+                backend.dmx.set_levels()
 
         return CommandResult(
             True,
@@ -300,10 +334,22 @@ class CommandExecutor:
         self, node: AttributeCommandNode
     ) -> CommandResult:
         channels = self.resolve_selection(node.selection)
+        registry = self._get_registry()
+
         if node.selection is not None:
-            self.app.selected_channels = list(channels)
-            self.app.last_selected_channel = channels[-1] if channels else None
-            self.app.emit("channels.selected_changed", channels)
+            last_sel = channels[-1] if channels else None
+            if registry is not None and "channel.select_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "channel.select_channels",
+                    channels=channels,
+                    last_selected=last_sel,
+                )
+            else:
+                self.app.selected_channels = list(channels)
+                self.app.last_selected_channel = last_sel
+                self.app.emit("channels.selected_changed", channels)
 
         if not channels:
             return CommandResult(False, "No channels selected")
@@ -318,34 +364,89 @@ class CommandExecutor:
                 )
             )
 
-        patch = getattr(
-            getattr(self.app, "lightshow", None),
-            "patch",
-            None,
-        )
+        # Handle Pan & Tilt via device.set_pan_tilt
+        if "pan" in node.attributes or "tilt" in node.attributes:
+            pan_val = (
+                float(node.attributes["pan"]) if "pan" in node.attributes else None
+            )
+            tilt_val = (
+                float(node.attributes["tilt"]) if "tilt" in node.attributes else None
+            )
+            if registry is not None and "device.set_pan_tilt" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "device.set_pan_tilt",
+                    pan=pan_val,
+                    tilt=tilt_val,
+                    channels=channels,
+                )
+            else:
+                patch = getattr(getattr(self.app, "lightshow", None), "patch", None)
+                if patch is not None:
+                    for ch in channels:
+                        dev = patch.get_device(ch)
+                        if dev is not None:
+                            if pan_val is not None and hasattr(dev, "set_pan_degrees"):
+                                dev.set_pan_degrees(pan_val)
+                            if tilt_val is not None and hasattr(
+                                dev, "set_tilt_degrees"
+                            ):
+                                dev.set_tilt_degrees(tilt_val)
 
-        for ch in channels:
-            dev = patch.get_device(ch) if patch is not None else None
-            if dev is None:
+        # Handle Color via device.set_color
+        if "color" in node.attributes:
+            color_str = str(node.attributes["color"])
+            color_hex = COLOR_PRESETS.get(color_str.upper(), color_str)
+            rgb = None
+            if color_hex.startswith("#") and len(color_hex) in (7, 9):
+                try:
+                    rgb = (
+                        int(color_hex[1:3], 16) / 255.0,
+                        int(color_hex[3:5], 16) / 255.0,
+                        int(color_hex[5:7], 16) / 255.0,
+                    )
+                except ValueError:
+                    pass
+            has_color_act = bool(
+                registry is not None
+                and "device.set_color" in getattr(registry, "_action_classes", {})
+            )
+            if rgb is not None and has_color_act and registry is not None:
+                registry.execute(
+                    "device.set_color",
+                    r=rgb[0],
+                    g=rgb[1],
+                    b=rgb[2],
+                    channels=channels,
+                )
+            else:
+                patch = getattr(getattr(self.app, "lightshow", None), "patch", None)
+                if patch is not None:
+                    for ch in channels:
+                        dev = patch.get_device(ch)
+                        if dev is not None:
+                            self._apply_device_color(dev, color_str)
+
+        # Handle other device parameters via device.set_parameter
+        for attr, val in node.attributes.items():
+            if attr in ("pan", "tilt", "color"):
                 continue
-
-            for attr, val in node.attributes.items():
-                if attr == "color":
-                    self._apply_device_color(dev, str(val))
-                elif hasattr(dev, "apply_device_parameter"):
-                    dev.apply_device_parameter(attr, val)
-                elif attr == "pan" and hasattr(dev, "set_pan_degrees"):
-                    dev.set_pan_degrees(float(val))
-                elif attr == "tilt" and hasattr(dev, "set_tilt_degrees"):
-                    dev.set_tilt_degrees(float(val))
-                elif attr == "zoom" and hasattr(dev, "set_zoom_degrees"):
-                    dev.set_zoom_degrees(float(val))
-                elif attr == "focus" and hasattr(dev, "set_focus_meters"):
-                    dev.set_focus_meters(float(val))
-                elif attr == "strobe" and hasattr(dev, "set_strobe_hz"):
-                    dev.set_strobe_hz(float(val))
-                elif attr == "cct" and hasattr(dev, "set_color_temp_kelvin"):
-                    dev.set_color_temp_kelvin(float(val))
+            if registry is not None and "device.set_parameter" in getattr(
+                registry, "_action_classes", {}
+            ):
+                try:
+                    registry.execute(
+                        "device.set_parameter",
+                        parameter=attr,
+                        value=float(val),
+                        channels=channels,
+                        is_physical=True,
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    self._apply_direct_parameter(channels, attr, val)
+            else:
+                self._apply_direct_parameter(channels, attr, val)
 
         # Push levels to DMX backend if available
         backend = getattr(self.app, "backend", None)
@@ -358,6 +459,30 @@ class CommandExecutor:
             f"Applied attributes {attr_names} on {len(channels)} channel(s)",
             affected_channels=channels,
         )
+
+    def _apply_direct_parameter(
+        self,
+        channels: list[int],
+        attr: str,
+        val: typing.Any,  # noqa: ANN401
+    ) -> None:
+        patch = getattr(getattr(self.app, "lightshow", None), "patch", None)
+        if patch is None:
+            return
+        for ch in channels:
+            dev = patch.get_device(ch)
+            if dev is None:
+                continue
+            if hasattr(dev, "apply_device_parameter"):
+                dev.apply_device_parameter(attr, val)
+            elif attr == "zoom" and hasattr(dev, "set_zoom_degrees"):
+                dev.set_zoom_degrees(float(val))
+            elif attr == "focus" and hasattr(dev, "set_focus_meters"):
+                dev.set_focus_meters(float(val))
+            elif attr == "strobe" and hasattr(dev, "set_strobe_hz"):
+                dev.set_strobe_hz(float(val))
+            elif attr == "cct" and hasattr(dev, "set_color_temp_kelvin"):
+                dev.set_color_temp_kelvin(float(val))
 
     def _apply_device_color(self, dev: typing.Any, color_str: str) -> None:  # noqa: ANN401
         color_hex = COLOR_PRESETS.get(color_str.upper(), color_str)
@@ -697,11 +822,18 @@ class CommandExecutor:
         return CommandResult(True, f"Updated Cue {cue_num}")
 
     def _execute_goto_cue(self, node: GotoCueCommandNode) -> CommandResult:
-        lightshow = getattr(self.app, "lightshow", None)
-        if not lightshow or not lightshow.main_playback:
-            return CommandResult(False, "Main playback sequence not available")
-
-        lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
+        registry = self._get_registry()
+        if registry is not None and "playback.goto" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(
+                "playback.goto", target=str(node.cue_id), override_time=node.time
+            )
+        else:
+            lightshow = getattr(self.app, "lightshow", None)
+            if not lightshow or not lightshow.main_playback:
+                return CommandResult(False, "Main playback sequence not available")
+            lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
         return CommandResult(True, f"Jumped to Cue {node.cue_id}")
 
     def _execute_block_cue(
@@ -729,15 +861,26 @@ class CommandExecutor:
         if cue is None:
             return CommandResult(False, f"Cue {node.cue_id} not found")
 
-        lightshow.cues.remove(cue)
-        if lightshow.main_playback:
-            for step in list(lightshow.main_playback.steps):
-                if step.cue and step.cue.number == node.cue_id:
-                    lightshow.main_playback.steps.remove(step)
-            lightshow.main_playback.last = len(lightshow.main_playback.steps)
+        registry = self._get_registry()
+        if registry is not None and "cue.delete" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("cue.delete", number=node.cue_id, sequence=1)
+            if lightshow.main_playback:
+                for step in list(lightshow.main_playback.steps):
+                    if step.cue and step.cue.number == node.cue_id:
+                        lightshow.main_playback.steps.remove(step)
+                lightshow.main_playback.last = len(lightshow.main_playback.steps)
+        else:
+            lightshow.cues.remove(cue)
+            if lightshow.main_playback:
+                for step in list(lightshow.main_playback.steps):
+                    if step.cue and step.cue.number == node.cue_id:
+                        lightshow.main_playback.steps.remove(step)
+                lightshow.main_playback.last = len(lightshow.main_playback.steps)
+            lightshow.set_modified()
+            self.app.emit("cue.deleted", 1, node.cue_id)
 
-        lightshow.set_modified()
-        self.app.emit("cue.deleted", 1, node.cue_id)
         return CommandResult(True, f"Deleted Cue {node.cue_id}")
 
     @staticmethod

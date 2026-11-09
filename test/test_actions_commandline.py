@@ -23,8 +23,8 @@ from olc.actions.commandline import CommandLineAppendCharAction
 from olc.core.app import CoreApplication
 
 
-def test_commandline_append_char_execution_and_undo() -> None:
-    """Test append_char appends character and supports undo/redo."""
+def test_commandline_append_char_execution_not_in_undo() -> None:
+    """Test append_char appends character and does not pollute undo history."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
@@ -41,21 +41,12 @@ def test_commandline_append_char_execution_and_undo() -> None:
     app.action_registry.execute("commandline.append_char", ".")
     assert app.commandline.get_string() == "12."
 
-    # Undo "."
-    app.history.undo()
-    assert app.commandline.get_string() == "12"
-
-    # Undo "2"
-    app.history.undo()
-    assert app.commandline.get_string() == "1"
-
-    # Redo "2"
-    app.history.redo()
-    assert app.commandline.get_string() == "12"
+    # Keystrokes must not be recorded in console undo stack
+    assert len(app.history.undo_stack) == 0
 
 
-def test_commandline_clear_execution_and_undo() -> None:
-    """Test clear resets commandline and supports undo/redo."""
+def test_commandline_clear_execution_not_in_undo() -> None:
+    """Test clear resets commandline and does not pollute undo history."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
@@ -67,17 +58,12 @@ def test_commandline_clear_execution_and_undo() -> None:
     action = app.action_registry.get("commandline.clear")
     assert action.get_feedback_state() == {"text": ""}
 
-    # Undo restores "123"
-    app.history.undo()
-    assert app.commandline.get_string() == "123"
-
-    # Redo clears again
-    app.history.redo()
-    assert app.commandline.get_string() == ""
+    # Clear must not be recorded in console undo stack
+    assert len(app.history.undo_stack) == 0
 
 
-def test_commandline_set_execution_and_undo() -> None:
-    """Test set replaces commandline string and supports undo/redo."""
+def test_commandline_set_execution_not_in_undo() -> None:
+    """Test set replaces commandline string and does not pollute undo history."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
@@ -88,13 +74,8 @@ def test_commandline_set_execution_and_undo() -> None:
     action = app.action_registry.get("commandline.set")
     assert action.get_feedback_state() == {"text": "world"}
 
-    # Undo restores "hello"
-    app.history.undo()
-    assert app.commandline.get_string() == "hello"
-
-    # Redo sets "world"
-    app.history.redo()
-    assert app.commandline.get_string() == "world"
+    # Set must not be recorded in console undo stack
+    assert len(app.history.undo_stack) == 0
 
 
 def test_commandline_append_char_keyword_and_unchanged() -> None:

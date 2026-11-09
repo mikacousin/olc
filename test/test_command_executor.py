@@ -584,3 +584,76 @@ def test_executor_relative_selection_with_intensity() -> None:
     assert app.selected_channels == [1, 2, 4]
     for ch in [1, 2, 4]:
         assert app.backend.dmx.levels["user"][ch - 1] == 128
+
+
+def test_commandline_selection_and_intensity_undo_redo() -> None:
+    """Test full user workflow: 1 THRU 20 ENTER AT 30 ENTER followed by Undo/Redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [-1] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    # 1. Type 1 THRU 20 into command line
+    app.action_registry.execute("commandline.append_char", "1")
+    app.action_registry.execute("commandline.append_char", " THRU ")
+    app.action_registry.execute("commandline.append_char", "20")
+    assert app.commandline.get_string() == "1 THRU 20"
+    # Keystrokes must NOT be in undo stack
+    assert len(app.history.undo_stack) == 0
+
+    # 2. Press ENTER (execute commandline)
+    app.action_registry.execute("commandline.execute")
+    assert app.commandline.get_string() == ""
+    assert app.selected_channels == list(range(1, 21))
+    assert app.last_selected_channel == 20
+    # Exactly 1 action in undo stack: channel.select_channels
+    assert len(app.history.undo_stack) == 1
+    assert app.history.undo_stack[-1].name == "channel.select_channels"
+
+    # 3. Type AT 30 into command line
+    app.action_registry.execute("commandline.append_char", "AT ")
+    app.action_registry.execute("commandline.append_char", "30")
+    assert app.commandline.get_string() == "AT 30"
+    assert len(app.history.undo_stack) == 1
+
+    # 4. Press ENTER (execute commandline)
+    app.action_registry.execute("commandline.execute")
+    assert app.commandline.get_string() == ""
+    # 30% of 255 = 76
+    for ch in range(1, 21):
+        assert app.backend.dmx.levels["user"][ch - 1] == 76
+    # Exactly 2 actions in undo stack: select_channels, set_multi_levels
+    assert len(app.history.undo_stack) == 2
+    assert app.history.undo_stack[-1].name == "channel.set_multi_levels"
+
+    # 5. First UNDO -> cancels AT 30
+    app.action_registry.execute("edit.undo")
+    for ch in range(1, 21):
+        assert app.backend.dmx.levels["user"][ch - 1] == -1
+    # Channels 1..20 are still selected
+    assert app.selected_channels == list(range(1, 21))
+    assert len(app.history.undo_stack) == 1
+    assert len(app.history.redo_stack) == 1
+
+    # 6. Second UNDO -> cancels 1 THRU 20 selection
+    app.action_registry.execute("edit.undo")
+    assert app.selected_channels == []
+    assert app.last_selected_channel is None
+    assert len(app.history.undo_stack) == 0
+    assert len(app.history.redo_stack) == 2
+
+    # 7. First REDO -> restores 1 THRU 20 selection
+    app.action_registry.execute("edit.redo")
+    assert app.selected_channels == list(range(1, 21))
+    assert app.last_selected_channel == 20
+    assert len(app.history.undo_stack) == 1
+
+    # 8. Second REDO -> restores AT 30 intensity
+    app.action_registry.execute("edit.redo")
+    for ch in range(1, 21):
+        assert app.backend.dmx.levels["user"][ch - 1] == 76
+    assert len(app.history.undo_stack) == 2
+    assert len(app.history.redo_stack) == 0

@@ -225,6 +225,54 @@ class BaseChannelSelectionAction(Action):
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
 
+class SelectChannelsAction(BaseChannelSelectionAction):
+    """Action to set the channel selection explicitly to a given list."""
+
+    name = "channel.select_channels"
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] = []
+        self.last_selected: int | None = None
+
+    def configure(
+        self,
+        channels: list[int] | None = None,
+        last_selected: int | None = None,
+    ) -> None:
+        """Configure target channels and last selected channel.
+
+        Args:
+            channels: List of 1-based channel indices to select.
+            last_selected: Optional active channel index within selection.
+        """
+        self.channels = list(channels) if channels is not None else []
+        self.last_selected = last_selected
+
+    def execute(self) -> None:
+        """Execute channel selection."""
+        self._save_previous_selection()
+        last = self.last_selected
+        if last is None and self.channels:
+            last = self.channels[-1]
+        elif last is not None and last not in self.channels:
+            last = self.channels[-1] if self.channels else None
+
+        if self.old_selection == self.channels and self.old_last_selected == last:
+            self.can_undo = False
+            return
+
+        self._apply_selection(self.channels, last)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return selection state feedback."""
+        return {
+            "selected_channels": list(self.new_selection),
+            "count": len(self.new_selection),
+            "last_selected": self.new_last_selected,
+        }
+
+
 class SelectActiveChannelAction(BaseChannelSelectionAction):
     """Action to select a channel logically by reading the commandline."""
 

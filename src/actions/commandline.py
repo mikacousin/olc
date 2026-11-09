@@ -28,7 +28,7 @@ class CommandLineSetAction(Action):
     """Action to set the exact text of the command line."""
 
     name = "commandline.set"
-    can_undo = True
+    can_undo = False
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the action.
@@ -51,7 +51,6 @@ class CommandLineSetAction(Action):
     def execute(self) -> None:
         """Save previous text and set new command line text."""
         self.old_text = self.app.commandline.get_string()
-        self.can_undo = self.old_text != self.text
         self.app.commandline.set_string(self.text)
 
     def undo(self) -> None:
@@ -72,6 +71,7 @@ class CommandLineClearAction(CommandLineSetAction):
     """Action to clear the command line."""
 
     name = "commandline.clear"
+    can_undo = False
 
     def configure(self, text: str = "") -> None:
         """Clear action sets empty text."""
@@ -87,6 +87,7 @@ class CommandLineAppendCharAction(CommandLineSetAction):
     """Action to append a character to the command line."""
 
     name = "commandline.append_char"
+    can_undo = False
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the action.
@@ -109,7 +110,6 @@ class CommandLineAppendCharAction(CommandLineSetAction):
     def execute(self) -> None:
         """Save previous text and append character."""
         self.old_text = self.app.commandline.get_string()
-        self.can_undo = bool(self.char)
         self.text = self.old_text + self.char
         self.app.commandline.add_string(self.char)
 

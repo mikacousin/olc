@@ -243,6 +243,53 @@ def test_channel_selection_actions_undo_redo() -> None:
     assert 11 not in app.selected_channels
 
 
+def test_select_channels_action_and_undo_redo() -> None:
+    """Test channel.select_channels execution, feedback, undo, and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    received_selections: list[list[int]] = []
+    app.subscribe(
+        "channels.selected_changed", lambda sel: received_selections.append(list(sel))
+    )
+
+    # 1. Execute: Select channels 1 to 5
+    app.action_registry.execute("channel.select_channels", [1, 2, 3, 4, 5], 5)
+    assert app.selected_channels == [1, 2, 3, 4, 5]
+    assert app.last_selected_channel == 5
+    assert received_selections[-1] == [1, 2, 3, 4, 5]
+
+    action = app.action_registry.get("channel.select_channels")
+    assert action.get_feedback_state() == {
+        "selected_channels": [1, 2, 3, 4, 5],
+        "count": 5,
+        "last_selected": 5,
+    }
+
+    # 2. Select channels 10, 20
+    app.action_registry.execute("channel.select_channels", [10, 20])
+    assert app.selected_channels == [10, 20]
+    assert app.last_selected_channel == 20
+
+    # 3. Undo: restores [1..5]
+    app.history.undo()
+    assert app.selected_channels == [1, 2, 3, 4, 5]
+    assert app.last_selected_channel == 5
+
+    # 4. Undo: restores []
+    app.history.undo()
+    assert app.selected_channels == []
+    assert app.last_selected_channel is None
+
+    # 5. Redo: restores [1..5]
+    app.history.redo()
+    assert app.selected_channels == [1, 2, 3, 4, 5]
+
+    # 6. Redo: restores [10, 20]
+    app.history.redo()
+    assert app.selected_channels == [10, 20]
+
+
 def test_set_multi_channels_level_action() -> None:
     """Test multi-channels set level action execution, undo, and redo."""
     # 1. Initialize mock settings and core app

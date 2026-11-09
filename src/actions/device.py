@@ -459,10 +459,18 @@ class DeviceSetParameterAction(Action):
             self.old_values[ch] = old_norm if old_norm is not None else 0.0
 
             if self.is_physical:
-                # Private method _set_physical_parameter maps physical to normalized
-                dev._set_physical_parameter(self.ch_type, self.value)  # pylint: disable=protected-access
-                new_norm = dev.get_parameter_normalized(self.ch_type)
-                self.new_values[ch] = new_norm if new_norm is not None else 0.0
+                if hasattr(dev, "apply_device_parameter"):
+                    param_name = getattr(self.ch_type, "value", str(self.parameter))
+                    dev.apply_device_parameter(param_name, self.value)
+                    new_norm = dev.get_parameter_normalized(self.ch_type)
+                    self.new_values[ch] = new_norm if new_norm is not None else 0.0
+                else:
+                    # Map physical to normalized via internal helper
+                    dev._set_physical_parameter(  # pylint: disable=protected-access
+                        self.ch_type, self.value
+                    )
+                    new_norm = dev.get_parameter_normalized(self.ch_type)
+                    self.new_values[ch] = new_norm if new_norm is not None else 0.0
             else:
                 clamped = max(0.0, min(1.0, self.value))
                 dev.set_parameter_normalized(self.ch_type, clamped)
