@@ -68,6 +68,21 @@ class ShowFile:
             self.on_modified_changed(self.basename)
 
 
+def default_workspace() -> dict[str, typing.Any]:
+    """Return default workspace configuration dictionary."""
+    return {
+        "version": 1,
+        "active_pane": "playback",
+        "panes": {
+            "live": {"tabs": ["channels"], "active_tab": "channels"},
+            "playback": {"tabs": ["playback"], "active_tab": "playback"},
+        },
+        "paned_positions": {"horizontal": 800, "vertical_live": 1100},
+        "tab_settings": {"channels": {"view_mode": "All"}},
+        "virtual_console": {"open": False},
+    }
+
+
 # pylint: disable=too-many-instance-attributes
 class LightShow(ShowFile):
     """Light show data"""
@@ -82,10 +97,12 @@ class LightShow(ShowFile):
     fader_bank: FaderBank
     independents: Independents
     patch: DMXPatch
+    workspace: dict[str, typing.Any]
 
     def __init__(self, app: CoreApplication | None = None) -> None:
         super().__init__(None)
         self.app = app
+        self.workspace = default_workspace()
         lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
         # Fixture Library
         self.fixture_library = populate_builtin_library()

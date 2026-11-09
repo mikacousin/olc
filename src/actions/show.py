@@ -24,6 +24,7 @@ import typing
 from gi.repository import Gio
 
 from olc.core.action import Action
+from olc.core.lightshow import default_workspace
 from olc.cue import Cue
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.devices.builtin import populate_builtin_library
@@ -105,6 +106,11 @@ class ShowNewAction(Action):
         lightshow.file_path = None
         lightshow.basename = ""
         lightshow.set_not_modified()
+
+        # Reset workspace state to default
+        lightshow.workspace = default_workspace()
+        if hasattr(self.app, "tabs") and hasattr(self.app.tabs, "reset"):
+            self.app.tabs.reset()
 
         # Clear undo/redo history
         self.app.history.clear()
@@ -256,6 +262,12 @@ class ShowSaveAction(Action):
         lightshow.file = gio_file
         lightshow.file_path = path
         lightshow.basename = os.path.basename(path)
+
+        # Sync GUI workspace state if GUI application is present
+        app_parent = getattr(lightshow, "app", self.app)
+        tabs_mgr = getattr(app_parent, "tabs", None)
+        if tabs_mgr and hasattr(tabs_mgr, "get_workspace_state"):
+            lightshow.workspace = tabs_mgr.get_workspace_state()
 
         exported = ExportFile(
             gio_file,

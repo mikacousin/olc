@@ -21,6 +21,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
+from olc.core.lightshow import default_workspace  # noqa: E402
 from olc.core.universe_config import Protocol  # noqa: E402
 from olc.cue import Cue  # noqa: E402
 from olc.files.ascii.parser import AsciiParser  # noqa: E402
@@ -185,6 +186,7 @@ class ImportFile:
         self._do_import_faders()
         if self.file_type is FileType.OLC:
             self._do_import_midi()
+            self._do_import_workspace()
         self._update_ui()
 
     def _do_import_curves(self) -> None:
@@ -274,6 +276,10 @@ class ImportFile:
             if self.midi:
                 self.midi.reset_messages()
         self.data.import_midi()
+
+    def _do_import_workspace(self) -> None:
+        workspace = self.data.data.get("workspace")
+        self.lightshow.workspace = workspace if workspace else default_workspace()
 
     def _do_import_universes(self) -> None:
         universes_data = self.data.data.get("universes")

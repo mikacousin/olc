@@ -61,6 +61,7 @@ class OlcParser(ReadFile):
         self.data["independents"] = contents.get("independents") or {}
         self.data["midi"] = contents.get("midi_mapping") or {}
         self.data["universes"] = contents.get("universes") or {}
+        self.data["workspace"] = contents.get("workspace") or {}
 
     def _int_float_str(self, key: int | float | str) -> int | float | str:
         if is_int(key):

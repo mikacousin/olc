@@ -95,26 +95,26 @@ class Window(Gtk.ApplicationWindow):
         self.set_titlebar(self.header)
 
         # Paned
-        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        paned.set_position(800)
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self.paned.set_position(800)
 
         # Channels
         self.live_view = LiveView(
             typing.cast("olc.gtk3.window.Window", self), self.tabs_manager
         )
-        paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        paned_chan.set_position(1100)
-        paned_chan.pack1(self.live_view, resize=True, shrink=False)
+        self.paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        self.paned_chan.set_position(1100)
+        self.paned_chan.pack1(self.live_view, resize=True, shrink=False)
         # Gtk.Statusbar to display keyboard's keys
         self.commandline_widget = CommandLineWidget(self.app)
-        paned_chan.pack2(self.commandline_widget.widget, resize=True, shrink=False)
-        paned.pack1(paned_chan, resize=True, shrink=False)
+        self.paned_chan.pack2(self.commandline_widget.widget, resize=True, shrink=False)
+        self.paned.pack1(self.paned_chan, resize=True, shrink=False)
 
         # Main Playback
         self.playback = MainPlaybackView(self.app)
-        paned.pack2(self.playback, resize=True, shrink=False)
+        self.paned.pack2(self.playback, resize=True, shrink=False)
 
-        self.add(paned)
+        self.add(self.paned)
 
         self.live_view.connect("page-reordered", self._on_page_reordered, "live")
         self.playback.connect("page-reordered", self._on_page_reordered, "playback")

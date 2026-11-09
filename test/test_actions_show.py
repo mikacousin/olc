@@ -331,3 +331,65 @@ def test_show_import_partial_options() -> None:
     assert app.lightshow.patch.outputs[1][47] == [42, 0]
     # Cues should have been imported
     assert app.lightshow.cues.get(1.0, 0) is not None
+
+
+def test_show_workspace_persistence_headless(tmp_path: pathlib.Path) -> None:
+    """Test show workspace persistence across show.save and show.open (headless)."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    custom_ws = {
+        "version": 1,
+        "active_pane": "live",
+        "panes": {
+            "live": {"tabs": ["channels", "groups"], "active_tab": "groups"},
+            "playback": {"tabs": ["playback", "memories"], "active_tab": "memories"},
+        },
+        "paned_positions": {"horizontal": 950, "vertical_live": 1050},
+        "tab_settings": {
+            "channels": {"view_mode": "Patched"},
+            "groups": {"view_mode": "Patched"},
+            "memories": {"view_mode": "Active"},
+        },
+        "virtual_console": {"open": True},
+    }
+    app.lightshow.workspace = dict(custom_ws)
+
+    # Save to .olc file
+    target_file = tmp_path / "custom_workspace.olc"
+    app.action_registry.execute("show.save", str(target_file))
+    assert target_file.exists()
+
+    # Create new show and verify workspace reset
+    app.action_registry.execute("show.new")
+    assert app.lightshow.workspace["active_pane"] == "playback"
+    assert app.lightshow.workspace["panes"]["live"]["tabs"] == ["channels"]
+
+    # Reopen saved file and verify workspace restored
+    app.action_registry.execute("show.open", str(target_file))
+    assert app.lightshow.workspace == custom_ws
+
+
+def test_show_open_legacy_olc_without_workspace(tmp_path: pathlib.Path) -> None:
+    """Test opening a legacy OLC file that contains no workspace section."""
+    import gzip
+    import json
+
+    legacy_data = {
+        "application": "olc",
+        "version": "0.8.5.beta",
+        "patch": {},
+        "sequences": {},
+        "cues": {},
+    }
+    target_file = tmp_path / "legacy.olc"
+    with gzip.open(str(target_file), "wb") as f:
+        f.write(json.dumps(legacy_data).encode("utf-8"))
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute("show.open", str(target_file))
+
+    # Should open without error and maintain valid workspace
+    assert isinstance(app.lightshow.workspace, dict)
+    assert "version" in app.lightshow.workspace or app.lightshow.workspace == {}

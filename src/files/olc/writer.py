@@ -56,6 +56,7 @@ class OlcWriter(WriteFile):
         self._independents()
         self._midi()
         self._universes()
+        self._workspace()
 
         json_str = json.dumps(self.data, indent=2, ensure_ascii=False, sort_keys=False)
 
@@ -301,3 +302,8 @@ class OlcWriter(WriteFile):
                     "model": config.dmx_usb_pro.model,
                 },
             }
+
+    def _workspace(self) -> None:
+        workspace = getattr(self.lightshow, "workspace", None)
+        if workspace:
+            self.data["workspace"] = workspace

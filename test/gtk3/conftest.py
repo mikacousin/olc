@@ -139,6 +139,11 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
         for tab_name in list(app.tabs.tabs.keys()):
             app.tabs.close(tab_name)
 
+    # 3. Reset lightshow workspace
+    from olc.core.lightshow import default_workspace  # noqa: E402
+
+    app.core.lightshow.workspace = default_workspace()
+
     if app.window:
         app.window.show_all()
         app.window.live_view.channels_view.combo.set_active(0)

@@ -20,6 +20,7 @@ import typing
 
 from gi.repository import Gio, Gtk
 
+from olc.core.lightshow import default_workspace
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.history import HistoryTab
 from olc.gtk3.widgets.channel import ChannelWidget
@@ -182,6 +183,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             ):
                 self.app.window.main_fader.queue_draw()
         if self.app.tabs is not None:
+            self.app.tabs.apply_workspace_state(default_workspace())
             self.app.tabs.refresh_all()
         return False
 
@@ -218,6 +220,11 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             ):
                 self.app.window.main_fader.queue_draw()
         if self.app.tabs is not None:
+            workspace = getattr(self.app.core.lightshow, "workspace", None)
+            if workspace:
+                self.app.tabs.apply_workspace_state(workspace)
+            else:
+                self.app.tabs.apply_workspace_state(default_workspace())
             self.app.tabs.refresh_all()
         if (
             self.app.midi

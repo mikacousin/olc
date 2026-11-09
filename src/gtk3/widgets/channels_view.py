@@ -98,9 +98,10 @@ class ChannelsView(Gtk.Box):
         header = Gtk.HeaderBar()
         self.combo = Gtk.ComboBoxText()
         self.combo.set_entry_text_column(0)
-        self.combo.connect("changed", self._on_view_mode_changed)
         for mode in VIEW_MODES:
             self.combo.append_text(mode)
+        self.combo.set_active(0)
+        self.combo.connect("changed", self._on_view_mode_changed)
         header.pack_end(self.combo)
         self.pack_start(header, False, False, 0)
 
@@ -210,6 +211,30 @@ class ChannelsView(Gtk.Box):
                 return channelwidget
         return None
 
+    def get_tab_name(self) -> str | None:
+        """Find the logical tab name this channels view belongs to."""
+        if self.__class__.__name__ == "LiveChannelsView":
+            return "channels"
+        tabs_mgr = getattr(self, "tabs", None) or getattr(self.app, "tabs", None)
+        if tabs_mgr and hasattr(tabs_mgr, "tabs"):
+            for name, widget in tabs_mgr.tabs.items():
+                if widget is not None:
+                    if widget is self or getattr(widget, "channels_view", None) is self:
+                        return name
+        return None
+
+    def get_view_mode_name(self) -> str:
+        """Get the current view mode as a string name."""
+        for name, idx in VIEW_MODES.items():
+            if idx == self.view_mode:
+                return name
+        return "All"
+
+    def set_view_mode_by_name(self, name: str) -> None:
+        """Set view mode by string name ('All', 'Patched', 'Active')."""
+        if name in VIEW_MODES:
+            self.combo.set_active(VIEW_MODES[name])
+
     def _on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         """Change View Mode
 
@@ -221,6 +246,10 @@ class ChannelsView(Gtk.Box):
             index = VIEW_MODES.get(text, 0)
             self.view_mode = index
             self.flowbox.invalidate_filter()
+            tab_name = self.get_tab_name()
+            if tab_name and self.lightshow and hasattr(self.lightshow, "workspace"):
+                tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
+                tab_settings.setdefault(tab_name, {})["view_mode"] = text
         self.grab_focus()
 
     def toggle_view_mode(self) -> None:

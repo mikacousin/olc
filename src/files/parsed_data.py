@@ -69,6 +69,7 @@ class ParsedData:
             "faders": {},
             "midi": {},
             "universes": {},
+            "workspace": {},
         }
 
     def clean(self) -> None:

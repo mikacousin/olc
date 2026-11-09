@@ -41,6 +41,18 @@ class CoreTabs:
         # Currently focused notebook container ID
         self.active_notebook: str = "playback"
 
+    def reset(self) -> None:
+        """Reset tab logical state to default layout."""
+        self.notebooks = {
+            "live": ["channels"],
+            "playback": ["playback"],
+        }
+        self.active_tabs = {
+            "live": "channels",
+            "playback": "playback",
+        }
+        self.active_notebook = "playback"
+
     def get_notebook_of_tab(self, tab_name: str) -> typing.Optional[str]:
         """Find which notebook container holds the given tab name."""
         for nbid, tab_list in self.notebooks.items():
