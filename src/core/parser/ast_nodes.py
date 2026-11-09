@@ -67,6 +67,39 @@ class AllSelectionNode(SelectionItemNode):
     """Universal selection (ALL)."""
 
 
+# --- Address Selection Nodes ---
+
+
+@dataclasses.dataclass
+class AddressItemNode(ASTNode):
+    """Base class for atomic DMX address selection elements."""
+
+
+@dataclasses.dataclass
+class AddressNumberNode(AddressItemNode):
+    """Single DMX output address (e.g. ADDRESS 12 or ADDRESS 2/15)."""
+
+    universe: int
+    output: int
+
+
+@dataclasses.dataclass
+class AddressRangeNode(AddressItemNode):
+    """Range of DMX output addresses in a universe (e.g. ADDRESS 1/1 THRU 10)."""
+
+    universe: int
+    start: int
+    end: int
+
+
+@dataclasses.dataclass
+class AddressSelectionNode(ASTNode):
+    """Composite selection of physical DMX addresses."""
+
+    items: list[AddressItemNode] = dataclasses.field(default_factory=list)
+    exclusions: list[AddressItemNode] = dataclasses.field(default_factory=list)
+
+
 @dataclasses.dataclass
 class SelectionNode(ASTNode):
     """Composite selection with additions, exclusions and optional odd/even filter."""
@@ -186,3 +219,41 @@ class SneakCommandNode(CommandNode):
     selection: SelectionNode | None = None
     independents: list[int] | None = None
     duration: float | None = None
+
+
+# --- Park Command Nodes ---
+
+
+@dataclasses.dataclass
+class ChannelParkCommandNode(CommandNode):
+    """Command to park channels at a level or current level."""
+
+    selection: SelectionNode | None = None
+    level: float | None = None
+
+
+@dataclasses.dataclass
+class ChannelUnparkCommandNode(CommandNode):
+    """Command to unpark channels."""
+
+    selection: SelectionNode | None = None
+
+
+@dataclasses.dataclass
+class AddressParkCommandNode(CommandNode):
+    """Command to park physical DMX addresses."""
+
+    addresses: AddressSelectionNode
+    level: float
+
+
+@dataclasses.dataclass
+class AddressUnparkCommandNode(CommandNode):
+    """Command to unpark physical DMX addresses."""
+
+    addresses: AddressSelectionNode
+
+
+@dataclasses.dataclass
+class ParkUnparkAllCommandNode(CommandNode):
+    """Command to unpark all channels and physical DMX addresses."""

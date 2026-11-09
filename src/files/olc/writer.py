@@ -57,6 +57,7 @@ class OlcWriter(WriteFile):
         self._midi()
         self._universes()
         self._workspace()
+        self._park()
 
         json_str = json.dumps(self.data, indent=2, ensure_ascii=False, sort_keys=False)
 
@@ -307,3 +308,10 @@ class OlcWriter(WriteFile):
         workspace = getattr(self.lightshow, "workspace", None)
         if workspace:
             self.data["workspace"] = workspace
+
+    def _park(self) -> None:
+        park = getattr(self.lightshow, "park", None)
+        if park is not None:
+            park_data = park.to_dict()
+            if park_data.get("channels") or park_data.get("addresses"):
+                self.data["park"] = park_data

@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import typing
 
+from olc.core.park import ParkManager
 from olc.cue import Cues
 from olc.curve import Curves
 from olc.define import DEFAULT_UNIVERSES
@@ -96,6 +97,7 @@ class LightShow(ShowFile):
     fader_bank: FaderBank
     independents: Independents
     patch: DMXPatch
+    park: ParkManager
     workspace: dict[str, typing.Any]
 
     def __init__(self, app: CoreApplication | None = None) -> None:
@@ -121,6 +123,8 @@ class LightShow(ShowFile):
         self.independents = Independents(lightshow_type)
         # Patch
         self.patch = DMXPatch(list(DEFAULT_UNIVERSES), lightshow=lightshow_type)
+        # Park
+        self.park = ParkManager()
 
     def get_cue(self, number: float) -> None | Cue:
         """Get Cue with his number

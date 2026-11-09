@@ -175,6 +175,7 @@ class ChannelWidget(Gtk.DrawingArea):
 
         self._draw_background(cr, allocation)
         self._draw_channel_number(cr)
+        self._draw_park_badge(cr)
         self._draw_device_indicators(cr, allocation)
         self._draw_level(cr, percent_level)
         self._draw_level_bar(cr, allocation)
@@ -282,13 +283,30 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
 
+    def _draw_park_badge(self, cr: cairo.Context) -> None:
+        """Draw 'P' badge if channel is parked."""
+        park_mgr = getattr(self.lightshow, "park", None)
+        if park_mgr is None or not park_mgr.is_channel_parked(int(self.channel)):
+            return
+        cr.select_font_face(
+            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+        )
+        cr.set_font_size(10 * self.scale)
+        cr.set_source_rgb(1.0, 0.7, 0.0)
+        cr.move_to(6 * self.scale, 15 * self.scale)
+        cr.show_text("P")
+
     def _draw_level(self, cr: cairo.Context, percent_level: bool) -> None:
         """Draw level"""
-        cr.set_source_rgb(
-            self.color_level.get("red", 0.0),
-            self.color_level.get("green", 0.0),
-            self.color_level.get("blue", 0.0),
-        )
+        park_mgr = getattr(self.lightshow, "park", None)
+        if park_mgr is not None and park_mgr.is_channel_parked(int(self.channel)):
+            cr.set_source_rgb(1.0, 0.7, 0.0)
+        else:
+            cr.set_source_rgb(
+                self.color_level.get("red", 0.0),
+                self.color_level.get("green", 0.0),
+                self.color_level.get("blue", 0.0),
+            )
         cr.select_font_face(
             "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
         )

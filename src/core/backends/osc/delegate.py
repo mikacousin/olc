@@ -98,6 +98,7 @@ class OSCDelegate:
         self.app.subscribe(
             "independent.text_changed", self._on_independent_text_changed
         )
+        self.app.subscribe("park.changed", self._on_park_changed)
         self.app.subscribe("playback.xfade_moved", self._on_xfade_moved)
 
     def _send_patch_status(
@@ -466,6 +467,12 @@ class OSCDelegate:
         """Publish Blackout state changes."""
         if self.app.engine is not None:
             self.app.engine.publish_osc("playback", "/olc/blackout", 1 if state else 0)
+            self._send_channels_page()
+
+    def _on_park_changed(self, count: int) -> None:
+        """Publish park active state changes."""
+        if self.app.engine is not None:
+            self.app.engine.publish_osc("park", "/olc/park/active", int(count))
             self._send_channels_page()
 
     def _on_channel_level_changed(self, channel: int, _level: int) -> None:
@@ -2360,6 +2367,55 @@ class OSCDelegate:
         except (IndexError, ValueError):
             return
         self._execute_action("device.locate", channels=[dev_id])
+
+    @make_method("/olc/channel/*/park")
+    def _channel_park(self, address: str, args: list) -> None:
+        """Park a channel at a given level or current level."""
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        level = float(args[0]) if args else None
+        self._execute_action("channel.park", ch, level)
+
+    @make_method("/olc/channel/*/unpark")
+    def _channel_unpark(self, address: str, _args: list) -> None:
+        """Unpark a channel."""
+        parts = address.split("/")
+        try:
+            ch = int(parts[3])
+        except (IndexError, ValueError):
+            return
+        self._execute_action("channel.unpark", ch)
+
+    @make_method("/olc/address/*/*/park")
+    def _address_park(self, address: str, args: list) -> None:
+        """Park an address (univ, output) at a level."""
+        parts = address.split("/")
+        try:
+            univ = int(parts[3])
+            out = int(parts[4])
+        except (IndexError, ValueError):
+            return
+        level = float(args[0]) if args else 1.0
+        self._execute_action("address.park", (univ, out), level)
+
+    @make_method("/olc/address/*/*/unpark")
+    def _address_unpark(self, address: str, _args: list) -> None:
+        """Unpark an address (univ, output)."""
+        parts = address.split("/")
+        try:
+            univ = int(parts[3])
+            out = int(parts[4])
+        except (IndexError, ValueError):
+            return
+        self._execute_action("address.unpark", (univ, out))
+
+    @make_method("/olc/park/unpark_all")
+    def _park_unpark_all(self, _address: str, _args: list) -> None:
+        """Unpark all parked channels and addresses."""
+        self._execute_action("park.unpark_all")
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

@@ -19,11 +19,19 @@ from __future__ import annotations
 import typing
 
 from olc.core.parser.ast_nodes import (
+    AddressItemNode,
+    AddressNumberNode,
+    AddressParkCommandNode,
+    AddressRangeNode,
+    AddressSelectionNode,
+    AddressUnparkCommandNode,
     AllSelectionNode,
     AttributeCommandNode,
     BlockCueCommandNode,
     ChannelNumberNode,
+    ChannelParkCommandNode,
     ChannelRangeNode,
+    ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
     GotoCueCommandNode,
@@ -31,6 +39,7 @@ from olc.core.parser.ast_nodes import (
     HomeCommandNode,
     IntensityCommandNode,
     LocateCommandNode,
+    ParkUnparkAllCommandNode,
     RecordCueCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -181,6 +190,65 @@ class CommandParser:
         if tok.type == TokenType.INDEPENDENT:
             return self._parse_independent_command()
 
+        if tok.type == TokenType.PARK:
+            self.advance()
+            if self.match(TokenType.ALL):
+                return ParkUnparkAllCommandNode()
+            if self.match(TokenType.AT):
+                if self.peek().type == TokenType.EOF:
+                    return ChannelUnparkCommandNode(selection=None)
+                level, _ = self._parse_intensity_value()
+                return ChannelParkCommandNode(selection=None, level=level)
+            if self.peek().type in (
+                TokenType.NUMBER,
+                TokenType.CHANNEL,
+                TokenType.GROUP,
+            ):
+                sel = self._parse_selection()
+                lvl = None
+                if self.match(TokenType.AT):
+                    if self.peek().type != TokenType.EOF:
+                        lvl, _ = self._parse_intensity_value()
+                return ChannelParkCommandNode(selection=sel, level=lvl)
+            return ChannelParkCommandNode(selection=None, level=None)
+
+        if tok.type == TokenType.UNPARK:
+            self.advance()
+            if self.match(TokenType.ALL):
+                return ParkUnparkAllCommandNode()
+            if self.peek().type == TokenType.ADDRESS:
+                addrs = self._parse_address_selection()
+                return AddressUnparkCommandNode(addresses=addrs)
+            if self.peek().type in (
+                TokenType.NUMBER,
+                TokenType.CHANNEL,
+                TokenType.GROUP,
+            ):
+                sel = self._parse_selection()
+                return ChannelUnparkCommandNode(selection=sel)
+            return ChannelUnparkCommandNode(selection=None)
+
+        if tok.type == TokenType.ADDRESS:
+            addrs = self._parse_address_selection()
+            if self.match(TokenType.UNPARK):
+                return AddressUnparkCommandNode(addresses=addrs)
+            if self.match(TokenType.PARK):
+                if self.match(TokenType.AT):
+                    if self.peek().type == TokenType.EOF:
+                        return AddressUnparkCommandNode(addresses=addrs)
+                    lvl, _ = self._parse_intensity_value()
+                    return AddressParkCommandNode(addresses=addrs, level=lvl)
+                return AddressParkCommandNode(addresses=addrs, level=100.0)
+            if self.match(TokenType.AT):
+                lvl, _ = self._parse_intensity_value()
+                return AddressParkCommandNode(addresses=addrs, level=lvl)
+            raise CommandSyntaxError(
+                f"Expected PARK, UNPARK, or AT after ADDRESS, "
+                f"got {self.peek().raw_text!r}",
+                self.peek().position,
+                self.peek(),
+            )
+
         # Standalone LOCATE / HOME (implicit selection)
         if tok.type == TokenType.LOCATE:
             self.advance()
@@ -224,6 +292,17 @@ class CommandParser:
 
         if self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
+
+        if self.match(TokenType.UNPARK):
+            return ChannelUnparkCommandNode(selection=selection)
+
+        if self.match(TokenType.PARK):
+            if self.match(TokenType.AT):
+                if self.peek().type == TokenType.EOF:
+                    return ChannelUnparkCommandNode(selection=selection)
+                level, _ = self._parse_intensity_value()
+                return ChannelParkCommandNode(selection=selection, level=level)
+            return ChannelParkCommandNode(selection=selection, level=None)
 
         if self.peek().type == TokenType.SNEAK:
             return self._parse_sneak_command(selection=selection)
@@ -507,6 +586,59 @@ class CommandParser:
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after DELETE")
         return DeleteCueCommandNode(cue_id=float(tok_num.value))
+
+    # --- Address Selection Parsing ---
+
+    def _parse_address_item(self) -> AddressItemNode:
+        """Parse a single address or address range: 12, 1/12, 1/1 THRU 10."""
+        self.match(TokenType.ADDRESS)
+
+        first_num_tok = self.expect(
+            TokenType.NUMBER, "Expected address or universe number"
+        )
+        first_val = int(first_num_tok.value)
+
+        universe = 1
+        output = first_val
+        if self.match(TokenType.SLASH):
+            second_num_tok = self.expect(
+                TokenType.NUMBER, "Expected output address after '/'"
+            )
+            universe = first_val
+            output = int(second_num_tok.value)
+
+        if self.match(TokenType.THRU):
+            end_first_tok = self.expect(
+                TokenType.NUMBER, "Expected target address after THRU"
+            )
+            end_val = int(end_first_tok.value)
+            if self.match(TokenType.SLASH):
+                end_second_tok = self.expect(
+                    TokenType.NUMBER, "Expected target address after '/'"
+                )
+                end_output = int(end_second_tok.value)
+            else:
+                end_output = end_val
+            return AddressRangeNode(universe=universe, start=output, end=end_output)
+
+        return AddressNumberNode(universe=universe, output=output)
+
+    def _parse_address_selection(self) -> AddressSelectionNode:
+        items: list[AddressItemNode] = []
+        exclusions: list[AddressItemNode] = []
+
+        self.expect(TokenType.ADDRESS, "Expected ADDRESS")
+        items.append(self._parse_address_item())
+
+        while True:
+            if self.match(TokenType.PLUS):
+                items.append(self._parse_address_item())
+            elif self.match(TokenType.MINUS):
+                exclusions.append(self._parse_address_item())
+            else:
+                break
+
+        return AddressSelectionNode(items=items, exclusions=exclusions)
 
     # --- Selection Parsing ---
 

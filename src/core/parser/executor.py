@@ -20,11 +20,18 @@ import dataclasses
 import typing
 
 from olc.core.parser.ast_nodes import (
+    AddressNumberNode,
+    AddressParkCommandNode,
+    AddressRangeNode,
+    AddressSelectionNode,
+    AddressUnparkCommandNode,
     AllSelectionNode,
     AttributeCommandNode,
     BlockCueCommandNode,
     ChannelNumberNode,
+    ChannelParkCommandNode,
     ChannelRangeNode,
+    ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
     GotoCueCommandNode,
@@ -32,6 +39,7 @@ from olc.core.parser.ast_nodes import (
     HomeCommandNode,
     IntensityCommandNode,
     LocateCommandNode,
+    ParkUnparkAllCommandNode,
     RecordCueCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -129,6 +137,21 @@ class CommandExecutor:
 
         if isinstance(node, LocateCommandNode):
             return self._execute_locate(node)
+
+        if isinstance(node, ChannelParkCommandNode):
+            return self._execute_channel_park(node)
+
+        if isinstance(node, ChannelUnparkCommandNode):
+            return self._execute_channel_unpark(node)
+
+        if isinstance(node, AddressParkCommandNode):
+            return self._execute_address_park(node)
+
+        if isinstance(node, AddressUnparkCommandNode):
+            return self._execute_address_unpark(node)
+
+        if isinstance(node, ParkUnparkAllCommandNode):
+            return self._execute_park_unpark_all(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -938,3 +961,105 @@ class CommandExecutor:
             if hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
                 vals["color"] = dev.color_srgb.to_hex()
         return vals
+
+    # --- Park Commands Resolution & Execution ---
+
+    def resolve_address_selection(
+        self, addresses: AddressSelectionNode
+    ) -> list[tuple[int, int]]:
+        """Resolve an AddressSelectionNode into sorted unique (univ, out) tuples."""
+        included: set[tuple[int, int]] = set()
+        for item in addresses.items:
+            if isinstance(item, AddressNumberNode):
+                included.add((item.universe, item.output))
+            elif isinstance(item, AddressRangeNode):
+                low, high = min(item.start, item.end), max(item.start, item.end)
+                for out in range(low, high + 1):
+                    included.add((item.universe, out))
+
+        excluded: set[tuple[int, int]] = set()
+        for item in addresses.exclusions:
+            if isinstance(item, AddressNumberNode):
+                excluded.add((item.universe, item.output))
+            elif isinstance(item, AddressRangeNode):
+                low, high = min(item.start, item.end), max(item.start, item.end)
+                for out in range(low, high + 1):
+                    excluded.add((item.universe, out))
+
+        return sorted(list(included - excluded))
+
+    def _execute_channel_park(self, node: ChannelParkCommandNode) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected to park")
+
+        registry = self._get_registry()
+        target_dmx: int | None = None
+        if node.level is not None:
+            target_dmx = max(0, min(255, int(round((node.level / 100.0) * 255.0))))
+
+        if registry is not None:
+            registry.execute("channel.park", channels, target_dmx)
+        else:
+            for ch in channels:
+                self.app.lightshow.park.park_channel(ch, target_dmx or 0)
+
+        return CommandResult(
+            True, f"Parked {len(channels)} channel(s)", affected_channels=channels
+        )
+
+    def _execute_channel_unpark(self, node: ChannelUnparkCommandNode) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected to unpark")
+
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("channel.unpark", channels)
+        else:
+            for ch in channels:
+                self.app.lightshow.park.unpark_channel(ch)
+
+        return CommandResult(
+            True, f"Unparked {len(channels)} channel(s)", affected_channels=channels
+        )
+
+    def _execute_address_park(self, node: AddressParkCommandNode) -> CommandResult:
+        addresses = self.resolve_address_selection(node.addresses)
+        if not addresses:
+            return CommandResult(False, "No addresses specified to park")
+
+        target_dmx = max(0, min(255, int(round((node.level / 100.0) * 255.0))))
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("address.park", addresses, target_dmx)
+        else:
+            for u, o in addresses:
+                self.app.lightshow.park.park_address(u, o, target_dmx)
+
+        return CommandResult(True, f"Parked {len(addresses)} address(es)")
+
+    def _execute_address_unpark(self, node: AddressUnparkCommandNode) -> CommandResult:
+        addresses = self.resolve_address_selection(node.addresses)
+        if not addresses:
+            return CommandResult(False, "No addresses specified to unpark")
+
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("address.unpark", addresses)
+        else:
+            for u, o in addresses:
+                self.app.lightshow.park.unpark_address(u, o)
+
+        return CommandResult(True, f"Unparked {len(addresses)} address(es)")
+
+    def _execute_park_unpark_all(
+        self, _node: ParkUnparkAllCommandNode
+    ) -> CommandResult:
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("park.unpark_all")
+        else:
+            self.app.lightshow.park.unpark_all()
+
+        return CommandResult(True, "All channels and addresses unparked")

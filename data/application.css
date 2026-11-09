@@ -36,6 +36,19 @@ flowboxchild:selected {
   border-color: #ff4444;
 }
 
+.olc-park-status-badge, .olc-park-indicator {
+  font-weight: bold;
+  background-image: none;
+  background-color: #ffb300;
+  color: #000000;
+  border-color: #ffa000;
+}
+
+.olc-park-status-badge:hover, .olc-park-indicator:hover {
+  background-color: #ffc107;
+  color: #000000;
+}
+
 /* DMX outputs grid compact packing */
 .olc-flowbox-output {
   padding: 0px;

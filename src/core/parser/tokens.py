@@ -37,6 +37,7 @@ class TokenType(Enum):
 
     # Selection keywords
     CHANNEL = auto()
+    ADDRESS = auto()
     THRU = auto()
     GROUP = auto()
     ALL = auto()
@@ -78,6 +79,8 @@ class TokenType(Enum):
     DELETE = auto()
     SNEAK = auto()
     INDEPENDENT = auto()
+    PARK = auto()
+    UNPARK = auto()
 
     # Identifiers (unrecognized words / custom labels)
     IDENT = auto()

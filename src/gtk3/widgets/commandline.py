@@ -68,6 +68,17 @@ class CommandLineWidget:
         self.feedback_label.set_use_markup(True)
         self.widget.pack_end(self.feedback_label, False, False, 0)
 
+        # Park alert indicator badge in status bar
+        self.park_status_button = Gtk.Button()
+        self.park_status_button.get_style_context().add_class("olc-park-status-badge")
+        self.park_status_button.set_tooltip_text(
+            "Circuits ou adresses verrouillés en PARK. Cliquer pour déparker tout."
+        )
+        self.park_status_button.set_no_show_all(True)
+        self.park_status_button.set_visible(False)
+        self.park_status_button.connect("clicked", self._on_park_status_clicked)
+        self.widget.pack_end(self.park_status_button, False, False, 4)
+
         # Render initial empty state
         self._render_text("")
 
@@ -76,6 +87,14 @@ class CommandLineWidget:
         self.app.core.subscribe("commandline.error", self.on_error)
         self.app.core.subscribe("commandline.executed", self.on_executed)
         self.app.core.subscribe("commandline.suggestions", self.on_suggestions)
+        self.app.core.subscribe("park.changed", self.on_park_changed)
+
+        if (
+            hasattr(self.app.core, "lightshow")
+            and hasattr(self.app.core.lightshow, "park")
+            and self.app.core.lightshow.park.total_parked_count() > 0
+        ):
+            self._on_park_changed_ui(self.app.core.lightshow.park.total_parked_count())
 
     def on_changed(self, keystring: str) -> None:
         """Callback triggered when the logical command line changes.
@@ -161,9 +180,30 @@ class CommandLineWidget:
             f'<span font_family="DejaVu Sans, monospace">{markup}{cursor}</span>'
         )
 
+    def on_park_changed(self, count: int) -> None:
+        """Callback triggered when parked items count changes.
+
+        Args:
+            count: Total number of currently parked channels and addresses.
+        """
+        GLib.idle_add(self._on_park_changed_ui, count)
+
+    def _on_park_changed_ui(self, count: int) -> bool:
+        if count > 0:
+            self.park_status_button.set_label(f"⚠️ PARK ({count})")
+            self.park_status_button.set_visible(True)
+        else:
+            self.park_status_button.set_visible(False)
+        return False
+
+    def _on_park_status_clicked(self, _btn: Gtk.Button) -> None:
+        """Handle click on park status badge to unpark all."""
+        self.app.core.action_registry.execute("park.unpark_all")
+
     def destroy(self) -> None:
         """Unsubscribe from application events."""
         self.app.core.unsubscribe("commandline.changed", self.on_changed)
         self.app.core.unsubscribe("commandline.error", self.on_error)
         self.app.core.unsubscribe("commandline.executed", self.on_executed)
         self.app.core.unsubscribe("commandline.suggestions", self.on_suggestions)
+        self.app.core.unsubscribe("park.changed", self.on_park_changed)

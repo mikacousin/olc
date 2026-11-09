@@ -133,6 +133,13 @@ from olc.actions.osc import (
     OscToggleAction,
     OscToggleStaticClientAction,
 )
+from olc.actions.park import (
+    AddressParkAction,
+    AddressUnparkAction,
+    ChannelParkAction,
+    ChannelUnparkAction,
+    ParkUnparkAllAction,
+)
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
@@ -301,6 +308,11 @@ def register_all_actions(registry: ActionRegistry) -> None:
         OscSetConfigAction,
         OscToggleStaticClientAction,
         OscRemoveSubscriberAction,
+        ChannelParkAction,
+        ChannelUnparkAction,
+        AddressParkAction,
+        AddressUnparkAction,
+        ParkUnparkAllAction,
         ShowNewAction,
         ShowResetUserLevelsAction,
         ShowOpenAction,

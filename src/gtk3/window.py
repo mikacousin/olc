@@ -453,6 +453,9 @@ class Window(Gtk.ApplicationWindow):
 
         # Alt-only shortcuts
         elif modifiers == int(Gdk.ModifierType.MOD1_MASK):
+            if keyval in (Gdk.KEY_p, Gdk.KEY_P):
+                self._append_console_keyword("UNPARK", trailing_space=True)
+                return True
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():
                     page = self._get_active_page()
@@ -715,6 +718,8 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_o, Gdk.KEY_O): ("AT OUT", False),
                 (Gdk.KEY_h, Gdk.KEY_H): ("HOME", False),
                 (Gdk.KEY_l, Gdk.KEY_L): ("LOCATE", False),
+                (Gdk.KEY_p, Gdk.KEY_P): ("PARK", True),
+                (Gdk.KEY_d, Gdk.KEY_D): ("ADDRESS", True),
             }
             if keyval in (Gdk.KEY_c, Gdk.KEY_C):
                 self._clear_on_escape()

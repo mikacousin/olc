@@ -32,6 +32,8 @@ class LexerError(Exception):
 KEYWORDS: dict[str, TokenType] = {
     "CHANNEL": TokenType.CHANNEL,
     "CHAN": TokenType.CHANNEL,
+    "ADDRESS": TokenType.ADDRESS,
+    "ADDR": TokenType.ADDRESS,
     "THRU": TokenType.THRU,
     "AT": TokenType.AT,
     "FULL": TokenType.FULL,
@@ -57,6 +59,8 @@ KEYWORDS: dict[str, TokenType] = {
     "INDEPENDENT": TokenType.INDEPENDENT,
     "INDE": TokenType.INDEPENDENT,
     "IND": TokenType.INDEPENDENT,
+    "PARK": TokenType.PARK,
+    "UNPARK": TokenType.UNPARK,
     # ML Attributes & Families
     "HOME": TokenType.HOME,
     "LOCATE": TokenType.LOCATE,

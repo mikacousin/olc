@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 from olc.core.parser.tokens import TokenType
 from olc.gtk3.widgets.button import ButtonWidget
@@ -75,6 +75,17 @@ class VirtualConsoleWindow(Gtk.Window):
         self.blackout.set_tooltip_text("Toggle Scenic Blackout (DBO) (Ctrl+Shift+B)")
         self.blackout.connect("toggled", self._on_blackout_toggled)
         self.header.pack_start(self.blackout)
+
+        # Park alert indicator button
+        self.park_indicator = Gtk.Button(label="PARK")
+        self.park_indicator.get_style_context().add_class("olc-park-indicator")
+        self.park_indicator.set_tooltip_text(
+            "Parked channels or addresses active. Click to unpark all."
+        )
+        self.park_indicator.set_no_show_all(True)
+        self.park_indicator.set_visible(False)
+        self.park_indicator.connect("clicked", self._on_park_indicator_clicked)
+        self.header.pack_start(self.park_indicator)
 
         self.midi = Gtk.ToggleButton(label="MIDI")
         self.midi.get_style_context().add_class("olc-midi-toggle")
@@ -179,17 +190,21 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Output grid
         self.output_pad = Gtk.Grid()
+        self.address = ButtonWidget(label="Address", text="address", shortcut_text="⇧D")
+        self.address.connect("clicked", self._on_address)
+        self.output_pad.attach(self.address, 0, 0, 1, 1)
+
+        self.park = ButtonWidget(label="Park", text="park", shortcut_text="⇧P")
+        self.park.connect("clicked", self._on_park)
+        self.output_pad.attach(self.park, 1, 0, 1, 1)
+
+        self.unpark = ButtonWidget(label="Unpark", text="unpark", shortcut_text="Alt+P")
+        self.unpark.connect("clicked", self._on_unpark)
+        self.output_pad.attach(self.unpark, 1, 1, 1, 1)
+
         self.output = ButtonWidget(label="Output", text="output")
         self.output.connect("clicked", self._on_output)
-        self.label = Gtk.Label(label="")
-        self.output_pad.attach(self.label, 1, 0, 1, 1)
         self.output_pad.attach(self.output, 2, 0, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.output_pad.attach(self.label, 2, 1, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.output_pad.attach(self.label, 2, 2, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.output_pad.attach(self.label, 2, 3, 1, 1)
 
         # Update, Record, Track
         self.rec_pad = Gtk.Grid()
@@ -477,7 +492,16 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Listen for command line text changes to dynamically update button sensitivity
         self.app.core.subscribe("commandline.changed", self._on_commandline_changed)
+        self.app.core.subscribe("park.changed", self._on_park_changed)
         self.update_button_sensitivity()
+        if (
+            hasattr(self.app.core, "lightshow")
+            and hasattr(self.app.core.lightshow, "park")
+            and self.app.core.lightshow.park.total_parked_count() > 0
+        ):
+            self._update_park_indicator(
+                self.app.core.lightshow.park.total_parked_count()
+            )
 
         # Handle keyboard events via modern EventControllerKey
         self.key_controller = Gtk.EventControllerKey.new(self)
@@ -778,6 +802,59 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.dmx_outputs(typing.cast(typing.Any, None), None)
+
+    def _on_address(self, _widget: Gtk.Widget) -> None:
+        """Address button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "address"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}ADDRESS "
+            )
+
+    def _on_park(self, _widget: Gtk.Widget) -> None:
+        """Park button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "park"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}PARK "
+            )
+
+    def _on_unpark(self, _widget: Gtk.Widget) -> None:
+        """Unpark button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "unpark"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}UNPARK "
+            )
+
+    def _on_park_changed(self, count: int) -> None:
+        """Handle park state changed event."""
+        GLib.idle_add(self._update_park_indicator, count)
+
+    def _update_park_indicator(self, count: int) -> bool:
+        if hasattr(self, "park_indicator") and self.park_indicator:
+            if count > 0:
+                self.park_indicator.set_label(f"⚠️ PARK ({count})")
+                self.park_indicator.set_visible(True)
+            else:
+                self.park_indicator.set_visible(False)
+        return False
+
+    def _on_park_indicator_clicked(self, _widget: Gtk.Widget) -> None:
+        """Unpark all parked items on indicator click."""
+        self.app.core.action_registry.execute("park.unpark_all")
 
     def _on_seq(self, _widget: Gtk.Widget) -> None:
         """Seq"""

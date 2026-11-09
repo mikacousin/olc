@@ -187,6 +187,7 @@ class ImportFile:
         if self.file_type is FileType.OLC:
             self._do_import_midi()
             self._do_import_workspace()
+            self._do_import_park()
         self._update_ui()
 
     def _do_import_curves(self) -> None:
@@ -311,6 +312,17 @@ class ImportFile:
 
             if engine is not None:
                 _import_single_universe(u, val, engine)
+
+    def _do_import_park(self) -> None:
+        park_data = self.data.data.get("park")
+        if hasattr(self.lightshow, "park"):
+            if park_data:
+                self.lightshow.park.from_dict(park_data)
+            else:
+                self.lightshow.park.clear()
+            core = getattr(self.lightshow.app, "core", self.lightshow.app)
+            if core is not None and hasattr(core, "emit"):
+                core.emit("park.changed", self.lightshow.park.total_parked_count())
 
     def _update_ui(self) -> None:
         if self.window is not None and self.window.live_view is not None:

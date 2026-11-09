@@ -82,6 +82,11 @@ class ShowNewAction(Action):
         lightshow.fixture_library = populate_builtin_library()
         lightshow.patch.patch_empty()
 
+        # Reset park
+        if hasattr(lightshow, "park"):
+            lightshow.park.clear()
+            self.app.emit("park.changed", 0)
+
         # Reset main playback
         lightshow.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow)
         lightshow.main_playback.position = 0

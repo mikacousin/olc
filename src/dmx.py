@@ -20,6 +20,7 @@ from typing import Callable, Optional
 import numpy as np
 from gi.repository import GLib
 
+from olc.core.park import ParkManager
 from olc.core.tracking import (
     TrackingDisplayState,
     classify_channel_tracking_state,
@@ -116,6 +117,14 @@ class Dmx:
         Returns:
             Tuple of (composite_level, color_dict)
         """
+        park_mgr = getattr(self.lightshow, "park", None)
+        if isinstance(park_mgr, ParkManager) and park_mgr.is_channel_parked(
+            channel_idx + 1
+        ):
+            parked_val = park_mgr.get_channel_park_level(channel_idx + 1)
+            if parked_val is not None:
+                return int(parked_val), {"red": 1.0, "green": 0.7, "blue": 0.0}
+
         main_pb = self.lightshow.main_playback
         state, _ = classify_channel_tracking_state(
             main_pb, getattr(main_pb, "position", 0), channel_idx + 1
@@ -145,6 +154,11 @@ class Dmx:
         composite = np.maximum(composite, self.lightshow.independents.dmx)
         user_mask = self.levels["user"] != -1
         composite[user_mask] = self.levels["user"][user_mask]
+        park_mgr = getattr(self.lightshow, "park", None)
+        if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
+            for ch, lvl in park_mgr.parked_channels.items():
+                if 1 <= ch <= len(composite):
+                    composite[ch - 1] = lvl
         return composite
 
     @property
@@ -157,9 +171,18 @@ class Dmx:
         if not hasattr(self.patch, "dynamic_intensity_devices"):
             return
         main_val = self.effective_intensity_mult
+        park_mgr = getattr(self.lightshow, "park", None)
         for dev in self.patch.dynamic_intensity_devices:
             dev_id = dev.fixture_id
             if 1 <= dev_id <= len(composite):
+                if isinstance(park_mgr, ParkManager) and park_mgr.is_channel_parked(
+                    dev_id
+                ):
+                    parked_val = park_mgr.get_channel_park_level(dev_id) or 0
+                    target_norm = float(parked_val) / 255.0
+                    dev._target_intensity = target_norm
+                    dev.set_intensity(target_norm)
+                    continue
                 user_val = self.levels["user"][dev_id - 1]
                 comp_val = composite[dev_id - 1]
                 if user_val != -1:
@@ -204,17 +227,31 @@ class Dmx:
                             out_levels[curve_mask].astype(np.uint8)
                         ]
 
-        # Scale by Main Fader and Blackout
+        # Scale by Main Fader and Blackout (unless channel is parked)
         intensity_mult = self.effective_intensity_mult
-        out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
+        park_mgr = getattr(self.lightshow, "park", None)
+        if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
+            parked_indices = np.array(
+                [ch - 1 for ch in park_mgr.parked_channels], dtype=int
+            )
+            is_parked_slot = np.isin(self.patch.map_src_channels, parked_indices)
+            scaled = np.round(out_levels * intensity_mult)
+            scaled[is_parked_slot] = np.round(out_levels[is_parked_slot])
+            out_levels = scaled.astype(np.uint8)
+        else:
+            out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
 
         # Distribute levels to self.frame using advanced indexing
+        map_dst_univ = self.patch.map_dst_universes
+        map_dst_out = self.patch.map_dst_outputs
         for index in range(len(self.patch.universes)):
-            univ_mask = self.patch.map_dst_universes == index
+            if len(map_dst_univ) != len(map_dst_out) or len(map_dst_univ) != len(
+                out_levels
+            ):
+                break
+            univ_mask = map_dst_univ == index
             if np.any(univ_mask) and index < len(self.frame):
-                self.frame[index][self.patch.map_dst_outputs[univ_mask]] = out_levels[
-                    univ_mask
-                ]
+                self.frame[index][map_dst_out[univ_mask]] = out_levels[univ_mask]
 
         # Distribute multi-parameter device channels (Pan, Tilt, Color, Gobo...)
         if (
@@ -241,6 +278,14 @@ class Dmx:
                         dev_vals_u8[univ_mask]
                     )
 
+        # Override physical DMX output addresses that are parked
+        if isinstance(park_mgr, ParkManager) and park_mgr.parked_addresses:
+            for (univ, out), level in park_mgr.parked_addresses.items():
+                if univ in self.patch.universes:
+                    u_idx = self.patch.universes.index(univ)
+                    if u_idx < len(self.frame) and 1 <= out <= 512:
+                        self.frame[u_idx][out - 1] = level
+
     def send(self) -> None:
         """Send DMX values to CoreEngine"""
         if self.lightshow.app is not None and self.lightshow.app.engine is not None:
@@ -266,6 +311,11 @@ class Dmx:
 
             composite = self.get_all_composite_levels()
             scaled = composite * self.effective_intensity_mult
+            park_mgr = getattr(self.lightshow, "park", None)
+            if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
+                for ch, lvl in park_mgr.parked_channels.items():
+                    if 1 <= ch <= len(scaled):
+                        scaled[ch - 1] = lvl
             current_display_levels = np.round(scaled).astype(np.uint8)
 
             user_levels = self.levels.get("user")
