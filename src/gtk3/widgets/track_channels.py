@@ -105,8 +105,8 @@ class TrackChannelsHeader(Gtk.Widget):
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-        )
+                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            )
             cr.set_font_size(12)
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)

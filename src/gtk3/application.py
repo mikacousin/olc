@@ -177,6 +177,14 @@ class Application(Gtk.Application):
         )
         self.add_action(action)
         self.set_accels_for_action("app.pause", ["<Control>space"])
+        # Blackout
+        action = Gio.SimpleAction.new("blackout", None)
+        action.connect(
+            "activate",
+            lambda *_: self.core.action_registry.execute("dmx.blackout_all"),
+        )
+        self.add_action(action)
+        self.set_accels_for_action("app.blackout", ["<Shift><Control>b"])
         # Full screen
         action = Gio.SimpleAction.new("fullscreen", None)
         action.connect(
@@ -236,6 +244,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.tab_close", ["<Control>w"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
+        self.set_accels_for_action("app.blackout", ["<Shift><Control>b"])
         self.set_accels_for_action("app.undo", ["<Control>z"])
         self.set_accels_for_action("app.redo", ["<Shift><Control>z", "<Control>y"])
 

@@ -71,8 +71,11 @@ def test_cues_edition_tab_behavior(app_gui: Application) -> None:
 
     # 5. Delete selected cue (cue 2.0)
     # Execute delete action directly (to avoid GUI confirmation dialog popup blocker)
-    # Note: We do not set the treeview cursor here to avoid queuing asynchronous
-    # cursor-changed events that inject cue.select into the undo history.
+    # Set cursor on the cue to delete to verify that cursor-changed during refresh
+    # does not pollute undo history with spurious cue.select actions.
+    cues_tab.treeview.set_cursor(Gtk.TreePath.new_from_string("1"), None, False)
+    process_events()
+
     cue_to_del = app_gui.core.lightshow.cues[1]
     app_gui.core.action_registry.execute(
         "cue.delete", cue_to_del.number, cue_to_del.sequence

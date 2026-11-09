@@ -178,3 +178,50 @@ def test_widgets_cairo_draw_with_shortcuts() -> None:
     go = GoWidget(shortcut_text="Space / ^G")
     go.show_shortcut = True
     go.do_draw(cr)
+
+
+def test_virtual_console_shortcut_delegation(app_gui: Application) -> None:
+    """Test Virtual Console delegates modifier shortcuts to Main Window."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+    controller = vc.key_controller
+    cmdline = app_gui.core.commandline
+
+    # 1. Ctrl+Alt+O delegates to Main Window and appends "OUT "
+    ctrl_alt = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK
+    cmdline.clear()
+    assert vc._on_key_controller_pressed(controller, Gdk.KEY_o, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "OUT "
+
+    # 2. Ctrl+B delegates to Main Window and executes playback.go_back
+    executed: list[str] = []
+    orig_exec = app_gui.core.action_registry.execute
+
+    def spy_exec(name: str, *args: object, **kwargs: object) -> object:
+        executed.append(name)
+        return orig_exec(name, *args, **kwargs)
+
+    app_gui.core.action_registry.execute = spy_exec  # type: ignore[assignment]
+    try:
+        assert (
+            vc._on_key_controller_pressed(
+                controller, Gdk.KEY_b, 0, Gdk.ModifierType.CONTROL_MASK
+            )
+            is True
+        )
+        assert "playback.go_back" in executed
+
+        # 3. Ctrl+Shift+B delegates and executes dmx.blackout_all
+        executed.clear()
+        ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        assert (
+            vc._on_key_controller_pressed(controller, Gdk.KEY_b, 0, ctrl_shift) is True
+        )
+        assert "dmx.blackout_all" in executed
+    finally:
+        app_gui.core.action_registry.execute = orig_exec  # type: ignore[assignment]
+
+    vc.close()
+    process_events()

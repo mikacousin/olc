@@ -409,13 +409,23 @@ class Window(Gtk.ApplicationWindow):
         self.app.core.action_registry.execute("commandline.append_char", text)
 
     def _handle_modifier_shortcuts(  # pylint: disable=too-many-return-statements
-        self, keyval: int, modifiers: int
+        self,
+        keyval: int,
+        modifiers: int,
+        state: Gdk.ModifierType | None = None,
     ) -> bool:
         """Handle Ctrl / Alt keyboard shortcuts before GTK accelerators."""
+        # Control + Shift shortcuts (e.g. Blackout)
+        ctrl_shift = int(Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK)
+        if modifiers == ctrl_shift:
+            if keyval in (Gdk.KEY_b, Gdk.KEY_B):
+                self.app.core.action_registry.execute("dmx.blackout_all")
+                return True
+
         # Control-only shortcuts
         if modifiers == int(Gdk.ModifierType.CONTROL_MASK):
             if keyval in (Gdk.KEY_b, Gdk.KEY_B):
-                self.app.core.action_registry.execute("dmx.blackout_all")
+                self.app.core.action_registry.execute("playback.go_back")
                 return True
             if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
                 self.app.core.action_registry.execute("commandline.execute")
@@ -466,9 +476,19 @@ class Window(Gtk.ApplicationWindow):
                 self.app.core.action_registry.execute("commandline.clear")
                 return True
 
-        # POS / Stream Deck shortcuts: Ctrl + Alt combinations
+        # POS / Stream Deck shortcuts: Ctrl + Alt combinations (and Ctrl + Shift + Alt)
+        is_altgr = (
+            bool(int(state) & Gdk.ModifierType.MOD5_MASK)
+            if state is not None
+            else False
+        )
         ctrl_alt = int(Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
-        if modifiers == ctrl_alt:
+        ctrl_shift_alt = int(
+            Gdk.ModifierType.CONTROL_MASK
+            | Gdk.ModifierType.SHIFT_MASK
+            | Gdk.ModifierType.MOD1_MASK
+        )
+        if not is_altgr and modifiers in (ctrl_alt, ctrl_shift_alt):
             pos_map = {
                 (Gdk.KEY_c, Gdk.KEY_C): ("CHANNEL", True),
                 (Gdk.KEY_q, Gdk.KEY_Q): ("CUE", True),
@@ -647,7 +667,7 @@ class Window(Gtk.ApplicationWindow):
         if bool(
             modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
         ):
-            return self._handle_modifier_shortcuts(keyval, modifiers)
+            return self._handle_modifier_shortcuts(keyval, modifiers, state)
 
         # Spacebar triggers GO when the command line is empty, or appends a space
         if keyval == Gdk.KEY_space:

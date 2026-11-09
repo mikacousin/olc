@@ -147,46 +147,50 @@ class CuesEditionTab(Gtk.Paned):
 
     def refresh(self) -> None:
         """Refresh display by syncing the liststore without clearing it entirely"""
-        actual_cues = {str(mem.number): mem for mem in self.lightshow.cues}
-        store = self.liststore
-        it = store.get_iter_first()
-        existing_memories = set()
+        self._updating_selection = True
+        try:
+            actual_cues = {str(mem.number): mem for mem in self.lightshow.cues}
+            store = self.liststore
+            it = store.get_iter_first()
+            existing_memories = set()
 
-        while isinstance(it, Gtk.TreeIter):
-            mem_str = store.get_value(it, 0)
-            if mem_str in actual_cues:
-                cue = actual_cues[mem_str]
-                nb_chan = cue.get_active_channels_count()
+            while isinstance(it, Gtk.TreeIter):
+                mem_str = store.get_value(it, 0)
+                if mem_str in actual_cues:
+                    cue = actual_cues[mem_str]
+                    nb_chan = cue.get_active_channels_count()
 
-                curr_text = store.get_value(it, 1)
-                curr_chan = store.get_value(it, 2)
+                    curr_text = store.get_value(it, 1)
+                    curr_chan = store.get_value(it, 2)
 
-                if curr_text != cue.text:
-                    store.set_value(it, 1, cue.text)
-                if curr_chan != nb_chan:
-                    store.set_value(it, 2, nb_chan)
+                    if curr_text != cue.text:
+                        store.set_value(it, 1, cue.text)
+                    if curr_chan != nb_chan:
+                        store.set_value(it, 2, nb_chan)
 
-                existing_memories.add(mem_str)
-                it = store.iter_next(it)
-            else:
-                it = store.remove(it)
+                    existing_memories.add(mem_str)
+                    it = store.iter_next(it)
+                else:
+                    it = store.remove(it)
 
-        for mem in self.lightshow.cues:
-            mem_str = str(mem.number)
-            if mem_str not in existing_memories:
-                nb_chan = mem.get_active_channels_count()
-                insert_idx = 0
-                it_insert = store.get_iter_first()
-                while isinstance(it_insert, Gtk.TreeIter):
-                    curr_mem_val = float(store.get_value(it_insert, 0))
-                    if mem.number < curr_mem_val:
-                        break
-                    insert_idx += 1
-                    it_insert = store.iter_next(it_insert)
+            for mem in self.lightshow.cues:
+                mem_str = str(mem.number)
+                if mem_str not in existing_memories:
+                    nb_chan = mem.get_active_channels_count()
+                    insert_idx = 0
+                    it_insert = store.get_iter_first()
+                    while isinstance(it_insert, Gtk.TreeIter):
+                        curr_mem_val = float(store.get_value(it_insert, 0))
+                        if mem.number < curr_mem_val:
+                            break
+                        insert_idx += 1
+                        it_insert = store.iter_next(it_insert)
 
-                store.insert(insert_idx, [mem_str, mem.text, nb_chan])
+                    store.insert(insert_idx, [mem_str, mem.text, nb_chan])
 
-        self.channels_view.update()
+            self.channels_view.update()
+        finally:
+            self._updating_selection = False
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""

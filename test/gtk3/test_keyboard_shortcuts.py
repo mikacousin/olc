@@ -308,6 +308,21 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
     app_gui.open_shortcuts()
     process_events()
     assert app_gui.shortcuts is not None
+
+    # Verify both sections exist (Application & Command Line / Console)
+    import pathlib
+
+    help_path = pathlib.Path(__file__).resolve().parents[2] / "data" / "help-overlay.ui"
+    builder = Gtk.Builder()
+    builder.add_from_file(str(help_path))
+    assert builder.get_object("shortcuts") is not None
+    assert builder.get_object("console_syntax") is not None
+    assert builder.get_object("syntax_objects") is not None
+    assert builder.get_object("syntax_levels") is not None
+    assert builder.get_object("syntax_actions") is not None
+    assert builder.get_object("syntax_shift") is not None
+    assert builder.get_object("syntax_specialized") is not None
+
     app_gui.shortcuts.hide()
     app_gui.shortcuts.destroy()
     app_gui.shortcuts = None
@@ -477,7 +492,28 @@ def test_console_hotkeys_ctrl_alt_pos_keypad(app_gui: Application) -> None:
     assert win._on_key_controller_pressed(controller, Gdk.KEY_y, 0, ctrl_alt) is True
     assert cmdline.get_string() == "DELAY "
 
-    # Ctrl+B -> Blackout toggle action
+    # Ctrl+Alt+O -> "OUT "
+    cmdline.clear()
+    assert win._on_key_controller_pressed(controller, Gdk.KEY_o, 0, ctrl_alt) is True
+    assert cmdline.get_string() == "OUT "
+
+    # Ctrl+Shift+Alt+T -> "THRU " (bypasses Linux OS terminal conflict)
+    ctrl_shift_alt = ctrl_alt | Gdk.ModifierType.SHIFT_MASK
+    cmdline.clear()
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_t, 0, ctrl_shift_alt) is True
+    )
+    assert cmdline.get_string() == "THRU "
+
+    # AltGr protection (MOD5_MASK) -> does NOT trigger pos_map
+    cmdline.clear()
+    altgr_state = ctrl_alt | Gdk.ModifierType.MOD5_MASK
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_o, 0, altgr_state) is False
+    )
+    assert cmdline.get_string() == ""
+
+    # Ctrl+B -> GoBack action
     executed: list[str] = []
     orig_exec = app_gui.core.action_registry.execute
 
@@ -492,6 +528,14 @@ def test_console_hotkeys_ctrl_alt_pos_keypad(app_gui: Application) -> None:
                 controller, Gdk.KEY_b, 0, Gdk.ModifierType.CONTROL_MASK
             )
             is True
+        )
+        assert "playback.go_back" in executed
+
+        # Ctrl+Shift+B -> Blackout toggle action
+        executed.clear()
+        ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        assert (
+            win._on_key_controller_pressed(controller, Gdk.KEY_b, 0, ctrl_shift) is True
         )
         assert "dmx.blackout_all" in executed
     finally:

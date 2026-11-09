@@ -72,7 +72,7 @@ class VirtualConsoleWindow(Gtk.Window):
         # Blackout toggle button
         self.blackout = Gtk.ToggleButton(label="BLACKOUT")
         self.blackout.get_style_context().add_class("olc-blackout-toggle")
-        self.blackout.set_tooltip_text("Toggle Scenic Blackout (DBO)")
+        self.blackout.set_tooltip_text("Toggle Scenic Blackout (DBO) (Ctrl+Shift+B)")
         self.blackout.connect("toggled", self._on_blackout_toggled)
         self.header.pack_start(self.blackout)
 
@@ -505,8 +505,8 @@ class VirtualConsoleWindow(Gtk.Window):
     ) -> bool:
         """Handle keyboard events for Virtual Console.
 
-        Closes the window on Control+W, ignores Control/Alt combinations,
-        and delegates standard keys to the main window live view.
+        Closes the window on Control+W, handles F1 overlay toggle,
+        and delegates console shortcuts and modifiers to the main window.
 
         Args:
             controller: Gtk EventControllerKey.
@@ -530,11 +530,6 @@ class VirtualConsoleWindow(Gtk.Window):
         ):
             self.close()
             return True
-
-        if bool(
-            modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
-        ):
-            return False
 
         if self.app.window is not None:
             return bool(
