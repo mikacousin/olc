@@ -231,6 +231,39 @@ def test_sneak_all_manual_channels_when_no_selection() -> None:
     assert dmx.levels["user"][2] == -1
 
 
+def test_sneak_direct_duration_eos_syntax() -> None:
+    """Test SNEAK <number> without TIME directly applies duration (EOS style)."""
+    app, dmx = _create_test_app()
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. Bare SNEAK 0 (instant cut for all manual)
+    dmx.levels["user"][0] = 100
+    dmx.levels["user"][1] = 150
+    res = executor.execute(parser.parse("SNEAK 0"))
+    assert res.success is True
+    assert "in 0.0s" in res.message
+    assert dmx.levels["user"][0] == -1
+    assert dmx.levels["user"][1] == -1
+
+    # 2. Selection + SNEAK 0
+    dmx.levels["user"][0] = 80
+    dmx.levels["user"][1] = 90
+    res2 = executor.execute(parser.parse("1 THRU 2 SNEAK 0"))
+    assert res2.success is True
+    assert "in 0.0s" in res2.message
+    assert dmx.levels["user"][0] == -1
+    assert dmx.levels["user"][1] == -1
+
+    # 3. SNEAK 3 initiates a fade of 3.0s
+    dmx.levels["user"][0] = 200
+    res3 = executor.execute(parser.parse("SNEAK 3"))
+    assert res3.success is True
+    assert "in 3.0s" in res3.message
+    assert 1 in app.sneak_controller._channel_fades
+    assert app.sneak_controller._channel_fades[1].duration == 3.0
+
+
 def test_sneak_only_selected_channels_when_selection_active() -> None:
     """Test that bare 'SNEAK TIME 0' prioritizes currently active channel selection."""
     app, dmx = _create_test_app()

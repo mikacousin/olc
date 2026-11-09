@@ -159,3 +159,29 @@ def test_virtual_console_sneak_execution_with_active_selection(
     app_gui.core.selected_channels = []
     vc.close()
     process_events()
+
+
+def test_virtual_console_numpad_sensitive_after_sneak(app_gui: Application) -> None:
+    """Test that numbers and TIME are sensitive on Virtual Console after SNEAK."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    # 1. After bare "SNEAK "
+    app_gui.core.commandline.set_string("SNEAK ")
+    vc.update_button_sensitivity()
+    assert vc.three.get_sensitive() is True
+    assert vc.time.get_sensitive() is True
+
+    # 2. After selection + "SNEAK " (e.g. "1 THRU 3 SNEAK ")
+    app_gui.core.commandline.set_string("1 THRU 3 SNEAK ")
+    vc.update_button_sensitivity()
+    assert vc.three.get_sensitive() is True
+    assert vc.zero.get_sensitive() is True
+    assert vc.time.get_sensitive() is True
+
+    # Cleanup
+    app_gui.core.commandline.set_string("")
+    vc.close()
+    process_events()

@@ -434,6 +434,34 @@ def test_parser_sneak() -> None:
     assert n5.selection is not None
     assert n5.duration == 2.0
 
+    # 6. Standalone SNEAK with direct duration (Eos convention)
+    n6 = parser.parse("SNEAK 3")
+    assert isinstance(n6, SneakCommandNode)
+    assert n6.selection is None
+    assert n6.duration == 3.0
+
+    n6_zero = parser.parse("SNEAK 0")
+    assert isinstance(n6_zero, SneakCommandNode)
+    assert n6_zero.selection is None
+    assert n6_zero.duration == 0.0
+
+    # 7. Selection + SNEAK + direct duration
+    n7 = parser.parse("1 THRU 5 SNEAK 3")
+    assert isinstance(n7, SneakCommandNode)
+    assert n7.selection is not None
+    assert n7.duration == 3.0
+
+    n8 = parser.parse("1 SNEAK 0")
+    assert isinstance(n8, SneakCommandNode)
+    assert n8.selection is not None
+    assert n8.duration == 0.0
+
+    # Expected tokens checks
+    assert TokenType.NUMBER in parser.get_expected_tokens("SNEAK ")
+    assert TokenType.TIME in parser.get_expected_tokens("SNEAK ")
+    assert TokenType.NUMBER in parser.get_expected_tokens("1 THRU 5 SNEAK ")
+    assert TokenType.TIME in parser.get_expected_tokens("1 THRU 5 SNEAK ")
+
 
 def test_parser_independent_sneak() -> None:
     parser = CommandParser()

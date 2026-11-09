@@ -99,6 +99,13 @@ class CommandParser:
         """Peek at the current token without consuming it."""
         return self.current
 
+    def peek_ahead(self, offset: int = 1) -> Token:
+        """Peek at the token offset positions ahead of current cursor."""
+        target_pos = self.pos + offset
+        if target_pos < len(self.tokens):
+            return self.tokens[target_pos]
+        return self.tokens[-1]
+
     def advance(self) -> Token:
         """Consume and return current token."""
         tok = self.current
@@ -351,11 +358,25 @@ class CommandParser:
         self, selection: SelectionNode | None = None
     ) -> SneakCommandNode:
         self.advance()  # consume SNEAK
+        dur: float | None = None
         if selection is None:
             tok = self.peek()
-            if tok.type in (TokenType.NUMBER, TokenType.CHANNEL, TokenType.GROUP):
+            if tok.type in (TokenType.CHANNEL, TokenType.GROUP):
                 selection = self._parse_selection()
-        dur = self._parse_optional_duration()
+                dur = self._parse_optional_duration()
+            elif tok.type == TokenType.TIME:
+                dur = self._parse_optional_duration()
+            elif tok.type == TokenType.NUMBER:
+                next_tok = self.peek_ahead(1)
+                if next_tok.type in (TokenType.THRU, TokenType.PLUS, TokenType.MINUS):
+                    selection = self._parse_selection()
+                    dur = self._parse_optional_duration()
+                else:
+                    # Isolated number after SNEAK: direct duration (ETC Eos syntax)
+                    dur = float(self.advance().value)
+        else:
+            dur = self._parse_optional_duration()
+
         return SneakCommandNode(selection=selection, independents=None, duration=dur)
 
     def _parse_independent_command(self) -> CommandNode:
@@ -1035,9 +1056,18 @@ class CommandParser:
         first = active_tokens[0].type
         if first == TokenType.SNEAK:
             if len(active_tokens) == 1:
-                return [TokenType.TIME, TokenType.NUMBER]
+                return [
+                    TokenType.TIME,
+                    TokenType.NUMBER,
+                    TokenType.CHANNEL,
+                    TokenType.GROUP,
+                ]
             if len(active_tokens) == 2 and active_tokens[1].type == TokenType.TIME:
                 return [TokenType.NUMBER]
+            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.NUMBER:
+                if not text.endswith(" "):
+                    return [TokenType.NUMBER]
+                return [TokenType.THRU, TokenType.PLUS, TokenType.MINUS]
             return []
 
         if first == TokenType.INDEPENDENT:
@@ -1056,6 +1086,19 @@ class CommandParser:
             return cue_expected
 
         last = active_tokens[-1]
+
+        if last.type == TokenType.SNEAK:
+            return [TokenType.TIME, TokenType.NUMBER]
+
+        if last.type == TokenType.TIME:
+            return [TokenType.NUMBER]
+
+        if last.type == TokenType.NUMBER and len(active_tokens) >= 2:
+            prev = active_tokens[-2]
+            if prev.type in (TokenType.SNEAK, TokenType.TIME):
+                if not text.endswith(" "):
+                    return [TokenType.NUMBER]
+                return []
 
         if last.type in (TokenType.NUMBER, TokenType.ALL):
             res = [
