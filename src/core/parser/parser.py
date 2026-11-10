@@ -1100,6 +1100,17 @@ class CommandParser:
                     return [TokenType.NUMBER]
                 return []
 
+        # If we have already seen AT or an attribute token,
+        # we are in the value/action phase
+        if any(
+            t.type == TokenType.AT or t.type in ATTRIBUTE_TOKENS for t in active_tokens
+        ):
+            if last.type == TokenType.NUMBER:
+                res = list(ATTRIBUTE_TOKENS.keys())
+                if not text.endswith(" "):
+                    res.append(TokenType.NUMBER)
+                return res
+
         if last.type in (TokenType.NUMBER, TokenType.ALL):
             res = [
                 TokenType.THRU,
@@ -1109,6 +1120,10 @@ class CommandParser:
                 TokenType.EVEN,
                 TokenType.AT,
                 TokenType.SNEAK,
+                TokenType.HOME,
+                TokenType.LOCATE,
+                TokenType.POSITION,
+                TokenType.BEAM,
                 *ATTRIBUTE_TOKENS.keys(),
             ]
             # If the user is currently typing a multi-digit number (no trailing space),
@@ -1131,6 +1146,9 @@ class CommandParser:
 
         if last.type in (TokenType.PLUS, TokenType.MINUS):
             return [TokenType.CHANNEL, TokenType.NUMBER, TokenType.GROUP]
+
+        if last.type in (TokenType.ADDRESS, TokenType.SLASH):
+            return [TokenType.NUMBER]
 
         if last.type == TokenType.AT:
             return [

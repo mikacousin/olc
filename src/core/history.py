@@ -101,3 +101,13 @@ class HistoryManager:
     def redo_stack(self) -> list[Action]:
         """Get the current redo stack."""
         return self._redo_stack
+
+    @property
+    def can_undo(self) -> bool:
+        """Check if an action can be undone."""
+        return len(self._undo_stack) > 0
+
+    @property
+    def can_redo(self) -> bool:
+        """Check if an action can be redone."""
+        return len(self._redo_stack) > 0

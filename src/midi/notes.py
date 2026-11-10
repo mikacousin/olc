@@ -60,6 +60,9 @@ SIMPLE_ACTION_MAPPING = {
     "number_8": ("eight", None, "8", None),
     "number_9": ("nine", None, "9", None),
     "dot": ("dot", None, ".", None),
+    "slash": ("slash", None, "/", None),
+    "cue": ("cue", None, "CUE ", "q"),
+    "unblock": ("unblock", None, " UNBLOCK ", None),
     "sneak": ("sneak", None, " SNEAK ", None),
 }
 
@@ -93,6 +96,9 @@ class MidiNotes:
             "sneak": [0, -1],
             "clear": [0, -1],
             "dot": [0, -1],
+            "slash": [0, -1],
+            "cue": [0, -1],
+            "unblock": [0, -1],
             "right": [0, -1],
             "left": [0, -1],
             "up": [0, -1],

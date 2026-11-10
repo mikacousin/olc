@@ -108,152 +108,89 @@ class VirtualConsoleWindow(Gtk.Window):
             initial_blackout = bool(getattr(backend.dmx, "blackout", initial_blackout))
         self.update_blackout_display(initial_blackout)
 
-        # Numeric Pad
+        # Zone 1: Numeric Pad & Target Keys (4x5)
         self.num_pad = Gtk.Grid()
-        # self.num_pad.set_column_homogeneous(True)
-        # self.num_pad.set_row_homogeneous(True)
-        self.zero = ButtonWidget(label="0", text="number_0", shortcut_text="0")
-        self.zero.connect("clicked", self._on_zero)
-        self.one = ButtonWidget(label="1", text="number_1", shortcut_text="1")
-        self.one.connect("clicked", self._on_1)
-        self.two = ButtonWidget(label="2", text="number_2", shortcut_text="2")
-        self.two.connect("clicked", self._on_2)
-        self.three = ButtonWidget(label="3", text="number_3", shortcut_text="3")
-        self.three.connect("clicked", self._on_3)
-        self.four = ButtonWidget(label="4", text="number_4", shortcut_text="4")
-        self.four.connect("clicked", self._on_4)
-        self.five = ButtonWidget(label="5", text="number_5", shortcut_text="5")
-        self.five.connect("clicked", self._on_5)
-        self.six = ButtonWidget(label="6", text="number_6", shortcut_text="6")
-        self.six.connect("clicked", self._on_6)
+        self.channel = ButtonWidget(label="Channel", text="channel", shortcut_text="C")
+        self.channel.connect("clicked", self._on_channel)
+        self.group = ButtonWidget(label="Group", text="group", shortcut_text="G")
+        self.group.connect("clicked", self._on_group)
+        self.cue = ButtonWidget(label="Cue", text="cue", shortcut_text="Q")
+        self.cue.connect("clicked", self._on_cue)
+        self.address = ButtonWidget(label="Address", text="address", shortcut_text="⇧D")
+        self.address.connect("clicked", self._on_address)
+
         self.seven = ButtonWidget(label="7", text="number_7", shortcut_text="7")
         self.seven.connect("clicked", self._on_7)
         self.eight = ButtonWidget(label="8", text="number_8", shortcut_text="8")
         self.eight.connect("clicked", self._on_8)
         self.nine = ButtonWidget(label="9", text="number_9", shortcut_text="9")
         self.nine.connect("clicked", self._on_9)
-        self.dot = ButtonWidget(label=".", text="dot", shortcut_text=".")
-        self.dot.connect("clicked", self._on_dot)
-        self.backspace = ButtonWidget(
-            label="Backspace", text="backspace", shortcut_text="⌫"
-        )
-        self.backspace.connect("clicked", self._on_backspace)
-        self.clear = ButtonWidget(label="Clear", text="clear", shortcut_text="Esc / ⇧C")
-        self.clear.connect("clicked", self._on_clear)
-        self.enter = ButtonWidget(label="Enter", text="enter", shortcut_text="↵ / Ent")
-        self.enter.connect("clicked", self._on_enter)
-
-        # Row 0: 7, 8, 9
-        self.num_pad.attach(self.seven, 0, 0, 1, 1)
-        self.num_pad.attach(self.eight, 1, 0, 1, 1)
-        self.num_pad.attach(self.nine, 2, 0, 1, 1)
-        # Row 1: 4, 5, 6
-        self.num_pad.attach(self.four, 0, 1, 1, 1)
-        self.num_pad.attach(self.five, 1, 1, 1, 1)
-        self.num_pad.attach(self.six, 2, 1, 1, 1)
-        # Row 2: 1, 2, 3
-        self.num_pad.attach(self.one, 0, 2, 1, 1)
-        self.num_pad.attach(self.two, 1, 2, 1, 1)
-        self.num_pad.attach(self.three, 2, 2, 1, 1)
-        # Row 3: 0, ., ⌫
-        self.num_pad.attach(self.zero, 0, 3, 1, 1)
-        self.num_pad.attach(self.dot, 1, 3, 1, 1)
-        self.num_pad.attach(self.backspace, 2, 3, 1, 1)
-        # Row 4: C, ENTER (2 colonnes)
-        self.num_pad.attach(self.clear, 0, 4, 1, 1)
-        self.num_pad.attach(self.enter, 1, 4, 2, 1)
-
-        # Time keys
-        self.time_pad = Gtk.Grid()
-        # self.time_pad.set_column_homogeneous(True)
-        # self.time_pad.set_row_homogeneous(True)
-        self.time = ButtonWidget(label="Time", text="time", shortcut_text="I")
-        self.time.connect("clicked", self._on_time)
-        self.delay = ButtonWidget(label="Delay", text="delay", shortcut_text="Y")
-        self.delay.connect("clicked", self._on_delay)
-        self.time_pad.attach(self.time, 2, 0, 1, 1)
-        self.time_pad.attach(self.delay, 2, 1, 1, 1)
-
-        # Seq, Preset, Group ...
-        self.seq_pad = Gtk.Grid()
-        # self.seq_pad.set_column_homogeneous(True)
-        # self.seq_pad.set_row_homogeneous(True)
-        self.seq = ButtonWidget(label="Seq", text="seq", shortcut_text="S")
-        self.seq.connect("clicked", self._on_seq)
-        self.preset = ButtonWidget(label="Preset", text="preset")
-        self.preset.connect("clicked", self._on_preset)
-        self.group = ButtonWidget(label="Group", text="group", shortcut_text="G")
-        self.group.connect("clicked", self._on_group)
-        self.seq_pad.attach(self.seq, 0, 2, 1, 1)
-        self.seq_pad.attach(self.preset, 0, 3, 1, 1)
-        self.seq_pad.attach(self.group, 1, 3, 1, 1)
-
-        # Output grid
-        self.output_pad = Gtk.Grid()
-        self.address = ButtonWidget(label="Address", text="address", shortcut_text="⇧D")
-        self.address.connect("clicked", self._on_address)
-        self.output_pad.attach(self.address, 0, 0, 1, 1)
-
-        self.park = ButtonWidget(label="Park", text="park", shortcut_text="⇧P")
-        self.park.connect("clicked", self._on_park)
-        self.output_pad.attach(self.park, 1, 0, 1, 1)
-
-        self.unpark = ButtonWidget(label="Unpark", text="unpark", shortcut_text="Alt+P")
-        self.unpark.connect("clicked", self._on_unpark)
-        self.output_pad.attach(self.unpark, 1, 1, 1, 1)
-
-        self.output = ButtonWidget(label="Output", text="output")
-        self.output.connect("clicked", self._on_output)
-        self.output_pad.attach(self.output, 2, 0, 1, 1)
-
-        # Update, Record, Track
-        self.rec_pad = Gtk.Grid()
-        # self.rec_pad.set_column_homogeneous(True)
-        # self.rec_pad.set_row_homogeneous(True)
-        self.update = ButtonWidget(
-            label="Update", text="update", shortcut_text="U / ⇧U"
-        )
-        self.update.connect("clicked", self._on_update)
-        self.record = ButtonWidget(
-            label="Record", text="record", shortcut_text="R / ⇧R"
-        )
-        self.record.connect("clicked", self._on_record)
-        self.track = ButtonWidget(label="Track", text="track")
-        self.track.connect("clicked", self._on_track)
-        self.rec_pad.attach(self.update, 0, 0, 1, 1)
-        self.rec_pad.attach(self.record, 2, 0, 1, 1)
-        self.rec_pad.attach(self.track, 0, 2, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.rec_pad.attach(self.label, 0, 1, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.rec_pad.attach(self.label, 0, 3, 1, 1)
-        self.label = Gtk.Label(label="")
-        self.rec_pad.attach(self.label, 1, 3, 1, 1)
-
-        # Thru, +, -, All, Odd, Even, @, Full, Out, +%, -%, Block, Delete, Goto
-        self.thru_pad = Gtk.Grid()
-        # self.thru_pad.set_column_homogeneous(True)
-        # self.thru_pad.set_row_homogeneous(True)
         self.thru = ButtonWidget(label="Thru", text="thru", shortcut_text="T")
         self.thru.connect("clicked", self._on_thru)
+
+        self.four = ButtonWidget(label="4", text="number_4", shortcut_text="4")
+        self.four.connect("clicked", self._on_4)
+        self.five = ButtonWidget(label="5", text="number_5", shortcut_text="5")
+        self.five.connect("clicked", self._on_5)
+        self.six = ButtonWidget(label="6", text="number_6", shortcut_text="6")
+        self.six.connect("clicked", self._on_6)
         self.plus = ButtonWidget(label="+", text="plus", shortcut_text="+")
         self.plus.connect("clicked", self._on_plus)
+
+        self.one = ButtonWidget(label="1", text="number_1", shortcut_text="1")
+        self.one.connect("clicked", self._on_1)
+        self.two = ButtonWidget(label="2", text="number_2", shortcut_text="2")
+        self.two.connect("clicked", self._on_2)
+        self.three = ButtonWidget(label="3", text="number_3", shortcut_text="3")
+        self.three.connect("clicked", self._on_3)
         self.minus = ButtonWidget(label="-", text="minus", shortcut_text="-")
         self.minus.connect("clicked", self._on_minus)
 
-        self.all = ButtonWidget(label="All", text="all", shortcut_text="M")
-        self.all.connect("clicked", self._on_all)
-        self.odd = ButtonWidget(label="Odd", text="odd", shortcut_text="J")
-        self.odd.connect("clicked", self._on_odd)
-        self.even = ButtonWidget(label="Even", text="even", shortcut_text="E")
-        self.even.connect("clicked", self._on_even)
+        self.zero = ButtonWidget(label="0", text="number_0", shortcut_text="0")
+        self.zero.connect("clicked", self._on_zero)
+        self.dot = ButtonWidget(label=".", text="dot", shortcut_text=".")
+        self.dot.connect("clicked", self._on_dot)
+        self.slash = ButtonWidget(label="/", text="slash", shortcut_text="/")
+        self.slash.connect("clicked", self._on_slash)
+        self.enter = ButtonWidget(label="Enter", text="enter", shortcut_text="↵ / Ent")
+        self.enter.connect("clicked", self._on_enter)
 
+        # Attach Zone 1
+        self.num_pad.attach(self.channel, 0, 0, 1, 1)
+        self.num_pad.attach(self.group, 1, 0, 1, 1)
+        self.num_pad.attach(self.cue, 2, 0, 1, 1)
+        self.num_pad.attach(self.address, 3, 0, 1, 1)
+
+        self.num_pad.attach(self.seven, 0, 1, 1, 1)
+        self.num_pad.attach(self.eight, 1, 1, 1, 1)
+        self.num_pad.attach(self.nine, 2, 1, 1, 1)
+        self.num_pad.attach(self.thru, 3, 1, 1, 1)
+
+        self.num_pad.attach(self.four, 0, 2, 1, 1)
+        self.num_pad.attach(self.five, 1, 2, 1, 1)
+        self.num_pad.attach(self.six, 2, 2, 1, 1)
+        self.num_pad.attach(self.plus, 3, 2, 1, 1)
+
+        self.num_pad.attach(self.one, 0, 3, 1, 1)
+        self.num_pad.attach(self.two, 1, 3, 1, 1)
+        self.num_pad.attach(self.three, 2, 3, 1, 1)
+        self.num_pad.attach(self.minus, 3, 3, 1, 1)
+
+        self.num_pad.attach(self.zero, 0, 4, 1, 1)
+        self.num_pad.attach(self.dot, 1, 4, 1, 1)
+        self.num_pad.attach(self.slash, 2, 4, 1, 1)
+        self.num_pad.attach(self.enter, 3, 4, 1, 1)
+
+        # Zone 2: Levels, Actions & Command Line Editing (4x5)
+        self.actions_pad = Gtk.Grid()
         self.at_level = ButtonWidget(label="At", text="at", shortcut_text="A")
         self.at_level.connect("clicked", self._on_at)
         self.full = ButtonWidget(label="Full", text="full", shortcut_text="F / ⇧A")
         self.full.connect("clicked", self._on_full)
         self.out = ButtonWidget(label="Out", text="out", shortcut_text="O / ⇧O")
         self.out.connect("clicked", self._on_out)
+        self.clear = ButtonWidget(label="Clear", text="clear", shortcut_text="Esc / ⇧C")
+        self.clear.connect("clicked", self._on_clear)
 
         self.percent_plus = ButtonWidget(
             label="+%", text="percent_plus", shortcut_text="^↑"
@@ -265,34 +202,112 @@ class VirtualConsoleWindow(Gtk.Window):
         self.percent_minus.connect("clicked", self._on_percent_minus)
         self.block = ButtonWidget(label="Block", text="block", shortcut_text="B")
         self.block.connect("clicked", self._on_block)
+        self.backspace = ButtonWidget(
+            label="Backspace", text="backspace", shortcut_text="⌫"
+        )
+        self.backspace.connect("clicked", self._on_backspace)
 
+        self.record = ButtonWidget(
+            label="Record", text="record", shortcut_text="R / ⇧R"
+        )
+        self.record.connect("clicked", self._on_record)
+        self.update = ButtonWidget(
+            label="Update", text="update", shortcut_text="U / ⇧U"
+        )
+        self.update.connect("clicked", self._on_update)
         self.delete = ButtonWidget(label="Delete", text="delete", shortcut_text="D")
         self.delete.connect("clicked", self._on_delete)
         self.goto = ButtonWidget(label="Goto", text="goto", shortcut_text="⇧Q")
         self.goto.connect("clicked", self._on_goto)
+
+        self.time = ButtonWidget(label="Time", text="time", shortcut_text="I")
+        self.time.connect("clicked", self._on_time)
+        self.delay = ButtonWidget(label="Delay", text="delay", shortcut_text="Y")
+        self.delay.connect("clicked", self._on_delay)
         self.sneak = ButtonWidget(label="Sneak", text="sneak", shortcut_text="N")
         self.sneak.connect("clicked", self._on_sneak)
+        self.unblock = ButtonWidget(
+            label="Unblock", text="unblock", shortcut_text="Alt+B"
+        )
+        self.unblock.connect("clicked", self._on_unblock)
 
-        # Row 0: Thru, +, -
-        self.thru_pad.attach(self.thru, 0, 0, 1, 1)
-        self.thru_pad.attach(self.plus, 1, 0, 1, 1)
-        self.thru_pad.attach(self.minus, 2, 0, 1, 1)
-        # Row 1: All, Odd, Even
-        self.thru_pad.attach(self.all, 0, 1, 1, 1)
-        self.thru_pad.attach(self.odd, 1, 1, 1, 1)
-        self.thru_pad.attach(self.even, 2, 1, 1, 1)
-        # Row 2: @, Full, Out
-        self.thru_pad.attach(self.at_level, 0, 2, 1, 1)
-        self.thru_pad.attach(self.full, 1, 2, 1, 1)
-        self.thru_pad.attach(self.out, 2, 2, 1, 1)
-        # Row 3: +%, -%, Block
-        self.thru_pad.attach(self.percent_plus, 0, 3, 1, 1)
-        self.thru_pad.attach(self.percent_minus, 1, 3, 1, 1)
-        self.thru_pad.attach(self.block, 2, 3, 1, 1)
-        # Row 4: Delete, Goto, Sneak
-        self.thru_pad.attach(self.delete, 0, 4, 1, 1)
-        self.thru_pad.attach(self.goto, 1, 4, 1, 1)
-        self.thru_pad.attach(self.sneak, 2, 4, 1, 1)
+        self.park = ButtonWidget(label="Park", text="park", shortcut_text="⇧P")
+        self.park.connect("clicked", self._on_park)
+        self.unpark = ButtonWidget(label="Unpark", text="unpark", shortcut_text="Alt+P")
+        self.unpark.connect("clicked", self._on_unpark)
+        self.undo = ButtonWidget(label="Undo", text="undo", shortcut_text="^Z")
+        self.undo.connect("clicked", self._on_undo)
+        self.redo = ButtonWidget(label="Redo", text="redo", shortcut_text="⇧^Z")
+        self.redo.connect("clicked", self._on_redo)
+
+        # Attach Zone 2
+        self.actions_pad.attach(self.at_level, 0, 0, 1, 1)
+        self.actions_pad.attach(self.full, 1, 0, 1, 1)
+        self.actions_pad.attach(self.out, 2, 0, 1, 1)
+        self.actions_pad.attach(self.clear, 3, 0, 1, 1)
+
+        self.actions_pad.attach(self.percent_plus, 0, 1, 1, 1)
+        self.actions_pad.attach(self.percent_minus, 1, 1, 1, 1)
+        self.actions_pad.attach(self.block, 2, 1, 1, 1)
+        self.actions_pad.attach(self.backspace, 3, 1, 1, 1)
+
+        self.actions_pad.attach(self.record, 0, 2, 1, 1)
+        self.actions_pad.attach(self.update, 1, 2, 1, 1)
+        self.actions_pad.attach(self.delete, 2, 2, 1, 1)
+        self.actions_pad.attach(self.goto, 3, 2, 1, 1)
+
+        self.actions_pad.attach(self.time, 0, 3, 1, 1)
+        self.actions_pad.attach(self.delay, 1, 3, 1, 1)
+        self.actions_pad.attach(self.sneak, 2, 3, 1, 1)
+        self.actions_pad.attach(self.unblock, 3, 3, 1, 1)
+
+        self.actions_pad.attach(self.park, 0, 4, 1, 1)
+        self.actions_pad.attach(self.unpark, 1, 4, 1, 1)
+        self.actions_pad.attach(self.undo, 2, 4, 1, 1)
+        self.actions_pad.attach(self.redo, 3, 4, 1, 1)
+
+        # Zone 3: Moving Lights & Selection Tools (2x5)
+        self.tools_pad = Gtk.Grid()
+        self.home = ButtonWidget(label="Home", text="home", shortcut_text="H / ⇧H")
+        self.home.connect("clicked", self._on_home)
+        self.locate = ButtonWidget(
+            label="Locate", text="locate", shortcut_text="L / ⇧L"
+        )
+        self.locate.connect("clicked", self._on_locate)
+
+        self.position = ButtonWidget(
+            label="Position", text="position", shortcut_text="P"
+        )
+        self.position.connect("clicked", self._on_position)
+        self.focus = ButtonWidget(label="Focus", text="focus", shortcut_text="Alt+F")
+        self.focus.connect("clicked", self._on_focus)
+
+        self.color = ButtonWidget(label="Color", text="color", shortcut_text="Alt+C")
+        self.color.connect("clicked", self._on_color)
+        self.beam = ButtonWidget(label="Beam", text="beam", shortcut_text="Alt+M")
+        self.beam.connect("clicked", self._on_beam)
+
+        self.all = ButtonWidget(label="All", text="all", shortcut_text="M")
+        self.all.connect("clicked", self._on_all)
+        self.seq = ButtonWidget(label="Seq", text="seq", shortcut_text="S")
+        self.seq.connect("clicked", self._on_seq)
+
+        self.odd = ButtonWidget(label="Odd", text="odd", shortcut_text="J")
+        self.odd.connect("clicked", self._on_odd)
+        self.even = ButtonWidget(label="Even", text="even", shortcut_text="E")
+        self.even.connect("clicked", self._on_even)
+
+        # Attach Zone 3
+        self.tools_pad.attach(self.home, 0, 0, 1, 1)
+        self.tools_pad.attach(self.locate, 1, 0, 1, 1)
+        self.tools_pad.attach(self.position, 0, 1, 1, 1)
+        self.tools_pad.attach(self.focus, 1, 1, 1, 1)
+        self.tools_pad.attach(self.color, 0, 2, 1, 1)
+        self.tools_pad.attach(self.beam, 1, 2, 1, 1)
+        self.tools_pad.attach(self.all, 0, 3, 1, 1)
+        self.tools_pad.attach(self.seq, 1, 3, 1, 1)
+        self.tools_pad.attach(self.odd, 0, 4, 1, 1)
+        self.tools_pad.attach(self.even, 1, 4, 1, 1)
 
         # Navigation Pad (Up, Down, Left, Right)
         self.modify_pad = Gtk.Grid()
@@ -316,15 +331,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.wheel.connect("moved", self._on_wheel)
         self.wheel.connect("clicked", self._controller_clicked)
 
-        # Crossfade and more
+        # Crossfade
         self.crossfade_pad = Gtk.Grid()
-        # self.crossfade_pad.set_column_homogeneous(True)
-        # self.crossfade_pad.set_row_homogeneous(True)
-        self.live = ButtonWidget(label="Live")
-        self.format = ButtonWidget(label="Format")
-        self.blind = ButtonWidget(label="Blind")
-        self.a = ButtonWidget(label="A")
-        self.b = ButtonWidget(label="B")
+        self.crossfade_pad.set_column_spacing(5)
 
         adjustment = Gtk.Adjustment(
             value=0,
@@ -378,15 +387,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scale_b.set_inverted(True)
         self.scale_b.connect("value-changed", self.scale_moved)
 
-        self.crossfade_pad.attach(self.live, 0, 4, 1, 1)
-        self.crossfade_pad.attach(self.format, 0, 5, 1, 1)
-        self.crossfade_pad.attach(self.blind, 0, 6, 1, 1)
-        self.crossfade_pad.attach(self.a, 1, 1, 1, 1)
-        self.crossfade_pad.attach(self.b, 2, 1, 1, 1)
-        self.crossfade_pad.attach(self.scale_a, 1, 2, 1, 6)
-        self.crossfade_pad.attach(self.scale_b, 2, 2, 1, 6)
-        self.label = Gtk.Label(label="")
-        self.crossfade_pad.attach(self.label, 0, 7, 1, 1)
+        self.crossfade_pad.attach(self.scale_a, 0, 0, 1, 1)
+        self.crossfade_pad.attach(self.scale_b, 1, 0, 1, 1)
 
         # Independents
         self.independents = Gtk.Grid()
@@ -405,7 +407,9 @@ class VirtualConsoleWindow(Gtk.Window):
             label="Prev Cue", text="playback.sequence_minus", shortcut_text="Alt+↑"
         )
         self.seq_minus.connect("clicked", self._on_seq_minus)
-        self.goback = ButtonWidget(label="Go Back", text="playback.go_back")
+        self.goback = ButtonWidget(
+            label="Go Back", text="playback.go_back", shortcut_text="^B"
+        )
         self.goback.connect("clicked", self._on_go_back)
         self.pause = PauseWidget("Pause", "playback.pause")
         self.pause.connect("clicked", self._on_pause)
@@ -414,8 +418,6 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_pad.attach(self.pause, 0, 1, 1, 1)
         self.go_pad.attach(self.goback, 1, 1, 1, 1)
         self.go_pad.attach(self.go_button, 0, 2, 2, 1)
-        self.label = Gtk.Label(label="")
-        self.go_pad.attach(self.label, 2, 3, 1, 1)
 
         # Faders
         self.faders_pad = Gtk.Grid()
@@ -469,18 +471,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.fader_pages.attach(self.fader_page_minus, 0, 2, 1, 1)
         self.faders_pad.attach(self.fader_pages, 11, 0, 1, 1)
 
-        # General Grid
+        # General Grid (7 Columns)
         self.grid = Gtk.Grid()
-        # self.grid.set_column_homogeneous(True)
-        # self.grid.set_row_homogeneous(True)
         self.grid.set_row_spacing(10)
         self.grid.set_column_spacing(10)
-        self.grid.attach(self.output_pad, 0, 0, 1, 1)
-        self.grid.attach(self.time_pad, 0, 1, 1, 1)
-        self.grid.attach(self.seq_pad, 1, 0, 1, 1)
-        self.grid.attach(self.num_pad, 1, 1, 1, 1)
-        self.grid.attach(self.rec_pad, 2, 0, 1, 1)
-        self.grid.attach(self.thru_pad, 2, 1, 1, 1)
+        self.grid.attach(self.num_pad, 0, 0, 1, 2)
+        self.grid.attach(self.actions_pad, 1, 0, 1, 2)
+        self.grid.attach(self.tools_pad, 2, 0, 1, 2)
         self.grid.attach(self.modify_pad, 3, 0, 1, 1)
         self.grid.attach(self.wheel, 3, 1, 1, 1)
         self.grid.attach(self.crossfade_pad, 4, 0, 1, 2)
@@ -490,9 +487,10 @@ class VirtualConsoleWindow(Gtk.Window):
 
         self.add(self.grid)
 
-        # Listen for command line text changes to dynamically update button sensitivity
+        # Listen for events to dynamically update button sensitivity
         self.app.core.subscribe("commandline.changed", self._on_commandline_changed)
         self.app.core.subscribe("park.changed", self._on_park_changed)
+        self.app.core.subscribe("history.changed", self._on_history_changed)
         self.update_button_sensitivity()
         if (
             hasattr(self.app.core, "lightshow")
@@ -600,12 +598,18 @@ class VirtualConsoleWindow(Gtk.Window):
             False to propagate the event further
         """
         self.app.core.unsubscribe("commandline.changed", self._on_commandline_changed)
+        self.app.core.unsubscribe("park.changed", self._on_park_changed)
+        self.app.core.unsubscribe("history.changed", self._on_history_changed)
         self.app.virtual_console = None
         return False
 
     def _on_commandline_changed(self, _text: str) -> None:
         """Handle commandline buffer changes by refreshing button sensitivity."""
         self.update_button_sensitivity()
+
+    def _on_history_changed(self, _data: object) -> None:
+        """Handle undo/redo history changed event."""
+        GLib.idle_add(self.update_button_sensitivity)
 
     def update_button_sensitivity(self) -> None:
         """Enable or disable commandline buttons based on parser expectations."""
@@ -616,42 +620,80 @@ class VirtualConsoleWindow(Gtk.Window):
         expected = set(self.commandline.parser.get_expected_tokens(cmd_text))
         is_empty = not cmd_text.strip()
 
-        # Numeric pad: numbers are valid if NUMBER expected or command empty
+        def set_sens(attr_name: str, sensitive: bool) -> None:
+            btn = getattr(self, attr_name, None)
+            if btn is not None:
+                btn.set_sensitive(sensitive)
+
+        # Zone 1: Numeric pad & targets
         can_number = (TokenType.NUMBER in expected) or is_empty
-        for num_btn in (
-            self.zero,
-            self.one,
-            self.two,
-            self.three,
-            self.four,
-            self.five,
-            self.six,
-            self.seven,
-            self.eight,
-            self.nine,
-            self.dot,
+        for num_name in (
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "dot",
         ):
-            num_btn.set_sensitive(can_number)
+            set_sens(num_name, can_number)
 
-        # Enter is sensitive if non-empty (or valid syntax candidate)
-        self.enter.set_sensitive(not is_empty)
+        set_sens("slash", TokenType.SLASH in expected)
+        set_sens("channel", TokenType.CHANNEL in expected or is_empty)
+        set_sens("cue", TokenType.CUE in expected or is_empty)
+        set_sens("group", TokenType.GROUP in expected or is_empty)
+        set_sens("address", TokenType.ADDRESS in expected or is_empty)
+        set_sens("thru", TokenType.THRU in expected)
+        set_sens("plus", TokenType.PLUS in expected)
+        set_sens("minus", TokenType.MINUS in expected)
+        set_sens("enter", not is_empty)
 
-        # Syntax / action tokens
-        self.thru.set_sensitive(TokenType.THRU in expected)
-        self.plus.set_sensitive(TokenType.PLUS in expected)
-        self.minus.set_sensitive(TokenType.MINUS in expected)
-        self.all.set_sensitive(TokenType.ALL in expected or is_empty)
-        self.odd.set_sensitive(TokenType.ODD in expected)
-        self.even.set_sensitive(TokenType.EVEN in expected)
-        self.at_level.set_sensitive(TokenType.AT in expected)
-        self.full.set_sensitive(TokenType.FULL in expected)
-        self.out.set_sensitive(TokenType.OUT in expected)
-        self.percent_plus.set_sensitive(TokenType.AT in expected)
-        self.percent_minus.set_sensitive(TokenType.AT in expected)
-        self.block.set_sensitive(TokenType.BLOCK in expected)
-        self.delete.set_sensitive(TokenType.DELETE in expected or is_empty)
-        self.goto.set_sensitive(TokenType.GOTO in expected or is_empty)
-        self.sneak.set_sensitive(TokenType.SNEAK in expected or is_empty)
+        # Zone 2: Actions, Levels & Editing
+        set_sens("at_level", TokenType.AT in expected)
+        set_sens("full", TokenType.FULL in expected)
+        set_sens("out", TokenType.OUT in expected)
+        set_sens("clear", True)
+        set_sens("percent_plus", TokenType.AT in expected)
+        set_sens("percent_minus", TokenType.AT in expected)
+        set_sens("block", TokenType.BLOCK in expected)
+        set_sens("backspace", not is_empty)
+        set_sens("record", TokenType.RECORD in expected or is_empty)
+        set_sens("update", TokenType.UPDATE in expected or is_empty)
+        set_sens("delete", TokenType.DELETE in expected or is_empty)
+        set_sens("goto", TokenType.GOTO in expected or is_empty)
+        set_sens("time", TokenType.TIME in expected)
+        set_sens("delay", TokenType.DELAY in expected)
+        set_sens("sneak", TokenType.SNEAK in expected or is_empty)
+        set_sens("unblock", TokenType.UNBLOCK in expected)
+        set_sens("park", TokenType.PARK in expected or is_empty)
+        set_sens("unpark", TokenType.UNPARK in expected or is_empty)
+
+        can_undo = bool(
+            hasattr(self.app.core, "history")
+            and getattr(self.app.core.history, "can_undo", False)
+        )
+        can_redo = bool(
+            hasattr(self.app.core, "history")
+            and getattr(self.app.core.history, "can_redo", False)
+        )
+        set_sens("undo", can_undo)
+        set_sens("redo", can_redo)
+
+        # Zone 3: Tools & Moving Lights
+        set_sens("home", TokenType.HOME in expected or is_empty)
+        set_sens("locate", TokenType.LOCATE in expected or is_empty)
+        set_sens("position", TokenType.POSITION in expected or is_empty)
+        set_sens("focus", TokenType.FOCUS in expected or is_empty)
+        set_sens("color", TokenType.COLOR in expected or is_empty)
+        set_sens("beam", TokenType.BEAM in expected or is_empty)
+        set_sens("all", TokenType.ALL in expected or is_empty)
+        set_sens("seq", TokenType.SEQUENCE in expected or is_empty)
+        set_sens("odd", TokenType.ODD in expected)
+        set_sens("even", TokenType.EVEN in expected)
 
         self.queue_draw()
 
@@ -795,13 +837,37 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             self.app.core.action_registry.execute("playback.sequence_minus")
 
-    def _on_output(self, _widget: Gtk.Widget) -> None:
-        """Output"""
+    def _on_channel(self, _widget: Gtk.Widget) -> None:
+        """Channel button"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "output"
+            self.app.midi.learning = "channel"
             self.queue_draw()
         else:
-            self.app.dmx_outputs(typing.cast(typing.Any, None), None)
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}CHANNEL "
+            )
+
+    def _on_cue(self, _widget: Gtk.Widget) -> None:
+        """Cue button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "cue"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}CUE "
+            )
+
+    def _on_slash(self, _widget: Gtk.Widget) -> None:
+        """Slash button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "slash"
+            self.queue_draw()
+        else:
+            self.app.core.action_registry.execute("commandline.append_char", "/")
 
     def _on_address(self, _widget: Gtk.Widget) -> None:
         """Address button"""
@@ -862,15 +928,11 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "seq"
             self.queue_draw()
         else:
-            self.app.sequences(typing.cast(typing.Any, None), None)
-
-    def _on_preset(self, _widget: Gtk.Widget) -> None:
-        """Preset"""
-        if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "preset"
-            self.queue_draw()
-        else:
-            self.app.memories_cb(typing.cast(typing.Any, None), None)
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}SEQ "
+            )
 
     def _on_group(self, _widget: Gtk.Widget) -> None:
         """Group"""
@@ -878,15 +940,113 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "group"
             self.queue_draw()
         else:
-            self.app.groups_cb(typing.cast(typing.Any, None), None)
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}GROUP "
+            )
 
-    def _on_track(self, _widget: Gtk.Widget) -> None:
-        """Track channels"""
+    def _on_unblock(self, _widget: Gtk.Widget) -> None:
+        """Unblock button"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "track"
+            self.app.midi.learning = "unblock"
             self.queue_draw()
         else:
-            self.app.track_channels(typing.cast(typing.Any, None), None)
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}UNBLOCK "
+            )
+
+    def _on_home(self, _widget: Gtk.Widget) -> None:
+        """Home button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "home"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}HOME"
+            )
+
+    def _on_locate(self, _widget: Gtk.Widget) -> None:
+        """Locate button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "locate"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}LOCATE"
+            )
+
+    def _on_position(self, _widget: Gtk.Widget) -> None:
+        """Position button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "position"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}POSITION "
+            )
+
+    def _on_focus(self, _widget: Gtk.Widget) -> None:
+        """Focus button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "focus"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}FOCUS "
+            )
+
+    def _on_color(self, _widget: Gtk.Widget) -> None:
+        """Color button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "color"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}COLOR "
+            )
+
+    def _on_beam(self, _widget: Gtk.Widget) -> None:
+        """Beam button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "beam"
+            self.queue_draw()
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}BEAM "
+            )
+
+    def _on_undo(self, _widget: Gtk.Widget) -> None:
+        """Undo button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "undo"
+            self.queue_draw()
+        else:
+            if hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("edit.undo")
+
+    def _on_redo(self, _widget: Gtk.Widget) -> None:
+        """Redo button"""
+        if self.is_learning_midi and self.app.midi is not None:
+            self.app.midi.learning = "redo"
+            self.queue_draw()
+        else:
+            if hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("edit.redo")
 
     def _on_goto(self, _widget: Gtk.Widget) -> None:
         """Goto"""
@@ -1020,8 +1180,10 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "update"
             self.queue_draw()
         else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
             self.app.core.action_registry.execute(
-                "commandline.append_char", "UPDATE CUE "
+                "commandline.append_char", f"{prefix}UPDATE "
             )
 
     def _on_record(self, _widget: Gtk.Widget) -> None:
@@ -1030,8 +1192,10 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "record"
             self.queue_draw()
         else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
             self.app.core.action_registry.execute(
-                "commandline.append_char", "RECORD CUE "
+                "commandline.append_char", f"{prefix}RECORD "
             )
 
     def _on_right(self, _widget: Gtk.Widget) -> None:

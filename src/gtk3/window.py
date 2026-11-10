@@ -456,6 +456,15 @@ class Window(Gtk.ApplicationWindow):
             if keyval in (Gdk.KEY_p, Gdk.KEY_P):
                 self._append_console_keyword("UNPARK", trailing_space=True)
                 return True
+            if keyval in (Gdk.KEY_b, Gdk.KEY_B):
+                self._append_console_keyword("UNBLOCK", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_c, Gdk.KEY_C):
+                self._append_console_keyword("COLOR", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_m, Gdk.KEY_M):
+                self._append_console_keyword("BEAM", trailing_space=True)
+                return True
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():
                     page = self._get_active_page()
@@ -514,6 +523,9 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
                 (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
                 (Gdk.KEY_y, Gdk.KEY_Y): ("DELAY", True),
+                (Gdk.KEY_x, Gdk.KEY_X): ("UNBLOCK", True),
+                (Gdk.KEY_k, Gdk.KEY_K): ("COLOR", True),
+                (Gdk.KEY_w, Gdk.KEY_W): ("BEAM", True),
             }
             for keys, (kw, tr) in pos_map.items():
                 if keyval in keys:
@@ -753,6 +765,9 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
                 (Gdk.KEY_n, Gdk.KEY_N): ("SNEAK", True),
                 (Gdk.KEY_y, Gdk.KEY_Y): ("DELAY", True),
+                (Gdk.KEY_x, Gdk.KEY_X): ("UNBLOCK", True),
+                (Gdk.KEY_k, Gdk.KEY_K): ("COLOR", True),
+                (Gdk.KEY_w, Gdk.KEY_W): ("BEAM", True),
             }
             for keys, (kw, tr) in direct_hotkeys.items():
                 if keyval in keys:

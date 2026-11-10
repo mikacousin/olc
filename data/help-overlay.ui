@@ -587,6 +587,27 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_b">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;B</property>
+                <property name="title" translatable="yes" context="shortcut window">UNBLOCK</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_c">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;C</property>
+                <property name="title" translatable="yes" context="shortcut window">COLOR</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_m">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;M</property>
+                <property name="title" translatable="yes" context="shortcut window">BEAM</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="shift_syntax_q">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;shift&gt;Q</property>

@@ -41,6 +41,13 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.seq_minus.shortcut_text == "Alt+↑"
     assert vc.seq_plus.shortcut_text == "Alt+↓"
 
+    # Targets & Selection
+    assert vc.channel.shortcut_text == "C"
+    assert vc.group.shortcut_text == "G"
+    assert vc.cue.shortcut_text == "Q"
+    assert vc.address.shortcut_text == "⇧D"
+    assert vc.slash.shortcut_text == "/"
+
     # Multiple shortcut buttons
     assert vc.full.shortcut_text == "F / ⇧A"
     assert vc.out.shortcut_text == "O / ⇧O"
@@ -54,6 +61,7 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.plus.shortcut_text == "+"
     assert vc.minus.shortcut_text == "-"
     assert vc.all.shortcut_text == "M"
+    assert vc.seq.shortcut_text == "S"
     assert vc.odd.shortcut_text == "J"
     assert vc.even.shortcut_text == "E"
     assert vc.at_level.shortcut_text == "A"
@@ -61,8 +69,21 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.time.shortcut_text == "I"
     assert vc.delay.shortcut_text == "Y"
     assert vc.block.shortcut_text == "B"
+    assert vc.unblock.shortcut_text == "Alt+B"
     assert vc.delete.shortcut_text == "D"
     assert vc.goto.shortcut_text == "⇧Q"
+    assert vc.park.shortcut_text == "⇧P"
+    assert vc.unpark.shortcut_text == "Alt+P"
+    assert vc.undo.shortcut_text == "^Z"
+    assert vc.redo.shortcut_text == "⇧^Z"
+
+    # Moving Lights & Tools
+    assert vc.home.shortcut_text == "H / ⇧H"
+    assert vc.locate.shortcut_text == "L / ⇧L"
+    assert vc.position.shortcut_text == "P"
+    assert vc.focus.shortcut_text == "Alt+F"
+    assert vc.color.shortcut_text == "Alt+C"
+    assert vc.beam.shortcut_text == "Alt+M"
 
     # Digits and symbols
     assert vc.zero.shortcut_text == "0"
@@ -76,6 +97,14 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.down.shortcut_text == "↓"
     assert vc.left.shortcut_text == "←"
     assert vc.right.shortcut_text == "→"
+
+    # Verify phantom/view buttons are removed
+    assert not hasattr(vc, "live")
+    assert not hasattr(vc, "format")
+    assert not hasattr(vc, "blind")
+    assert not hasattr(vc, "output")
+    assert not hasattr(vc, "preset")
+    assert not hasattr(vc, "track")
 
     vc.close()
     process_events()
@@ -223,5 +252,117 @@ def test_virtual_console_shortcut_delegation(app_gui: Application) -> None:
     finally:
         app_gui.core.action_registry.execute = orig_exec  # type: ignore[assignment]
 
+    vc.close()
+    process_events()
+
+
+def test_virtual_console_button_clicks_and_syntax(app_gui: Application) -> None:
+    """Test clicking buttons on the virtual console builds valid command syntax."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+    cmdline = app_gui.core.commandline
+
+    cmdline.clear()
+    vc._on_channel(vc.channel)
+    assert cmdline.get_string() == "CHANNEL "
+
+    vc._on_1(vc.one)
+    assert cmdline.get_string() == "CHANNEL 1"
+
+    vc._on_thru(vc.thru)
+    assert cmdline.get_string() == "CHANNEL 1 THRU "
+
+    vc._on_5(vc.five)
+    assert cmdline.get_string() == "CHANNEL 1 THRU 5"
+
+    vc._on_backspace(vc.backspace)
+    assert cmdline.get_string() == "CHANNEL 1 THRU "
+
+    vc._on_clear(vc.clear)
+    assert cmdline.get_string() == ""
+
+    # Test cue syntax
+    vc._on_cue(vc.cue)
+    assert cmdline.get_string() == "CUE "
+
+    vc._on_1(vc.one)
+    vc._on_dot(vc.dot)
+    vc._on_5(vc.five)
+    assert cmdline.get_string() == "CUE 1.5"
+
+    # Test address with slash
+    cmdline.clear()
+    vc._on_address(vc.address)
+    assert cmdline.get_string() == "ADDRESS "
+    vc._on_1(vc.one)
+    vc._on_slash(vc.slash)
+    vc._on_2(vc.two)
+    assert cmdline.get_string() == "ADDRESS 1/2"
+
+    # Test unblock
+    cmdline.clear()
+    vc._on_cue(vc.cue)
+    vc._on_1(vc.one)
+    vc._on_unblock(vc.unblock)
+    assert cmdline.get_string() == "CUE 1 UNBLOCK "
+
+    # Test home and locate
+    cmdline.clear()
+    vc._on_1(vc.one)
+    vc._on_home(vc.home)
+    assert cmdline.get_string() == "1 HOME"
+
+    cmdline.clear()
+    vc._on_1(vc.one)
+    vc._on_locate(vc.locate)
+    assert cmdline.get_string() == "1 LOCATE"
+
+    cmdline.clear()
+    vc.close()
+    process_events()
+
+
+def test_virtual_console_sensitivity_flow(app_gui: Application) -> None:
+    """Test dynamic button sensitivity updates correctly as tokens are typed."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+    cmdline = app_gui.core.commandline
+
+    # When empty:
+    cmdline.clear()
+    vc.update_button_sensitivity()
+    assert vc.channel.get_sensitive() is True
+    assert vc.cue.get_sensitive() is True
+    assert vc.group.get_sensitive() is True
+    assert vc.address.get_sensitive() is True
+    assert vc.enter.get_sensitive() is False
+    assert vc.backspace.get_sensitive() is False
+    assert vc.slash.get_sensitive() is False
+    assert vc.thru.get_sensitive() is True  # Can continue existing fixture selection
+
+    # After entering a channel: "1 "
+    cmdline.set_string("1 ")
+    vc.update_button_sensitivity()
+    assert vc.enter.get_sensitive() is True
+    assert vc.backspace.get_sensitive() is True
+    assert vc.thru.get_sensitive() is True
+    assert vc.plus.get_sensitive() is True
+    assert vc.minus.get_sensitive() is True
+    assert vc.at_level.get_sensitive() is True
+    assert vc.home.get_sensitive() is True
+    assert vc.locate.get_sensitive() is True
+    assert vc.position.get_sensitive() is True
+
+    # After complete command "1 AT 50"
+    cmdline.set_string("1 AT 50")
+    vc.update_button_sensitivity()
+    assert vc.enter.get_sensitive() is True
+    assert vc.thru.get_sensitive() is False
+
+    cmdline.clear()
     vc.close()
     process_events()
