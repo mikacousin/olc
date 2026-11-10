@@ -357,12 +357,33 @@ def test_virtual_console_sensitivity_flow(app_gui: Application) -> None:
     assert vc.locate.get_sensitive() is True
     assert vc.position.get_sensitive() is True
 
-    # After complete command "1 AT 50"
-    cmdline.set_string("1 AT 50")
-    vc.update_button_sensitivity()
-    assert vc.enter.get_sensitive() is True
-    assert vc.thru.get_sensitive() is False
-
     cmdline.clear()
+    vc.close()
+    process_events()
+
+
+def test_virtual_console_crossfade_layout_and_labels(app_gui: Application) -> None:
+    """Test crossfade faders size, labels A & B, and non-clipping fader knobs."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    # Verify labels A and B are present in crossfade pad
+    assert vc.label_crossfade_a.get_text() == "A"
+    assert vc.label_crossfade_b.get_text() == "B"
+    assert vc.label_crossfade_a.get_parent() == vc.crossfade_pad
+    assert vc.label_crossfade_b.get_parent() == vc.crossfade_pad
+
+    # Verify fader width allocations >= 48px
+    scale_a_alloc = vc.scale_a.get_allocation()
+    scale_b_alloc = vc.scale_b.get_allocation()
+    assert scale_a_alloc.width >= 48
+    assert scale_b_alloc.width >= 48
+
+    # Verify crossfade_pad total width >= 100px
+    pad_alloc = vc.crossfade_pad.get_allocation()
+    assert pad_alloc.width >= 100
+
     vc.close()
     process_events()

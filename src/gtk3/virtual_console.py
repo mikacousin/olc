@@ -334,6 +334,16 @@ class VirtualConsoleWindow(Gtk.Window):
         # Crossfade
         self.crossfade_pad = Gtk.Grid()
         self.crossfade_pad.set_column_spacing(5)
+        self.crossfade_pad.set_row_spacing(4)
+        self.crossfade_pad.set_column_homogeneous(True)
+
+        self.label_crossfade_a = Gtk.Label()
+        self.label_crossfade_a.set_markup("<span weight='bold' size='small'>A</span>")
+        self.label_crossfade_a.set_halign(Gtk.Align.CENTER)
+
+        self.label_crossfade_b = Gtk.Label()
+        self.label_crossfade_b.set_markup("<span weight='bold' size='small'>B</span>")
+        self.label_crossfade_b.set_halign(Gtk.Align.CENTER)
 
         adjustment = Gtk.Adjustment(
             value=0,
@@ -354,6 +364,7 @@ class VirtualConsoleWindow(Gtk.Window):
             crossfade=self.app.crossfade,
             is_crossfade=True,
         )
+        self.scale_a.set_size_request(48, -1)
         self.scale_a.led = False
         self.scale_a.connect("clicked", self._scale_clicked)
         self.scale_a.set_draw_value(False)
@@ -380,6 +391,7 @@ class VirtualConsoleWindow(Gtk.Window):
             crossfade=self.app.crossfade,
             is_crossfade=True,
         )
+        self.scale_b.set_size_request(48, -1)
         self.scale_b.led = False
         self.scale_b.connect("clicked", self._scale_clicked)
         self.scale_b.set_draw_value(False)
@@ -387,8 +399,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scale_b.set_inverted(True)
         self.scale_b.connect("value-changed", self.scale_moved)
 
-        self.crossfade_pad.attach(self.scale_a, 0, 0, 1, 1)
-        self.crossfade_pad.attach(self.scale_b, 1, 0, 1, 1)
+        self.crossfade_pad.attach(self.label_crossfade_a, 0, 0, 1, 1)
+        self.crossfade_pad.attach(self.label_crossfade_b, 1, 0, 1, 1)
+        self.crossfade_pad.attach(self.scale_a, 0, 1, 1, 1)
+        self.crossfade_pad.attach(self.scale_b, 1, 1, 1, 1)
 
         # Independents
         self.independents = Gtk.Grid()

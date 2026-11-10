@@ -35,6 +35,8 @@ class FaderWidget(Gtk.Scale):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
+    DEFAULT_WIDTH = 40
+
     # pylint: disable=too-many-arguments
     def __init__(
         self,
@@ -60,6 +62,8 @@ class FaderWidget(Gtk.Scale):
         self.pressed = False
 
         self.text = text
+
+        self.set_size_request(self.DEFAULT_WIDTH, -1)
 
         self.connect("button-press-event", self.on_press)
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
@@ -120,7 +124,11 @@ class FaderWidget(Gtk.Scale):
             rounded_rectangle_fill(cr, area, radius / 2)
 
         # Draw Cursor
-        area = ((width / 2) - 19, (width / 2) + 19, h - 20, h)
+        margin = 3.0
+        max_half = max(10.0, (width - (2 * margin)) / 2)
+        half_knob = min(17.0, max_half)
+        knob_radius = min(radius, half_knob)
+        area = ((width / 2) - half_knob, (width / 2) + half_knob, h - 20, h)
 
         if self.midi and self.midi.learning == self.text:
             if self.pressed:
@@ -131,7 +139,7 @@ class FaderWidget(Gtk.Scale):
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-        rounded_rectangle_fill(cr, area, radius)
+        rounded_rectangle_fill(cr, area, knob_radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
-        rounded_rectangle(cr, area, radius)
+        rounded_rectangle(cr, area, knob_radius)
         return False
