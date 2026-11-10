@@ -50,7 +50,7 @@ class CueChannels(dict[int, int | float]):
         super().clear()
         self.cue._channels_array = None
 
-    def update(  # ty: ignore[invalid-method-override]
+    def update(  # ty: ignore[incompatible-method-override]
         self,
         m: typing.Mapping[int, int | float]
         | typing.Iterable[tuple[int, int | float]] = (),

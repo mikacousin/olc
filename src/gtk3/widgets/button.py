@@ -113,14 +113,42 @@ class ButtonWidget(Gtk.Widget):
         cr.select_font_face(
             "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
         )
-        cr.set_font_size(self.FONT_SIZE)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-        y_offset = 3 if (self.show_shortcut and self.shortcut_text) else 0
-        cr.move_to(
-            self.WIDTH / 2 - w / 2,
-            self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2 - y_offset,
-        )
-        cr.show_text(self.label)
+
+        has_badge = bool(self.show_shortcut and self.shortcut_text)
+        max_width = float(self.WIDTH - 8)  # 42px (guarantees >= 4px margin)
+        lines = self.label.split("\n") if self.label else [""]
+
+        if len(lines) == 1:
+            line = lines[0]
+            cr.set_font_size(self.FONT_SIZE)
+            (_x, _y, w, h, _dx, _dy) = cr.text_extents(line)
+            if w > max_width and w > 0:
+                scaled_size = max(7.5, self.FONT_SIZE * (max_width / w))
+                cr.set_font_size(scaled_size)
+                (_x, _y, w, h, _dx, _dy) = cr.text_extents(line)
+            y_offset = 3 if has_badge else 0
+            cr.move_to(
+                self.WIDTH / 2 - w / 2,
+                self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2 - y_offset,
+            )
+            cr.show_text(line)
+        else:
+            base_size = 8.5 if has_badge else 9.0
+            line_spacing = 11.0 if has_badge else 12.0
+            total_h = (len(lines) - 1) * line_spacing + 8.0
+            y_offset = 4.0 if has_badge else 0.0
+            start_y = (self.HEIGHT - total_h) / 2.0 + 8.0 - y_offset
+
+            for i, line in enumerate(lines):
+                cr.set_font_size(base_size)
+                (_x, _y, w, _h, _dx, _dy) = cr.text_extents(line)
+                if w > max_width and w > 0:
+                    scaled_size = max(7.0, base_size * (max_width / w))
+                    cr.set_font_size(scaled_size)
+                    (_x, _y, w, _h, _dx, _dy) = cr.text_extents(line)
+                cur_y = start_y + i * line_spacing
+                cr.move_to(self.WIDTH / 2 - w / 2, cur_y)
+                cr.show_text(line)
 
         # Draw shortcut key badge if enabled
         if self.show_shortcut and self.shortcut_text:

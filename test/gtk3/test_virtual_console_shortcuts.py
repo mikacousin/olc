@@ -387,3 +387,41 @@ def test_virtual_console_crossfade_layout_and_labels(app_gui: Application) -> No
 
     vc.close()
     process_events()
+
+
+def test_virtual_console_button_labels_and_multiline(app_gui: Application) -> None:
+    """Test button label updates (⌫ symbol, multi-line navigation) and rendering."""
+    import cairo
+
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    # Verify updated button labels
+    assert vc.backspace.label == "⌫"
+    assert vc.seq_plus.label == "Next\nCue"
+    assert vc.seq_minus.label == "Prev\nCue"
+    assert vc.goback.label == "Go\nBack"
+
+    # Test rendering of multi-line and auto-scaled buttons into a dummy Cairo surface
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 50, 50)
+    cr = cairo.Context(surface)
+    for btn in (
+        vc.backspace,
+        vc.channel,
+        vc.address,
+        vc.position,
+        vc.unblock,
+        vc.seq_plus,
+        vc.seq_minus,
+        vc.goback,
+    ):
+        # Must execute do_draw without exceptions
+        btn.do_draw(cr)
+        # Also with shortcut enabled
+        btn.show_shortcut = True
+        btn.do_draw(cr)
+
+    vc.close()
+    process_events()

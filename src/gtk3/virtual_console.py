@@ -202,9 +202,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.percent_minus.connect("clicked", self._on_percent_minus)
         self.block = ButtonWidget(label="Block", text="block", shortcut_text="B")
         self.block.connect("clicked", self._on_block)
-        self.backspace = ButtonWidget(
-            label="Backspace", text="backspace", shortcut_text="⌫"
-        )
+        self.backspace = ButtonWidget(label="⌫", text="backspace", shortcut_text="⌫")
         self.backspace.connect("clicked", self._on_backspace)
 
         self.record = ButtonWidget(
@@ -414,15 +412,15 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_button = GoWidget(shortcut_text="Space / ^G")
         self.go_button.connect("clicked", self._on_go)
         self.seq_plus = ButtonWidget(
-            label="Next Cue", text="playback.sequence_plus", shortcut_text="Alt+↓"
+            label="Next\nCue", text="playback.sequence_plus", shortcut_text="Alt+↓"
         )
         self.seq_plus.connect("clicked", self._on_seq_plus)
         self.seq_minus = ButtonWidget(
-            label="Prev Cue", text="playback.sequence_minus", shortcut_text="Alt+↑"
+            label="Prev\nCue", text="playback.sequence_minus", shortcut_text="Alt+↑"
         )
         self.seq_minus.connect("clicked", self._on_seq_minus)
         self.goback = ButtonWidget(
-            label="Go Back", text="playback.go_back", shortcut_text="^B"
+            label="Go\nBack", text="playback.go_back", shortcut_text="^B"
         )
         self.goback.connect("clicked", self._on_go_back)
         self.pause = PauseWidget("Pause", "playback.pause")
