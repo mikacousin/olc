@@ -89,13 +89,13 @@ class CurveEdition(Gtk.Box):
         self.pending_active_point_idx = None
         self.remove_box = None
 
-        # HeaderBar: use provided top header or create standalone fallback
+        # HeaderBar: dedicated header bar for curve edition
         if header is not None:
             self.header = header
         else:
             self.header = Gtk.HeaderBar()
             self.header.set_title(_("Select curve"))
-            self.add(self.header)
+            self.pack_start(self.header, False, False, 0)
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -518,9 +518,9 @@ class CurvesTab(Gtk.Box):
         saved_sidebar_visible = curves_settings.get("sidebar_visible", True)
         saved_paned_pos = curves_settings.get("paned_position", 220)
 
-        # Top HeaderBar: Selected curve title, library toggle, and action buttons
+        # Top HeaderBar: Tab title, library toggle, and curve creation buttons
         self.top_header = Gtk.HeaderBar()
-        self.top_header.set_title(_("Select curve"))
+        self.top_header.set_title(_("Curves"))
 
         # Left of HeaderBar: Toggle library button & Curve creation buttons
         self.btn_toggle_sidebar = Gtk.ToggleButton(label=_("Library"))
@@ -565,9 +565,7 @@ class CurvesTab(Gtk.Box):
         self.paned.pack1(self.sidebar_box, False, False)
 
         # Right pane: CurveEdition
-        self.curve_edition = CurveEdition(
-            lightshow=self.lightshow, tabs=self.tabs, header=self.top_header
-        )
+        self.curve_edition = CurveEdition(lightshow=self.lightshow, tabs=self.tabs)
         self.paned.pack2(self.curve_edition, True, False)
 
         self.pack_start(self.paned, True, True, 0)

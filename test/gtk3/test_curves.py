@@ -176,7 +176,8 @@ def test_curve_title_permanently_visible(app_gui: Application) -> None:
         expected_title = get_curve_display_name(curve)
 
         assert curves_tab.top_header.get_visible()
-        assert curves_tab.top_header.get_title() == expected_title
+        assert curves_tab.top_header.get_title() == "Curves"
+        assert edition.header.get_visible()
         assert edition.header.get_title() == expected_title
 
         # Allocation check: header must be at the very top of curves_tab
@@ -185,7 +186,7 @@ def test_curve_title_permanently_visible(app_gui: Application) -> None:
         assert alloc_hdr.y == alloc_tab.y
         assert alloc_hdr.height > 0
 
-    # Test editable curve shows Remove button in top_header
+    # Test editable curve shows Remove button in edition header (not in top_header)
     curves_tab.on_new_curve(curves_tab.buttons["limit"])
     process_events()
     new_curve_nb = list(app_gui.core.lightshow.curves.curves.keys())[-1]
@@ -205,15 +206,18 @@ def test_curve_title_permanently_visible(app_gui: Application) -> None:
                 return True
         return False
 
-    assert has_remove_button(curves_tab.top_header), (
-        "Top header should show remove action for editable curve"
+    assert has_remove_button(curves_tab.curve_edition.header), (
+        "Edition header should show remove action for editable curve"
+    )
+    assert not has_remove_button(curves_tab.top_header), (
+        "Top header should not show remove action"
     )
 
     # Switching back to non-editable curve clears the action button
     curves_tab.select_curve(0)
     process_events()
-    assert not has_remove_button(curves_tab.top_header), (
-        "Top header should not show remove button for factory curve"
+    assert not has_remove_button(curves_tab.curve_edition.header), (
+        "Edition header should not show remove button for factory curve"
     )
 
 
