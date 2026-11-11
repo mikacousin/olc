@@ -67,7 +67,12 @@ class CurveEdition(Gtk.Box):
     points_table: CurvePointsTable
     sampled_monitor: CurveSampledMonitor
 
-    def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        header: Gtk.HeaderBar | None = None,
+    ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.lightshow = lightshow
         self.tabs = tabs
@@ -82,11 +87,13 @@ class CurveEdition(Gtk.Box):
         self._drag_start_limit = 255
         self.pending_active_point_idx = None
 
-        # HeaderBar
-        self.header = Gtk.HeaderBar()
-        text = _("Select curve")
-        self.header.set_title(text)
-        self.add(self.header)
+        # HeaderBar: use provided top header or create standalone fallback
+        if header is not None:
+            self.header = header
+        else:
+            self.header = Gtk.HeaderBar()
+            self.header.set_title(_("Select curve"))
+            self.add(self.header)
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -199,6 +206,7 @@ class CurveEdition(Gtk.Box):
             button.connect("clicked", self.on_del_curve)
             box.add(button)
             self.header.pack_end(box)
+            self.header.show_all()
         self.scale_widget = None
         # Display curve and tools
         for child in self.hbox.get_children():
@@ -475,10 +483,11 @@ class CurveButton(CurveWidget):
                 self.popover.popup()
 
 
-class CurvesTab(Gtk.Paned):
+class CurvesTab(Gtk.Box):
     """Tab to display and edit curves"""
 
     flowbox: Gtk.FlowBox | None
+    paned: Gtk.Paned
 
     def __init__(
         self,
@@ -493,10 +502,20 @@ class CurvesTab(Gtk.Paned):
         self.settings = settings
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(600)
 
-        self.curve_edition = CurveEdition(lightshow=self.lightshow, tabs=self.tabs)
-        self.add1(self.curve_edition)
+        # Top HeaderBar: Selected curve title and action buttons (always visible)
+        self.top_header = Gtk.HeaderBar()
+        self.top_header.set_title(_("Select curve"))
+        self.pack_start(self.top_header, False, False, 0)
+
+        # Paned container for edition (top) and curves library (bottom)
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        self.paned.set_position(600)
+
+        self.curve_edition = CurveEdition(
+            lightshow=self.lightshow, tabs=self.tabs, header=self.top_header
+        )
+        self.paned.add1(self.curve_edition)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         box.set_homogeneous(False)
@@ -520,7 +539,9 @@ class CurvesTab(Gtk.Paned):
         self.populate_curves()
         box.add(self.scrolled)
         box.set_child_packing(self.scrolled, True, True, 0, Gtk.PackType.START)
-        self.add2(box)
+        self.paned.add2(box)
+
+        self.pack_start(self.paned, True, True, 0)
 
         # Select memorized curve or first curve on creation
         selected_curve = None
@@ -537,6 +558,14 @@ class CurvesTab(Gtk.Paned):
         elif self.lightshow.curves.curves:
             first_curve_nb = next(iter(self.lightshow.curves.curves.keys()))
             self.select_curve(first_curve_nb)
+
+    def set_position(self, position: int) -> None:
+        """Set position of the inner paned separator."""
+        self.paned.set_position(position)
+
+    def get_position(self) -> int:
+        """Get position of the inner paned separator."""
+        return self.paned.get_position()
 
     def _memorize_selected_curve(self, curve_nb: int) -> None:
         """Store selected curve number in workspace tab settings."""

@@ -26,6 +26,7 @@ from gi.repository import Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.curve import CurveButton, CurvesTab  # noqa: E402
+from olc.gtk3.widgets.curve import get_curve_display_name  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
@@ -152,3 +153,56 @@ def test_new_segments_and_interpolate_curves_editable_ui(app_gui: Application) -
     assert edition.points_table.renderer_in.get_property("editable")
     assert edition.points_table.renderer_out.get_property("editable")
     assert len(edition.points_table.store) == 3
+
+
+def test_curve_title_permanently_visible(app_gui: Application) -> None:
+    """Verify that curve title is permanently visible at Y=0 for all curves."""
+    app_gui.activate_action("curves", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    curves_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(curves_tab, CurvesTab)
+    edition = curves_tab.curve_edition
+    assert edition is not None
+
+    for curve_nb in list(app_gui.core.lightshow.curves.curves.keys()):
+        curves_tab.select_curve(curve_nb)
+        process_events()
+
+        curve = app_gui.core.lightshow.curves.get_curve(curve_nb)
+        expected_title = get_curve_display_name(curve)
+
+        assert curves_tab.top_header.get_visible()
+        assert curves_tab.top_header.get_title() == expected_title
+        assert edition.header.get_title() == expected_title
+
+        # Allocation check: header must be at the very top of curves_tab
+        alloc_tab = curves_tab.get_allocation()
+        alloc_hdr = curves_tab.top_header.get_allocation()
+        assert alloc_hdr.y == alloc_tab.y
+        assert alloc_hdr.height > 0
+
+    # Test editable curve shows Remove button in top_header
+    curves_tab.on_new_curve(curves_tab.buttons["limit"])
+    process_events()
+    new_curve_nb = list(app_gui.core.lightshow.curves.curves.keys())[-1]
+    curves_tab.select_curve(new_curve_nb)
+    process_events()
+
+    header_buttons = [
+        c for c in curves_tab.top_header.get_children() if isinstance(c, Gtk.Container)
+    ]
+    assert len(header_buttons) > 0, (
+        "Top header should show remove action for editable curve"
+    )
+
+    # Switching back to non-editable curve clears the action button
+    curves_tab.select_curve(0)
+    process_events()
+    header_buttons_after = [
+        c for c in curves_tab.top_header.get_children() if isinstance(c, Gtk.Container)
+    ]
+    assert len(header_buttons_after) == 0, (
+        "Top header should not show remove button for factory curve"
+    )
