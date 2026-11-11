@@ -22,6 +22,10 @@ import typing
 from gi.repository import GLib, Gtk
 
 from olc.core.parser.highlighter import highlight_commandline_markup
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
@@ -88,6 +92,10 @@ class CommandLineWidget:
         self.app.core.subscribe("commandline.executed", self.on_executed)
         self.app.core.subscribe("commandline.suggestions", self.on_suggestions)
         self.app.core.subscribe("park.changed", self.on_park_changed)
+
+        register_system_font_listener(
+            lambda: self._render_text(self.app.core.commandline.get_string())
+        )
 
         if (
             hasattr(self.app.core, "lightshow")
@@ -169,15 +177,17 @@ class CommandLineWidget:
     def _render_text(self, text: str) -> None:
         """Render command line text with syntax highlighting and trailing cursor."""
         cursor = '<span foreground="#888888">_</span>'
+        family = get_system_font_family()
+        font_family = f"{family}, monospace"
         if not text:
             self.command_label.set_markup(
-                f'<span font_family="DejaVu Sans, monospace">{cursor}</span>'
+                f'<span font_family="{font_family}">{cursor}</span>'
             )
             return
 
         markup = highlight_commandline_markup(text)
         self.command_label.set_markup(
-            f'<span font_family="DejaVu Sans, monospace">{markup}{cursor}</span>'
+            f'<span font_family="{font_family}">{markup}{cursor}</span>'
         )
 
     def on_park_changed(self, count: int) -> None:

@@ -20,6 +20,10 @@ import cairo
 from gi.repository import Gdk, Gtk
 
 from olc.curve import InterpolateCurve, SegmentsCurve
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
@@ -44,6 +48,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         self.curve_nb = curve
         self.curve = self.lightshow.curves.get_curve(curve)
         self.set_size_request(self.width, self.height)
+        register_system_font_listener(self.queue_draw)
 
         self.offsetx = 0
         self.offsety = 0
@@ -129,7 +134,9 @@ class EditCurveWidget(Gtk.DrawingArea):
         cr.stroke()
         cr.set_line_width(1)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(8)
         for x in range(0, 256, 10):

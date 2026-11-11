@@ -21,6 +21,10 @@ import cairo
 from gi.repository import Gdk, Gtk
 
 from olc.define import MAX_CHANNELS, time_to_string
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
@@ -65,6 +69,7 @@ class SequentialWidget(Gtk.Widget):
 
         Gtk.Widget.__init__(self)
         self.set_size_request(800, 300)
+        register_system_font_listener(self.queue_draw)
 
     def _calculate_times(self) -> tuple[float, float]:
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
@@ -204,7 +209,9 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(12 + (inter * self.wait), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         cr.show_text(time_to_string(self.wait))
@@ -218,7 +225,9 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(12 + wait_x + (inter * self.delay_out), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         cr.show_text(time_to_string(self.delay_out + self.wait))
@@ -237,7 +246,9 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(12 + wait_x + (inter * self.delay_in), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         cr.show_text(time_to_string(self.delay_in + self.wait))
@@ -285,7 +296,9 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to((inter * delay) + wait_x, allocation.height - 4 - (ct_nb * 12))
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(10)
         cr.show_text(str(channel))
@@ -461,7 +474,9 @@ class SequentialWidget(Gtk.Widget):
 
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(10)
         cr.move_to(x1 - 5, y1 + 2)
@@ -498,7 +513,9 @@ class SequentialWidget(Gtk.Widget):
 
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(10)
 
@@ -522,7 +539,9 @@ class SequentialWidget(Gtk.Widget):
     ) -> None:
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
 

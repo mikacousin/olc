@@ -15,9 +15,15 @@
 from __future__ import annotations
 
 import cairo
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Gdk, GObject, Gtk, Pango, PangoCairo
 
-from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    create_pango_layout_for_widget,
+    create_system_font_description,
+    register_system_font_listener,
+    rounded_rectangle,
+    rounded_rectangle_fill,
+)
 
 
 class ButtonWidget(Gtk.Widget):
@@ -51,6 +57,7 @@ class ButtonWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
         self.connect("state-flags-changed", self._on_state_flags_changed)
+        register_system_font_listener(self.queue_draw)
 
     def _on_state_flags_changed(
         self, _widget: Gtk.Widget, _flags: Gtk.StateFlags
@@ -103,62 +110,68 @@ class ButtonWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.RADIUS)
-        # Draw Text
+        # Draw Text via Pango
         if self.text == "None":
             cr.set_source_rgb(0.5, 0.5, 0.5)
         elif is_disabled:
             cr.set_source_rgb(0.35, 0.35, 0.35)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-        )
 
         has_badge = bool(self.show_shortcut and self.shortcut_text)
-        max_width = float(self.WIDTH - 8)  # 42px (guarantees >= 4px margin)
-        lines = self.label.split("\n") if self.label else [""]
+        max_width_px = self.WIDTH - 8
 
-        if len(lines) == 1:
-            line = lines[0]
-            cr.set_font_size(self.FONT_SIZE)
-            (_x, _y, w, h, _dx, _dy) = cr.text_extents(line)
-            if w > max_width and w > 0:
-                scaled_size = max(7.5, self.FONT_SIZE * (max_width / w))
-                cr.set_font_size(scaled_size)
-                (_x, _y, w, h, _dx, _dy) = cr.text_extents(line)
-            y_offset = 3 if has_badge else 0
-            cr.move_to(
-                self.WIDTH / 2 - w / 2,
-                self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2 - y_offset,
+        if self.label:
+            layout = create_pango_layout_for_widget(cr, self.label)
+            desc = create_system_font_description()
+            desc.set_weight(Pango.Weight.BOLD)
+
+            lines = self.label.split("\n")
+            is_multiline = len(lines) > 1
+            font_size_pt = (
+                8.5
+                if (is_multiline and has_badge)
+                else (9.0 if is_multiline else self.FONT_SIZE)
             )
-            cr.show_text(line)
-        else:
-            base_size = 8.5 if has_badge else 9.0
-            line_spacing = 11.0 if has_badge else 12.0
-            total_h = (len(lines) - 1) * line_spacing + 8.0
-            y_offset = 4.0 if has_badge else 0.0
-            start_y = (self.HEIGHT - total_h) / 2.0 + 8.0 - y_offset
+            desc.set_size(int(font_size_pt * Pango.SCALE))
+            layout.set_font_description(desc)
 
-            for i, line in enumerate(lines):
-                cr.set_font_size(base_size)
-                (_x, _y, w, _h, _dx, _dy) = cr.text_extents(line)
-                if w > max_width and w > 0:
-                    scaled_size = max(7.0, base_size * (max_width / w))
-                    cr.set_font_size(scaled_size)
-                    (_x, _y, w, _h, _dx, _dy) = cr.text_extents(line)
-                cur_y = start_y + i * line_spacing
-                cr.move_to(self.WIDTH / 2 - w / 2, cur_y)
-                cr.show_text(line)
+            # Auto-scale font down if unconstrained natural width exceeds max_width_px
+            _ink, natural_logical = layout.get_pixel_extents()
+            natural_w = natural_logical.width
+            if natural_w > max_width_px and natural_w > 0:
+                scaled_size = max(7.0, font_size_pt * (max_width_px / natural_w))
+                desc.set_size(int(scaled_size * Pango.SCALE))
+                layout.set_font_description(desc)
+
+            layout.set_alignment(Pango.Alignment.CENTER)
+            layout.set_width(int(max_width_px * Pango.SCALE))
+            layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+            if is_multiline:
+                layout.set_spacing(int(1 * Pango.SCALE))
+
+            _ink, logical = layout.get_pixel_extents()
+            x_pos = (self.WIDTH - max_width_px) / 2.0
+            y_offset = 4.0 if has_badge else 0.0
+            y_pos = (self.HEIGHT - logical.height) / 2.0 - y_offset
+
+            cr.move_to(x_pos, y_pos)
+            PangoCairo.show_layout(cr, layout)
 
         # Draw shortcut key badge if enabled
-        if self.show_shortcut and self.shortcut_text:
+        if has_badge:
             cr.set_source_rgb(1.0, 0.85, 0.2)  # warm gold / amber
-            badge_font_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
-            cr.set_font_size(badge_font_size)
-            (_bx, _by, bw, _bh, _bdx, _bdy) = cr.text_extents(self.shortcut_text)
+            badge_layout = create_pango_layout_for_widget(cr, self.shortcut_text)
+            bdesc = create_system_font_description()
+            bdesc.set_weight(Pango.Weight.NORMAL)
+            badge_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
+            bdesc.set_size(int(badge_size * Pango.SCALE))
+            badge_layout.set_font_description(bdesc)
+            _bink, blogical = badge_layout.get_pixel_extents()
+            bw = blogical.width
             badge_x = max(2.0, min(float(self.WIDTH - bw - 4), (self.WIDTH - bw) / 2.0))
-            cr.move_to(badge_x, float(self.HEIGHT - 5))
-            cr.show_text(self.shortcut_text)
+            cr.move_to(badge_x, float(self.HEIGHT - blogical.height - 3))
+            PangoCairo.show_layout(cr, badge_layout)
 
         return False
 

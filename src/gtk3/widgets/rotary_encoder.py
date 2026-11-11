@@ -22,6 +22,11 @@ from typing import Any, Callable, Optional
 import cairo
 from gi.repository import Gdk, Gtk
 
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
+
 
 # pylint: disable=too-many-instance-attributes
 class RotaryEncoderWidget(Gtk.DrawingArea):
@@ -56,6 +61,7 @@ class RotaryEncoderWidget(Gtk.DrawingArea):
         self.connect("motion-notify-event", self._on_motion)
         self.connect("button-release-event", self._on_release)
         self.connect("scroll-event", self._on_scroll)
+        register_system_font_listener(self.queue_draw)
 
     def set_value_text(self, text: str) -> None:
         """Update the readout text drawn in the center of the encoder."""
@@ -162,7 +168,9 @@ class RotaryEncoderWidget(Gtk.DrawingArea):
 
         # Center parameter label & physical value readout
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(9.5)
         cr.set_source_rgba(0.75, 0.82, 0.88, 0.95)
@@ -171,7 +179,9 @@ class RotaryEncoderWidget(Gtk.DrawingArea):
         cr.show_text(self.label)
 
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.NORMAL,
         )
         cr.set_font_size(9.0)
         cr.set_source_rgb(0.95, 0.95, 0.95)

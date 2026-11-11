@@ -21,6 +21,10 @@ from gi.repository import Gdk, Gtk
 
 from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -80,6 +84,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self.add_events(Gdk.EventMask.TOUCH_MASK)
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
+        register_system_font_listener(self.queue_draw)
 
     def _get_context(
         self, target: Gtk.Widget
@@ -216,7 +221,9 @@ class ChannelWidget(Gtk.DrawingArea):
         if self.is_moving_head():
             cr.set_source_rgb(0.3, 0.85, 0.95)
             cr.select_font_face(
-                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                get_system_font_family(),
+                cairo.FontSlant.NORMAL,
+                cairo.FontWeight.BOLD,
             )
             cr.set_font_size(9 * self.scale)
             x_pos = 20 * self.scale if has_color else 7 * self.scale
@@ -277,7 +284,9 @@ class ChannelWidget(Gtk.DrawingArea):
         if not self.lightshow.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
@@ -289,7 +298,9 @@ class ChannelWidget(Gtk.DrawingArea):
         if park_mgr is None or not park_mgr.is_channel_parked(int(self.channel)):
             return
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(10 * self.scale)
         cr.set_source_rgb(1.0, 0.7, 0.0)
@@ -308,7 +319,9 @@ class ChannelWidget(Gtk.DrawingArea):
                 self.color_level.get("blue", 0.0),
             )
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
@@ -366,7 +379,9 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.fill()
 
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.NORMAL,
         )
         cr.set_font_size(10 * self.scale)
         cr.move_to(
@@ -387,7 +402,9 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.fill()
 
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.NORMAL,
         )
         cr.set_font_size(10 * self.scale)
         cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))

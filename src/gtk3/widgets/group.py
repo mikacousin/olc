@@ -17,9 +17,14 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango, PangoCairo
 
-from olc.gtk3.widgets.common import rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    create_pango_layout_for_widget,
+    create_system_font_description,
+    register_system_font_listener,
+    rounded_rectangle_fill,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
@@ -38,9 +43,9 @@ class GroupWidget(Gtk.Widget):
         number: float,
         name: str,
         *,
-        lightshow: "LightShow",
-        tabs: "Tabs",
-        window: "Window",
+        lightshow: LightShow | None = None,
+        tabs: Tabs | None = None,
+        window: Window | None = None,
     ) -> None:
         self.lightshow = lightshow
         self.tabs = tabs
@@ -52,6 +57,7 @@ class GroupWidget(Gtk.Widget):
         self.set_size_request(80, 80)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
+        register_system_font_listener(self.queue_draw)
 
         self.popover = Gtk.Popover()
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -74,19 +80,23 @@ class GroupWidget(Gtk.Widget):
         text = widget.get_text()
         flowboxchild = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         index = flowboxchild.get_index()
-        group = self.lightshow.groups[index]
-        self.window.app.core.action_registry.execute("group.rename", group.index, text)
+        if self.lightshow is not None and self.window is not None:
+            group = self.lightshow.groups[index]
+            self.window.app.core.action_registry.execute(
+                "group.rename", group.index, text
+            )
         self.popover.popdown()
 
     def on_click(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Group clicked"""
         child = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         if not child.is_selected():
-            groups_tab = typing.cast(typing.Any, self.tabs.tabs["groups"])
-            groups_tab.flowbox.unselect_all()
-            groups_tab.flowbox.select_child(child)
-            groups_tab.last_group_selected = str(child.get_index())
-            groups_tab.channels_view.update()
+            if self.tabs is not None:
+                groups_tab = typing.cast(typing.Any, self.tabs.tabs["groups"])
+                groups_tab.flowbox.unselect_all()
+                groups_tab.flowbox.select_child(child)
+                groups_tab.last_group_selected = str(child.get_index())
+                groups_tab.channels_view.update()
         else:
             self.popover.popup()
 
@@ -105,7 +115,8 @@ class GroupWidget(Gtk.Widget):
         cr.fill()
 
         # draw rectangle
-        if typing.cast(Gtk.FlowBoxChild, self.get_parent()).is_selected():
+        parent = self.get_parent()
+        if parent is not None and getattr(parent, "is_selected", lambda: False)():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -114,25 +125,30 @@ class GroupWidget(Gtk.Widget):
 
         # draw group number
         cr.set_source_rgb(0.5, 0.5, 0.9)
-        cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-        )
-        cr.set_font_size(12)
-        cr.move_to(50, 15)
         txt = str(int(self.number)) if self.number.is_integer() else str(self.number)
-        cr.show_text(txt)
+        num_layout = create_pango_layout_for_widget(cr, txt)
+        ndesc = create_system_font_description()
+        ndesc.set_weight(Pango.Weight.BOLD)
+        ndesc.set_size(12 * Pango.SCALE)
+        num_layout.set_font_description(ndesc)
+        _nink, nlogical = num_layout.get_pixel_extents()
+        cr.move_to(allocation.width - nlogical.width - 8, 4)
+        PangoCairo.show_layout(cr, num_layout)
+
         # draw group name
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
-        )
-        cr.move_to(8, 32)
-        if len(self.name) > 10:
-            cr.show_text(self.name[:10])
-            cr.move_to(8, 48)
-            cr.show_text(self.name[10:])
-        else:
-            cr.show_text(self.name)
+        if self.name:
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            name_layout = create_pango_layout_for_widget(cr, self.name)
+            mdesc = create_system_font_description()
+            mdesc.set_weight(Pango.Weight.NORMAL)
+            mdesc.set_size(10 * Pango.SCALE)
+            name_layout.set_font_description(mdesc)
+            name_layout.set_width(int((allocation.width - 16) * Pango.SCALE))
+            name_layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+            name_layout.set_height(-3)
+            name_layout.set_ellipsize(Pango.EllipsizeMode.END)
+            cr.move_to(8, 20)
+            PangoCairo.show_layout(cr, name_layout)
         return False
 
     def do_realize(self) -> None:

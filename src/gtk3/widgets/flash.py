@@ -17,9 +17,15 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Gdk, GObject, Gtk, Pango, PangoCairo
 
-from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    create_pango_layout_for_widget,
+    create_system_font_description,
+    register_system_font_listener,
+    rounded_rectangle,
+    rounded_rectangle_fill,
+)
 
 if typing.TYPE_CHECKING:
     from olc.midi import Midi
@@ -54,6 +60,7 @@ class FlashWidget(Gtk.Widget):
 
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
+        register_system_font_listener(self.queue_draw)
 
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Flash button pressed"""
@@ -88,23 +95,30 @@ class FlashWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)
-        # Draw Text on 2 lines
+        # Draw Text
         if self.text == "None":
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-        )
-        cr.set_font_size(self.font_size)
-        # First line
-        (_x, _y, w, _h, _dx, _dy) = cr.text_extents(self.label[:6])
-        cr.move_to(self.width / 2 - w / 2, self.height / 3)
-        cr.show_text(self.label[:6])
-        # Second line
-        (_x, _y, w, _h, _dx, _dy) = cr.text_extents(self.label[6:12])
-        cr.move_to(self.width / 2 - w / 2, (self.height / 3) * 2)
-        cr.show_text(self.label[6:12])
+
+        if self.label:
+            layout = create_pango_layout_for_widget(cr, self.label)
+            desc = create_system_font_description()
+            desc.set_weight(Pango.Weight.BOLD)
+            desc.set_size(int(self.font_size * Pango.SCALE))
+            layout.set_font_description(desc)
+            layout.set_alignment(Pango.Alignment.CENTER)
+            max_width_px = self.width - 6
+            layout.set_width(int(max_width_px * Pango.SCALE))
+            layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+            layout.set_height(-2)
+            layout.set_ellipsize(Pango.EllipsizeMode.END)
+            _ink, logical = layout.get_pixel_extents()
+            cr.move_to(
+                (self.width - max_width_px) / 2.0,
+                (self.height - logical.height) / 2.0,
+            )
+            PangoCairo.show_layout(cr, layout)
         return False
 
     def do_realize(self) -> None:

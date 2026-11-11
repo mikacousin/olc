@@ -17,9 +17,14 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango, PangoCairo
 
-from olc.gtk3.widgets.common import rounded_rectangle
+from olc.gtk3.widgets.common import (
+    create_pango_layout_for_widget,
+    create_system_font_description,
+    register_system_font_listener,
+    rounded_rectangle,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
@@ -40,6 +45,7 @@ class MainFaderWidget(Gtk.Widget):
         self.label = ""
 
         self.set_size_request(self.width, self.height)
+        register_system_font_listener(self.queue_draw)
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Main Fader widget
@@ -62,15 +68,16 @@ class MainFaderWidget(Gtk.Widget):
                 else:
                     self.label = f"Main Fader {round(mf_val * 100)}%"
                     cr.set_source_rgb(0.8, 0.3, 0.3)
-                cr.select_font_face(
-                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                )
-                cr.set_font_size(11)
-                (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-                x_pos = self.width / 2 - w / 2
-                y_pos = self.height / 2 - (h - (self.radius * 2)) / 2
+                layout = create_pango_layout_for_widget(cr, self.label)
+                desc = create_system_font_description()
+                desc.set_weight(Pango.Weight.BOLD)
+                desc.set_size(int(11 * Pango.SCALE))
+                layout.set_font_description(desc)
+                _ink, logical = layout.get_pixel_extents()
+                x_pos = (self.width - logical.width) / 2.0
+                y_pos = (self.height - logical.height) / 2.0
                 cr.move_to(x_pos, y_pos)
-                cr.show_text(self.label)
+                PangoCairo.show_layout(cr, layout)
         return False
 
     def do_realize(self) -> None:

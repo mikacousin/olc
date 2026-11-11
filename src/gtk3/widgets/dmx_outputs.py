@@ -21,7 +21,12 @@ import typing
 import cairo
 from gi.repository import Gdk, Gtk
 
-from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+    rounded_rectangle,
+    rounded_rectangle_fill,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
@@ -62,6 +67,7 @@ class DMXOutputWidget(Gtk.DrawingArea):
         self.scale = 1.0
         size = round(70 * self.scale)
         self.set_size_request(size, size)
+        register_system_font_listener(self.queue_draw)
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget.
@@ -164,7 +170,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
         """
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(11 * self.scale)
         text = f"{self.universe}.{self.output}"
@@ -214,7 +222,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
             return
 
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         base_font_size = 11.0 * self.scale
         cr.set_font_size(base_font_size)
@@ -300,7 +310,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
                     else:
                         cr.set_source_rgb(0.7, 0.7, 0.7)
                     cr.select_font_face(
-                        "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                        get_system_font_family(),
+                        cairo.FontSlant.NORMAL,
+                        cairo.FontWeight.BOLD,
                     )
                     cr.set_font_size(10 * self.scale)
                     text = str(level)
@@ -321,7 +333,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
         if not self._is_parked():
             return
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(10 * self.scale)
         cr.set_source_rgb(1.0, 0.7, 0.0)

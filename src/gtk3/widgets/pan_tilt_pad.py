@@ -22,6 +22,11 @@ from typing import Any
 import cairo
 from gi.repository import Gdk, Gtk
 
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
+
 
 # pylint: disable=too-many-instance-attributes
 class PanTiltPadWidget(Gtk.DrawingArea):
@@ -48,6 +53,7 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             | Gdk.EventMask.BUTTON_MOTION_MASK
             | Gdk.EventMask.BUTTON_RELEASE_MASK
         )
+        register_system_font_listener(self.queue_draw)
         self.connect("button-press-event", self._on_pointer_event)
         self.connect("motion-notify-event", self._on_pointer_event)
 
@@ -114,7 +120,9 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.stroke()
 
             cr.select_font_face(
-                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+                get_system_font_family(),
+                cairo.FontSlant.NORMAL,
+                cairo.FontWeight.NORMAL,
             )
             cr.set_font_size(9.0)
             cr.move_to(px + 6.0, py - 4.0)
@@ -138,7 +146,9 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.stroke()
 
             cr.select_font_face(
-                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                get_system_font_family(),
+                cairo.FontSlant.NORMAL,
+                cairo.FontWeight.BOLD,
             )
             cr.set_font_size(10.0)
             cr.move_to(px + 8.0, py + 4.0)

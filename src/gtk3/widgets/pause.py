@@ -13,9 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Gdk, GObject, Gtk, Pango, PangoCairo
 
-from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    create_pango_layout_for_widget,
+    create_system_font_description,
+    register_system_font_listener,
+    rounded_rectangle,
+    rounded_rectangle_fill,
+)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -52,6 +58,7 @@ class PauseWidget(Gtk.Widget):
 
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
+        register_system_font_listener(self.queue_draw)
 
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button pressed"""
@@ -88,27 +95,37 @@ class PauseWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-        )
-        cr.set_font_size(self.font_size)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-        y_offset = 3 if (self.show_shortcut and self.shortcut_text) else 0
-        cr.move_to(
-            self.width / 2 - w / 2,
-            self.height / 2 - (h - (self.radius * 2)) / 2 - y_offset,
-        )
-        cr.show_text(self.label)
+
+        has_badge = bool(self.show_shortcut and self.shortcut_text)
+        if self.label:
+            layout = create_pango_layout_for_widget(cr, self.label)
+            desc = create_system_font_description()
+            desc.set_weight(Pango.Weight.BOLD)
+            desc.set_size(int(self.font_size * Pango.SCALE))
+            layout.set_font_description(desc)
+            layout.set_alignment(Pango.Alignment.CENTER)
+            _ink, logical = layout.get_pixel_extents()
+            y_offset = 4.0 if has_badge else 0.0
+            cr.move_to(
+                (self.width - logical.width) / 2.0,
+                (self.height - logical.height) / 2.0 - y_offset,
+            )
+            PangoCairo.show_layout(cr, layout)
 
         # Draw shortcut key badge if enabled
-        if self.show_shortcut and self.shortcut_text:
+        if has_badge:
             cr.set_source_rgb(1.0, 0.85, 0.2)  # warm gold / amber
-            badge_font_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
-            cr.set_font_size(badge_font_size)
-            (_bx, _by, bw, _bh, _bdx, _bdy) = cr.text_extents(self.shortcut_text)
+            badge_layout = create_pango_layout_for_widget(cr, self.shortcut_text)
+            bdesc = create_system_font_description()
+            bdesc.set_weight(Pango.Weight.NORMAL)
+            badge_size = 7.5 if len(self.shortcut_text) > 4 else 8.5
+            bdesc.set_size(int(badge_size * Pango.SCALE))
+            badge_layout.set_font_description(bdesc)
+            _bink, blogical = badge_layout.get_pixel_extents()
+            bw = blogical.width
             badge_x = max(2.0, min(float(self.width - bw - 4), (self.width - bw) / 2.0))
-            cr.move_to(badge_x, float(self.height - 5))
-            cr.show_text(self.shortcut_text)
+            cr.move_to(badge_x, float(self.height - blogical.height - 3))
+            PangoCairo.show_layout(cr, badge_layout)
 
         return False
 

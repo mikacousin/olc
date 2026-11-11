@@ -19,7 +19,11 @@ import typing
 import cairo
 from gi.repository import Gdk, Gtk
 
-from olc.gtk3.widgets.common import rounded_rectangle_fill
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+    rounded_rectangle_fill,
+)
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -41,6 +45,7 @@ class TrackChannelsHeader(Gtk.Widget):
         self.radius = 10
 
         self.set_size_request(self.width, self.height)
+        register_system_font_listener(self.queue_draw)
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw header
@@ -56,7 +61,9 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Step text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Step")
@@ -72,7 +79,9 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Cue text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Cue")
@@ -88,7 +97,9 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
@@ -105,7 +116,9 @@ class TrackChannelsHeader(Gtk.Widget):
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                get_system_font_family(),
+                cairo.FontSlant.NORMAL,
+                cairo.FontWeight.BOLD,
             )
             cr.set_font_size(12)
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
@@ -175,6 +188,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self.settings = settings
 
         self.set_size_request(self.width, self.height)
+        register_system_font_listener(self.queue_draw)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
@@ -237,7 +251,9 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.step))
@@ -264,7 +280,9 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Cue number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.number))
@@ -291,7 +309,9 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(12)
         (_x, _y, _w, h, _dx, _dy) = cr.text_extents(self.text)
@@ -340,7 +360,9 @@ class TrackChannelsWidget(Gtk.Widget):
                     color.get("blue", 0.9),
                 )
                 cr.select_font_face(
-                    "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    get_system_font_family(),
+                    cairo.FontSlant.NORMAL,
+                    cairo.FontWeight.BOLD,
                 )
                 cr.set_font_size(12)
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)

@@ -23,6 +23,10 @@ from gi.repository import Gdk, Gtk
 
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.dmx_outputs import DMXOutputsTab
+from olc.gtk3.widgets.common import (
+    get_system_font_family,
+    register_system_font_listener,
+)
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 from olc.gtk3.widgets.curve_point import CurvePointWidget
 from olc.gtk3.widgets.edit_curve import EditCurveWidget
@@ -43,6 +47,7 @@ class CurveValues(Gtk.DrawingArea):
         self.lightshow = lightshow
         self.tabs = tabs
         self.connect("draw", self.on_draw)
+        register_system_font_listener(self.queue_draw)
 
     def on_draw(self, _area: Gtk.Widget, cr: cairo.Context) -> None:
         """Draw grid
@@ -59,7 +64,9 @@ class CurveValues(Gtk.DrawingArea):
             return
         self.set_size_request(1000, 240)
         cr.select_font_face(
-            "DejaVu Sans", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+            get_system_font_family(),
+            cairo.FontSlant.NORMAL,
+            cairo.FontWeight.BOLD,
         )
         cr.set_font_size(8)
         x = 0
