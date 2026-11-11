@@ -128,6 +128,7 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.groups.clear()
     app.core.lightshow.cues.clear()
     app.core.lightshow.patch.patch_empty()
+    app.core.lightshow.curves.reset()
     if app.core.backend and getattr(app.core.backend, "dmx", None):
         dmx = app.core.backend.dmx
         dmx.levels["user"].fill(-1)
@@ -138,6 +139,7 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     if app.tabs:
         for tab_name in list(app.tabs.tabs.keys()):
             app.tabs.close(tab_name)
+    process_events()
 
     # 3. Reset lightshow workspace
     from olc.core.lightshow import default_workspace  # noqa: E402

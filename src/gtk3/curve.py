@@ -309,22 +309,8 @@ class CurveEdition(Gtk.Box):
             return
         curve_nb = curvebutton.curve_nb
         self.lightshow.app.core.action_registry.execute("curve.delete", curve_nb)
-        self.change_curve(0)
-        curve_nb = 0
         tab.refresh()
-        flowboxchild = None
-        for child in tab.flowbox.get_children():
-            if not isinstance(child, Gtk.FlowBoxChild):
-                continue
-            child_widget = child.get_child()
-            if (
-                isinstance(child_widget, CurveButton)
-                and child_widget.curve_nb == curve_nb
-            ):
-                flowboxchild = child
-                break
-        if flowboxchild:
-            tab.flowbox.select_child(flowboxchild)
+        tab.select_curve(0)
         self.lightshow.set_modified()
 
     def limit_press(self, _widget: Gtk.Scale, event: Gdk.EventButton) -> bool:
@@ -481,10 +467,7 @@ class CurveButton(CurveWidget):
         if isinstance(child, Gtk.FlowBoxChild):
             if not child.is_selected():
                 tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-                tab.curve_edition.change_curve(self.curve_nb)
-                if tab.flowbox is not None:
-                    tab.flowbox.unselect_all()
-                    tab.flowbox.select_child(child)
+                tab.select_curve(self.curve_nb)
             elif self.curve is not None and self.curve.editable:
                 self.popover.popup()
 
@@ -536,6 +519,43 @@ class CurvesTab(Gtk.Paned):
         box.set_child_packing(self.scrolled, True, True, 0, Gtk.PackType.START)
         self.add2(box)
 
+        # Select memorized curve or first curve on creation
+        selected_curve = None
+        if hasattr(self.lightshow, "workspace"):
+            tab_settings = self.lightshow.workspace.get("tab_settings", {})
+            curves_settings = tab_settings.get("curves", {})
+            selected_curve = curves_settings.get("selected_curve")
+
+        if (
+            selected_curve is not None
+            and selected_curve in self.lightshow.curves.curves
+        ):
+            self.select_curve(selected_curve)
+        elif self.lightshow.curves.curves:
+            first_curve_nb = next(iter(self.lightshow.curves.curves.keys()))
+            self.select_curve(first_curve_nb)
+
+    def _memorize_selected_curve(self, curve_nb: int) -> None:
+        """Store selected curve number in workspace tab settings."""
+        if hasattr(self.lightshow, "workspace"):
+            tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
+            tab_settings.setdefault("curves", {})["selected_curve"] = curve_nb
+
+    def select_curve(self, curve_nb: int) -> None:
+        """Select a curve by number and update both curve_edition and flowbox."""
+        if curve_nb not in self.lightshow.curves.curves:
+            return
+        self.curve_edition.change_curve(curve_nb)
+        self._memorize_selected_curve(curve_nb)
+        if self.flowbox is not None:
+            self.flowbox.unselect_all()
+            for child in self.flowbox.get_children():
+                if isinstance(child, Gtk.FlowBoxChild):
+                    btn = child.get_child()
+                    if isinstance(btn, CurveButton) and btn.curve_nb == curve_nb:
+                        self.flowbox.select_child(child)
+                        break
+
     def on_new_curve(self, widget: Gtk.Widget) -> None:
         """Create new curve
 
@@ -561,21 +581,8 @@ class CurvesTab(Gtk.Paned):
             )
         else:
             return
-        self.curve_edition.change_curve(curve_nb)
         self.refresh()
-        if self.flowbox is not None:
-            flowboxchild = None
-            for child in self.flowbox.get_children():
-                if isinstance(child, Gtk.FlowBoxChild):
-                    child_btn = child.get_child()
-                    if (
-                        isinstance(child_btn, CurveButton)
-                        and child_btn.curve_nb == curve_nb
-                    ):
-                        flowboxchild = child
-                        break
-            if flowboxchild is not None:
-                self.flowbox.select_child(flowboxchild)
+        self.select_curve(curve_nb)
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
@@ -593,12 +600,15 @@ class CurvesTab(Gtk.Paned):
 
     def refresh(self) -> None:
         """Refresh display"""
+        active_nb = self.curve_edition.curve_nb
         if self.flowbox:
             self.scrolled.remove(self.flowbox)
             self.flowbox.destroy()
             self.populate_curves()
             self.flowbox.invalidate_filter()
             self.window.show_all()
+        if active_nb is not None and active_nb in self.lightshow.curves.curves:
+            self.select_curve(active_nb)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on clicked icon"""

@@ -43,7 +43,28 @@ def test_curves_tab_behavior(app_gui: Application) -> None:
     assert isinstance(curves_tab, CurvesTab)
     assert curves_tab.flowbox is not None
 
-    # 2. Create new Limit curve
+    # Verify first curve is selected upon initial tab creation
+    assert curves_tab.curve_edition.curve_nb == 0
+
+    # 2. Select another curve (e.g. 1) and test persistence across close/re-open
+    curves_tab.select_curve(1)
+    process_events()
+    assert curves_tab.curve_edition.curve_nb == 1
+
+    # Close the curves tab
+    app_gui.tabs.close("curves")
+    process_events()
+    assert app_gui.tabs.tabs.get("curves") is None
+
+    # Re-open the curves tab and verify memorized curve is restored
+    app_gui.activate_action("curves", None)
+    process_events()
+    reopened_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(reopened_tab, CurvesTab)
+    assert reopened_tab.curve_edition.curve_nb == 1
+    curves_tab = reopened_tab
+
+    # 3. Create new Limit curve
     initial_curve_count = len(app_gui.core.lightshow.curves.curves)
     curves_tab.on_new_curve(curves_tab.buttons["limit"])
     process_events()

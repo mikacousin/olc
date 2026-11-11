@@ -279,6 +279,12 @@ class Tabs:
         if isinstance(channels_view, ChannelsView):
             current["view_mode"] = channels_view.get_view_mode_name()
 
+        # CurvesTab / selected_curve
+        if tab_name == "curves":
+            curve_edition = getattr(widget, "curve_edition", None)
+            if curve_edition and getattr(curve_edition, "curve_nb", None) is not None:
+                current["selected_curve"] = curve_edition.curve_nb
+
     def _apply_tab_settings(self, tab_name: str, widget: Gtk.Widget | None) -> None:
         """Apply saved settings from lightshow.workspace to a tab widget."""
         if not widget or not getattr(self.app, "core", None):
@@ -297,6 +303,17 @@ class Tabs:
             channels_view = getattr(widget, "channels_view", widget)
             if isinstance(channels_view, ChannelsView):
                 channels_view.set_view_mode_by_name(view_mode_name)
+
+        # CurvesTab / selected_curve
+        if tab_name == "curves":
+            selected_curve = settings.get("selected_curve")
+            select_fn = getattr(widget, "select_curve", None)
+            if (
+                selected_curve is not None
+                and callable(select_fn)
+                and selected_curve in lightshow.curves.curves
+            ):
+                select_fn(selected_curve)
 
     def get_workspace_state(self) -> dict[str, typing.Any]:
         """Capture the full GUI workspace state."""
