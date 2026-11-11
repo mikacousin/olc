@@ -113,3 +113,42 @@ def test_curves_tab_behavior(app_gui: Application) -> None:
     assert new_curve_number in app_gui.core.lightshow.curves.curves, (
         "Undo should restore the deleted curve."
     )
+
+
+def test_new_segments_and_interpolate_curves_editable_ui(app_gui: Application) -> None:
+    """Verify that creating new Segments/Interpolate curves shows table and buttons."""
+    app_gui.activate_action("curves", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    curves_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(curves_tab, CurvesTab)
+    edition = curves_tab.curve_edition
+    assert edition is not None
+
+    # 1. Create new Segments curve
+    curves_tab.on_new_curve(curves_tab.buttons["segments"])
+    process_events()
+
+    # Verify buttons and table are visible and editable
+    assert edition.points_actions_box.get_visible()
+    assert edition.btn_add_point.get_visible()
+    assert edition.btn_del_point.get_visible()
+    assert edition.table_container.get_visible()
+    assert edition.points_table.get_visible()
+    assert edition.points_table.renderer_in.get_property("editable")
+    assert edition.points_table.renderer_out.get_property("editable")
+    assert len(edition.points_table.store) == 2
+
+    # 2. Create new Interpolate curve
+    curves_tab.on_new_curve(curves_tab.buttons["interpolate"])
+    process_events()
+
+    assert edition.points_actions_box.get_visible()
+    assert edition.btn_add_point.get_visible()
+    assert edition.btn_del_point.get_visible()
+    assert edition.table_container.get_visible()
+    assert edition.points_table.get_visible()
+    assert edition.points_table.renderer_in.get_property("editable")
+    assert edition.points_table.renderer_out.get_property("editable")
+    assert len(edition.points_table.store) == 3

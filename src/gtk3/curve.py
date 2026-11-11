@@ -124,6 +124,8 @@ class CurveEdition(Gtk.Box):
             "clicked", lambda _: self.points_table.delete_point()
         )
         self.points_actions_box.pack_start(self.btn_del_point, False, False, 0)
+        self.points_actions_box.show_all()
+        self.points_actions_box.set_no_show_all(True)
 
         self.toolbar_box.pack_end(self.points_actions_box, False, False, 0)
         self.bottom_box.pack_start(self.toolbar_box, False, False, 0)
@@ -145,6 +147,8 @@ class CurveEdition(Gtk.Box):
             lightshow=self.lightshow, curve_edition=self
         )
         self.table_container.pack_start(self.points_table, True, True, 0)
+        self.table_container.show_all()
+        self.table_container.set_no_show_all(True)
         self.data_hbox.pack_start(self.table_container, True, True, 0)
 
         # Right: Sampled Monitor with header
@@ -616,12 +620,14 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_delete(self) -> None:
         """Delete selected point"""
-        if hasattr(self.curve_edition, "points_table"):
-            self.curve_edition.points_table.delete_point()
-            return
         if not self.curve_edition.curve_nb or self.lightshow.app is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve) or not curve.editable:
+            return
+        if hasattr(self.curve_edition, "points_table"):
+            self.curve_edition.points_table.delete_point()
+            return
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
             for toggle in self.curve_edition.points:
                 if toggle.get_active():
@@ -666,7 +672,7 @@ class CurvesTab(Gtk.Paned):
         if self.curve_edition.curve_nb is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
-        if not isinstance(curve, PointsCurve):
+        if not isinstance(curve, PointsCurve) or not curve.editable:
             return
         last = len(self.curve_edition.points) - 1
         if index is not None and index != 0 and index != last:
@@ -681,7 +687,7 @@ class CurvesTab(Gtk.Paned):
         if self.curve_edition.curve_nb is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
-        if not isinstance(curve, PointsCurve):
+        if not isinstance(curve, PointsCurve) or not curve.editable:
             return
         last = len(self.curve_edition.points) - 1
         if index is not None and index != 0 and index != last:
@@ -696,7 +702,7 @@ class CurvesTab(Gtk.Paned):
         if self.curve_edition.curve_nb is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
-        if not isinstance(curve, PointsCurve):
+        if not isinstance(curve, PointsCurve) or not curve.editable:
             return
         if index is not None and index != 0:
             x = curve.points[index][0]
@@ -709,7 +715,7 @@ class CurvesTab(Gtk.Paned):
         if self.curve_edition.curve_nb is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
-        if not isinstance(curve, PointsCurve):
+        if not isinstance(curve, PointsCurve) or not curve.editable:
             return
         if index is not None and index != 0:
             x = curve.points[index][0]

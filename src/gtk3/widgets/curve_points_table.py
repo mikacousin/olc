@@ -108,10 +108,18 @@ class CurvePointsTable(Gtk.Box):
         try:
             self.store.clear()
             if self.curve_nb is None:
+                self.renderer_in.set_property("editable", False)
+                self.renderer_out.set_property("editable", False)
                 return
             curve = self.lightshow.curves.get_curve(self.curve_nb)
             if not isinstance(curve, PointsCurve):
+                self.renderer_in.set_property("editable", False)
+                self.renderer_out.set_property("editable", False)
                 return
+
+            is_editable = bool(curve.editable)
+            self.renderer_in.set_property("editable", is_editable)
+            self.renderer_out.set_property("editable", is_editable)
 
             for idx, pt in enumerate(curve.points):
                 in_norm = pt[0] / 255.0

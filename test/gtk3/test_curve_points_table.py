@@ -114,7 +114,31 @@ def test_curve_points_table_and_units(app_gui: Application) -> None:
     assert len(curve.points) == 3
     assert len(edition.points_table.store) == 3
 
-    # 9. Test CurveSampledMonitor drawing
+    # 9. Test non-editable curves (buttons hidden, cells non-editable)
+    # 9a. Analytical non-points curve (0: Linear): both table and buttons hidden
+    curves_tab.select_curve(0)
+    process_events()
+    assert not edition.points_actions_box.get_visible()
+    assert not edition.table_container.get_visible()
+
+    # 9b. Predefined points curve (3: IES Square):
+    # table visible in read-only, buttons hidden
+    curves_tab.select_curve(3)
+    process_events()
+    assert not edition.points_actions_box.get_visible()
+    assert edition.table_container.get_visible()
+    assert not edition.points_table.renderer_in.get_property("editable")
+    assert not edition.points_table.renderer_out.get_property("editable")
+
+    # 9c. Switch back to editable custom curve: buttons and cell editing restored
+    curves_tab.select_curve(curve_nb)
+    process_events()
+    assert edition.points_actions_box.get_visible()
+    assert edition.table_container.get_visible()
+    assert edition.points_table.renderer_in.get_property("editable")
+    assert edition.points_table.renderer_out.get_property("editable")
+
+    # 10. Test CurveSampledMonitor drawing
     surface = cairo.ImageSurface(cairo.Format.ARGB32, 500, 60)
     cr = cairo.Context(surface)
     edition.sampled_monitor.on_draw(edition.sampled_monitor, cr)
