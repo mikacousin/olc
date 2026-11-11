@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
     import cairo
 
     from olc.core.lightshow import LightShow
-    from olc.curve import PointsCurve
+    from olc.curve import LimitCurve, PointsCurve
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.tabs_manager import Tabs
@@ -250,6 +250,185 @@ class CurvePointWidget(Gtk.DrawingArea):
         self.set_size_request(8, 8)
         cr.set_line_width(1)
         if self.get_active():
+            cr.set_source_rgba(0.7, 0.5, 0.2, 1.0)
+        else:
+            cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
+        cr.arc(4, 4, 4, 0, 2 * math.pi)
+        cr.fill()
+        return False
+
+
+# pylint: disable=too-many-instance-attributes
+class LimitPointWidget(Gtk.DrawingArea):
+    """Interactive control point widget for LimitCurve."""
+
+    __gtype_name__ = "LimitPointWidget"
+
+    def __init__(
+        self,
+        *args: typing.Any,  # noqa: ANN401
+        curve_nb: int,
+        curve: LimitCurve,
+        lightshow: LightShow | None = None,
+        tabs: Tabs | None = None,
+        **kwds: typing.Any,  # noqa: ANN401
+    ) -> None:
+        super().__init__(*args, **kwds)
+        self.curve_nb = curve_nb
+        self.curve = curve
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.drag_start_limit = curve.limit
+        self.is_dragging = False
+        self.active = False
+        self.offset = Point()
+        self.prev = Point()
+
+        evmask = (
+            Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.BUTTON1_MOTION_MASK
+            | Gdk.EventMask.ENTER_NOTIFY_MASK
+            | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        )
+        self.set_events(evmask)
+        self.connect("button-press-event", self.button_pressed)
+        self.connect("button-release-event", self.button_released)
+        self.connect("motion-notify-event", self.motion_notify)
+        self.connect("enter-notify-event", self.on_enter)
+        self.connect("leave-notify-event", self.on_leave)
+
+    def on_enter(self, widget: Gtk.Widget, _event: Gdk.EventCrossing) -> None:
+        """Set vertical resize cursor on hover."""
+        window = widget.get_window()
+        if window:
+            display = widget.get_display()
+            cursor = Gdk.Cursor.new_from_name(display, "ns-resize")
+            window.set_cursor(cursor)
+
+    def on_leave(self, widget: Gtk.Widget, _event: Gdk.EventCrossing) -> None:
+        """Reset cursor on leave."""
+        window = widget.get_window()
+        if window:
+            window.set_cursor(None)
+
+    def button_pressed(self, widget: Gtk.Widget, event: Gdk.EventButton) -> None:
+        """Handle mouse press on the limit point."""
+        if not self.tabs or event.button != 1:
+            return
+        tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
+        if not tab:
+            return
+        self.drag_start_limit = self.curve.limit
+        self.is_dragging = True
+        self.active = True
+        self.queue_draw()
+
+        parent = widget.get_parent()
+        if not parent:
+            return
+        window = parent.get_window()
+        if not window:
+            return
+        self.offset.x, self.offset.y = window.get_root_origin()
+        coords = parent.translate_coordinates(self.get_toplevel(), 0, 0)
+        if coords:
+            x, y = coords
+            self.offset.x += x
+            self.offset.y += y
+        self.offset.x += int(event.x)
+        self.offset.y += int(event.y)
+
+    def motion_notify(self, widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
+        """Handle dragging the limit point vertically."""
+        if not self.is_dragging:
+            return
+        fixed = typing.cast("Gtk.Fixed", self.get_parent())
+        if not fixed or not self.tabs:
+            return
+        tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
+        if not tab or not tab.curve_edition or not tab.curve_edition.edit_curve:
+            return
+        edit_curve = tab.curve_edition.edit_curve
+        width = edit_curve.width
+        height = edit_curve.height
+
+        y = round(event.y_root + 40 - self.offset.y)
+        # 20 = grid offset delta, 4 = point radius
+        y = max(min(y, height - 20 - 4), 20 - 4)
+
+        if y != self.prev.y:
+            self.prev.y = y
+            y_curve = round(((height - y - 20 - 4) / (height - 40)) * 255)
+            y_curve = max(min(y_curve, 255), 0)
+
+            # Move on Fixed (X locked at width - 24)
+            fixed.move(widget, width - 20 - 4, y)
+
+            self.curve.limit = y_curve
+            self.curve.populate_values()
+
+            # Update coordinates label
+            if tab.curve_edition.label:
+                pct_y = round(y_curve / 2.55, 1)
+                tab.curve_edition.label.set_label(
+                    f"255, {y_curve} (100.0%, {pct_y:.1f}%)"
+                )
+
+            # Update limit_spin in toolbar without triggering feedback loop
+            tab.curve_edition.update_limit_spin_from_curve(y_curve)
+
+            edit_curve.queue_draw()
+            if hasattr(tab.curve_edition, "sampled_monitor"):
+                tab.curve_edition.sampled_monitor.queue_draw()
+            if self.lightshow:
+                self.lightshow.set_modified()
+            dmx_outputs_tab = typing.cast(
+                "DMXOutputsTab", self.tabs.tabs["dmx_outputs"]
+            )
+            if dmx_outputs_tab:
+                dmx_outputs_tab.refresh()
+
+    def button_released(self, _widget: Gtk.Widget, event: Gdk.EventButton) -> None:
+        """Handle releasing mouse button after drag."""
+        if event.button == 1 and self.is_dragging:
+            self.is_dragging = False
+            self.active = False
+            self.queue_draw()
+            final_limit = self.curve.limit
+            if (
+                final_limit != self.drag_start_limit
+                and self.lightshow
+                and self.lightshow.app is not None
+            ):
+                # Restore starting value temporarily so action execution records it
+                # properly
+                self.curve.limit = self.drag_start_limit
+                self.curve.populate_values()
+                self.lightshow.app.core.action_registry.execute(
+                    "curve.set_limit", self.curve_nb, final_limit
+                )
+
+    def update_position(self) -> None:
+        """Reposition point on Fixed based on current curve.limit."""
+        fixed = typing.cast("Gtk.Fixed | None", self.get_parent())
+        if not fixed or not self.tabs:
+            return
+        tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
+        if not tab or not tab.curve_edition or not tab.curve_edition.edit_curve:
+            return
+        edit_curve = tab.curve_edition.edit_curve
+        width = edit_curve.width
+        height = edit_curve.height
+        delta = edit_curve.delta
+        y_wgt = height - delta - round((self.curve.limit / 255) * (height - 2 * delta))
+        fixed.move(self, width - delta - 4, y_wgt - 4)
+
+    def do_draw(self, cr: cairo.Context) -> bool:
+        """Draw interactive limit point."""
+        self.set_size_request(8, 8)
+        cr.set_line_width(1)
+        if self.active or self.is_dragging:
             cr.set_source_rgba(0.7, 0.5, 0.2, 1.0)
         else:
             cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)

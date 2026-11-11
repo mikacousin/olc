@@ -266,6 +266,74 @@ def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
     assert reopened_tab.is_sidebar_visible()
 
     # 5. Paned position
-    reopened_tab.set_position(200)
+    reopened_tab.set_position(150)
     process_events()
-    assert reopened_tab.get_position() == 200
+    assert reopened_tab.get_position() == 150
+
+
+def test_limit_curve_point_and_spin_sync(app_gui: Application) -> None:
+    """Verify LimitCurve interactive point, spinbutton, and width consistency."""
+    from olc.curve import LimitCurve
+
+    app_gui.activate_action("curves", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    curves_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(curves_tab, CurvesTab)
+    edition = curves_tab.curve_edition
+    assert edition is not None
+
+    # 1. Check width of linear curve
+    curves_tab.select_curve(0)
+    process_events()
+    linear_hbox_children = edition.hbox.get_children()
+    assert len(linear_hbox_children) == 1
+    assert linear_hbox_children[0] is edition.fixed
+    assert not edition.limit_box.get_visible()
+    assert edition.limit_point is None
+
+    # 2. Create and select a LimitCurve
+    curves_tab.on_new_curve(curves_tab.buttons["limit"])
+    process_events()
+    limit_nb = list(app_gui.core.lightshow.curves.curves.keys())[-1]
+    curves_tab.select_curve(limit_nb)
+    process_events()
+
+    curve = app_gui.core.lightshow.curves.get_curve(limit_nb)
+    assert isinstance(curve, LimitCurve)
+
+    # 3. Check width consistency (ZÉRO décalage)
+    limit_hbox_children = edition.hbox.get_children()
+    assert len(limit_hbox_children) == 1, "hbox must contain only fixed for LimitCurve"
+    assert limit_hbox_children[0] is edition.fixed
+    assert edition.scale_widget is None, "Vertical scale slider must not exist in hbox"
+
+    # 4. Check limit_point on fixed canvas
+    assert edition.limit_point is not None
+    assert edition.limit_point.get_visible()
+    assert edition.limit_point in edition.fixed.get_children()
+
+    # 5. Check limit_box and limit_spin
+    assert edition.limit_box.get_visible()
+    assert edition.limit_spin.get_visible()
+    # Initial limit is 255 -> 100% in percent mode
+    assert abs(edition.limit_spin.get_value() - 100.0) < 0.2
+
+    # 6. Change limit via spinbutton
+    edition.limit_spin.set_value(50.0)
+    process_events()
+    assert curve.limit == 128
+    # 128 / 255 is 50.196% -> 50.2%
+    assert abs(edition.limit_spin.get_value() - 50.2) < 0.1
+
+    # 7. Undo restores previous limit
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert curve.limit == 255
+
+    # 8. Switching back to linear curve hides limit controls
+    curves_tab.select_curve(0)
+    process_events()
+    assert not edition.limit_box.get_visible()
+    assert edition.limit_point is None

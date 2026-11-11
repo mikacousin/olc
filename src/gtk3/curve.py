@@ -18,12 +18,12 @@ import typing
 from gettext import gettext as _
 from typing import Optional
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gtk
 
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
-from olc.gtk3.widgets.curve_point import CurvePointWidget
+from olc.gtk3.widgets.curve_point import CurvePointWidget, LimitPointWidget
 from olc.gtk3.widgets.curve_points_table import CurvePointsTable
 from olc.gtk3.widgets.curve_sampled_monitor import CurveSampledMonitor
 from olc.gtk3.widgets.curve_units import CurveUnitMode
@@ -60,6 +60,7 @@ class CurveEdition(Gtk.Box):
 
     curve_nb: int | None  # Curve number
     points: list[CurvePointWidget]  # Points widgets
+    limit_point: LimitPointWidget | None
     fixed: Gtk.Fixed | None
     edit_curve: EditCurveWidget | None
     label: Gtk.Label | None
@@ -67,6 +68,11 @@ class CurveEdition(Gtk.Box):
     points_table: CurvePointsTable
     sampled_monitor: CurveSampledMonitor
     remove_box: Gtk.Box | None
+    limit_box: Gtk.Box
+    limit_spin: Gtk.SpinButton
+    updating_limit_spin: bool
+    scale_widget: Gtk.Scale | None
+    updating_slider: bool
 
     def __init__(
         self,
@@ -79,13 +85,13 @@ class CurveEdition(Gtk.Box):
         self.tabs = tabs
         self.curve_nb = None
         self.points = []
+        self.limit_point = None
         self.fixed = None
         self.edit_curve = None
         self.label = None
         self.scale_widget = None
         self.updating_slider = False
-        self._is_dragging_limit = False
-        self._drag_start_limit = 255
+        self.updating_limit_spin = False
         self.pending_active_point_idx = None
         self.remove_box = None
 
@@ -119,6 +125,29 @@ class CurveEdition(Gtk.Box):
         self.unit_combo.set_active_id(CurveUnitMode.PERCENT.value)
         self.unit_combo.connect("changed", self._on_unit_mode_changed)
         self.toolbar_box.pack_start(self.unit_combo, False, False, 0)
+
+        # Limit control for LimitCurve
+        self.limit_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.limit_box.set_margin_start(16)
+        limit_label = Gtk.Label(label=_("Limit:"))
+        self.limit_box.pack_start(limit_label, False, False, 0)
+
+        adj = Gtk.Adjustment(
+            value=100.0,
+            lower=0.0,
+            upper=100.0,
+            step_increment=1.0,
+            page_increment=10.0,
+            page_size=0.0,
+        )
+        self.limit_spin = Gtk.SpinButton(adjustment=adj, climb_rate=1.0, digits=1)
+        self.limit_spin.set_numeric(True)
+        self.limit_spin.connect("value-changed", self._on_limit_spin_changed)
+        self.limit_box.pack_start(self.limit_spin, False, False, 0)
+        self.limit_box.show_all()
+        self.limit_box.set_no_show_all(True)
+        self.limit_box.set_visible(False)
+        self.toolbar_box.pack_start(self.limit_box, False, False, 0)
 
         # Action buttons for PointsCurve
         self.points_actions_box = Gtk.Box(
@@ -187,6 +216,7 @@ class CurveEdition(Gtk.Box):
         mode = CurveUnitMode(active_id)
         self.points_table.set_unit_mode(mode)
         self.sampled_monitor.set_unit_mode(mode)
+        self._update_limit_spin_config()
 
     def change_curve(self, curve_nb: int) -> None:
         """User selected a curve
@@ -211,6 +241,10 @@ class CurveEdition(Gtk.Box):
             self.header.pack_end(self.remove_box)
             self.remove_box.show_all()
         self.scale_widget = None
+        if self.limit_point is not None:
+            self.limit_point.destroy()
+            self.limit_point = None
+
         # Display curve and tools
         for child in self.hbox.get_children():
             child.destroy()
@@ -223,6 +257,8 @@ class CurveEdition(Gtk.Box):
         self.fixed.put(self.label, 0, 0)
         if isinstance(curve, PointsCurve) and curve.editable:
             self.points_curve()
+        elif isinstance(curve, LimitCurve) and curve.editable:
+            self.limit_curve_point()
         self.hbox.add(self.fixed)
 
         # Update points table & sampled monitor
@@ -235,26 +271,14 @@ class CurveEdition(Gtk.Box):
             self.points_actions_box.set_visible(False)
             self.points_table.set_curve(None)
 
-        self.sampled_monitor.set_curve(curve_nb)
-
-        # Add special widgets
+        # LimitCurve toolbar controls
         if isinstance(curve, LimitCurve):
-            adj = Gtk.Adjustment(
-                value=curve.limit,
-                lower=0,
-                upper=255,
-                step_increment=1,
-                page_increment=10,
-                page_size=0,
-            )
-            scale = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=adj)
-            scale.set_digits(0)
-            scale.set_inverted(True)
-            scale.connect("value-changed", self.limit_changed)
-            scale.connect("button-press-event", self.limit_press)
-            scale.connect("button-release-event", self.limit_release)
-            self.hbox.add(scale)
-            self.scale_widget = scale
+            self.limit_box.set_visible(True)
+            self._update_limit_spin_config()
+        else:
+            self.limit_box.set_visible(False)
+
+        self.sampled_monitor.set_curve(curve_nb)
         self.values.queue_draw()
         self.show_all()
 
@@ -327,72 +351,115 @@ class CurveEdition(Gtk.Box):
         tab.select_curve(0)
         self.lightshow.set_modified()
 
-    def limit_press(self, _widget: Gtk.Scale, event: Gdk.EventButton) -> bool:
-        """LimitCurve slider clicked
+    def _update_limit_spin_config(self) -> None:
+        """Update limit spinbutton range and digits based on active unit mode."""
+        active_id = self.unit_combo.get_active_id()
+        mode = CurveUnitMode(active_id) if active_id else CurveUnitMode.PERCENT
 
-        Args:
-            _widget: Scale
-            event: Event
-        """
-        if event.button == 1 and self.curve_nb is not None:
-            curve = self.lightshow.curves.get_curve(self.curve_nb)
-            if isinstance(curve, LimitCurve):
-                self._drag_start_limit = curve.limit
-                self._is_dragging_limit = True
-        return False
+        curve = (
+            self.lightshow.curves.get_curve(self.curve_nb)
+            if self.curve_nb is not None
+            else None
+        )
+        norm = (curve.limit / 255.0) if isinstance(curve, LimitCurve) else 1.0
 
-    def limit_release(self, widget: Gtk.Scale, event: Gdk.EventButton) -> bool:
-        """LimitCurve slider released
+        self.updating_limit_spin = True
+        try:
+            if mode == CurveUnitMode.PERCENT:
+                self.limit_spin.set_range(0.0, 100.0)
+                self.limit_spin.set_increments(1.0, 10.0)
+                self.limit_spin.set_digits(1)
+                self.limit_spin.set_value(round(norm * 100.0, 1))
+            elif mode == CurveUnitMode.NORMALIZED:
+                self.limit_spin.set_range(0.0, 1.0)
+                self.limit_spin.set_increments(0.01, 0.1)
+                self.limit_spin.set_digits(3)
+                self.limit_spin.set_value(round(norm, 3))
+            elif mode == CurveUnitMode.DMX_8BIT:
+                self.limit_spin.set_range(0.0, 255.0)
+                self.limit_spin.set_increments(1.0, 10.0)
+                self.limit_spin.set_digits(0)
+                self.limit_spin.set_value(round(norm * 255.0))
+            elif mode == CurveUnitMode.DMX_16BIT:
+                self.limit_spin.set_range(0.0, 65535.0)
+                self.limit_spin.set_increments(256.0, 2560.0)
+                self.limit_spin.set_digits(0)
+                self.limit_spin.set_value(round(norm * 65535.0))
+        finally:
+            self.updating_limit_spin = False
 
-        Args:
-            widget: Scale
-            event: Event
-        """
-        if self.lightshow.app is None:
-            return False
-        if event.button == 1 and getattr(self, "_is_dragging_limit", False):
-            self._is_dragging_limit = False
-            if self.curve_nb is not None:
-                curve = self.lightshow.curves.get_curve(self.curve_nb)
-                if isinstance(curve, LimitCurve):
-                    final_val = int(widget.get_value())
-                    if final_val != self._drag_start_limit:
-                        # Restore starting value temporarily so action execution
-                        # records it as old_value
-                        curve.limit = self._drag_start_limit
-                        curve.populate_values()
-                        self.lightshow.app.core.action_registry.execute(
-                            "curve.set_limit", self.curve_nb, final_val
-                        )
-        return False
-
-    def limit_changed(self, widget: Gtk.Scale) -> None:
-        """LimitCurve value has been changed
-
-        Args:
-            widget: Scale
-        """
-        if self.lightshow.app is None:
+    def _on_limit_spin_changed(self, spin: Gtk.SpinButton) -> None:
+        """Handle user changing limit via SpinButton."""
+        if getattr(self, "updating_limit_spin", False):
             return
-        if self.curve_nb is None or getattr(self, "updating_slider", False):
+        if self.curve_nb is None or self.lightshow.app is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_nb)
         if not isinstance(curve, LimitCurve):
             return
 
-        if getattr(self, "_is_dragging_limit", False):
-            # During drag: update curve value in-place and redraw UI
-            curve.limit = int(widget.get_value())
-            curve.populate_values()
-            self.header.set_title(get_curve_display_name(curve))
-            self.lightshow.app.core.emit("curve.changed", self.curve_nb)
+        active_id = self.unit_combo.get_active_id()
+        mode = CurveUnitMode(active_id) if active_id else CurveUnitMode.PERCENT
+        val = spin.get_value()
+
+        if mode == CurveUnitMode.PERCENT:
+            norm = val / 100.0
+        elif mode == CurveUnitMode.NORMALIZED:
+            norm = val
+        elif mode == CurveUnitMode.DMX_8BIT:
+            norm = val / 255.0
+        elif mode == CurveUnitMode.DMX_16BIT:
+            norm = val / 65535.0
         else:
-            # Discrete change (e.g. keyboard arrows, scroll wheel, or click without
-            # drag)
+            norm = val / 100.0
+
+        new_limit = max(0, min(255, int(round(norm * 255.0))))
+        if new_limit != curve.limit:
             self.lightshow.app.core.action_registry.execute(
-                "curve.set_limit", self.curve_nb, int(widget.get_value())
+                "curve.set_limit", self.curve_nb, new_limit
             )
-            self.header.set_title(get_curve_display_name(curve))
+
+    def update_limit_spin_from_curve(self, limit_val: int) -> None:
+        """Update spinbutton value from on-graph dragging."""
+        self.updating_limit_spin = True
+        try:
+            active_id = self.unit_combo.get_active_id()
+            mode = CurveUnitMode(active_id) if active_id else CurveUnitMode.PERCENT
+            norm = limit_val / 255.0
+            if mode == CurveUnitMode.PERCENT:
+                self.limit_spin.set_value(round(norm * 100.0, 1))
+            elif mode == CurveUnitMode.NORMALIZED:
+                self.limit_spin.set_value(round(norm, 3))
+            elif mode == CurveUnitMode.DMX_8BIT:
+                self.limit_spin.set_value(limit_val)
+            elif mode == CurveUnitMode.DMX_16BIT:
+                self.limit_spin.set_value(round(norm * 65535.0))
+        finally:
+            self.updating_limit_spin = False
+
+    def limit_curve_point(self) -> None:
+        """Place interactive control point on LimitCurve."""
+        if self.limit_point is not None:
+            self.limit_point.destroy()
+            self.limit_point = None
+        if self.curve_nb is None or self.edit_curve is None or self.fixed is None:
+            return
+        curve = self.lightshow.curves.get_curve(self.curve_nb)
+        if not isinstance(curve, LimitCurve):
+            return
+
+        self.limit_point = LimitPointWidget(
+            curve_nb=self.curve_nb,
+            curve=curve,
+            lightshow=self.lightshow,
+            tabs=self.tabs,
+        )
+        width = self.edit_curve.width
+        height = self.edit_curve.height
+        delta = self.edit_curve.delta
+        y_wgt = height - delta - round((curve.limit / 255) * (height - 2 * delta))
+        self.fixed.put(self.limit_point, width - delta - 4, y_wgt - 4)
+        self.limit_point.show()
 
     def on_toggled(self, button: CurvePointWidget, _name: object) -> None:
         """Curve point clicked

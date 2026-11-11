@@ -210,16 +210,21 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         # Update title
         curves_tab.curve_edition.header.set_title(get_curve_display_name(curve))
 
-        # Update scale slider value (safely using updating flag to avoid loops)
-        if (
-            isinstance(curve, LimitCurve)
-            and curves_tab.curve_edition.scale_widget is not None
-        ):
-            curves_tab.curve_edition.updating_slider = True
-            try:
-                curves_tab.curve_edition.scale_widget.set_value(curve.limit)
-            finally:
-                curves_tab.curve_edition.updating_slider = False
+        # Update limit curve controls
+        if isinstance(curve, LimitCurve):
+            if hasattr(curves_tab.curve_edition, "update_limit_spin_from_curve"):
+                curves_tab.curve_edition.update_limit_spin_from_curve(curve.limit)
+            if (
+                hasattr(curves_tab.curve_edition, "limit_point")
+                and curves_tab.curve_edition.limit_point is not None
+            ):
+                curves_tab.curve_edition.limit_point.update_position()
+            if curves_tab.curve_edition.scale_widget is not None:
+                curves_tab.curve_edition.updating_slider = True
+                try:
+                    curves_tab.curve_edition.scale_widget.set_value(curve.limit)
+                finally:
+                    curves_tab.curve_edition.updating_slider = False
 
         # Update points if it's a PointsCurve
         if isinstance(curve, PointsCurve):
