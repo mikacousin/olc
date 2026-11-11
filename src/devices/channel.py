@@ -142,8 +142,10 @@ class DmxAddress:
 
     @classmethod
     def parse(cls, s: str) -> DmxAddress:
-        """Parse 'universe.address' or 'U<universe>:<address>' into DmxAddress."""
-        if ":" in s:
+        """Parse 'universe/address', 'universe.address', or 'U<universe>:<address>'."""
+        if "/" in s:
+            parts = s.split("/")
+        elif ":" in s:
             parts = s.lstrip("Uu").split(":")
         elif "." in s:
             parts = s.split(".")
@@ -172,7 +174,7 @@ class DmxAddress:
         return DmxAddress(univ, addr)
 
     def __str__(self) -> str:
-        return f"{self.universe}.{self.address}"
+        return f"{self.universe}/{self.address}"
 
 
 @dataclass

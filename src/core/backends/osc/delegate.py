@@ -1412,29 +1412,48 @@ class OSCDelegate:
 
         Args:
             address: The OSC address (/olc/patch/dimmer).
-            args: [device_id, universe, address] or [device_id, "universe.address"].
+            args: [device_id, universe, address] or [device_id, "universe/address"].
         """
         try:
             if not args or len(args) < 2:
                 self._send_patch_status(
                     "ERROR",
                     address,
-                    "Usage: [device_id, universe, address] or [device_id, 'univ.addr']",
+                    "Usage: [device_id, universe, address] or [device_id, 'univ/addr']",
                 )
                 return
 
             device_id = int(args[0])
             if len(args) == 2 and isinstance(args[1], str):
-                parts = args[1].split(".")
+                addr_str = args[1].strip()
+                if "/" in addr_str:
+                    parts = addr_str.split("/")
+                elif "." in addr_str:
+                    parts = addr_str.split(".")
+                else:
+                    self._send_patch_status(
+                        "ERROR",
+                        address,
+                        f"Invalid address '{args[1]}', expected 'universe/address'",
+                    )
+                    return
                 if len(parts) != 2:
                     self._send_patch_status(
                         "ERROR",
                         address,
-                        f"Invalid address '{args[1]}', expected 'universe.address'",
+                        f"Invalid address '{args[1]}', expected 'universe/address'",
                     )
                     return
-                universe = int(parts[0])
-                dmx_address = int(parts[1])
+                try:
+                    universe = int(parts[0])
+                    dmx_address = int(parts[1])
+                except ValueError:
+                    self._send_patch_status(
+                        "ERROR",
+                        address,
+                        f"Invalid integer in address '{args[1]}'",
+                    )
+                    return
             elif len(args) >= 3:
                 universe = int(args[1])
                 dmx_address = int(args[2])
@@ -1459,7 +1478,7 @@ class OSCDelegate:
                 "",
             )
             self._send_patch_status(
-                "OK", address, f"Device {device_id} patched to {universe}.{dmx_address}"
+                "OK", address, f"Device {device_id} patched to {universe}/{dmx_address}"
             )
         except Exception as err:  # pylint: disable=broad-exception-caught
             self._send_patch_status("ERROR", address, str(err))
@@ -1530,7 +1549,7 @@ class OSCDelegate:
                 "OK",
                 address,
                 f"Device {device_id} ({fixture_def.full_name}) "
-                f"patched to {universe}.{dmx_address}",
+                f"patched to {universe}/{dmx_address}",
             )
         except Exception as err:  # pylint: disable=broad-exception-caught
             self._send_patch_status("ERROR", address, str(err))

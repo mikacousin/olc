@@ -390,12 +390,12 @@ def test_osc_delegate_patch_dimmer() -> None:
         "/olc/patch/status",
         "OK",
         "/olc/patch/dimmer",
-        "Device 1 patched to 1.10",
+        "Device 1 patched to 1/10",
     )
 
-    # 2. Valid patch with string format "universe.address"
+    # 2. Valid patch with format "universe/address"
     mock_engine.publish_osc.reset_mock()
-    delegate._patch_dimmer("/olc/patch/dimmer", [2, "1.20"])
+    delegate._patch_dimmer("/olc/patch/dimmer", [2, "1/20"])
     assert 2 in app.lightshow.patch.devices
     dev2 = app.lightshow.patch.devices[2]
     assert dev2.universe == 1
@@ -405,7 +405,7 @@ def test_osc_delegate_patch_dimmer() -> None:
         "/olc/patch/status",
         "OK",
         "/olc/patch/dimmer",
-        "Device 2 patched to 1.20",
+        "Device 2 patched to 1/20",
     )
 
     # 3. Invalid string format
@@ -445,6 +445,21 @@ def test_osc_delegate_patch_dimmer() -> None:
     app.history.redo()
     assert 2 in app.lightshow.patch.devices
 
+    # 7. Backward compatibility with dot notation "1.25"
+    mock_engine.publish_osc.reset_mock()
+    delegate._patch_dimmer("/olc/patch/dimmer", [22, "1.25"])
+    assert 22 in app.lightshow.patch.devices
+    dev22 = app.lightshow.patch.devices[22]
+    assert dev22.universe == 1
+    assert dev22.address == 25
+    mock_engine.publish_osc.assert_any_call(
+        "patch",
+        "/olc/patch/status",
+        "OK",
+        "/olc/patch/dimmer",
+        "Device 22 patched to 1/25",
+    )
+
 
 def test_osc_delegate_patch_device() -> None:
     """Test /olc/patch/device endpoint in OSCDelegate."""
@@ -471,7 +486,7 @@ def test_osc_delegate_patch_device() -> None:
         "/olc/patch/status",
         "OK",
         "/olc/patch/device",
-        "Device 10 (Generic LED RGBW) patched to 1.30",
+        "Device 10 (Generic LED RGBW) patched to 1/30",
     )
 
     # 2. Unknown fixture definition

@@ -56,17 +56,29 @@ def test_dmx_address_basics() -> None:
     addr = DmxAddress(1, 10)
     assert addr.universe == 1
     assert addr.address == 10
-    assert str(addr) == "1.10"
+    assert str(addr) == "1/10"
     assert repr(addr) == "DmxAddress(universe=1, address=10)"
 
 
 def test_dmx_address_parse() -> None:
-    addr = DmxAddress.parse("2.512")
+    # Primary canonical notation with '/'
+    addr = DmxAddress.parse("2/512")
     assert addr.universe == 2
     assert addr.address == 512
 
+    # Backward compatibility with '.' and ':'
+    addr_dot = DmxAddress.parse("2.512")
+    assert addr_dot.universe == 2
+    assert addr_dot.address == 512
+
+    addr_colon = DmxAddress.parse("U1:10")
+    assert addr_colon.universe == 1
+    assert addr_colon.address == 10
+
     with pytest.raises(ValueError):
         DmxAddress.parse("invalid")
+    with pytest.raises(ValueError):
+        DmxAddress.parse("1/513")
     with pytest.raises(ValueError):
         DmxAddress.parse("1.513")
 
