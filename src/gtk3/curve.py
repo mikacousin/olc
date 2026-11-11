@@ -203,7 +203,7 @@ class CurveEdition(Gtk.Box):
         self.bottom_box.pack_start(self.table_container, True, True, 0)
 
         vbox.pack_start(self.bottom_box, True, True, 0)
-        self.add(vbox)
+        self.pack_start(vbox, True, True, 0)
 
         # Backward compatibility wrapper for values.queue_draw()
         self.values = _ValuesCompatibilityWrapper(self)
@@ -693,6 +693,7 @@ class CurvesTab(Gtk.Box):
                     if isinstance(btn, CurveButton) and btn.curve_nb == curve_nb:
                         self.flowbox.select_child(child)
                         break
+        self.check_resize()
 
     def on_new_curve(self, widget: Gtk.Widget) -> None:
         """Create new curve

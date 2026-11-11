@@ -147,3 +147,43 @@ def test_curve_points_table_and_units(app_gui: Application) -> None:
     surface = cairo.ImageSurface(cairo.Format.ARGB32, 500, 60)
     cr = cairo.Context(surface)
     edition.sampled_monitor.on_draw(edition.sampled_monitor, cr)
+
+
+def test_curve_points_table_full_height_and_scrollbar(app_gui: Application) -> None:
+    """Verify points table vertical expansion to the bottom and automatic scrollbar."""
+    app_gui.activate_action("curves", None)
+    process_events()
+    if app_gui.window:
+        app_gui.window.show_all()
+    process_events()
+
+    assert app_gui.tabs is not None
+    curves_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(curves_tab, CurvesTab)
+    edition = curves_tab.curve_edition
+    assert edition is not None
+
+    # 1. Verify vbox child packing in CurveEdition has expand=True
+    vbox = edition.get_children()[1]
+    packing = edition.query_child_packing(vbox)
+    assert packing[0] is True  # expand == True
+    assert packing[1] is True  # fill == True
+
+    # 2. Select curve 2 (SegmentsCurve with 2 points)
+    curves_tab.select_curve(2)
+    process_events()
+
+    # The table must be expanded and occupy substantially more than min_height (70px)
+    scrolled = edition.points_table.scrolled
+    assert scrolled.get_allocated_height() > 150
+    # For only 2 points, content fits in allocated height, so scrollbar is not visible
+    assert not scrolled.get_vscrollbar().get_child_visible()
+
+    # 3. Select curve 3 (IES Square, 19 points)
+    curves_tab.select_curve(3)
+    process_events()
+
+    # Content height exceeds visible page size, vertical scrollbar becomes visible
+    v_adj = scrolled.get_vadjustment()
+    assert v_adj.get_upper() > v_adj.get_page_size()
+    assert scrolled.get_vscrollbar().get_child_visible()

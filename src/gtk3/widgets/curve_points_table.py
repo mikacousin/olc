@@ -51,7 +51,7 @@ class CurvePointsTable(Gtk.Box):
         # Scrolled window
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scrolled.set_min_content_height(140)
+        self.scrolled.set_min_content_height(70)
 
         # Store: [index, label, in_formatted, out_formatted, in_norm, out_norm]
         self.store = Gtk.ListStore(int, str, str, str, float, float)
