@@ -28,7 +28,7 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
-    from olc.midi import Midi
+    from olc.core.backends.midi import Midi
 
 
 # pylint: disable=too-many-instance-attributes

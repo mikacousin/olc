@@ -24,8 +24,8 @@ import numpy as np
 import pytest
 
 from olc.core.app import CoreApplication
+from olc.core.backends.midi import Midi
 from olc.define import MAX_CHANNELS
-from olc.midi import Midi
 
 
 def test_midi_headless_execution() -> None:
@@ -82,5 +82,46 @@ def test_midi_headless_execution() -> None:
     assert core_app.crossfade is not None
     assert core_app.crossfade.scale_a.value_255 == 180
     assert core_app.crossfade.scale_a.get_value() == pytest.approx(180 / 255.0)
+
+    midi.stop()
+
+
+def test_midi_package_has_no_gtk_dependency() -> None:
+    """The MIDI backend must not import GTK/GLib/Gdk/Gio nor olc.gtk3."""
+    import pathlib
+
+    import olc.core.backends.midi as midi_pkg
+
+    package_dir = pathlib.Path(midi_pkg.__file__).parent
+    for path in package_dir.glob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        assert "gi.repository" not in text, path.name
+        assert "olc.gtk3" not in text, path.name
+
+
+def test_midi_headless_feedback_and_navigation() -> None:
+    """Core events drive MIDI feedback and navigation keys run Core actions."""
+    settings = MagicMock()
+    settings.get_strv.return_value = []
+    core_app = CoreApplication(settings)
+    midi = core_app.init_midi()
+    assert core_app.midi is midi
+
+    # Feedback: fader level event updates MIDI fader anchor state
+    core_app.emit("fader.level_changed", 1, 0.5)
+    assert midi.faders.faders[0].value == 0.0
+
+    # Navigation keys use Core actions (no window needed)
+    msg = mido.Message("note_on", channel=0, note=0, velocity=127)
+    core_app.selected_channels = [5]
+    core_app.last_selected_channel = 5
+    midi.messages.notes._execute_midi_action("right", msg)
+    assert core_app.selected_channels == [6]
+    midi.messages.notes._execute_midi_action("left", msg)
+    assert core_app.selected_channels == [5]
+
+    # Record/Time keys append to the command line
+    midi.messages.notes._execute_midi_action("time", msg)
+    assert "TIME" in core_app.commandline.get_string()
 
     midi.stop()

@@ -121,6 +121,10 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             ),
         )
         self.app.core.subscribe(
+            "midi.ports_changed",
+            lambda: self._run_idle(self._on_midi_ports_changed),
+        )
+        self.app.core.subscribe(
             "midi.port_mode_changed",
             lambda port_name, mode: self._run_idle(
                 self._on_midi_port_mode_changed, port_name, mode
@@ -226,12 +230,6 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             else:
                 self.app.tabs.apply_workspace_state(default_workspace())
             self.app.tabs.refresh_all()
-        if (
-            self.app.midi
-            and self.app.midi.messages
-            and getattr(self.app.midi.messages, "lcd", None)
-        ):
-            self.app.midi.messages.lcd.show_faders()
         return False
 
     def _safe_on_show_imported(self) -> bool:
@@ -486,6 +484,17 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             settings_tab.update_osc_subscribers(subscribers)
+        return False
+
+    def _on_midi_ports_changed(self) -> bool:
+        """Refresh the settings tab when available MIDI ports change.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings"):
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.refresh()
         return False
 
     def _on_midi_port_toggled(self, port_name: str, enable: bool) -> bool:

@@ -21,49 +21,48 @@ import mido
 from olc.define import MAX_FADER_PAGE
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.application import Application
+    from olc.core.app import CoreApplication
+    from olc.core.backends.midi import Midi
     from olc.independent import Independent
-    from olc.midi import Midi
 
 
 # Mapping for simple actions to avoid duplicating methods.
 # Format: "action_name": ("virtual_console_widget_name",
 #                         "core_action_name",
-#                         "command_line_string",
-#                         "keypress_name")
+#                         "command_line_string")
 SIMPLE_ACTION_MAPPING = {
-    "at": ("at_level", "channel.set_level_from_cmd", None, "equal"),
-    "percent_plus": ("percent_plus", "channel.level_plus", None, "exclam"),
-    "percent_minus": ("percent_minus", "channel.level_minus", None, "colon"),
-    "time": ("time", None, None, "t"),
-    "delay": ("delay", None, None, "d"),
-    "ch": ("channel", "channel.select_active", None, "c"),
-    "thru": ("thru", "channel.select_thru", None, "greater"),
-    "plus": ("plus", "channel.select_add", None, "plus"),
-    "minus": ("minus", "channel.select_remove", None, "minus"),
-    "all": ("all", "channel.select_all", None, "a"),
-    "right": ("right", None, None, "right"),
-    "left": ("left", None, None, "left"),
-    "up": ("up", None, None, "up"),
-    "down": ("down", None, None, "down"),
-    "clear": ("clear", "channel.select_none", None, "backspace"),
-    "update": ("update", None, None, "u"),
-    "record": ("record", None, None, "r"),
-    "number_0": ("zero", None, "0", None),
-    "number_1": ("one", None, "1", None),
-    "number_2": ("two", None, "2", None),
-    "number_3": ("three", None, "3", None),
-    "number_4": ("four", None, "4", None),
-    "number_5": ("five", None, "5", None),
-    "number_6": ("six", None, "6", None),
-    "number_7": ("seven", None, "7", None),
-    "number_8": ("eight", None, "8", None),
-    "number_9": ("nine", None, "9", None),
-    "dot": ("dot", None, ".", None),
-    "slash": ("slash", None, "/", None),
-    "cue": ("cue", None, "CUE ", "q"),
-    "unblock": ("unblock", None, " UNBLOCK ", None),
-    "sneak": ("sneak", None, " SNEAK ", None),
+    "at": ("at_level", "channel.set_level_from_cmd", None),
+    "percent_plus": ("percent_plus", "channel.level_plus", None),
+    "percent_minus": ("percent_minus", "channel.level_minus", None),
+    "time": ("time", None, " TIME "),
+    "delay": ("delay", None, " DELAY "),
+    "ch": ("channel", "channel.select_active", None),
+    "thru": ("thru", "channel.select_thru", None),
+    "plus": ("plus", "channel.select_add", None),
+    "minus": ("minus", "channel.select_remove", None),
+    "all": ("all", "channel.select_all", None),
+    "right": ("right", "channel.select_next", None),
+    "left": ("left", "channel.select_previous", None),
+    "up": ("up", "commandline.history_prev", None),
+    "down": ("down", "commandline.history_next", None),
+    "clear": ("clear", "channel.select_none", None),
+    "update": ("update", None, " UPDATE "),
+    "record": ("record", None, " RECORD "),
+    "number_0": ("zero", None, "0"),
+    "number_1": ("one", None, "1"),
+    "number_2": ("two", None, "2"),
+    "number_3": ("three", None, "3"),
+    "number_4": ("four", None, "4"),
+    "number_5": ("five", None, "5"),
+    "number_6": ("six", None, "6"),
+    "number_7": ("seven", None, "7"),
+    "number_8": ("eight", None, "8"),
+    "number_9": ("nine", None, "9"),
+    "dot": ("dot", None, "."),
+    "slash": ("slash", None, "/"),
+    "cue": ("cue", None, "CUE "),
+    "unblock": ("unblock", None, " UNBLOCK "),
+    "sneak": ("sneak", None, " SNEAK "),
 }
 
 
@@ -75,7 +74,7 @@ class MidiNotes:
     cc_notes: dict[str, list[int]]
     zoom: bool
 
-    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
         self.midi = midi
         self.app_delegate = app_delegate
         self.zoom = False
@@ -604,7 +603,7 @@ class MidiNotes:
         if not mapping:
             return
 
-        vc_attr, core_action_name, string_to_add, keypress_name = mapping
+        vc_attr, core_action_name, string_to_add = mapping
 
         if msg.velocity == 0:
             if vc_attr:
@@ -619,9 +618,3 @@ class MidiNotes:
                 )
             elif core_action_name is not None:
                 self.app_delegate.core.action_registry.execute(core_action_name)
-            elif keypress_name is not None:
-                window = getattr(self.app_delegate, "window", None)
-                if window is not None:
-                    keypress_func = getattr(window, f"_keypress_{keypress_name}", None)
-                    if keypress_func:
-                        keypress_func()

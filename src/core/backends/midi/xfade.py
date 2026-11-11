@@ -18,17 +18,17 @@ import typing
 
 import mido
 
-from olc.midi.fader import MIDIFader
+from olc.core.backends.midi.fader import MIDIFader
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.application import Application
-    from olc.midi import Midi
+    from olc.core.app import CoreApplication
+    from olc.core.backends.midi import Midi
 
 
 class MidiXFade:
     """MIDI manual Crossfade"""
 
-    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
         self.midi = midi
         self.app_delegate = app_delegate
         self.fader_in = MIDIFader()

@@ -36,11 +36,11 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     import olc.files.import_file
+    from olc.core.backends.midi import Midi
     from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
-    from olc.midi import Midi
 
 
 def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:

@@ -23,7 +23,7 @@ from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.midi import Midi
+    from olc.core.backends.midi import Midi
 
 
 class ToggleWidget(Gtk.ToggleButton):

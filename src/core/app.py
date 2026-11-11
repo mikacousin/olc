@@ -19,6 +19,7 @@ import typing
 
 from olc.actions import register_all_actions
 from olc.core.backends import DMXBackend
+from olc.core.binding import MidiBinding, OscBinding
 from olc.core.commandline import CoreCommandLine
 from olc.core.crossfade import CrossFade
 from olc.core.event import EventDispatcher
@@ -30,9 +31,9 @@ from olc.core.sneak import SneakController
 from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
+    from olc.core.backends.midi import Midi
     from olc.core.backends.osc.delegate import OSCDelegate
     from olc.core.engine import CoreEngine
-    from olc.midi import Midi
 
 
 # pylint: disable=too-many-instance-attributes
@@ -164,12 +165,51 @@ class CoreApplication(EventDispatcher):
         """Register all concrete actions from the actions package."""
         register_all_actions(self.action_registry)
 
+    def init_midi(
+        self, on_ports_changed: typing.Optional[typing.Callable[[], None]] = None
+    ) -> Midi:
+        """Create the MIDI controller (if needed) and register default bindings.
+
+        Args:
+            on_ports_changed: Optional callback invoked when MIDI ports change.
+
+        Returns:
+            The MIDI controller attached to this application.
+        """
+        if self.midi is not None:
+            return self.midi
+
+        # pylint: disable=import-outside-toplevel
+        from olc.core.backends.midi import Midi
+
+        self.midi = Midi(typing.cast(typing.Any, self), on_ports_changed)
+        for name, note in [
+            ("playback.go", 94),
+            ("playback.go_back", 86),
+            ("playback.pause", 93),
+            ("playback.sequence_minus", 91),
+            ("playback.sequence_plus", 92),
+        ]:
+            self.action_registry.register_binding(
+                name, MidiBinding(name, "note", 0, note)
+            )
+            self.action_registry.register_binding(
+                name, OscBinding(name, f"/olc/{name.replace('.', '/')}")
+            )
+        self.midi.messages.lcd.show_faders()
+        return self.midi
+
     def start(self) -> None:
         """Start backend hardware and communications services."""
         self.backend = DMXBackend(self.lightshow)
         if self.engine:
             self.engine.start()
-        # OSC and MIDI are started by their respective managers/launchers
+        # OSC is started by its manager/launcher
+        if self.midi is None:
+            try:
+                self.init_midi()
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                print(f"[MIDI] Unable to initialize MIDI: {err}")
 
     def stop(self) -> None:
         """Gracefully stop DMX and MIDI services."""

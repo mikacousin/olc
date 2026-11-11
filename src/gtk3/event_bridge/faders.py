@@ -59,7 +59,7 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
         )
 
     def _on_fader_page_changed(self, _page: int) -> bool:
-        """Synchronize fader page changes to the GUI and MIDI controller.
+        """Synchronize fader page changes to the GUI.
 
         Args:
             _page: Active page number.
@@ -69,13 +69,10 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
         """
         if self.app.virtual_console:
             self.app.virtual_console.update_page_display()
-        else:
-            if self.app.midi is not None:
-                self.app.midi.update_faders()
         return False
 
     def _on_fader_level_changed(self, fader_index: int, level: float) -> bool:
-        """Synchronize fader level to GUI or MIDI controller.
+        """Synchronize fader level to GUI.
 
         Args:
             fader_index: Fader index (1-based).
@@ -90,10 +87,6 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
                 self.app.virtual_console.faders[fader_index - 1].set_value(level * 255)
             finally:
                 self.app.virtual_console.updating_fader = False
-
-        if self.app.midi is not None:
-            midi_fader = self.app.midi.faders.faders[fader_index - 1]
-            midi_fader.set_state(level)
         return False
 
     def _on_fader_flash_changed(self, fader_index: int, _pressed: bool) -> bool:

@@ -119,8 +119,6 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
                     # Update Virtual Console
                     if self.app.virtual_console and page == fader_bank.active_page:
                         self.app.virtual_console.flashes[fader.index - 1].label = text
-        if self.app.midi:
-            self.app.midi.messages.lcd.show_faders()
 
         # Update the widgets in the GroupTab if we renamed
         if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
@@ -297,16 +295,6 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         """
         if self.app.virtual_console:
             self.app.virtual_console.update_independent_display(number, level)
-        if self.app.midi is not None:
-            if number <= 6:
-                midi_fader = self.app.midi.faders.inde_faders[number - 1]
-                midi_fader.set_state(round(level * 255))
-                self.app.midi.messages.control_change.send(
-                    f"inde_led_{number}", 32 + int(level * 12)
-                )
-            else:
-                velocity = 0 if level < 0.5 else 127
-                self.app.midi.messages.notes.send(f"inde_{number}", velocity)
         return False
 
     def _on_independent_channels_changed(self, _number: int) -> bool:

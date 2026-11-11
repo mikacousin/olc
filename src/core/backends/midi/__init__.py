@@ -22,19 +22,19 @@ from typing import Deque
 
 import mido
 
-from olc.midi.control_change import MidiControlChanges
-from olc.midi.fader import MIDIFader
-from olc.midi.lcd import MackieLCD
-from olc.midi.notes import MidiNotes
-from olc.midi.pitchwheel import MidiPitchWheel
-from olc.midi.ports import MidiPorts
-from olc.midi.xfade import MidiXFade
+from olc.core.backends.midi.control_change import MidiControlChanges
+from olc.core.backends.midi.fader import MIDIFader
+from olc.core.backends.midi.lcd import MackieLCD
+from olc.core.backends.midi.notes import MidiNotes
+from olc.core.backends.midi.pitchwheel import MidiPitchWheel
+from olc.core.backends.midi.ports import MidiPorts, StrvSettings
+from olc.core.backends.midi.xfade import MidiXFade
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    import olc.midi
+    import olc.core.backends.midi
+    from olc.core.app import CoreApplication
     from olc.fader import Fader, FaderBank
-    from olc.gtk3.application import Application
 
 
 class Queue:
@@ -81,16 +81,18 @@ class MidiMessages:
     def __init__(
         self,
         midi: Midi,
-        app_delegate: Application,
+        app_delegate: CoreApplication,
         enqueue_cb: typing.Callable[[mido.Message], None],
         fader_bank: FaderBank,
     ) -> None:
-        self.notes = MidiNotes(typing.cast("olc.midi.Midi", midi), app_delegate)
+        self.notes = MidiNotes(
+            typing.cast("olc.core.backends.midi.Midi", midi), app_delegate
+        )
         self.control_change = MidiControlChanges(
-            typing.cast("olc.midi.Midi", midi), app_delegate
+            typing.cast("olc.core.backends.midi.Midi", midi), app_delegate
         )
         self.pitchwheel = MidiPitchWheel(
-            typing.cast("olc.midi.Midi", midi), app_delegate
+            typing.cast("olc.core.backends.midi.Midi", midi), app_delegate
         )
         self.lcd = MackieLCD(enqueue_cb, fader_bank)
 
@@ -143,25 +145,28 @@ class Midi:
     xfade: MidiXFade
     ports: MidiPorts
     send: MidiSend
-    app_delegate: Application
+    app_delegate: CoreApplication
     _pause_blink_timer: RepeatedTimer | None
     _pause_blink_state: bool
 
     def __init__(
         self,
-        app_delegate: Application,
+        app_delegate: CoreApplication,
         on_ports_changed: typing.Callable[[], None] | None = None,
     ) -> None:
         self.app_delegate = app_delegate
+        self.core = app_delegate.core
         self.lightshow = app_delegate.core.lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
-        self.xfade = MidiXFade(typing.cast("olc.midi.Midi", self), app_delegate)
+        self.xfade = MidiXFade(
+            typing.cast("olc.core.backends.midi.Midi", self), app_delegate
+        )
         # Create and Open MIDI ports
         self.ports = MidiPorts(
-            typing.cast("olc.midi.Midi", self),
-            app_delegate.settings,
+            typing.cast("olc.core.backends.midi.Midi", self),
+            typing.cast("StrvSettings", app_delegate.settings),
             on_ports_changed,
         )
         self.send = MidiSend(self.ports)
@@ -171,6 +176,59 @@ class Midi:
         self._pause_blink_timer = None
         self._pause_blink_state = False
         self.controler_reset()
+        self._subscribe_core_events()
+
+    def _subscribe_core_events(self) -> None:
+        """Subscribe to Core events to drive hardware feedback (headless safe)."""
+        core = self.core
+        core.subscribe("fader.page_changed", self._on_fader_page_changed)
+        core.subscribe("fader.level_changed", self._on_fader_level_changed)
+        core.subscribe("fader.changed", self._on_fader_changed)
+        core.subscribe("group.updated", self._on_group_updated)
+        core.subscribe("independent.level_changed", self._on_independent_changed)
+        core.subscribe("show.new", self._on_show_changed)
+        core.subscribe("show.loaded", self._on_show_changed)
+        core.subscribe("show.imported", self._on_show_changed)
+
+    def _on_fader_page_changed(self, _page: int) -> None:
+        """Sync MIDI faders and LCD when the fader page changes."""
+        fader_bank = self.lightshow.fader_bank
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            if 0 < fader.index <= len(self.faders.faders):
+                self.faders.faders[fader.index - 1].set_state(fader.level)
+        self.update_faders()
+
+    def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
+        """Update MIDI fader anchor state when a fader level changes."""
+        if 0 < fader_index <= len(self.faders.faders):
+            self.faders.faders[fader_index - 1].set_state(level)
+
+    def _on_fader_changed(self, _page: int, _index: int) -> None:
+        """Refresh controller when a fader assignment changes."""
+        self.update_faders()
+
+    def _on_group_updated(self, group: typing.Any) -> None:  # noqa: ANN401
+        """Refresh LCD names when a group (possibly bound to a fader) changes."""
+        for faders in self.lightshow.fader_bank.faders.values():
+            for fader in faders.values():
+                if fader.contents is group:
+                    fader.text = group.text
+        self.messages.lcd.show_faders()
+
+    def _on_independent_changed(self, number: int, level: float) -> None:
+        """Send independent feedback (motor fader state, LEDs) to controller."""
+        if number <= 6:
+            self.faders.inde_faders[number - 1].set_state(round(level * 255))
+            self.messages.control_change.send(
+                f"inde_led_{number}", 32 + int(level * 12)
+            )
+        else:
+            velocity = 0 if level < 0.5 else 127
+            self.messages.notes.send(f"inde_{number}", velocity)
+
+    def _on_show_changed(self, *_args: typing.Any) -> None:  # noqa: ANN401
+        """Resync controller after a show is created, loaded or imported."""
+        self.messages.lcd.show_faders()
 
     def stop(self) -> None:
         """Stop MIDI"""

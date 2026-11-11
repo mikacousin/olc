@@ -17,12 +17,11 @@ from __future__ import annotations
 import typing
 
 import mido
-from gi.repository import Gdk, GLib
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.application import Application
+    from olc.core.app import CoreApplication
+    from olc.core.backends.midi import Midi
     from olc.independent import Independent
-    from olc.midi import Midi
 
 
 class MidiControlChanges:
@@ -30,7 +29,7 @@ class MidiControlChanges:
 
     control_change: dict[str, list[int]]
 
-    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
         self.midi = midi
         self.app_delegate = app_delegate
         # Default MIDI control change values : "action": Channel, CC
@@ -57,6 +56,20 @@ class MidiControlChanges:
         for i in range(1, 101):
             self.control_change[f"fader_{i}"] = [0, -1]
 
+    def _get_strv(self, key: str) -> list[str]:
+        """Read a list-of-strings preference from the application settings.
+
+        Args:
+            key: Settings key
+
+        Returns:
+            Stored list, or empty list if unavailable
+        """
+        settings = getattr(self.app_delegate, "settings", None)
+        if settings is None or not hasattr(settings, "get_strv"):
+            return []
+        return list(settings.get_strv(key))
+
     def reset(self) -> None:
         """Remove all MIDI control change"""
         for action in self.control_change:
@@ -73,15 +86,15 @@ class MidiControlChanges:
             if msg.channel == value[0] and msg.control == value[1]:
                 if key[:6] == "fader_":
                     # We need to pass fader number to faders function
-                    GLib.idle_add(self._function_fader, msg, int(key[6:]))
+                    self._function_fader(msg, int(key[6:]))
                 elif key[:5] == "inde_":
-                    GLib.idle_add(self._function_inde, port, msg, int(key[5:]))
+                    self._function_inde(port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_out)
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_out)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_in)
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_in)
                 elif func := getattr(self, f"_function_{key}", None):
-                    GLib.idle_add(func, port, msg)
+                    func(port, msg)
 
     def send(self, midi_name: str, value: int) -> None:
         """Send MIDI control change message
@@ -119,9 +132,7 @@ class MidiControlChanges:
             # Learn new values
             self.control_change.update({learning: [msg.channel, msg.control]})
 
-    def __get_step(
-        self, msg: mido.Message, port: str
-    ) -> tuple[int, Gdk.ScrollDirection | None]:
+    def __get_step(self, msg: mido.Message, port: str) -> tuple[int, int]:
         """Return direction and step value
 
         Args:
@@ -133,35 +144,35 @@ class MidiControlChanges:
             direction: Up or Down
         """
         step = 0
-        direction = None
-        relative1 = self.app_delegate.settings.get_strv("relative1")
-        relative2 = self.app_delegate.settings.get_strv("relative2")
-        makies = self.app_delegate.settings.get_strv("makie")
-        absolutes = self.app_delegate.settings.get_strv("absolute")
+        direction = 0
+        relative1 = self._get_strv("relative1")
+        relative2 = self._get_strv("relative2")
+        makies = self._get_strv("makie")
+        absolutes = self._get_strv("absolute")
         if port in relative1:
             if msg.value > 64:
-                direction = Gdk.ScrollDirection.DOWN
+                direction = -1
                 step = -(msg.value - 128)
             elif msg.value < 65:
-                direction = Gdk.ScrollDirection.UP
+                direction = 1
                 step = msg.value
         elif port in relative2:
             if msg.value > 64:
-                direction = Gdk.ScrollDirection.UP
+                direction = 1
                 step = msg.value - 64
             elif msg.value < 64:
-                direction = Gdk.ScrollDirection.DOWN
+                direction = -1
                 step = 64 - msg.value
         elif port in makies:
             if msg.value > 64:
-                direction = Gdk.ScrollDirection.DOWN
+                direction = -1
                 step = msg.value - 64
             elif msg.value < 65:
-                direction = Gdk.ScrollDirection.UP
+                direction = 1
                 step = msg.value
         elif port in absolutes:
             # Can't use absolute mode for wheel
-            direction = Gdk.ScrollDirection.UP
+            direction = 1
             step = 0
         return step, direction
 
@@ -173,7 +184,7 @@ class MidiControlChanges:
             msg: MIDI message
         """
         step, direction = self.__get_step(msg, port)
-        dir_val = 1 if direction == Gdk.ScrollDirection.UP else -1
+        dir_val = 1 if direction >= 0 else -1
         self.app_delegate.core.action_registry.execute(
             "channel.wheel_adjust", step, dir_val
         )
@@ -203,10 +214,10 @@ class MidiControlChanges:
             msg: MIDI message
             independent: Independent number
         """
-        relative1 = self.app_delegate.settings.get_strv("relative1")
-        relative2 = self.app_delegate.settings.get_strv("relative2")
-        makies = self.app_delegate.settings.get_strv("makie")
-        absolutes = self.app_delegate.settings.get_strv("absolute")
+        relative1 = self._get_strv("relative1")
+        relative2 = self._get_strv("relative2")
+        makies = self._get_strv("makie")
+        absolutes = self._get_strv("absolute")
         if port in absolutes:
             # Absolute mode (value: 0-127)
             inde, _ = self._new_inde_value(independent, 0)

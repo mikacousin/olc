@@ -363,6 +363,29 @@ class SelectRemoveChannelAction(BaseChannelSelectionAction):
         )
 
 
+class SelectNextChannelAction(BaseChannelSelectionAction):
+    """Action to select the next channel (wraps around after the last one)."""
+
+    name = "channel.select_next"
+    step = 1
+
+    def execute(self) -> None:
+        self._save_previous_selection()
+        last = self.app.last_selected_channel
+        if last is None:
+            target = 1 if self.step > 0 else MAX_CHANNELS
+        else:
+            target = (last - 1 + self.step) % MAX_CHANNELS + 1
+        self._apply_selection([target], target)
+
+
+class SelectPreviousChannelAction(SelectNextChannelAction):
+    """Action to select the previous channel (wraps around before the first)."""
+
+    name = "channel.select_previous"
+    step = -1
+
+
 class SelectAllChannelsAction(BaseChannelSelectionAction):
     """Action to select all channels with intensity > 0."""
 

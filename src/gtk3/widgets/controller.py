@@ -22,7 +22,7 @@ from gi.repository import Gdk, GObject, Gtk
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.midi import Midi
+    from olc.core.backends.midi import Midi
 
 
 class ControllerWidget(Gtk.DrawingArea):

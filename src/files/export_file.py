@@ -23,8 +23,8 @@ from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter
 
 if typing.TYPE_CHECKING:
+    from olc.core.backends.midi import Midi
     from olc.core.lightshow import LightShow
-    from olc.midi import Midi
 
 
 class ExportFile:

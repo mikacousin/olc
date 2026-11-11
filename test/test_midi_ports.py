@@ -20,12 +20,12 @@ from unittest.mock import MagicMock, patch
 
 import mido
 
-from olc.midi.ports import MidiIO
+from olc.core.backends.midi.ports import MidiIO
 
 
-@patch("olc.midi.ports.mido.open_ioport")
+@patch("olc.core.backends.midi.ports.mido.open_ioport")
 def test_midi_io_receive_callback_learning(_mock_open_ioport: MagicMock) -> None:
-    """Test that receive_callback schedules learning.
+    """Test that receive_callback triggers learning.
 
     Also checks it does not scan actions if learning is active.
     """
@@ -38,11 +38,10 @@ def test_midi_io_receive_callback_learning(_mock_open_ioport: MagicMock) -> None
     # Create a dummy MIDI message
     msg = mido.Message("control_change", channel=0, control=50, value=127)
 
-    with patch("olc.midi.ports.GLib.idle_add") as mock_idle_add:
-        midi_io.receive_callback(msg)
+    midi_io.receive_callback(msg)
 
-        # Should schedule learning on GLib main loop
-        mock_idle_add.assert_called_once_with(mock_midi.learn, msg)
+    # Should trigger learning directly (no GLib dependency)
+    mock_midi.learn.assert_called_once_with(msg)
 
     # Verify that no action scan was performed
     mock_midi.messages.notes.scan.assert_not_called()
@@ -50,7 +49,7 @@ def test_midi_io_receive_callback_learning(_mock_open_ioport: MagicMock) -> None
     mock_midi.messages.control_change.scan.assert_not_called()
 
 
-@patch("olc.midi.ports.mido.open_ioport")
+@patch("olc.core.backends.midi.ports.mido.open_ioport")
 def test_midi_io_receive_callback_normal(_mock_open_ioport: MagicMock) -> None:
     """Test that receive_callback scans actions and does not learn if learning is
     inactive."""
@@ -63,11 +62,10 @@ def test_midi_io_receive_callback_normal(_mock_open_ioport: MagicMock) -> None:
     # Create a dummy MIDI CC message
     msg = mido.Message("control_change", channel=0, control=50, value=127)
 
-    with patch("olc.midi.ports.GLib.idle_add") as mock_idle_add:
-        midi_io.receive_callback(msg)
+    midi_io.receive_callback(msg)
 
-        # Should not schedule learning
-        mock_idle_add.assert_not_called()
+    # Should not learn
+    mock_midi.learn.assert_not_called()
 
     # Verify that action scan was performed
     mock_midi.messages.notes.scan_cc.assert_called_once_with(msg)

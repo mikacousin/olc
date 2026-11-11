@@ -21,8 +21,8 @@ from unittest.mock import MagicMock
 
 import mido
 
-from olc.midi.control_change import MidiControlChanges
-from olc.midi.xfade import MidiXFade
+from olc.core.backends.midi.control_change import MidiControlChanges
+from olc.core.backends.midi.xfade import MidiXFade
 
 
 def test_control_change_wheel_executes_action() -> None:

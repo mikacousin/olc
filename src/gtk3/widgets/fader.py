@@ -23,8 +23,8 @@ from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 if typing.TYPE_CHECKING:
     import cairo
 
+    from olc.core.backends.midi import Midi
     from olc.core.crossfade import CrossFade
-    from olc.midi import Midi
 
 
 # pylint: disable=too-many-instance-attributes

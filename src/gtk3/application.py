@@ -29,7 +29,7 @@ from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends import DMXBackend  # noqa: E402
-from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
+from olc.core.backends.midi import Midi  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
@@ -55,7 +55,6 @@ from olc.gtk3.tabs_manager import Tabs  # noqa: E402
 from olc.gtk3.track_channels import TrackChannelsTab  # noqa: E402
 from olc.gtk3.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.gtk3.window import Window  # noqa: E402
-from olc.midi import Midi  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
 
@@ -196,30 +195,8 @@ class Application(Gtk.Application):
         # For Manual crossfade
         self.crossfade = self.core.crossfade
 
-        # Open MIDI Inputs and Outputs
-        def refresh_settings() -> None:
-            if self.tabs and self.tabs.tabs.get("settings"):
-                settings_tab = typing.cast(SettingsTab, self.tabs.tabs["settings"])
-                settings_tab.refresh()
-
-        self.midi = Midi(app_type, refresh_settings)
-        self.core.midi = self.midi
-
-        for name, note in [
-            ("playback.go", 94),
-            ("playback.go_back", 86),
-            ("playback.pause", 93),
-            ("playback.sequence_minus", 91),
-            ("playback.sequence_plus", 92),
-        ]:
-            self.core.action_registry.register_binding(
-                name, MidiBinding(name, "note", 0, note)
-            )
-            self.core.action_registry.register_binding(
-                name, OscBinding(name, f"/olc/{name.replace('.', '/')}")
-            )
-
-        self.midi.messages.lcd.show_faders()
+        # Open MIDI Inputs and Outputs (Core manages MIDI lifecycle and feedback)
+        self.midi = self.core.init_midi()
 
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)

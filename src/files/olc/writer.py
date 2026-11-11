@@ -24,8 +24,8 @@ from olc.files.write import WriteFile
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
+    from olc.core.backends.midi import Midi
     from olc.core.lightshow import LightShow
-    from olc.midi import Midi
     from olc.sequence import Sequence
 
 

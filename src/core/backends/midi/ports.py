@@ -18,14 +18,18 @@ import typing
 from typing import Callable, Optional
 
 import mido
-from gi.repository import GLib
 
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
+    from olc.core.backends.midi import Midi
 
-    from olc.midi import Midi
+
+class StrvSettings(typing.Protocol):
+    """Minimal settings interface needed by MIDI ports (e.g. Gio.Settings)."""
+
+    def get_strv(self, key: str) -> list[str]:
+        """Return the list of strings stored for a key."""
 
 
 class MidiIO:
@@ -57,7 +61,7 @@ class MidiIO:
         """
         # print(self.name, msg)
         if self.midi.learning:
-            GLib.idle_add(self.midi.learn, msg)
+            self.midi.learn(msg)
         else:
             # Find action
             if msg.type in ("note_on", "note_off"):
@@ -77,7 +81,7 @@ class MidiPorts:
     def __init__(
         self,
         midi: Midi,
-        settings: Gio.Settings,
+        settings: StrvSettings,
         on_ports_changed: Callable[[], None] | None = None,
     ) -> None:
         self.midi = midi
@@ -100,8 +104,11 @@ class MidiPorts:
             self.mido_ports = port_names
             self.open(self.settings.get_strv("midi-ports"))
             self.midi.update_faders()
+            core = getattr(self.midi, "core", None)
+            if core is not None:
+                core.emit("midi.ports_changed")
             if self.on_ports_changed:
-                GLib.idle_add(self.on_ports_changed)
+                self.on_ports_changed()
 
     def open(self, ports: list[str]) -> None:
         """Open MIDI IO

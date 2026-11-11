@@ -30,8 +30,8 @@ from olc.sequence import Sequence
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
+    from olc.core.backends.midi import Midi
     from olc.core.lightshow import LightShow
-    from olc.midi import Midi
 
 LEGACY_CURVE_NAMES: dict[str, str] = {
     "Linéaire": "Linear",

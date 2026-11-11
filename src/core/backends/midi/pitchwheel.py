@@ -17,11 +17,10 @@ from __future__ import annotations
 import typing
 
 import mido
-from gi.repository import GLib
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.application import Application
-    from olc.midi import Midi
+    from olc.core.app import CoreApplication
+    from olc.core.backends.midi import Midi
 
 
 class MidiPitchWheel:
@@ -29,7 +28,7 @@ class MidiPitchWheel:
 
     pitchwheel: dict[str, int]
 
-    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
         self.midi = midi
         self.app_delegate = app_delegate
         # Default MIDI pitchwheel values : "action": Channel
@@ -55,14 +54,14 @@ class MidiPitchWheel:
         for key, value in list(self.pitchwheel.items()):
             if msg.channel == value:
                 if key[:6] == "fader_":
-                    GLib.idle_add(self._update_fader, msg, int(key[6:]) - 1)
+                    self._update_fader(msg, int(key[6:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
-                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_out)
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_out)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_in)
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_in)
                 elif func := getattr(self, f"_function_{key}", None):
-                    GLib.idle_add(func, None, msg)
+                    func(None, msg)
 
     def send(self, midi_name: str, value: int) -> None:
         """Send MIDI pitchwheel message

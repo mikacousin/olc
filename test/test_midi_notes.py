@@ -20,9 +20,9 @@ from unittest.mock import MagicMock, patch
 
 import mido
 
+from olc.core.backends.midi.notes import MidiNotes
 from olc.files.olc.writer import OlcWriter
 from olc.files.parsed_data import ParsedData
-from olc.midi.notes import MidiNotes
 
 
 def test_midi_notes_cc_init() -> None:
