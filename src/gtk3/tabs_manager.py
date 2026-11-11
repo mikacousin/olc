@@ -279,11 +279,17 @@ class Tabs:
         if isinstance(channels_view, ChannelsView):
             current["view_mode"] = channels_view.get_view_mode_name()
 
-        # CurvesTab / selected_curve
+        # CurvesTab / selected_curve, sidebar visibility & paned position
         if tab_name == "curves":
             curve_edition = getattr(widget, "curve_edition", None)
             if curve_edition and getattr(curve_edition, "curve_nb", None) is not None:
                 current["selected_curve"] = curve_edition.curve_nb
+            is_sb_vis = getattr(widget, "is_sidebar_visible", None)
+            if callable(is_sb_vis):
+                current["sidebar_visible"] = is_sb_vis()
+            get_pos = getattr(widget, "get_position", None)
+            if callable(get_pos):
+                current["paned_position"] = get_pos()
 
     def _apply_tab_settings(self, tab_name: str, widget: Gtk.Widget | None) -> None:
         """Apply saved settings from lightshow.workspace to a tab widget."""
@@ -304,7 +310,7 @@ class Tabs:
             if isinstance(channels_view, ChannelsView):
                 channels_view.set_view_mode_by_name(view_mode_name)
 
-        # CurvesTab / selected_curve
+        # CurvesTab / selected_curve, sidebar visibility & paned position
         if tab_name == "curves":
             selected_curve = settings.get("selected_curve")
             select_fn = getattr(widget, "select_curve", None)
@@ -314,6 +320,12 @@ class Tabs:
                 and selected_curve in lightshow.curves.curves
             ):
                 select_fn(selected_curve)
+            set_sb_vis = getattr(widget, "set_sidebar_visible", None)
+            if "sidebar_visible" in settings and callable(set_sb_vis):
+                set_sb_vis(bool(settings["sidebar_visible"]))
+            set_pos = getattr(widget, "set_position", None)
+            if "paned_position" in settings and callable(set_pos):
+                set_pos(int(settings["paned_position"]))
 
     def get_workspace_state(self) -> dict[str, typing.Any]:
         """Capture the full GUI workspace state."""

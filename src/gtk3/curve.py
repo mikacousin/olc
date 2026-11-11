@@ -66,6 +66,7 @@ class CurveEdition(Gtk.Box):
     pending_active_point_idx: int | None
     points_table: CurvePointsTable
     sampled_monitor: CurveSampledMonitor
+    remove_box: Gtk.Box | None
 
     def __init__(
         self,
@@ -86,6 +87,7 @@ class CurveEdition(Gtk.Box):
         self._is_dragging_limit = False
         self._drag_start_limit = 255
         self.pending_active_point_idx = None
+        self.remove_box = None
 
         # HeaderBar: use provided top header or create standalone fallback
         if header is not None:
@@ -198,15 +200,16 @@ class CurveEdition(Gtk.Box):
         if curve is None:
             return
         self.header.set_title(get_curve_display_name(curve))
-        for child in self.header.get_children():
-            child.destroy()
+        if self.remove_box is not None:
+            self.remove_box.destroy()
+            self.remove_box = None
         if curve.editable:
-            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            self.remove_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             button = Gtk.Button(label=_("Remove curve"))
             button.connect("clicked", self.on_del_curve)
-            box.add(button)
-            self.header.pack_end(box)
-            self.header.show_all()
+            self.remove_box.add(button)
+            self.header.pack_end(self.remove_box)
+            self.remove_box.show_all()
         self.scale_widget = None
         # Display curve and tools
         for child in self.hbox.get_children():
@@ -488,6 +491,8 @@ class CurvesTab(Gtk.Box):
 
     flowbox: Gtk.FlowBox | None
     paned: Gtk.Paned
+    sidebar_box: Gtk.Box
+    btn_toggle_sidebar: Gtk.ToggleButton
 
     def __init__(
         self,
@@ -503,53 +508,72 @@ class CurvesTab(Gtk.Box):
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
-        # Top HeaderBar: Selected curve title and action buttons (always visible)
+        # Tab settings from workspace
+        tab_settings = (
+            self.lightshow.workspace.get("tab_settings", {})
+            if hasattr(self.lightshow, "workspace")
+            else {}
+        )
+        curves_settings = tab_settings.get("curves", {})
+        saved_sidebar_visible = curves_settings.get("sidebar_visible", True)
+        saved_paned_pos = curves_settings.get("paned_position", 220)
+
+        # Top HeaderBar: Selected curve title, library toggle, and action buttons
         self.top_header = Gtk.HeaderBar()
         self.top_header.set_title(_("Select curve"))
-        self.pack_start(self.top_header, False, False, 0)
 
-        # Paned container for edition (top) and curves library (bottom)
-        self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.paned.set_position(600)
+        # Left of HeaderBar: Toggle library button & Curve creation buttons
+        self.btn_toggle_sidebar = Gtk.ToggleButton(label=_("Library"))
+        self.btn_toggle_sidebar.set_tooltip_text(_("Show or hide curves library"))
+        self.btn_toggle_sidebar.set_active(saved_sidebar_visible)
+        self.btn_toggle_sidebar.connect("toggled", self._on_toggle_sidebar)
+        self.top_header.pack_start(self.btn_toggle_sidebar)
 
-        self.curve_edition = CurveEdition(
-            lightshow=self.lightshow, tabs=self.tabs, header=self.top_header
-        )
-        self.paned.add1(self.curve_edition)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.header = Gtk.HeaderBar()
-        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.buttons = {}
         self.buttons["limit"] = Gtk.Button(label=_("New Limit curve"))
         self.buttons["limit"].connect("clicked", self.on_new_curve)
-        header_box.add(self.buttons["limit"])
+        self.top_header.pack_start(self.buttons["limit"])
+
         self.buttons["segments"] = Gtk.Button(label=_("New Segments curve"))
         self.buttons["segments"].connect("clicked", self.on_new_curve)
-        header_box.add(self.buttons["segments"])
+        self.top_header.pack_start(self.buttons["segments"])
+
         self.buttons["interpolate"] = Gtk.Button(label=_("New Interpolate curve"))
         self.buttons["interpolate"].connect("clicked", self.on_new_curve)
-        header_box.add(self.buttons["interpolate"])
-        self.header.pack_end(header_box)
-        box.add(self.header)
+        self.top_header.pack_start(self.buttons["interpolate"])
+
+        # Backward compatibility alias
+        self.header = self.top_header
+        self.pack_start(self.top_header, False, False, 0)
+
+        # Horizontal Paned: Sidebar (left) and CurveEdition (right)
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self.paned.set_position(saved_paned_pos)
+
+        # Left pane: Sidebar
+        self.sidebar_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.sidebar_box.set_size_request(190, -1)
+
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.flowbox = None
         self.populate_curves()
-        box.add(self.scrolled)
-        box.set_child_packing(self.scrolled, True, True, 0, Gtk.PackType.START)
-        self.paned.add2(box)
+        self.sidebar_box.pack_start(self.scrolled, True, True, 0)
+        self.sidebar_box.show_all()
+        self.sidebar_box.set_no_show_all(True)
+        self.sidebar_box.set_visible(saved_sidebar_visible)
+        self.paned.pack1(self.sidebar_box, False, False)
+
+        # Right pane: CurveEdition
+        self.curve_edition = CurveEdition(
+            lightshow=self.lightshow, tabs=self.tabs, header=self.top_header
+        )
+        self.paned.pack2(self.curve_edition, True, False)
 
         self.pack_start(self.paned, True, True, 0)
 
         # Select memorized curve or first curve on creation
-        selected_curve = None
-        if hasattr(self.lightshow, "workspace"):
-            tab_settings = self.lightshow.workspace.get("tab_settings", {})
-            curves_settings = tab_settings.get("curves", {})
-            selected_curve = curves_settings.get("selected_curve")
-
+        selected_curve = curves_settings.get("selected_curve")
         if (
             selected_curve is not None
             and selected_curve in self.lightshow.curves.curves
@@ -558,6 +582,23 @@ class CurvesTab(Gtk.Box):
         elif self.lightshow.curves.curves:
             first_curve_nb = next(iter(self.lightshow.curves.curves.keys()))
             self.select_curve(first_curve_nb)
+
+    def _on_toggle_sidebar(self, button: Gtk.ToggleButton) -> None:
+        """Toggle visibility of the curves library sidebar."""
+        is_visible = button.get_active()
+        self.sidebar_box.set_visible(is_visible)
+        if hasattr(self.lightshow, "workspace"):
+            tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
+            tab_settings.setdefault("curves", {})["sidebar_visible"] = is_visible
+
+    def set_sidebar_visible(self, visible: bool) -> None:
+        """Set visibility of the curves library sidebar."""
+        self.btn_toggle_sidebar.set_active(visible)
+        self.sidebar_box.set_visible(visible)
+
+    def is_sidebar_visible(self) -> bool:
+        """Get visibility of the curves library sidebar."""
+        return self.sidebar_box.get_visible()
 
     def set_position(self, position: int) -> None:
         """Set position of the inner paned separator."""
@@ -621,7 +662,7 @@ class CurvesTab(Gtk.Box):
         # New Flowbox
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
+        self.flowbox.set_max_children_per_line(2)
         self.flowbox.set_homogeneous(True)
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)

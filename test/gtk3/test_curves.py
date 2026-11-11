@@ -190,19 +190,76 @@ def test_curve_title_permanently_visible(app_gui: Application) -> None:
     curves_tab.select_curve(new_curve_nb)
     process_events()
 
-    header_buttons = [
-        c for c in curves_tab.top_header.get_children() if isinstance(c, Gtk.Container)
-    ]
-    assert len(header_buttons) > 0, (
+    def has_remove_button(header: Gtk.HeaderBar) -> bool:
+        for child in header.get_children():
+            if isinstance(child, Gtk.Container):
+                for sub in child.get_children():
+                    if (
+                        isinstance(sub, Gtk.Button)
+                        and sub.get_label() == "Remove curve"
+                    ):
+                        return True
+            if isinstance(child, Gtk.Button) and child.get_label() == "Remove curve":
+                return True
+        return False
+
+    assert has_remove_button(curves_tab.top_header), (
         "Top header should show remove action for editable curve"
     )
 
     # Switching back to non-editable curve clears the action button
     curves_tab.select_curve(0)
     process_events()
-    header_buttons_after = [
-        c for c in curves_tab.top_header.get_children() if isinstance(c, Gtk.Container)
-    ]
-    assert len(header_buttons_after) == 0, (
+    assert not has_remove_button(curves_tab.top_header), (
         "Top header should not show remove button for factory curve"
     )
+
+
+def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
+    """Test curves sidebar toggle visibility and persistence."""
+    app_gui.activate_action("curves", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    curves_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(curves_tab, CurvesTab)
+
+    # 1. Initially sidebar is visible
+    assert curves_tab.is_sidebar_visible()
+    assert curves_tab.sidebar_box.get_visible()
+    assert curves_tab.btn_toggle_sidebar.get_active()
+
+    # 2. Toggle sidebar off
+    curves_tab.btn_toggle_sidebar.set_active(False)
+    process_events()
+    assert not curves_tab.is_sidebar_visible()
+    assert not curves_tab.sidebar_box.get_visible()
+
+    # 3. Toggle sidebar on
+    curves_tab.btn_toggle_sidebar.set_active(True)
+    process_events()
+    assert curves_tab.is_sidebar_visible()
+    assert curves_tab.sidebar_box.get_visible()
+
+    # 4. Test persistence across close and reopen
+    curves_tab.btn_toggle_sidebar.set_active(False)
+    process_events()
+    app_gui.tabs.close("curves")
+    process_events()
+
+    app_gui.activate_action("curves", None)
+    process_events()
+    reopened_tab = app_gui.tabs.tabs.get("curves")
+    assert isinstance(reopened_tab, CurvesTab)
+    assert not reopened_tab.is_sidebar_visible()
+    assert not reopened_tab.sidebar_box.get_visible()
+
+    # Restore visibility
+    reopened_tab.set_sidebar_visible(True)
+    process_events()
+    assert reopened_tab.is_sidebar_visible()
+
+    # 5. Paned position
+    reopened_tab.set_position(280)
+    process_events()
+    assert reopened_tab.get_position() == 280
