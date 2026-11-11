@@ -20,10 +20,11 @@ import math
 from typing import Any
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 
@@ -119,14 +120,16 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.set_source_rgba(0.8, 0.9, 1.0, 0.85)
             cr.stroke()
 
-            cr.select_font_face(
-                get_system_font_family(),
-                cairo.FontSlant.NORMAL,
-                cairo.FontWeight.NORMAL,
+            cr.set_source_rgba(0.8, 0.9, 1.0, 0.85)
+            draw_cached_numeric_text(
+                cr,
+                px + 6.0,
+                py - 4.0,
+                f"#{pt['device_id']}",
+                9.0,
+                weight=Pango.Weight.NORMAL,
+                anchor=TextAnchor.BASELINE_LEFT,
             )
-            cr.set_font_size(9.0)
-            cr.move_to(px + 6.0, py - 4.0)
-            cr.show_text(f"#{pt['device_id']}")
 
         # Draw Lead Fixture reticle on top
         for pt in targets:
@@ -145,13 +148,15 @@ class PanTiltPadWidget(Gtk.DrawingArea):
             cr.line_to(px, py + 10.0)
             cr.stroke()
 
-            cr.select_font_face(
-                get_system_font_family(),
-                cairo.FontSlant.NORMAL,
-                cairo.FontWeight.BOLD,
+            cr.set_source_rgb(0.2, 0.95, 0.4)
+            draw_cached_numeric_text(
+                cr,
+                px + 8.0,
+                py + 4.0,
+                f"#{pt['device_id']}",
+                10.0,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
             )
-            cr.set_font_size(10.0)
-            cr.move_to(px + 8.0, py + 4.0)
-            cr.show_text(f"#{pt['device_id']}")
 
         return False

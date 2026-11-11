@@ -19,10 +19,13 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    FastPangoNumericCache,
+    TextAnchor,
+    draw_cached_numeric_text,
+    draw_pango_layout_anchored,
     register_system_font_listener,
     rounded_rectangle,
     rounded_rectangle_fill,
@@ -169,18 +172,16 @@ class DMXOutputWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(11 * self.scale)
         text = f"{self.universe}/{self.output}"
-        (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-        cr.move_to(
-            allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
+        draw_cached_numeric_text(
+            cr,
+            allocation.width / 2.0,
+            allocation.height / 4.0,
+            text,
+            11 * self.scale,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.show_text(text)
 
     def _draw_channel_number(  # pylint: disable=too-many-locals
         self, cr: cairo.Context, allocation: Gdk.Rectangle
@@ -221,24 +222,20 @@ class DMXOutputWidget(Gtk.DrawingArea):
         if ch_num <= 0:
             return
 
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
         base_font_size = 11.0 * self.scale
-        cr.set_font_size(base_font_size)
-
         num_text = str(ch_num)
 
         if is_simple_dimmer or not short_name:
             cr.set_source_rgb(0.9, 0.6, 0.2)
-            (_x, _y, width, height, _dx, _dy) = cr.text_extents(num_text)
-            cr.move_to(
-                allocation.width / 2 - width / 2,
-                3 * (allocation.height / 4 - (height - 20) / 4),
+            draw_cached_numeric_text(
+                cr,
+                allocation.width / 2.0,
+                3.0 * (allocation.height / 4.0),
+                num_text,
+                base_font_size,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.CENTER,
             )
-            cr.show_text(num_text)
         else:
             self._draw_device_param_label(
                 cr, allocation, num_text, short_name, param_color, base_font_size
@@ -255,38 +252,45 @@ class DMXOutputWidget(Gtk.DrawingArea):
     ) -> None:
         """Draw circuit number left-justified and parameter label right-justified."""
         padding = round(6 * self.scale)
+        row_y = 3.0 * (allocation.height / 4.0)
 
-        # 1. Circuit number extent
-        cr.set_font_size(base_font_size)
-        (_x1, _y1, w_num, h_num, _dx1, _dy1) = cr.text_extents(num_text)
-        baseline_y = 3 * (allocation.height / 4 - (h_num - 20) / 4)
+        # 1. Circuit number extent & drawing on the left
+        cr.set_source_rgb(0.9, 0.6, 0.2)
+        _dx, _dy, w_num, _h_num = draw_cached_numeric_text(
+            cr,
+            padding,
+            row_y,
+            num_text,
+            base_font_size,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER_LEFT,
+        )
 
         # 2. Parameter extent and font scaling if needed
         param_font_size = 9.0 * self.scale
-        cr.set_font_size(param_font_size)
-        (_x2, _y2, w_param, _h2, _dx2, _dy2) = cr.text_extents(short_name)
-
         max_available_param = (
             allocation.width - 2 * padding - w_num - round(4 * self.scale)
         )
-        if w_param > max_available_param and w_param > 0:
-            scale_factor = max_available_param / w_param
+        param_layout = FastPangoNumericCache.get_layout(
+            short_name, param_font_size, weight=Pango.Weight.BOLD, cr=cr
+        )
+        _ink, logical = param_layout.get_pixel_extents()
+        if logical.width > max_available_param and logical.width > 0:
+            scale_factor = max_available_param / logical.width
             param_font_size = max(7.0 * self.scale, param_font_size * scale_factor)
-            cr.set_font_size(param_font_size)
-            (_x2, _y2, w_param, _h2, _dx2, _dy2) = cr.text_extents(short_name)
+            param_layout = FastPangoNumericCache.get_layout(
+                short_name, param_font_size, weight=Pango.Weight.BOLD, cr=cr
+            )
 
-        # 3. Draw circuit number on the left
-        cr.set_font_size(base_font_size)
-        cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.move_to(padding, baseline_y)
-        cr.show_text(num_text)
-
-        # 4. Draw parameter name on the right
-        cr.set_font_size(param_font_size)
+        # 3. Draw parameter name on the right
         cr.set_source_rgb(*param_color)
-        param_x = allocation.width - padding - w_param
-        cr.move_to(param_x, baseline_y)
-        cr.show_text(short_name)
+        draw_pango_layout_anchored(
+            cr,
+            param_layout,
+            allocation.width - padding,
+            row_y,
+            anchor=TextAnchor.CENTER_RIGHT,
+        )
 
     def _draw_output_level(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output level.
@@ -309,19 +313,16 @@ class DMXOutputWidget(Gtk.DrawingArea):
                         cr.set_source_rgb(1.0, 0.7, 0.0)
                     else:
                         cr.set_source_rgb(0.7, 0.7, 0.7)
-                    cr.select_font_face(
-                        get_system_font_family(),
-                        cairo.FontSlant.NORMAL,
-                        cairo.FontWeight.BOLD,
-                    )
-                    cr.set_font_size(10 * self.scale)
                     text = str(level)
-                    (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-                    cr.move_to(
-                        allocation.width / 2 - width / 2,
-                        allocation.height / 2 - (height - 20) / 2,
+                    draw_cached_numeric_text(
+                        cr,
+                        allocation.width / 2.0,
+                        allocation.height / 2.0,
+                        text,
+                        10 * self.scale,
+                        weight=Pango.Weight.BOLD,
+                        anchor=TextAnchor.CENTER,
                     )
-                    cr.show_text(text)
 
     def _draw_park_badge(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw 'P' badge if output or occupant channel is parked.
@@ -332,15 +333,16 @@ class DMXOutputWidget(Gtk.DrawingArea):
         """
         if not self._is_parked():
             return
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(10 * self.scale)
         cr.set_source_rgb(1.0, 0.7, 0.0)
-        cr.move_to(allocation.width - 13 * self.scale, 14 * self.scale)
-        cr.show_text("P")
+        draw_cached_numeric_text(
+            cr,
+            allocation.width - 6 * self.scale,
+            6 * self.scale,
+            "P",
+            10 * self.scale,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.TOP_RIGHT,
+        )
 
     def _draw_curve(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Dimmer Curve (passive visual indicator).

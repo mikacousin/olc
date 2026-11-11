@@ -17,11 +17,12 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.curve import InterpolateCurve, SegmentsCurve
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 
@@ -133,12 +134,6 @@ class EditCurveWidget(Gtk.DrawingArea):
         cr.line_to(width - self.delta, height - self.delta)
         cr.stroke()
         cr.set_line_width(1)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(8)
         for x in range(0, 256, 10):
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
             cr.move_to(
@@ -159,22 +154,24 @@ class EditCurveWidget(Gtk.DrawingArea):
             cr.stroke()
             cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
             text = str(x)
-            (_x, _y, t_width, t_height, _dx, _dy) = cr.text_extents(text)
-            cr.move_to(
-                round((x / 255) * (width - (self.delta * 2)))
-                + self.delta
-                - (t_width / 2),
+            draw_cached_numeric_text(
+                cr,
+                round((x / 255) * (width - (self.delta * 2))) + self.delta,
                 height - 8,
+                text,
+                8,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.CENTER,
             )
-            cr.show_text(text)
-            cr.move_to(
+            draw_cached_numeric_text(
+                cr,
                 2,
-                height
-                - self.delta
-                - round((x / 255) * (height - (self.delta * 2)))
-                + (t_height / 2),
+                height - self.delta - round((x / 255) * (height - (self.delta * 2))),
+                text,
+                8,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.CENTER_LEFT,
             )
-            cr.show_text(text)
         if not self.curve:
             return False
 

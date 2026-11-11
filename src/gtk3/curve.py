@@ -19,12 +19,13 @@ from gettext import gettext as _
 from typing import Optional
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
@@ -63,19 +64,27 @@ class CurveValues(Gtk.DrawingArea):
         if curve is None:
             return
         self.set_size_request(1000, 240)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(8)
         x = 0
         for row in range(8):
             cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.move_to(2, 10 + row * 30)
-            cr.show_text("Input")
-            cr.move_to(2, 20 + row * 30)
-            cr.show_text("Output")
+            draw_cached_numeric_text(
+                cr,
+                2,
+                10 + row * 30,
+                "Input",
+                8,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
+            draw_cached_numeric_text(
+                cr,
+                2,
+                20 + row * 30,
+                "Output",
+                8,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
             for column in range(32):
                 cr.set_source_rgb(0.1, 0.1, 0.1)
                 i = 41 + column * 20
@@ -95,10 +104,24 @@ class CurveValues(Gtk.DrawingArea):
                         cr.set_source_rgb(0.8, 0.5, 0.1)
                 else:
                     cr.set_source_rgb(0.7, 0.7, 0.7)
-                cr.move_to(i + 1, j + 9)
-                cr.show_text(str(x))
-                cr.move_to(i + 1, j + 19)
-                cr.show_text(str(int(curve.values_array[x])))
+                draw_cached_numeric_text(
+                    cr,
+                    i + 1,
+                    j + 9,
+                    str(x),
+                    8,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_LEFT,
+                )
+                draw_cached_numeric_text(
+                    cr,
+                    i + 1,
+                    j + 19,
+                    str(int(curve.values_array[x])),
+                    8,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_LEFT,
+                )
                 x += 1
 
 

@@ -17,12 +17,13 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 
@@ -220,15 +221,16 @@ class ChannelWidget(Gtk.DrawingArea):
 
         if self.is_moving_head():
             cr.set_source_rgb(0.3, 0.85, 0.95)
-            cr.select_font_face(
-                get_system_font_family(),
-                cairo.FontSlant.NORMAL,
-                cairo.FontWeight.BOLD,
-            )
-            cr.set_font_size(9 * self.scale)
             x_pos = 20 * self.scale if has_color else 7 * self.scale
-            cr.move_to(x_pos, 15 * self.scale)
-            cr.show_text("ML")
+            draw_cached_numeric_text(
+                cr,
+                x_pos,
+                15 * self.scale,
+                "ML",
+                9 * self.scale,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
 
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background"""
@@ -283,29 +285,31 @@ class ChannelWidget(Gtk.DrawingArea):
         # Not patched
         if not self.lightshow.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            50 * self.scale,
+            15 * self.scale,
+            self.channel,
+            12 * self.scale,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(12 * self.scale)
-        cr.move_to(50 * self.scale, 15 * self.scale)
-        cr.show_text(self.channel)
 
     def _draw_park_badge(self, cr: cairo.Context) -> None:
         """Draw 'P' badge if channel is parked."""
         park_mgr = getattr(self.lightshow, "park", None)
         if park_mgr is None or not park_mgr.is_channel_parked(int(self.channel)):
             return
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(10 * self.scale)
         cr.set_source_rgb(1.0, 0.7, 0.0)
-        cr.move_to(6 * self.scale, 15 * self.scale)
-        cr.show_text("P")
+        draw_cached_numeric_text(
+            cr,
+            6 * self.scale,
+            15 * self.scale,
+            "P",
+            10 * self.scale,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
+        )
 
     def _draw_level(self, cr: cairo.Context, percent_level: bool) -> None:
         """Draw level"""
@@ -318,24 +322,21 @@ class ChannelWidget(Gtk.DrawingArea):
                 self.color_level.get("green", 0.0),
                 self.color_level.get("blue", 0.0),
             )
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(13 * self.scale)
-        cr.move_to(6 * self.scale, 48 * self.scale)
         # Don't show level 0
         if self.level != 0 or self.next_level != 0:
             if percent_level:
-                if self.level == 255:
-                    cr.show_text("F")
-                else:
-                    # Level %
-                    cr.show_text(str(round((self.level / 256) * 100)))
+                txt = "F" if self.level == 255 else str(round((self.level / 256) * 100))
             else:
-                # Level 0 to 255 value
-                cr.show_text(str(self.level))
+                txt = str(self.level)
+            draw_cached_numeric_text(
+                cr,
+                6 * self.scale,
+                48 * self.scale,
+                txt,
+                13 * self.scale,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
 
     def _draw_level_bar(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw level bar"""
@@ -378,17 +379,12 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.fill()
 
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.NORMAL,
-        )
-        cr.set_font_size(10 * self.scale)
-        cr.move_to(
+        self._draw_next_level_text(
+            cr,
+            percent_level,
             offset_x + (24 * self.scale),
             offset_y + self.width - (6 * self.scale),
         )
-        self._draw_next_level_text(cr, percent_level)
 
     def _draw_up_icon(self, cr: cairo.Context, percent_level: bool) -> None:
         """Draw up icon"""
@@ -401,21 +397,30 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.5, 0.5)
         cr.fill()
 
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.NORMAL,
+        self._draw_next_level_text(
+            cr,
+            percent_level,
+            offset_x + (24 * self.scale),
+            offset_y + (16 * self.scale),
         )
-        cr.set_font_size(10 * self.scale)
-        cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
-        self._draw_next_level_text(cr, percent_level)
 
-    def _draw_next_level_text(self, cr: cairo.Context, percent_level: bool) -> None:
+    def _draw_next_level_text(
+        self, cr: cairo.Context, percent_level: bool, x: float, y: float
+    ) -> None:
         """Draw text for next level"""
         if percent_level:
             if self.next_level == 255:
-                cr.show_text("F")
+                txt = "F"
             else:
-                cr.show_text(str(int(round((self.next_level / 255) * 100))))
+                txt = str(int(round((self.next_level / 255) * 100)))
         else:
-            cr.show_text(str(self.next_level))
+            txt = str(self.next_level)
+        draw_cached_numeric_text(
+            cr,
+            x,
+            y,
+            txt,
+            10 * self.scale,
+            weight=Pango.Weight.NORMAL,
+            anchor=TextAnchor.BASELINE_LEFT,
+        )

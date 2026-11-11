@@ -17,10 +17,13 @@ from __future__ import annotations
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    create_pango_layout_for_widget,
+    draw_cached_numeric_text,
+    draw_pango_layout_anchored,
     register_system_font_listener,
     rounded_rectangle_fill,
 )
@@ -60,15 +63,15 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Step text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            30.0,
+            30.0,
+            "Step",
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Step")
-        cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
-        cr.show_text("Step")
 
         # Draw Cue box
         cr.move_to(65, 0)
@@ -78,15 +81,15 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Cue text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            95.0,
+            30.0,
+            "Cue",
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Cue")
-        cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-        cr.show_text("Cue")
 
         # Draw Text box
         cr.move_to(130, 0)
@@ -96,15 +99,15 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            135.0,
+            30.0,
+            "Text",
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER_LEFT,
         )
-        cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
-        cr.move_to(135, 60 / 2 - (h - 20) / 2)
-        cr.show_text("Text")
 
         for i, channel in enumerate(self.channels):
             # Draw Level boxes
@@ -115,15 +118,15 @@ class TrackChannelsHeader(Gtk.Widget):
 
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                get_system_font_family(),
-                cairo.FontSlant.NORMAL,
-                cairo.FontWeight.BOLD,
+            draw_cached_numeric_text(
+                cr,
+                565.0 + (i * 65.0),
+                30.0,
+                str(channel + 1),
+                12,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.CENTER,
             )
-            cr.set_font_size(12)
-            (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
-            cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-            cr.show_text(str(channel + 1))
 
         return False
 
@@ -250,15 +253,15 @@ class TrackChannelsWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            30.0,
+            30.0,
+            str(self.step),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.step))
-        cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
-        cr.show_text(str(self.step))
 
     def _draw_cue_box(self, cr: cairo.Context) -> None:
         """Draw cue box
@@ -279,15 +282,15 @@ class TrackChannelsWidget(Gtk.Widget):
         rounded_rectangle_fill(cr, area, self.radius)
         # Draw Cue number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            95.0,
+            30.0,
+            str(self.number),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.number))
-        cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-        cr.show_text(str(self.number))
 
     def _draw_text_box(self, cr: cairo.Context) -> None:
         """Draw text box
@@ -306,17 +309,14 @@ class TrackChannelsWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-        # Draw Text
+        # Draw Text with Pango layout supporting complex scripts & CJK fallback
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        layout = create_pango_layout_for_widget(cr, self.text)
+        layout.set_width(int(390 * Pango.SCALE))
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        draw_pango_layout_anchored(
+            cr, layout, 135.0, 30.0, anchor=TextAnchor.CENTER_LEFT
         )
-        cr.set_font_size(12)
-        (_x, _y, _w, h, _dx, _dy) = cr.text_extents(self.text)
-        cr.move_to(135, 60 / 2 - (h - 20) / 2)
-        cr.show_text(self.text)
 
     def _draw_level_boxes(self, cr: cairo.Context) -> None:
         """Draw Level boxes
@@ -359,15 +359,15 @@ class TrackChannelsWidget(Gtk.Widget):
                     color.get("green", 0.9),
                     color.get("blue", 0.9),
                 )
-                cr.select_font_face(
-                    get_system_font_family(),
-                    cairo.FontSlant.NORMAL,
-                    cairo.FontWeight.BOLD,
+                draw_cached_numeric_text(
+                    cr,
+                    565.0 + (i * 65.0),
+                    30.0,
+                    level,
+                    12,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.CENTER,
                 )
-                cr.set_font_size(12)
-                (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)
-                cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-                cr.show_text(level)
 
     def do_realize(self) -> None:
         """Realize widget"""

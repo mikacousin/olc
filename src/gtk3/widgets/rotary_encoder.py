@@ -20,10 +20,11 @@ import math
 from typing import Any, Callable, Optional
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 
@@ -167,26 +168,26 @@ class RotaryEncoderWidget(Gtk.DrawingArea):
         cr.fill()
 
         # Center parameter label & physical value readout
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
-        )
-        cr.set_font_size(9.5)
         cr.set_source_rgba(0.75, 0.82, 0.88, 0.95)
-        ext_lbl = cr.text_extents(self.label)
-        cr.move_to(cx - ext_lbl.width / 2.0 - ext_lbl.x_bearing, cy - 3.0)
-        cr.show_text(self.label)
-
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.NORMAL,
+        draw_cached_numeric_text(
+            cr,
+            cx,
+            cy - 3.0,
+            self.label,
+            9.5,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.CENTER,
         )
-        cr.set_font_size(9.0)
+
         cr.set_source_rgb(0.95, 0.95, 0.95)
         disp = self.value_text.replace(" [Multi]", "")
-        ext_val = cr.text_extents(disp)
-        cr.move_to(cx - ext_val.width / 2.0 - ext_val.x_bearing, cy + 10.0)
-        cr.show_text(disp)
+        draw_cached_numeric_text(
+            cr,
+            cx,
+            cy + 10.0,
+            disp,
+            9.0,
+            weight=Pango.Weight.NORMAL,
+            anchor=TextAnchor.CENTER,
+        )
         return False

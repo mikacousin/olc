@@ -18,9 +18,13 @@ from gi.repository import Pango
 
 from olc.gtk3.widgets.button import ButtonWidget
 from olc.gtk3.widgets.common import (
+    FastPangoNumericCache,
     SystemFontManager,
+    TextAnchor,
     create_pango_layout_for_widget,
     create_system_font_description,
+    draw_cached_numeric_text,
+    draw_pango_layout_anchored,
     get_system_font_description,
     get_system_font_family,
     register_system_font_listener,
@@ -163,3 +167,45 @@ def test_button_widget_text_centering() -> None:
         assert abs(ink_center - 25.0) <= 1.5, (
             f"Label {label!r} not centered: center={ink_center}"
         )
+
+
+def test_fast_pango_numeric_cache_and_anchors() -> None:
+    """Verify FastPangoNumericCache O(1) retrieval and anchor calculations."""
+    surface = cairo.ImageSurface(cairo.Format.ARGB32, 100, 100)
+    cr = cairo.Context(surface)
+
+    # 1. Cache retrieval
+    l1 = FastPangoNumericCache.get_layout("100", 11.0, Pango.Weight.BOLD, cr=cr)
+    l2 = FastPangoNumericCache.get_layout("100", 11.0, Pango.Weight.BOLD, cr=cr)
+    assert l1 is l2
+    assert l1.get_text() == "100"
+
+    # 2. Invalidation
+    FastPangoNumericCache.clear()
+    l3 = FastPangoNumericCache.get_layout("100", 11.0, Pango.Weight.BOLD, cr=cr)
+    assert l3 is not l1
+    assert l3.get_text() == "100"
+
+    # 3. Anchored drawing tests
+    dx_c, dy_c, w_c, h_c = draw_cached_numeric_text(
+        cr, 50.0, 50.0, "255", 11.0, anchor=TextAnchor.CENTER
+    )
+    # Center should be around 50.0
+    assert abs((dx_c + w_c / 2.0) - 50.0) <= 1.0
+    assert abs((dy_c + h_c / 2.0) - 50.0) <= 1.0
+
+    # Baseline left
+    dx_bl, dy_bl, w_bl, _h_bl = draw_cached_numeric_text(
+        cr, 10.0, 40.0, "FL", 10.0, anchor=TextAnchor.BASELINE_LEFT
+    )
+    assert abs(dx_bl - 10.0) <= 1.0
+
+    # Top right
+    dx_tr, dy_tr, w_tr, _h_tr = draw_cached_numeric_text(
+        cr, 90.0, 15.0, "P", 9.0, anchor=TextAnchor.TOP_RIGHT
+    )
+    assert abs((dx_tr + w_tr) - 90.0) <= 1.0
+    assert abs(dy_tr - 15.0) <= 1.0
+
+    # 4. Direct draw_pango_layout_anchored test
+    draw_pango_layout_anchored(cr, l1, 20.0, 20.0, anchor=TextAnchor.BOTTOM_LEFT)

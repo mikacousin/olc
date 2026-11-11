@@ -20,9 +20,10 @@ import math
 from typing import Callable, Optional
 
 import cairo
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 from olc.devices import color_pick as cp
+from olc.gtk3.widgets.common import TextAnchor, draw_cached_numeric_text
 
 SWATCH_WIDTH = 34
 SWATCH_HEIGHT = 20
@@ -105,13 +106,15 @@ class SwatchButton(Gtk.Button):  # pylint: disable=too-few-public-methods
                 cr.set_source_rgba(0.05, 0.05, 0.05, 0.9)
             else:
                 cr.set_source_rgba(1.0, 1.0, 1.0, 0.95)
-            cr.set_font_size(8.5)
-            ext = cr.text_extents(self.code)
-            cr.move_to(
-                (w - ext.width) / 2.0 - ext.x_bearing,
-                (h - ext.height) / 2.0 - ext.y_bearing,
+            draw_cached_numeric_text(
+                cr,
+                w / 2.0,
+                h / 2.0,
+                self.code,
+                8.5,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.CENTER,
             )
-            cr.show_text(self.code)
 
         if self.match_level in _MATCH_BADGE_RGB:
             br, bg, bb = _MATCH_BADGE_RGB[self.match_level]

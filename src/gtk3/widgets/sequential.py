@@ -18,11 +18,12 @@ import math
 import typing
 
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.define import MAX_CHANNELS, time_to_string
 from olc.gtk3.widgets.common import (
-    get_system_font_family,
+    TextAnchor,
+    draw_cached_numeric_text,
     register_system_font_listener,
 )
 
@@ -206,15 +207,16 @@ class SequentialWidget(Gtk.Widget):
         )
         cr.stroke()
 
-        cr.move_to(12 + (inter * self.wait), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            12 + (inter * self.wait),
+            16,
+            time_to_string(self.wait),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(12)
-        cr.show_text(time_to_string(self.wait))
 
     def _draw_delay_out(self, cr: cairo.Context, inter: float, wait_x: float) -> None:
         cr.set_source_rgb(0.5, 0.5, 0.9)
@@ -222,15 +224,16 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(16 + wait_x, 40)
         cr.line_to(16 + wait_x + (inter * self.delay_out), 40)
         cr.stroke()
-        cr.move_to(12 + wait_x + (inter * self.delay_out), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            12 + wait_x + (inter * self.delay_out),
+            16,
+            time_to_string(self.delay_out + self.wait),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(12)
-        cr.show_text(time_to_string(self.delay_out + self.wait))
 
     def _draw_delay_in(
         self, cr: cairo.Context, allocation: Gdk.Rectangle, inter: float, wait_x: float
@@ -243,15 +246,16 @@ class SequentialWidget(Gtk.Widget):
             allocation.height - 32 - (len(self.channel_time) * 8),
         )
         cr.stroke()
-        cr.move_to(12 + wait_x + (inter * self.delay_in), 16)
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            12 + wait_x + (inter * self.delay_in),
+            16,
+            time_to_string(self.delay_in + self.wait),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(12)
-        cr.show_text(time_to_string(self.delay_in + self.wait))
 
     def _draw_channel_times(
         self, cr: cairo.Context, allocation: Gdk.Rectangle, inter: float, wait_x: float
@@ -273,13 +277,27 @@ class SequentialWidget(Gtk.Widget):
             t = delay + time + self.wait
             if t != self.total_time:
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.move_to(12 + (inter * delay) + (inter * time) + wait_x, 16)
-                cr.show_text(time_to_string(t))
+                draw_cached_numeric_text(
+                    cr,
+                    12 + (inter * delay) + (inter * time) + wait_x,
+                    16,
+                    time_to_string(t),
+                    12,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_LEFT,
+                )
 
             if delay:
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.move_to(12 + (inter * delay) + wait_x, 16)
-                cr.show_text(time_to_string(delay + self.wait))
+                draw_cached_numeric_text(
+                    cr,
+                    12 + (inter * delay) + wait_x,
+                    16,
+                    time_to_string(delay + self.wait),
+                    12,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_LEFT,
+                )
             ct_nb += 1
 
     def _draw_channel_info(
@@ -293,15 +311,16 @@ class SequentialWidget(Gtk.Widget):
         delay: float,
         time: float,
     ) -> None:
-        cr.move_to((inter * delay) + wait_x, allocation.height - 4 - (ct_nb * 12))
         cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            (inter * delay) + wait_x,
+            allocation.height - 4 - (ct_nb * 12),
+            str(channel),
+            10,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(10)
-        cr.show_text(str(channel))
 
         cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.set_line_width(1)
@@ -473,14 +492,9 @@ class SequentialWidget(Gtk.Widget):
         cr.fill()
 
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr, x1, y1, "A", 10, weight=Pango.Weight.BOLD, anchor=TextAnchor.CENTER
         )
-        cr.set_font_size(10)
-        cr.move_to(x1 - 5, y1 + 2)
-        cr.show_text("A")
 
     def _draw_x2_cursor(
         self,
@@ -512,22 +526,9 @@ class SequentialWidget(Gtk.Widget):
         cr.fill()
 
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr, x1, y1, "B", 10, weight=Pango.Weight.BOLD, anchor=TextAnchor.CENTER
         )
-        cr.set_font_size(10)
-
-        # Original conditionally shifted text downward. Wait!
-        if (not wait_x or self.position_b > wait_x) and (
-            not self.delay_in or self.position_b > ((inter * self.delay_in) + wait_x)
-        ):
-            text_y_offset = 3
-        else:
-            text_y_offset = 2
-        cr.move_to(x1 - 5, y1 + text_y_offset)
-        cr.show_text("B")
 
     def _draw_times_number(
         self,
@@ -538,26 +539,46 @@ class SequentialWidget(Gtk.Widget):
         time_min: float,
     ) -> None:
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face(
-            get_system_font_family(),
-            cairo.FontSlant.NORMAL,
-            cairo.FontWeight.BOLD,
+        draw_cached_numeric_text(
+            cr,
+            12,
+            16,
+            "0",
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
         )
-        cr.set_font_size(12)
-
-        cr.move_to(12, 16)
-        cr.show_text("0")
-
-        cr.move_to(allocation.width - 24, 16)
-        cr.show_text(time_to_string(self.total_time))
+        draw_cached_numeric_text(
+            cr,
+            allocation.width - 24,
+            16,
+            time_to_string(self.total_time),
+            12,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
+        )
 
         if time_max != self.total_time:
-            cr.move_to(12 + (inter * time_max), 16)
-            cr.show_text(time_to_string(time_max))
+            draw_cached_numeric_text(
+                cr,
+                12 + (inter * time_max),
+                16,
+                time_to_string(time_max),
+                12,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
 
         if time_min != time_max:
-            cr.move_to(12 + (inter * time_min), 16)
-            cr.show_text(time_to_string(time_min))
+            draw_cached_numeric_text(
+                cr,
+                12 + (inter * time_min),
+                16,
+                time_to_string(time_min),
+                12,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_LEFT,
+            )
 
     def do_realize(self) -> None:
         """Realize widget"""
