@@ -130,14 +130,27 @@ class CurveEdition(Gtk.Box):
         self.toolbar_box.pack_end(self.points_actions_box, False, False, 0)
         self.bottom_box.pack_start(self.toolbar_box, False, False, 0)
 
-        # Data split: Points Table (left) and Sampled Monitor (right)
-        self.data_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        self.data_hbox.set_margin_start(10)
-        self.data_hbox.set_margin_end(10)
-        self.data_hbox.set_margin_bottom(6)
+        # Sampled Monitor (full width under toolbar, fixed height)
+        self.monitor_container = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=2
+        )
+        self.monitor_container.set_margin_start(10)
+        self.monitor_container.set_margin_end(10)
+        monitor_title = Gtk.Label(label=_("Sampled Readout (11 steps)"))
+        monitor_title.set_xalign(0.0)
+        monitor_title.get_style_context().add_class("dim-label")
+        self.monitor_container.pack_start(monitor_title, False, False, 0)
 
-        # Left: Points Table with header
+        self.sampled_monitor = CurveSampledMonitor(lightshow=self.lightshow)
+        self.sampled_monitor.set_valign(Gtk.Align.START)
+        self.monitor_container.pack_start(self.sampled_monitor, False, False, 0)
+        self.bottom_box.pack_start(self.monitor_container, False, False, 0)
+
+        # Points Table (full width below monitor, visible for PointsCurve)
         self.table_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.table_container.set_margin_start(10)
+        self.table_container.set_margin_end(10)
+        self.table_container.set_margin_bottom(6)
         table_title = Gtk.Label(label=_("Control Points (In / Out)"))
         table_title.set_xalign(0.0)
         table_title.get_style_context().add_class("dim-label")
@@ -149,22 +162,8 @@ class CurveEdition(Gtk.Box):
         self.table_container.pack_start(self.points_table, True, True, 0)
         self.table_container.show_all()
         self.table_container.set_no_show_all(True)
-        self.data_hbox.pack_start(self.table_container, True, True, 0)
+        self.bottom_box.pack_start(self.table_container, True, True, 0)
 
-        # Right: Sampled Monitor with header
-        self.monitor_container = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, spacing=2
-        )
-        monitor_title = Gtk.Label(label=_("Sampled Readout (11 steps)"))
-        monitor_title.set_xalign(0.0)
-        monitor_title.get_style_context().add_class("dim-label")
-        self.monitor_container.pack_start(monitor_title, False, False, 0)
-
-        self.sampled_monitor = CurveSampledMonitor(lightshow=self.lightshow)
-        self.monitor_container.pack_start(self.sampled_monitor, True, True, 0)
-        self.data_hbox.pack_start(self.monitor_container, True, True, 0)
-
-        self.bottom_box.pack_start(self.data_hbox, True, True, 0)
         vbox.pack_start(self.bottom_box, True, True, 0)
         self.add(vbox)
 

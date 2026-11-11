@@ -120,6 +120,8 @@ def test_curve_points_table_and_units(app_gui: Application) -> None:
     process_events()
     assert not edition.points_actions_box.get_visible()
     assert not edition.table_container.get_visible()
+    height_without_table = edition.sampled_monitor.get_allocated_height()
+    assert height_without_table == 54
 
     # 9b. Predefined points curve (3: IES Square):
     # table visible in read-only, buttons hidden
@@ -129,6 +131,9 @@ def test_curve_points_table_and_units(app_gui: Application) -> None:
     assert edition.table_container.get_visible()
     assert not edition.points_table.renderer_in.get_property("editable")
     assert not edition.points_table.renderer_out.get_property("editable")
+    height_with_table = edition.sampled_monitor.get_allocated_height()
+    assert height_with_table == 54
+    assert height_with_table == height_without_table
 
     # 9c. Switch back to editable custom curve: buttons and cell editing restored
     curves_tab.select_curve(curve_nb)

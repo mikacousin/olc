@@ -31,6 +31,8 @@ from olc.gtk3.widgets.curve_units import CurveUnitMode, format_curve_value
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
 
+MONITOR_HEIGHT = 54
+
 
 class CurveSampledMonitor(Gtk.DrawingArea):
     """Visual ruler showing input-to-output evaluation for 11 uniform steps."""
@@ -44,7 +46,8 @@ class CurveSampledMonitor(Gtk.DrawingArea):
         self.lightshow = lightshow
         self.unit_mode = unit_mode
         self.curve_nb: int | None = None
-        self.set_size_request(450, 54)
+        self.set_size_request(-1, MONITOR_HEIGHT)
+        self.set_valign(Gtk.Align.START)
         self.connect("draw", self.on_draw)
         register_system_font_listener(self.queue_draw)
 
@@ -62,7 +65,9 @@ class CurveSampledMonitor(Gtk.DrawingArea):
         """Draw the 11-step sampling table."""
         alloc = self.get_allocation()
         width = alloc.width
-        height = alloc.height
+        draw_height = (
+            min(alloc.height, MONITOR_HEIGHT) if alloc.height > 0 else MONITOR_HEIGHT
+        )
 
         if self.curve_nb is None:
             return
@@ -72,7 +77,7 @@ class CurveSampledMonitor(Gtk.DrawingArea):
 
         # Background
         cr.set_source_rgb(0.12, 0.12, 0.12)
-        cr.rectangle(0, 0, width, height)
+        cr.rectangle(0, 0, width, draw_height)
         cr.fill()
 
         # Labels "In" and "Out" on the left
@@ -113,11 +118,11 @@ class CurveSampledMonitor(Gtk.DrawingArea):
 
             # Cell box
             cr.set_source_rgb(0.18, 0.18, 0.18)
-            cr.rectangle(cell_x, 2, cell_w, height - 4)
+            cr.rectangle(cell_x, 2, cell_w, draw_height - 4)
             cr.fill()
 
             cr.set_source_rgb(0.28, 0.28, 0.28)
-            cr.rectangle(cell_x, 2, cell_w, height - 4)
+            cr.rectangle(cell_x, 2, cell_w, draw_height - 4)
             cr.stroke()
 
             # Center coordinates
