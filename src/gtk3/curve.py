@@ -670,6 +670,7 @@ class CurvesTab(Gtk.Box):
         for number in self.lightshow.curves.curves:
             self.flowbox.add(CurveButton(number, self.lightshow, self.tabs))
         self.scrolled.add(self.flowbox)
+        self.flowbox.show_all()
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -679,7 +680,6 @@ class CurvesTab(Gtk.Box):
             self.flowbox.destroy()
             self.populate_curves()
             self.flowbox.invalidate_filter()
-            self.window.show_all()
         if active_nb is not None and active_nb in self.lightshow.curves.curves:
             self.select_curve(active_nb)
 

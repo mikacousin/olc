@@ -73,6 +73,8 @@ def test_curves_tab_behavior(app_gui: Application) -> None:
     assert len(app_gui.core.lightshow.curves.curves) == initial_curve_count + 1, (
         "A new curve should be created."
     )
+    assert curves_tab.flowbox is not None
+    assert curves_tab.flowbox.get_visible(), "Flowbox must be visible after new curve"
 
     # Get the created curve number (usually the last index)
     new_curve_number = list(app_gui.core.lightshow.curves.curves.keys())[-1]
@@ -260,6 +262,6 @@ def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
     assert reopened_tab.is_sidebar_visible()
 
     # 5. Paned position
-    reopened_tab.set_position(280)
+    reopened_tab.set_position(200)
     process_events()
-    assert reopened_tab.get_position() == 280
+    assert reopened_tab.get_position() == 200
