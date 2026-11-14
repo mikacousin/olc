@@ -74,9 +74,10 @@ class MidiNotes:
     cc_notes: dict[str, list[int]]
     zoom: bool
 
-    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
+    def __init__(self, midi: Midi, app: CoreApplication) -> None:
         self.midi = midi
-        self.app_delegate = app_delegate
+        self.app = app
+        self.app_delegate = app
         self.zoom = False
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
@@ -167,13 +168,13 @@ class MidiNotes:
             fader_index = int(key[6:])
             page = int((fader_index - 1) / 10)
             fader = int(fader_index - (page * 10))
-            if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
+            if page + 1 == self.app.core.lightshow.fader_bank.active_page:
                 self.flash(msg, fader)
         elif key[:6] == "fader_":
             fader_index = int(key[6:])
             page = int((fader_index - 1) / 10)
             fader = int(fader_index - (page * 10))
-            if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
+            if page + 1 == self.app.core.lightshow.fader_bank.active_page:
                 self.fader(msg, fader)
         elif key[:5] == "inde_":
             self._function_inde_button(msg, int(key[5:]))
@@ -266,7 +267,7 @@ class MidiNotes:
                     # Don't delete flash button from other pages
                     index = int(key[6:])
                     page = index // 11 + 1
-                    if page == self.app_delegate.core.lightshow.fader_bank.active_page:
+                    if page == self.app.core.lightshow.fader_bank.active_page:
                         self.notes.update({key: [0, -1]})
                 else:
                     # Delete it
@@ -291,7 +292,7 @@ class MidiNotes:
                     # Don't delete flash button from other pages
                     index = int(key[6:])
                     page = index // 11 + 1
-                    if page == self.app_delegate.core.lightshow.fader_bank.active_page:
+                    if page == self.app.core.lightshow.fader_bank.active_page:
                         self.cc_notes.update({key: [0, -1]})
                 else:
                     # Delete it
@@ -329,7 +330,7 @@ class MidiNotes:
             independent: Independent number
         """
         inde = None
-        for i in self.app_delegate.core.lightshow.independents.independents:
+        for i in self.app.core.lightshow.independents.independents:
             if i.number == independent:
                 inde = i
                 break
@@ -339,19 +340,15 @@ class MidiNotes:
         if msg.type == "note_off" or (
             msg.type == "note_on" and msg.velocity == 127 and inde.level >= 0.5
         ):
-            if self.app_delegate.core is not None and hasattr(
-                self.app_delegate.core, "action_registry"
-            ):
-                self.app_delegate.core.action_registry.execute(
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
                     "independent.set_level", independent, 0.0
                 )
             else:
                 self._update_inde_button(inde, independent, 0)
         elif msg.type == "note_on" and msg.velocity == 127 and inde.level < 0.5:
-            if self.app_delegate.core is not None and hasattr(
-                self.app_delegate.core, "action_registry"
-            ):
-                self.app_delegate.core.action_registry.execute(
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
                     "independent.set_level", independent, 1.0
                 )
             else:
@@ -371,12 +368,12 @@ class MidiNotes:
     def _zoom_plus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
         if self.zoom:
-            self.app_delegate.core.zoom("in")
+            self.app.core.zoom("in")
 
     def _zoom_minus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
         if self.zoom:
-            self.app_delegate.core.zoom("out")
+            self.app.core.zoom("out")
 
     def fader(self, msg: mido.Message, fader_index: int) -> None:
         """Send Fader position when released
@@ -387,7 +384,7 @@ class MidiNotes:
         """
         if msg.velocity == 0:
             midi_name = f"fader_{fader_index}"
-            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
+            fader = self.app.core.lightshow.fader_bank.get_fader(fader_index)
 
             self.midi.messages.control_change.send(midi_name, round(fader.level * 127))
             self.midi.messages.pitchwheel.send(
@@ -401,15 +398,15 @@ class MidiNotes:
             msg: MIDI message
             fader_index: Fader number
         """
-        fader_bank = self.app_delegate.core.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         if msg.velocity == 0:
             self.send(f"flash_{fader_index}", 0)
-            self.app_delegate.core.action_registry.execute(
+            self.app.core.action_registry.execute(
                 "fader.flash", fader_bank.active_page, fader_index, False
             )
         elif msg.velocity == 127:
             self.send(f"flash_{fader_index}", 127)
-            self.app_delegate.core.action_registry.execute(
+            self.app.core.action_registry.execute(
                 "fader.flash", fader_bank.active_page, fader_index, True
             )
 
@@ -420,7 +417,7 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("dmx.blackout_all")
+            self.app.core.action_registry.execute("dmx.blackout_all")
 
     def go(self, msg: mido.Message) -> None:
         """Go
@@ -429,7 +426,7 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("playback.go")
+            self.app.core.action_registry.execute("playback.go")
 
     def pause(self, msg: mido.Message) -> None:
         """Pause
@@ -438,7 +435,7 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("playback.pause")
+            self.app.core.action_registry.execute("playback.pause")
 
     def go_back(self, msg: mido.Message) -> None:
         """Go Back
@@ -447,7 +444,7 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("playback.go_back")
+            self.app.core.action_registry.execute("playback.go_back")
 
     def goto(self, msg: mido.Message) -> None:
         """Go to Cue
@@ -456,14 +453,14 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "goto", False)
+            self.app.core.emit("button.pressed", "goto", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "goto", True)
-            self.app_delegate.core.action_registry.execute(
+            self.app.core.emit("button.pressed", "goto", True)
+            self.app.core.action_registry.execute(
                 "playback.goto",
-                self.app_delegate.core.commandline.get_string(),
+                self.app.core.commandline.get_string(),
             )
-            self.app_delegate.core.action_registry.execute("commandline.clear")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def sequence_minus(self, msg: mido.Message) -> None:
         """Seq -
@@ -472,8 +469,8 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("playback.sequence_minus")
-            self.app_delegate.core.action_registry.execute("commandline.clear")
+            self.app.core.action_registry.execute("playback.sequence_minus")
+            self.app.core.action_registry.execute("commandline.clear")
             self.send("playback.sequence_minus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_minus", 0)
@@ -485,8 +482,8 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            self.app_delegate.core.action_registry.execute("playback.sequence_plus")
-            self.app_delegate.core.action_registry.execute("commandline.clear")
+            self.app.core.action_registry.execute("playback.sequence_plus")
+            self.app.core.action_registry.execute("commandline.clear")
             self.send("playback.sequence_plus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_plus", 0)
@@ -498,12 +495,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "output", False)
+            self.app.core.emit("button.pressed", "output", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "output", True)
-            self.app_delegate.core.action_registry.execute(
-                "gui.tab_open", "dmx_outputs"
-            )
+            self.app.core.emit("button.pressed", "output", True)
+            self.app.core.action_registry.execute("gui.tab_open", "dmx_outputs")
 
     def seq(self, msg: mido.Message) -> None:
         """Sequences
@@ -512,10 +507,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "seq", False)
+            self.app.core.emit("button.pressed", "seq", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "seq", True)
-            self.app_delegate.core.action_registry.execute("gui.tab_open", "sequences")
+            self.app.core.emit("button.pressed", "seq", True)
+            self.app.core.action_registry.execute("gui.tab_open", "sequences")
 
     def group(self, msg: mido.Message) -> None:
         """Groups
@@ -524,10 +519,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "group", False)
+            self.app.core.emit("button.pressed", "group", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "group", True)
-            self.app_delegate.core.action_registry.execute("gui.tab_open", "groups")
+            self.app.core.emit("button.pressed", "group", True)
+            self.app.core.action_registry.execute("gui.tab_open", "groups")
 
     def preset(self, msg: mido.Message) -> None:
         """Presets
@@ -536,10 +531,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "preset", False)
+            self.app.core.emit("button.pressed", "preset", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "preset", True)
-            self.app_delegate.core.action_registry.execute("gui.tab_open", "memories")
+            self.app.core.emit("button.pressed", "preset", True)
+            self.app.core.action_registry.execute("gui.tab_open", "memories")
 
     def track(self, msg: mido.Message) -> None:
         """Track channels
@@ -548,12 +543,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            self.app_delegate.core.emit("button.pressed", "track", False)
+            self.app.core.emit("button.pressed", "track", False)
         elif msg.velocity == 127:
-            self.app_delegate.core.emit("button.pressed", "track", True)
-            self.app_delegate.core.action_registry.execute(
-                "gui.tab_open", "track_channels"
-            )
+            self.app.core.emit("button.pressed", "track", True)
+            self.app.core.action_registry.execute("gui.tab_open", "track_channels")
 
     def page_plus(self, msg: mido.Message) -> None:
         """Increment Fader Page
@@ -562,14 +555,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            fader_bank = self.app_delegate.core.lightshow.fader_bank
+            fader_bank = self.app.core.lightshow.fader_bank
             target_page = fader_bank.active_page + 1
-            if self.app_delegate.core is not None and hasattr(
-                self.app_delegate.core, "action_registry"
-            ):
-                self.app_delegate.core.action_registry.execute(
-                    "fader.set_page", target_page
-                )
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("fader.set_page", target_page)
             else:
                 if target_page > MAX_FADER_PAGE:
                     target_page = 1
@@ -583,14 +572,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 127:
-            fader_bank = self.app_delegate.core.lightshow.fader_bank
+            fader_bank = self.app.core.lightshow.fader_bank
             target_page = fader_bank.active_page - 1
-            if self.app_delegate.core is not None and hasattr(
-                self.app_delegate.core, "action_registry"
-            ):
-                self.app_delegate.core.action_registry.execute(
-                    "fader.set_page", target_page
-                )
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("fader.set_page", target_page)
             else:
                 if target_page < 1:
                     target_page = MAX_FADER_PAGE
@@ -607,14 +592,14 @@ class MidiNotes:
 
         if msg.velocity == 0:
             if vc_attr:
-                self.app_delegate.core.emit("button.pressed", vc_attr, False)
+                self.app.core.emit("button.pressed", vc_attr, False)
         elif msg.velocity == 127:
             if vc_attr:
-                self.app_delegate.core.emit("button.pressed", vc_attr, True)
+                self.app.core.emit("button.pressed", vc_attr, True)
 
             if string_to_add is not None:
-                self.app_delegate.core.action_registry.execute(
+                self.app.core.action_registry.execute(
                     "commandline.append_char", string_to_add
                 )
             elif core_action_name is not None:
-                self.app_delegate.core.action_registry.execute(core_action_name)
+                self.app.core.action_registry.execute(core_action_name)

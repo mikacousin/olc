@@ -23,15 +23,13 @@ from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.core.backends.midi import Midi
-
 
 class ToggleWidget(Gtk.ToggleButton):
     """Toggle button widget"""
 
     __gtype_name__ = "ToggleWidget"
 
-    def __init__(self, midi: Midi | None, text: str = "None") -> None:
+    def __init__(self, midi: object = None, text: str = "None") -> None:
         super().__init__()
 
         self.width = 50
@@ -39,6 +37,7 @@ class ToggleWidget(Gtk.ToggleButton):
         self.radius = 5
         self.text = text
         self.midi = midi
+        self.is_learning = False
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Toggle button
@@ -49,16 +48,15 @@ class ToggleWidget(Gtk.ToggleButton):
         self.set_size_request(self.width, self.height)
         # Button
         area = (10, self.width - 10, 10, self.height - 10)
-        if self.midi and self.midi.learning == self.text:
+        is_learning = self.is_learning or (
+            self.midi is not None and getattr(self.midi, "learning", "") == self.text
+        )
+        if is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         elif self.get_active():
             cr.set_source_rgb(0.5, 0.3, 0.0)
-            if self.midi:
-                self.midi.messages.notes.send(self.text, 127)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            if self.midi:
-                self.midi.messages.notes.send(self.text, 0)
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)

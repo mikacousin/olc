@@ -405,8 +405,6 @@ class ThreadGo(threading.Thread):
 
         if self.sequence.steps[next_step].wait:
             self.sequence.do_go(None)
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_off("playback.go")
 
     def run(self) -> None:
         self._capture_start_levels()
@@ -808,9 +806,6 @@ class ThreadGoBack(threading.Thread):
                     "channel_time": self.sequence.steps[prev_step + 1].channel_time,
                 },
             )
-
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_off("playback.go_back")
 
     def run(self) -> None:
         if self.sequence.last == 2:

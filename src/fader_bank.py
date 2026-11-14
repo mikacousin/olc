@@ -227,9 +227,6 @@ class FaderBank:
 
     def _refresh_faders_display(self, page: int, index: int) -> None:
         if page == self.active_page:
-            # Refresh MIDI
-            if self.app and hasattr(self.app, "midi") and self.app.midi:
-                self.app.midi.update_fader(self.faders[page][index])
             # Refresh Virtual Console
             app_any = typing.cast(typing.Any, self.app)
             if (

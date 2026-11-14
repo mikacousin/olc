@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import typing
 
+from olc.core.backends.midi import Midi
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.fader import FaderType
 from olc.files.write import WriteFile
@@ -24,7 +25,6 @@ from olc.files.write import WriteFile
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
-    from olc.core.backends.midi import Midi
     from olc.core.lightshow import LightShow
     from olc.sequence import Sequence
 
@@ -266,12 +266,10 @@ class OlcWriter(WriteFile):
         if not self.midi:
             return
 
-        self.data["midi_mapping"] = {}
-        midi = self.midi.messages
-        self.data["midi_mapping"]["note"] = midi.notes.notes
-        self.data["midi_mapping"]["note_cc"] = midi.notes.cc_notes
-        self.data["midi_mapping"]["control_change"] = midi.control_change.control_change
-        self.data["midi_mapping"]["pitchwheel"] = midi.pitchwheel.pitchwheel
+        if isinstance(self.midi, Midi):
+            self.data["midi_mapping"] = self.midi.to_dict()
+        else:
+            self.data["midi_mapping"] = Midi.to_dict(self.midi)
 
     def _universes(self) -> None:
         app = self.lightshow.app

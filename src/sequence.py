@@ -159,13 +159,9 @@ class Sequence:
             True if Go to stop, else False
         """
         if self.on_go and self.thread:
-            if self.app is not None and self.app.midi is not None:
-                self.app.midi.button_off("playback.go")
             # Switch off Pause Led / Feedback
             if not self.thread.pause.is_set():
                 self.thread.pause.set()
-                if self.app is not None and self.app.midi is not None:
-                    self.app.midi.button_off("playback.pause")
                 if self.app is not None:
                     core = getattr(self.app, "core", self.app)
                     if hasattr(core, "action_registry"):
@@ -185,6 +181,10 @@ class Sequence:
             self.thread.join(timeout=1.0)
             self.thread = None
             self.on_go = False
+            if self.app is not None:
+                core = getattr(self.app, "core", self.app)
+                if hasattr(core, "emit"):
+                    core.emit("playback.stopped")
             if self.app is not None and self.app.crossfade is not None:
                 self.app.crossfade.scale_a.set_value(0)
                 self.app.crossfade.scale_b.set_value(0)
@@ -494,8 +494,6 @@ class Sequence:
             goto: True if Goto, False if Go (default)
             override_time: Optional override fade time in seconds
         """
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("playback.go")
         # If Go is active, go to next cue
         if self.stop():
             # Launch another Go
@@ -539,6 +537,10 @@ class Sequence:
         else:
             # Indicates that a Go is in progress
             self.on_go = True
+            if self.app is not None:
+                core = getattr(self.app, "core", self.app)
+                if hasattr(core, "emit"):
+                    core.emit("playback.go_started")
             self.thread = ThreadGo(
                 goto, typing.cast(typing.Any, self), override_time=override_time
             )
@@ -554,9 +556,6 @@ class Sequence:
         position = self.position
         if position <= 0:
             return False
-
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("playback.go_back")
 
         self.stop()
 
@@ -595,12 +594,8 @@ class Sequence:
         if self.thread:
             if self.thread.pause.is_set():
                 self.thread.pause.clear()
-                if self.app is not None and self.app.midi is not None:
-                    self.app.midi.button_on("playback.pause")
             else:
                 self.thread.pause.set()
-                if self.app is not None and self.app.midi is not None:
-                    self.app.midi.button_off("playback.pause")
             if self.app is not None:
                 core = getattr(self.app, "core", self.app)
                 core.action_registry.trigger_feedback("playback.pause")

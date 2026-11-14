@@ -22,8 +22,6 @@ from gi.repository import Gdk, GObject, Gtk
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.core.backends.midi import Midi
-
 
 class ControllerWidget(Gtk.DrawingArea):
     """Controller widget, inherits from Gtk.DrawingArea
@@ -47,9 +45,10 @@ class ControllerWidget(Gtk.DrawingArea):
         "clicked": (GObject.SignalFlags.ACTION, None, ()),
     }
 
-    def __init__(self, text: str = "None", midi: Midi | None = None) -> None:
+    def __init__(self, text: str = "None", midi: object = None) -> None:
         Gtk.DrawingArea.__init__(self)
         self.midi = midi
+        self.is_learning = False
 
         self.angle = 0.0
         self.led = False
@@ -168,7 +167,10 @@ class ControllerWidget(Gtk.DrawingArea):
         cr.set_source_rgba(0.1, 0.1, 0.1, 1.0)
         cr.arc(0, 0, 20, 0, math.radians(360))
         cr.stroke()
-        if self.midi and self.midi.learning == self.text:
+        is_learning = self.is_learning or (
+            self.midi is not None and getattr(self.midi, "learning", "") == self.text
+        )
+        if is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)

@@ -28,9 +28,10 @@ class MidiPitchWheel:
 
     pitchwheel: dict[str, int]
 
-    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
+    def __init__(self, midi: Midi, app: CoreApplication) -> None:
         self.midi = midi
-        self.app_delegate = app_delegate
+        self.app = app
+        self.app_delegate = app
         # Default MIDI pitchwheel values : "action": Channel
         self.pitchwheel = {
             "crossfade_out": -1,
@@ -90,12 +91,10 @@ class MidiPitchWheel:
 
     def _update_fader(self, msg: mido.Message, index: int) -> None:
         val = (msg.pitch + 8192) / 16383
-        fader_bank = self.app_delegate.core.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         number = index + 1
-        if self.app_delegate.core is not None and hasattr(
-            self.app_delegate.core, "action_registry"
-        ):
-            self.app_delegate.core.action_registry.execute(
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute(
                 "fader.set_level", fader_bank.active_page, number, val
             )
         else:

@@ -77,11 +77,12 @@ class MidiPorts:
     """MIDI In and Out ports"""
 
     ports: list[MidiIO]
+    settings: StrvSettings | None
 
     def __init__(
         self,
         midi: Midi,
-        settings: StrvSettings,
+        settings: StrvSettings | None = None,
         on_ports_changed: Callable[[], None] | None = None,
     ) -> None:
         self.midi = midi
@@ -91,18 +92,24 @@ class MidiPorts:
         self.ports = []
         self.mido_ports = None
 
-        ports = self.settings.get_strv("midi-ports")
+        ports = self._get_configured_ports()
         self.mido_ports = mido.get_ioport_names()
         self.open(ports)
 
         self.poll = RepeatedTimer(1, self.polling)
+
+    def _get_configured_ports(self) -> list[str]:
+        """Return configured MIDI port names safely even when settings is None."""
+        if self.settings is None or not hasattr(self.settings, "get_strv"):
+            return []
+        return list(self.settings.get_strv("midi-ports"))
 
     def polling(self) -> None:
         """Poll MIDI ports"""
         port_names = mido.get_ioport_names()
         if port_names != self.mido_ports:
             self.mido_ports = port_names
-            self.open(self.settings.get_strv("midi-ports"))
+            self.open(self._get_configured_ports())
             self.midi.update_faders()
             core = getattr(self.midi, "core", None)
             if core is not None:
@@ -123,6 +130,6 @@ class MidiPorts:
 
     def close(self) -> None:
         """Close MIDI inputs"""
-        for port in self.ports:
-            self.ports.remove(port)
+        for port in list(self.ports):
             port.close()
+        self.ports.clear()

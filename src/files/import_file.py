@@ -338,6 +338,3 @@ class ImportFile:
         if self.window is not None and self.window.playback is not None:
             self.window.playback.update_xfade_display(0)
             self.window.playback.update_sequence_display()
-        # Redraw Mackie LCD
-        if self.midi and self.midi.messages and self.midi.messages.lcd:
-            self.midi.messages.lcd.show_faders()

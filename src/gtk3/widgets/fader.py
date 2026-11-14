@@ -23,7 +23,6 @@ from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.core.backends.midi import Midi
     from olc.core.crossfade import CrossFade
 
 
@@ -45,7 +44,7 @@ class FaderWidget(Gtk.Scale):
         red: float = 0.2,
         green: float = 0.2,
         blue: float = 0.2,
-        midi: "Midi | None" = None,
+        midi: object = None,
         crossfade: "CrossFade | None" = None,
         is_crossfade: bool = False,
         **kwds: typing.Any,  # noqa: ANN401
@@ -54,6 +53,7 @@ class FaderWidget(Gtk.Scale):
         self.midi = midi
         self.crossfade = crossfade
         self.is_crossfade = is_crossfade
+        self.is_learning = False
 
         self.red = red
         self.green = green
@@ -130,7 +130,10 @@ class FaderWidget(Gtk.Scale):
         knob_radius = min(radius, half_knob)
         area = ((width / 2) - half_knob, (width / 2) + half_knob, h - 20, h)
 
-        if self.midi and self.midi.learning == self.text:
+        is_learning = self.is_learning or (
+            self.midi is not None and getattr(self.midi, "learning", "") == self.text
+        )
+        if is_learning:
             if self.pressed:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:

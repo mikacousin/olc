@@ -125,3 +125,105 @@ def test_midi_headless_feedback_and_navigation() -> None:
     assert "TIME" in core_app.commandline.get_string()
 
     midi.stop()
+
+
+def test_midi_headless_core_init_and_ports_close() -> None:
+    """Verify CoreApplication.init_midi() works headless and closes all ports."""
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+
+    core_app = CoreApplication(None)
+    midi = core_app.init_midi()
+    assert midi is not None
+    assert core_app.midi is midi
+    assert midi.ports.settings is None
+
+    # Replace any discovered ports with mocks to verify safe iteration in close()
+    port_a = MagicMock()
+    port_a.name = "Mock In/Out A"
+    port_b = MagicMock()
+    port_b.name = "Mock In/Out B"
+    if isinstance(midi.ports.ports, list):
+        midi.ports.ports = [port_a, port_b]
+    else:
+        midi.ports.ports = {"Mock A": port_a, "Mock B": port_b}
+
+    midi.ports.close()
+    assert len(midi.ports.ports) == 0
+    midi.stop()
+
+
+def test_midi_headless_event_feedback_and_serialization() -> None:
+    """Verify Core event feedback to MIDI and to_dict()/from_dict() roundtrip."""
+    from unittest.mock import patch
+
+    from olc.core.app import CoreApplication
+
+    core_app = CoreApplication(None)
+    midi = core_app.init_midi()
+    assert midi is not None
+
+    with (
+        patch.object(midi, "button_on") as mock_on,
+        patch.object(midi, "button_off") as mock_off,
+        patch.object(midi.messages.control_change, "send") as mock_cc_send,
+        patch.object(midi.messages.pitchwheel, "send") as mock_pw_send,
+        patch.object(midi.xfade.fader_out, "set_state") as mock_out_state,
+        patch.object(midi.xfade.fader_in, "set_state") as mock_in_state,
+    ):
+        core_app.emit("playback.go_started")
+        mock_on.assert_called_with("playback.go")
+
+        core_app.emit("playback.transition_completed")
+        mock_off.assert_called_with("playback.go")
+
+        mock_on.reset_mock()
+        mock_off.reset_mock()
+        core_app.emit("playback.pause_triggered", {"active": True})
+        mock_on.assert_called_with("playback.pause")
+        core_app.emit("playback.pause_triggered", {"active": False})
+        mock_off.assert_called_with("playback.pause")
+
+        mock_off.reset_mock()
+        core_app.emit("playback.stopped")
+        mock_off.assert_any_call("playback.go")
+        mock_off.assert_any_call("playback.pause")
+
+        core_app.emit("fader.level_changed", 1, 0.5)
+        mock_cc_send.assert_called_with("fader_1", 64)
+        mock_pw_send.assert_called_with("fader_1", 0)
+
+        mock_cc_send.reset_mock()
+        mock_pw_send.reset_mock()
+        core_app.lightshow.fader_bank.get_fader(1).level = 1.0
+        core_app.emit("fader.flash_changed", 1, True)
+        mock_cc_send.assert_called_with("fader_1", 127)
+        mock_pw_send.assert_called_with("fader_1", 8191)
+
+        core_app.emit("playback.xfade_moved", "a", 128)
+        mock_out_state.assert_called_with(128)
+        core_app.emit("playback.xfade_moved", "b", 64)
+        mock_in_state.assert_called_with(64)
+
+    # Serialization roundtrip + legacy key mapping
+    midi.messages.notes.notes["time"] = [1, 42]
+    midi.messages.notes.cc_notes["playback.go"] = [2, 10]
+    midi.messages.control_change.control_change["fader_1"] = [1, 7]
+    midi.messages.pitchwheel.pitchwheel["fader_1"] = 0
+    exported = midi.to_dict()
+
+    core_app2 = CoreApplication(None)
+    midi2 = core_app2.init_midi()
+    assert midi2 is not None
+    exported["note"]["go"] = [3, 12]
+    midi2.from_dict(exported)
+
+    assert midi2.messages.notes.notes["time"] == [1, 42]
+    assert midi2.messages.notes.notes["playback.go"] == [3, 12]
+    assert midi2.messages.notes.cc_notes["playback.go"] == [2, 10]
+    assert midi2.messages.control_change.control_change["fader_1"] == [1, 7]
+    assert midi2.messages.pitchwheel.pitchwheel["fader_1"] == 0
+
+    midi.stop()
+    midi2.stop()

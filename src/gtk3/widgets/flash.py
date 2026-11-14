@@ -14,8 +14,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import typing
-
 import cairo
 from gi.repository import Gdk, GObject, Gtk, Pango, PangoCairo
 
@@ -27,9 +25,6 @@ from olc.gtk3.widgets.common import (
     rounded_rectangle_fill,
 )
 
-if typing.TYPE_CHECKING:
-    from olc.core.backends.midi import Midi
-
 
 # pylint: disable=too-many-instance-attributes
 class FlashWidget(Gtk.Widget):
@@ -40,10 +35,11 @@ class FlashWidget(Gtk.Widget):
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
     def __init__(
-        self, label: str = "", text: str = "None", midi: Midi | None = None
+        self, label: str = "", text: str = "None", midi: object = None
     ) -> None:
         super().__init__()
         self.midi = midi
+        self.is_learning = False
 
         self.width = 40
         self.height = 40
@@ -79,15 +75,18 @@ class FlashWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
+        is_learning = self.is_learning or (
+            self.midi is not None and getattr(self.midi, "learning", "") == self.text
+        )
         # Draw rounded box
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.pressed:
-            if self.midi and self.midi.learning == self.text:
+            if is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi and self.midi.learning == self.text:
+        elif is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)

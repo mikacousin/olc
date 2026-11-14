@@ -28,9 +28,10 @@ if typing.TYPE_CHECKING:
 class MidiXFade:
     """MIDI manual Crossfade"""
 
-    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
+    def __init__(self, midi: Midi, app: CoreApplication) -> None:
         self.midi = midi
-        self.app_delegate = app_delegate
+        self.app = app
+        self.app_delegate = app
         self.fader_in = MIDIFader()
         self.fader_out = MIDIFader()
         self.inverted = True
@@ -58,12 +59,12 @@ class MidiXFade:
             midi_fader: Crossfade MIDI fader
         """
         self.midi.enqueue(msg)
-        if self.app_delegate.crossfade is None:
+        if self.app.crossfade is None:
             return
         if midi_fader is self.fader_in:
-            xfade_val = self.app_delegate.crossfade.scale_b.value
+            xfade_val = self.app.crossfade.scale_b.value
         else:
-            xfade_val = self.app_delegate.crossfade.scale_a.value
+            xfade_val = self.app.crossfade.scale_a.value
         if msg.type == "pitchwheel":
             val = (msg.pitch + 8192) / 16383
         elif msg.type == "control_change":
@@ -83,9 +84,9 @@ class MidiXFade:
             fader : In or Out
             value : fader value (0 - 255)
         """
-        if self.app_delegate.crossfade is None:
+        if self.app.crossfade is None:
             return
-        self.app_delegate.crossfade.manual = True
+        self.app.crossfade.manual = True
 
         if self.fader_out.get_value() == 255 and self.fader_in.get_value() == 255:
             if self.get_inverted():
@@ -98,6 +99,4 @@ class MidiXFade:
             self.fader_in.value = 0
 
         fader_key = "a" if fader == self.fader_out else "b"
-        self.app_delegate.core.action_registry.execute(
-            "playback.manual_xfade", fader_key, value
-        )
+        self.app.core.action_registry.execute("playback.manual_xfade", fader_key, value)

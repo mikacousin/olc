@@ -121,9 +121,6 @@ class CrossFade:
         main_pb.thread = None
 
         if self.app is not None:
-            if getattr(self.app, "midi", None) is not None:
-                self.app.midi.button_off("playback.pause")
-                self.app.midi.button_off("playback.go")
             core = getattr(self.app, "core", self.app)
             if hasattr(core, "action_registry"):
                 core.action_registry.trigger_feedback("playback.pause")
@@ -133,6 +130,7 @@ class CrossFade:
                     "playback.pause_triggered",
                     {"active": False, "label": "PAUSE"},
                 )
+                core.emit("playback.stopped")
 
     def scale_moved(self, scale: Scale) -> None:
         """On moved

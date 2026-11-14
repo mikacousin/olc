@@ -29,9 +29,10 @@ class MidiControlChanges:
 
     control_change: dict[str, list[int]]
 
-    def __init__(self, midi: Midi, app_delegate: CoreApplication) -> None:
+    def __init__(self, midi: Midi, app: CoreApplication) -> None:
         self.midi = midi
-        self.app_delegate = app_delegate
+        self.app = app
+        self.app_delegate = app
         # Default MIDI control change values : "action": Channel, CC
         self.control_change = {
             "wheel": [0, 60],
@@ -65,7 +66,7 @@ class MidiControlChanges:
         Returns:
             Stored list, or empty list if unavailable
         """
-        settings = getattr(self.app_delegate, "settings", None)
+        settings = getattr(self.app, "settings", None)
         if settings is None or not hasattr(settings, "get_strv"):
             return []
         return list(settings.get_strv(key))
@@ -185,9 +186,7 @@ class MidiControlChanges:
         """
         step, direction = self.__get_step(msg, port)
         dir_val = 1 if direction >= 0 else -1
-        self.app_delegate.core.action_registry.execute(
-            "channel.wheel_adjust", step, dir_val
-        )
+        self.app.core.action_registry.execute("channel.wheel_adjust", step, dir_val)
 
     def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
         """Faders
@@ -198,11 +197,11 @@ class MidiControlChanges:
         """
         val = msg.value / 127
         midi_fader = self.midi.faders.faders[fader_index - 1]
-        fader_bank = self.app_delegate.core.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         fader = fader_bank.get_fader(fader_index)
         if not midi_fader.is_valid(val, fader.level):
             return
-        self.app_delegate.core.action_registry.execute(
+        self.app.core.action_registry.execute(
             "fader.set_level", fader_bank.active_page, fader_index, val
         )
 
@@ -250,7 +249,7 @@ class MidiControlChanges:
         self, independent: int, step: int
     ) -> tuple[Independent | None, int]:
         inde = None
-        for inde in self.app_delegate.core.lightshow.independents.independents:
+        for inde in self.app.core.lightshow.independents.independents:
             if inde.number == independent:
                 val = round(inde.level * 255) + step
                 if val < 0:
@@ -262,10 +261,8 @@ class MidiControlChanges:
 
     def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
         level_float = val / 255.0
-        if self.app_delegate.core is not None and hasattr(
-            self.app_delegate.core, "action_registry"
-        ):
-            self.app_delegate.core.action_registry.execute(
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute(
                 "independent.set_level", independent, level_float
             )
         else:

@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.channel_time import ChannelTime
+from olc.core.backends.midi import Midi
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import MAX_FADER_PER_PAGE
@@ -30,7 +31,6 @@ from olc.sequence import Sequence
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends.midi import Midi
     from olc.core.lightshow import LightShow
 
 LEGACY_CURVE_NAMES: dict[str, str] = {
@@ -105,32 +105,10 @@ class ParsedData:
         if not self.data["midi"] or not self.midi:
             return
 
-        legacy_mapping = {
-            "go": "playback.go",
-            "go_back": "playback.go_back",
-            "pause": "playback.pause",
-            "seq_plus": "playback.sequence_plus",
-            "seq_minus": "playback.sequence_minus",
-        }
-
-        for action, value in self.data["midi"]["note"].items():
-            if value != [0, -1]:
-                normalized_action = legacy_mapping.get(action, action)
-                if normalized_action in self.midi.messages.notes.notes:
-                    self.midi.messages.notes.notes[normalized_action] = value
-        note_cc = self.data["midi"].get("note_cc")
-        if note_cc:
-            for action, value in note_cc.items():
-                if value != [0, -1]:
-                    normalized_action = legacy_mapping.get(action, action)
-                    if normalized_action in self.midi.messages.notes.cc_notes:
-                        self.midi.messages.notes.cc_notes[normalized_action] = value
-        for action, value in self.data["midi"]["control_change"].items():
-            if value != [0, -1]:
-                self.midi.messages.control_change.control_change[action] = value
-        for action, value in self.data["midi"]["pitchwheel"].items():
-            if value != -1:
-                self.midi.messages.pitchwheel.pitchwheel[action] = value
+        if isinstance(self.midi, Midi):
+            self.midi.from_dict(self.data["midi"])
+        else:
+            Midi.from_dict(self.midi, self.data["midi"])
 
     @staticmethod
     def _create_curve_from_dict(

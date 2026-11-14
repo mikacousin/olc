@@ -75,13 +75,6 @@ class Fader:
         # Set level
         self.level = level
         self.level_changed()
-        # Send MIDI message to faders
-        midi_name = f"fader_{self.index}"
-        if self.app and hasattr(self.app, "midi") and self.app.midi:
-            self.app.midi.messages.control_change.send(midi_name, round(level * 127))
-            self.app.midi.messages.pitchwheel.send(
-                midi_name, round(level * 16383) - 8192
-            )
 
     def flash_on(self) -> None:
         """Flash fader at full"""
