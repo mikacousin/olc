@@ -45,6 +45,11 @@ class TestCoreEngineBuild:
         engine = CoreEngine(umap)
         assert engine._slots[0].senders == []  # pylint: disable=protected-access
 
+    def test_engine_has_no_app_attribute(self) -> None:
+        """CoreEngine does not hold a back-reference to any application."""
+        engine = _make_engine()
+        assert not hasattr(engine, "app")
+
 
 class TestCoreEngineLifecycle:
     """Test start, stop, context manager, and restart."""

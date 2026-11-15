@@ -107,6 +107,12 @@ def test_virtual_console_sneak_midi_learning_and_dispatch(
     assert app_gui.midi is not None
     assert app_gui.midi.learning == "sneak"
 
+    # Programmatic crossfade updates during MIDI learn must not overwrite target
+    vc.update_crossfade_display(128, 128)
+    process_events()
+    assert app_gui.midi.learning == "sneak"
+    vc.update_crossfade_display(0, 0)
+
     # Disable MIDI learning
     app_gui.core.action_registry.execute("midi.learn_toggle", None)
     process_events()

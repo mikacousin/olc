@@ -66,14 +66,7 @@ def update_ui(subtitle: str, app: Application | None = None) -> None:
                 app.window.live_view.update_channel_widget(channel, seq_next_level)
     # Virtual Console crossfade
     if app.virtual_console and app.virtual_console.props.visible:
-        if app.virtual_console.scale_a.get_inverted():
-            app.virtual_console.scale_a.set_inverted(False)
-            app.virtual_console.scale_b.set_inverted(False)
-        else:
-            app.virtual_console.scale_a.set_inverted(True)
-            app.virtual_console.scale_b.set_inverted(True)
-        app.virtual_console.scale_a.set_value(0)
-        app.virtual_console.scale_b.set_value(0)
+        app.virtual_console.update_crossfade_display(0, 0, toggle_inverted=True)
 
 
 class PlaybackBridgeHandler(BaseEventBridgeHandler):
@@ -497,10 +490,11 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
 
         # 3. Sync Crossfade sliders
         if hasattr(self.app, "crossfade") and self.app.crossfade:
-            if hasattr(vc, "scale_a") and vc.scale_a:
-                vc.scale_a.set_value(self.app.crossfade.scale_a.get_value())
-            if hasattr(vc, "scale_b") and vc.scale_b:
-                vc.scale_b.set_value(self.app.crossfade.scale_b.get_value())
+            if hasattr(vc, "update_crossfade_display"):
+                vc.update_crossfade_display(
+                    self.app.crossfade.scale_a.get_value(),
+                    self.app.crossfade.scale_b.get_value(),
+                )
 
     def _on_crossfade_at_full(self, next_step: int, subtitle: str) -> bool:
         """Safely update crossfade UI values when crossfade reaches full.
@@ -705,8 +699,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
 
             vc = self.app.virtual_console
             if vc and vc.props.visible:
-                vc.scale_a.set_value(val)
-                vc.scale_b.set_value(val)
+                vc.update_crossfade_display(val, val)
         return False
 
     def _on_playback_transition_completed(self, _data: dict[str, typing.Any]) -> bool:
@@ -744,8 +737,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
 
             vc = self.app.virtual_console
             if vc and vc.props.visible:
-                vc.scale_a.set_value(val)
-                vc.scale_b.set_value(val)
+                vc.update_crossfade_display(val, val)
         return False
 
     def _on_playback_goback_completed(self, data: dict[str, typing.Any]) -> bool:

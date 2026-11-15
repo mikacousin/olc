@@ -285,9 +285,15 @@ class PlaybackManualXFadeAction(Action):
 
         vc = getattr(self.app, "virtual_console", None)
         if vc is not None:
-            vc_scale = vc.scale_a if fader_key == "a" else vc.scale_b
-            if hasattr(vc_scale, "set_value"):
-                vc_scale.set_value(val_255)
+            if hasattr(vc, "update_crossfade_display"):
+                vc.update_crossfade_display(
+                    val_a=val_255 if fader_key == "a" else None,
+                    val_b=val_255 if fader_key == "b" else None,
+                )
+            else:
+                vc_scale = vc.scale_a if fader_key == "a" else vc.scale_b
+                if hasattr(vc_scale, "set_value"):
+                    vc_scale.set_value(val_255)
 
         self.app.emit("playback.xfade_moved", fader_key, val_255)
 

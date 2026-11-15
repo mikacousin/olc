@@ -267,7 +267,6 @@ class Application(Gtk.Application):
             universe_map.enable_protocol(u, Protocol.SACN)
 
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
-        self.engine.app = self.core
         self.core.engine = self.engine
 
         self.core.start()

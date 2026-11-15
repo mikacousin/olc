@@ -124,11 +124,34 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     """Fixture to reset state and open/close tabs for each test function."""
     app = app_gui_instance
 
-    # 1. Clear any logical data
+    # 1. Clear any logical data and stop background playback transitions
+    from olc.cue import Cue  # noqa: E402
+    from olc.step import Step  # noqa: E402
+
+    main_pb = app.core.lightshow.main_playback
+    main_pb.stop()
+    main_pb.steps.clear()
+    cue0 = Cue(0, 0.0)
+    main_pb.cues = {cue0}
+    step0 = Step(sequence=main_pb.index, cue=cue0)
+    main_pb.add_step(step0)
+    main_pb.add_step(step0)
+    main_pb.position = 0
+    main_pb._on_go = False
+    main_pb.tracking_mode = False
+    main_pb.mib_enabled = True
+    main_pb.channels.clear()
+    app.core.lightshow.chasers.clear()
     app.core.lightshow.groups.clear()
     app.core.lightshow.cues.clear()
     app.core.lightshow.patch.patch_empty()
     app.core.lightshow.curves.reset()
+    app.core.commandline.set_string("")
+    app.core.selected_channels = []
+    if app.midi is not None:
+        app.midi.learning = ""
+    if app.virtual_console is not None:
+        app.virtual_console.close()
     if app.core.backend and getattr(app.core.backend, "dmx", None):
         dmx = app.core.backend.dmx
         dmx.levels["user"].fill(-1)

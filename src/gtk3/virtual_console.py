@@ -46,6 +46,7 @@ class VirtualConsoleWindow(Gtk.Window):
     shortcuts_toggle: Gtk.ToggleButton
     is_holding_f1: bool
     updating_blackout: bool
+    updating_crossfade: bool
 
     # pylint: disable=too-many-statements
     def __init__(self, app: Application) -> None:
@@ -55,6 +56,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.updating_fader = False
         self.updating_independent = False
         self.updating_blackout = False
+        self.updating_crossfade = False
 
         super().__init__(title="Virtual Console")
         self.set_default_size(400, 300)
@@ -1364,12 +1366,40 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.faders.index(fader) + 1
             self._select_midi_learn_target(f"fader_{index}")
 
+    def update_crossfade_display(
+        self,
+        val_a: float | None = None,
+        val_b: float | None = None,
+        toggle_inverted: bool = False,
+    ) -> None:
+        """Update crossfade faders programmatically without triggering scale_moved.
+
+        Args:
+            val_a: New value for scale A (0-255), or None to leave unchanged.
+            val_b: New value for scale B (0-255), or None to leave unchanged.
+            toggle_inverted: Toggle slider inversion between A and B transitions.
+        """
+        self.updating_crossfade = True
+        try:
+            if toggle_inverted:
+                inverted = not self.scale_a.get_inverted()
+                self.scale_a.set_inverted(inverted)
+                self.scale_b.set_inverted(inverted)
+            if val_a is not None:
+                self.scale_a.set_value(val_a)
+            if val_b is not None:
+                self.scale_b.set_value(val_b)
+        finally:
+            self.updating_crossfade = False
+
     def scale_moved(self, scale: FaderWidget) -> None:
         """Crossfade moved
 
         Args:
             scale (FaderWidget): crossfade fader
         """
+        if self.updating_crossfade:
+            return
         if self.is_learning_midi:
             if scale == self.scale_a:
                 self._select_midi_learn_target("crossfade_out")
