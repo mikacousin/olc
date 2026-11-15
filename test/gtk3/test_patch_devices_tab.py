@@ -407,7 +407,7 @@ def test_patch_channels_curve_popover_interaction(
     dev = patch_tab.patch.get_device(5)
     assert dev is not None
     assert dev.curve_id == 1
-    assert patch_tab.patch.outputs[1][10][1] == 1
+    assert patch_tab.patch.get_output_info(1, 10) == (5, 1)
 
     # Check that treeview refreshed
     updated_curve_name = patch_tab.devices_store[0][COL_CURVE]

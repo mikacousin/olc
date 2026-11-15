@@ -364,16 +364,14 @@ def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
     backend = getattr(app, "backend", None)
     backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
 
-    for channel, outputs in patch.channels.items():
-        if not patch.is_patched(channel):
+    for channel, dev in getattr(patch, "devices", {}).items():
+        if not dev.channels or channel in inde_channels:
             continue
-        if channel in inde_channels:
-            continue
-        for values in outputs:
-            output = values[0]
-            univ = values[1]
-            if output is None or univ is None:
+        for ch in dev.channels:
+            if ch.channel_type.value != "intensity" or ch.fine or ch.ultra_fine:
                 continue
+            output = ch.address
+            univ = ch.universe
             level = 0
             if isinstance(backend_dmx, Dmx):
                 level = backend_dmx.get_output_level(univ, output)

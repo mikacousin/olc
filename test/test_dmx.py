@@ -70,7 +70,7 @@ def test_dmx_send_emits_outputs_changed() -> None:
 
 
 def test_dmx_notification_event_and_native_patch_callbacks() -> None:
-    """Test notification event emission and native DMXPatch callback wiring."""
+    """Test notification event emission and native PatchManager callback wiring."""
     lightshow = MagicMock()
     lightshow.patch.universes = [1, 2]
     app = MagicMock()

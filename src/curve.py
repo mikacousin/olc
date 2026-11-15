@@ -565,11 +565,11 @@ class Curves:
         Args:
             curve_nb: Curve number
         """
-        # First, change each output using deleted curve to LinearCurve (0)
-        for value in self.lightshow.patch.outputs.values():
-            for chan_dic in value.values():
-                if chan_dic[1] == curve_nb:
-                    chan_dic[1] = 0
+        # First, change each device using deleted curve to LinearCurve (0)
+        for dev in self.lightshow.patch.devices.values():
+            if dev.curve_id == curve_nb:
+                dev.set_curve_id(0)
+        self.lightshow.patch.invalidate_cache()
         # Delete Curve from self.curves
         self.curves.pop(curve_nb, None)
 

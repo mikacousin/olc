@@ -28,14 +28,14 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
-    from olc.patch import DMXPatch
+    from olc.patch import PatchManager
 
 
 class DMXOutputsTab(Gtk.Box):
     """Tab displaying real-time DMX output levels and patch occupancy."""
 
     app: Application
-    patch: DMXPatch
+    patch: PatchManager
     lightshow: LightShow
     tabs: Tabs
     backend: DMXBackend

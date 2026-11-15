@@ -92,22 +92,22 @@ def test_curve_actions_and_undo_redo() -> None:
     # 4. Delete curve
     # Patch an output to use this curve
     app.lightshow.patch.add_output(1, 1, 1, curve_nb)
-    assert app.lightshow.patch.outputs[1][1][1] == curve_nb
+    assert app.lightshow.patch.get_output_info(1, 1) == (1, curve_nb)
 
     app.action_registry.execute("curve.delete", curve_nb)
     # Curve should be deleted and output curve reset to 0 (Linear)
     assert curve_nb not in curves.curves
-    assert app.lightshow.patch.outputs[1][1][1] == 0
+    assert app.lightshow.patch.get_output_info(1, 1) == (1, 0)
 
     # Undo delete curve -> restores curve and links it back to outputs
     app.history.undo()
     assert curve_nb in curves.curves
-    assert app.lightshow.patch.outputs[1][1][1] == curve_nb
+    assert app.lightshow.patch.get_output_info(1, 1) == (1, curve_nb)
 
     # Redo delete curve
     app.history.redo()
     assert curve_nb not in curves.curves
-    assert app.lightshow.patch.outputs[1][1][1] == 0
+    assert app.lightshow.patch.get_output_info(1, 1) == (1, 0)
 
 
 def test_curve_actions_normalized_inputs() -> None:

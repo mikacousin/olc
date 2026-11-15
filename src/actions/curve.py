@@ -135,14 +135,12 @@ class CurveDeleteAction(Action):
 
         self.deleted_curve = curve_obj
 
-        # Save all outputs currently using this curve
-        self.saved_outputs = []
-        for univ, outputs in patch.outputs.items():
-            for output, (_channel, curve) in outputs.items():
-                if curve == curve_nb:
-                    self.saved_outputs.append((univ, output))
+        # Save all devices currently using this curve
+        self.saved_device_ids: list[int] = [
+            dev.fixture_id for dev in patch.devices.values() if dev.curve_id == curve_nb
+        ]
 
-        # Delete it (sets those outputs to curve 0)
+        # Delete it (sets those devices to curve 0)
         curves.del_curve(curve_nb)
 
         self.app.lightshow.set_modified()
@@ -156,10 +154,11 @@ class CurveDeleteAction(Action):
             # Restore curve object
             curves.curves[self.curve_nb] = self.deleted_curve
 
-            # Restore output links
-            for univ, output in self.saved_outputs:
-                if univ in patch.outputs and output in patch.outputs[univ]:
-                    patch.outputs[univ][output][1] = self.curve_nb
+            # Restore device curve links
+            for dev_id in self.saved_device_ids:
+                dev = patch.get_device(dev_id)
+                if dev is not None:
+                    dev.set_curve_id(self.curve_nb)
 
             patch.invalidate_cache()
             self.app.lightshow.set_modified()

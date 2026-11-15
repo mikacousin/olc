@@ -182,20 +182,16 @@ class FixtureExchangeWarning:
 class PatchManager:
     """Unified DMX patch manager handling both devices and conventional dimmers.
 
-    Replaces the legacy 1:1 patch structure with a device-centric registry while
-    maintaining full backward compatibility with the existing UI and file formats.
+    Manages a device-centric registry with fast NumPy routing arrays and an
+    address occupancy grid.
 
     Attributes:
         universes: List of active DMX universes (e.g. [1, 2, 3, 4]).
         devices: Dictionary of LightingDevice instances keyed by device_id.
-        channels: Legacy mapping {channel_id: [[output, universe], ...]}.
-        outputs: Legacy mapping {universe: {output: [channel_id, curve]}}.
     """
 
     universes: list[int]
     devices: dict[int, LightingDevice]
-    channels: dict[int, list[list[Optional[int]]]]
-    outputs: dict[int, dict[int, list[int]]]
     _address_param_cache: dict[tuple[int, int], AddressParameterInfo]
 
     def __init__(
@@ -212,8 +208,6 @@ class PatchManager:
         self._grid: dict[int, np.ndarray] = {
             u: np.zeros(512, dtype=np.int32) for u in self.universes
         }
-        self.channels = {}
-        self.outputs = {}
         self.on_patch_empty_cb: typing.Callable[[], None] | None = None
         self.on_unpatch_cb: typing.Callable[[int, int], None] | None = None
         self._numpy_cache_dirty = True
@@ -255,9 +249,41 @@ class PatchManager:
             occ = int(self._grid[universe][address - 1])
             if occ != 0:
                 return occ
-        if universe in self.outputs and address in self.outputs[universe]:
-            return self.outputs[universe][address][0]
         return None
+
+    def get_output_info(self, universe: int, address: int) -> Optional[tuple[int, int]]:
+        """Return (device_id, curve_id) for (universe, address), or None if free."""
+        occ = self.get_address_occupant(universe, address)
+        if occ is None:
+            return None
+        dev = self.devices.get(occ)
+        curve_id = dev.curve_id if dev is not None else 0
+        return (occ, curve_id)
+
+    def get_universe_outputs(self, universe: int) -> dict[int, tuple[int, int]]:
+        """Return {address: (device_id, curve_id)} for patched outputs in universe."""
+        grid = self._grid.get(universe)
+        if grid is None:
+            return {}
+        result: dict[int, tuple[int, int]] = {}
+        for idx in np.nonzero(grid)[0]:
+            addr = int(idx) + 1
+            dev_id = int(grid[idx])
+            dev = self.devices.get(dev_id)
+            result[addr] = (dev_id, dev.curve_id if dev is not None else 0)
+        return result
+
+    def set_output_curve(self, universe: int, address: int, curve_id: int) -> bool:
+        """Set the transfer curve on the device occupying (universe, address)."""
+        occ = self.get_address_occupant(universe, address)
+        if occ is None:
+            return False
+        dev = self.devices.get(occ)
+        if dev is None:
+            return False
+        dev.set_curve_id(curve_id)
+        self._numpy_cache_dirty = True
+        return True
 
     def get_address_parameter_info(
         self, universe: int, address: int
@@ -379,7 +405,7 @@ class PatchManager:
         return device
 
     def _register_device_in_grid(self, device: LightingDevice) -> None:
-        """Register a device and its channels into grid and legacy mappings."""
+        """Register a device and its channels into the address grid."""
         dev_id = device.fixture_id
         device.set_curve_provider(self._get_curve_by_id)
         self.devices[dev_id] = device
@@ -419,22 +445,6 @@ class PatchManager:
                     )
                 )
 
-            # Maintain legacy structures for intensity/dimmer channels
-            if (
-                ch.channel_type == ChannelType.INTENSITY
-                and not ch.fine
-                and not ch.ultra_fine
-            ):
-                if dev_id not in self.channels or self.channels[dev_id] == [
-                    [None, None]
-                ]:
-                    self.channels[dev_id] = [[ch.address, ch.universe]]
-                elif [ch.address, ch.universe] not in self.channels[dev_id]:
-                    self.channels[dev_id].append([ch.address, ch.universe])
-                if ch.universe not in self.outputs:
-                    self.outputs[ch.universe] = {}
-                self.outputs[ch.universe][ch.address] = [dev_id, device.curve_id]
-
         self._numpy_cache_dirty = True
 
     def patch_dimmer(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -471,8 +481,6 @@ class PatchManager:
             force=force,
         )
         dev.set_curve_id(curve)
-        if universe in self.outputs and address in self.outputs[universe]:
-            self.outputs[universe][address][1] = curve
         self._numpy_cache_dirty = True
         return dev
 
@@ -488,14 +496,10 @@ class PatchManager:
                 and self._grid[ch.universe][ch.address - 1] == device_id
             ):
                 self._grid[ch.universe][ch.address - 1] = 0
-            if ch.universe in self.outputs:
-                self.outputs[ch.universe].pop(ch.address, None)
             if ch.universe in self.universes:
                 index = self.universes.index(ch.universe)
                 if self.on_unpatch_cb:
                     self.on_unpatch_cb(index, ch.address - 1)
-        if device_id in self.channels:
-            self.channels[device_id] = [[None, None]]
         self._numpy_cache_dirty = True
         return device
 
@@ -503,25 +507,34 @@ class PatchManager:
         """Unpatch whatever occupies (universe, address). Returns device_id or None."""
         self._address_param_cache.pop((universe, address), None)
         occupant = self.get_address_occupant(universe, address)
-        if occupant is not None:
-            if occupant in self.devices:
-                self.unpatch_device(occupant)
-                return occupant
-        if universe in self.outputs and address in self.outputs[universe]:
-            ch, _ = self.outputs[universe].pop(address)
-            if ch in self.channels:
-                if [address, universe] in self.channels[ch]:
-                    self.channels[ch].remove([address, universe])
-                if not self.channels[ch]:
-                    self.channels[ch] = [[None, None]]
-            if universe in self._grid:
+        if occupant is None:
+            return None
+        dev = self.devices.get(occupant)
+        if (
+            dev is not None
+            and dev.fixture_type == FixtureType.DIMMER
+            and len(dev.channels) > 1
+        ):
+            dev.channels = [
+                ch
+                for ch in dev.channels
+                if not (ch.universe == universe and ch.address == address)
+            ]
+            if (
+                universe in self._grid
+                and 1 <= address <= 512
+                and self._grid[universe][address - 1] == occupant
+            ):
                 self._grid[universe][address - 1] = 0
-            if universe in self.universes:
-                index = self.universes.index(universe)
-                if self.on_unpatch_cb:
-                    self.on_unpatch_cb(index, address - 1)
+            if universe in self.universes and self.on_unpatch_cb:
+                self.on_unpatch_cb(self.universes.index(universe), address - 1)
+            if not dev.channels:
+                self.devices.pop(occupant, None)
             self._numpy_cache_dirty = True
-            return ch
+            return occupant
+        if occupant in self.devices:
+            self.unpatch_device(occupant)
+            return occupant
         return None
 
     def auto_patch(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -874,29 +887,19 @@ class PatchManager:
         self._register_device_in_grid(device)
         self.invalidate_cache()
 
-    # -------------------------------------------------------------------------
-    # Legacy DMXPatch Compatibility Methods
-    # -------------------------------------------------------------------------
-
     def is_patched(self, channel: int) -> bool:
         """Test if channel is patched."""
-        if channel in self.channels:
-            if None not in self.channels[channel][0]:
-                return True
-        return channel in self.devices
+        return channel in self.devices and bool(self.devices[channel].channels)
 
     def patch_empty(self) -> None:
         """Set Dimmers patch to Zero."""
         if self.on_patch_empty_cb:
             self.on_patch_empty_cb()
-        self.outputs = {}
         self.devices.clear()
         self._address_param_cache.clear()
         for univ in self.universes:
             if univ in self._grid:
                 self._grid[univ].fill(0)
-        for channel in range(1, MAX_CHANNELS + 1):
-            self.channels[channel] = [[None, None]]
         self._numpy_cache_dirty = True
 
     def patch_1on1(self) -> None:
@@ -910,23 +913,10 @@ class PatchManager:
                 self.add_output(channel, output, univ)
 
     def add_output(self, channel: int, output: int, univ: int, curve: int = 0) -> None:
-        """Add an output to a channel (legacy method)."""
+        """Add an output to a dimmer channel."""
         occ = self.get_address_occupant(univ, output)
         if occ is not None and occ != channel:
             self.unpatch_address(univ, output)
-        elif univ in self.outputs and output in self.outputs[univ]:
-            prev_ch, _ = self.outputs[univ][output]
-            if prev_ch != channel:
-                self.unpatch(prev_ch, output, univ)
-
-        if channel not in self.channels or self.channels[channel] == [[None, None]]:
-            self.channels[channel] = [[output, univ]]
-        elif [output, univ] not in self.channels[channel]:
-            self.channels[channel].append([output, univ])
-
-        if univ not in self.outputs:
-            self.outputs[univ] = {}
-        self.outputs[univ][output] = [channel, curve]
 
         if univ not in self.universes:
             self.add_universe(univ)
@@ -975,30 +965,9 @@ class PatchManager:
         self._numpy_cache_dirty = True
 
     def unpatch(self, channel: int, output: int, univ: int) -> None:
-        """Unpatch an output from a channel (legacy method)."""
-        self._address_param_cache.pop((univ, output), None)
-        if univ in self.outputs:
-            self.outputs[univ].pop(output, None)
-        if channel in self.channels and [output, univ] in self.channels[channel]:
-            self.channels[channel].remove([output, univ])
-        if channel in self.channels and not self.channels[channel]:
-            self.channels[channel] = [[None, None]]
-        if univ in self._grid and self._grid[univ][output - 1] == channel:
-            self._grid[univ][output - 1] = 0
-        if channel in self.devices:
-            dev = self.devices[channel]
-            dev.channels = [
-                c
-                for c in dev.channels
-                if not (c.universe == univ and c.address == output)
-            ]
-            if not dev.channels:
-                self.devices.pop(channel, None)
-        if univ in self.universes:
-            index = self.universes.index(univ)
-            if self.on_unpatch_cb:
-                self.on_unpatch_cb(index, output - 1)
-        self._numpy_cache_dirty = True
+        """Unpatch an output from a channel."""
+        if self.get_address_occupant(univ, output) == channel:
+            self.unpatch_address(univ, output)
 
     def add_universe(self, univ: int) -> None:
         """Add a universe to the patch if not already present."""
@@ -1011,26 +980,18 @@ class PatchManager:
 
     def remove_universe(self, univ: int) -> dict[int, tuple[int, int]]:
         """Remove a universe from the patch and unpatch all its outputs."""
-        unpatched: dict[int, tuple[int, int]] = {}
-        if univ in self.outputs:
-            for out, val in list(self.outputs[univ].items()):
-                unpatched[out] = (val[0], val[1])
+        unpatched = self.get_universe_outputs(univ)
 
-        for channel, outputs in list(self.channels.items()):
-            for out in list(outputs):
-                if len(out) > 1 and out[1] == univ and out[0] is not None:
-                    self.unpatch(channel, out[0], univ)
-
-        to_unpatch_devs = [
-            dev_id
-            for dev_id, dev in self.devices.items()
-            if any(ch.universe == univ for ch in dev.channels)
-        ]
-        for dev_id in to_unpatch_devs:
-            self.unpatch_device(dev_id)
-
-        if univ in self.outputs:
-            del self.outputs[univ]
+        for dev_id in list(self.devices):
+            dev = self.devices.get(dev_id)
+            if dev is None:
+                continue
+            if dev.fixture_type == FixtureType.DIMMER:
+                for ch in list(dev.channels):
+                    if ch.universe == univ:
+                        self.unpatch_address(univ, ch.address)
+            elif any(ch.universe == univ for ch in dev.channels):
+                self.unpatch_device(dev_id)
 
         if univ in self._grid:
             del self._grid[univ]
@@ -1059,15 +1020,8 @@ class PatchManager:
         """Update cached arrays for fast block operations."""
         # 1. Boolean mask of patched channels (True if patched, False if not)
         mask = np.zeros(MAX_CHANNELS, dtype=bool)
-        for channel in range(1, MAX_CHANNELS + 1):
-            if channel in self.channels:
-                if (
-                    self.channels[channel] != [[None, None]]
-                    and None not in self.channels[channel][0]
-                ):
-                    mask[channel - 1] = True
-        for dev_id in self.devices:
-            if 1 <= dev_id <= MAX_CHANNELS:
+        for dev_id, dev in self.devices.items():
+            if 1 <= dev_id <= MAX_CHANNELS and dev.channels:
                 mask[dev_id - 1] = True
         self.is_patched_mask = mask
 
@@ -1077,21 +1031,19 @@ class PatchManager:
         dst_outputs = []
         dst_curves = []
 
-        for channel, outputs in self.channels.items():
-            if outputs == [[None, None]] or None in outputs[0]:
-                continue
-            for out in outputs:
-                output = out[0]
-                universe = out[1]
-                if universe in self.universes and output:
-                    src_channels.append(channel - 1)
-                    dst_universes.append(self.universes.index(universe))
-                    dst_outputs.append(output - 1)
-
-                    curve_numb = 0
-                    if universe in self.outputs and output in self.outputs[universe]:
-                        curve_numb = self.outputs[universe][output][1]
-                    dst_curves.append(curve_numb)
+        devices_snapshot = tuple(self.devices.values())
+        for dev in devices_snapshot:
+            for ch in dev.channels:
+                if (
+                    ch.channel_type == ChannelType.INTENSITY
+                    and not ch.fine
+                    and not ch.ultra_fine
+                    and ch.universe in self.universes
+                ):
+                    src_channels.append(dev.fixture_id - 1)
+                    dst_universes.append(self.universes.index(ch.universe))
+                    dst_outputs.append(ch.address - 1)
+                    dst_curves.append(dev.curve_id)
 
         self.map_src_channels = np.array(src_channels, dtype=np.intp)
         self.map_dst_universes = np.array(dst_universes, dtype=np.intp)
@@ -1100,7 +1052,6 @@ class PatchManager:
 
         # 3. Direct routing for multi-parameter and multi-resolution device channels
         dynamic_devs: list[LightingDevice] = []
-        devices_snapshot = tuple(self.devices.values())
         for dev in devices_snapshot:
             if (
                 dev.uses_virtual_dimmer
@@ -1153,13 +1104,8 @@ class PatchManager:
         return int(indices[-1]) + 1 if len(indices) > 0 else 1
 
 
-# Backward compatibility alias
-DMXPatch = PatchManager
-
-
 __all__ = [
     "PatchCollisionError",
     "FixtureExchangeWarning",
     "PatchManager",
-    "DMXPatch",
 ]

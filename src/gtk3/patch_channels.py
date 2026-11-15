@@ -39,7 +39,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
-    from olc.patch import DMXPatch
+    from olc.patch import PatchManager
 
 # Column indices for the devices ListStore
 COL_ID = 0
@@ -84,7 +84,7 @@ class PatchChannelsTab(Gtk.Box):
     """Tab to patch lighting devices."""
 
     app: Application
-    patch: DMXPatch
+    patch: PatchManager
     lightshow: LightShow
     tabs: Tabs
     window: Window
@@ -394,9 +394,8 @@ class PatchChannelsTab(Gtk.Box):
                         footprint_str = str(dev.channel_count())
                         raw_id = dev.device_id
                     else:
-                        dim_curve_id = 0
-                        if u in self.patch.outputs and addr in self.patch.outputs[u]:
-                            dim_curve_id = self.patch.outputs[u][addr][1]
+                        output_info = self.patch.get_output_info(u, addr)
+                        dim_curve_id = output_info[1] if output_info is not None else 0
                         curve = self.lightshow.curves.get_curve(dim_curve_id)
                         curve_str = (
                             get_curve_display_name(curve)

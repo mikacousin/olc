@@ -37,7 +37,6 @@ def test_patch_manager_initialization() -> None:
     assert not pm.is_patched(1)
     assert pm.get_address_occupant(1, 1) is None
     assert pm.is_address_free(1, 1)
-    assert len(pm.outputs) == 0
     assert len(pm.devices) == 0
 
     # Explicit 1:1 patch
@@ -61,8 +60,8 @@ def test_patch_dimmer_8bit_and_16bit() -> None:
     assert dev1.fixture_id == 5
     assert pm.get_address_occupant(1, 10) == 5
     assert not pm.is_address_free(1, 10)
-    assert pm.outputs[1][10] == [5, 3]
-    assert pm.channels[5] == [[10, 1]]
+    assert pm.get_output_info(1, 10) == (5, 3)
+    assert [(ch.address, ch.universe) for ch in dev1.channels] == [(10, 1)]
 
     # 2. Patch 16-bit dimmer on channel 6, address 20
     dev2 = pm.patch_dimmer(channel=6, universe=1, address=20, fine=True)
@@ -551,22 +550,22 @@ def test_action_patch_set_device_curve() -> None:
     dev = patch.get_device(1)
     assert dev is not None
     assert dev.curve_id == 0
-    assert patch.outputs[1][1][1] == 0
+    assert patch.get_output_info(1, 1) == (1, 0)
 
     # Execute action to change curve to 2
     app.action_registry.execute("patch.set_device_curve", 1, 2)
     assert dev.curve_id == 2
-    assert patch.outputs[1][1][1] == 2
+    assert patch.get_output_info(1, 1) == (1, 2)
 
     # Undo action
     app.history.undo()
     assert dev.curve_id == 0
-    assert patch.outputs[1][1][1] == 0
+    assert patch.get_output_info(1, 1) == (1, 0)
 
     # Redo action
     app.history.redo()
     assert dev.curve_id == 2
-    assert patch.outputs[1][1][1] == 2
+    assert patch.get_output_info(1, 1) == (1, 2)
 
     # Test error when device does not exist
     with pytest.raises(ValueError, match="Device 999 is not patched"):

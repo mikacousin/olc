@@ -56,7 +56,7 @@ def _get_active_universes(app: CoreApplication) -> list[int]:
 
 
 def _get_patches(app: CoreApplication) -> list[typing.Any]:
-    """Return unique active DMXPatch instances attached to the app."""
+    """Return unique active PatchManager instances attached to the app."""
     patches: list[typing.Any] = []
     if hasattr(app, "lightshow") and app.lightshow is not None:
         p = getattr(app.lightshow, "patch", None)

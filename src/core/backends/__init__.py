@@ -23,7 +23,7 @@ from olc.dmx import Dmx
 if typing.TYPE_CHECKING:
     from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
-    from olc.patch import DMXPatch
+    from olc.patch import PatchManager
 
 
 # pylint: disable=too-few-public-methods
@@ -31,7 +31,7 @@ class DMXBackend:
     """Unified DMX Backend coordinating notification dispatch from CoreEngine."""
 
     dmx: Dmx
-    patch: DMXPatch
+    patch: PatchManager
 
     def __init__(self, lightshow: LightShow) -> None:
         self.dmx = Dmx(typing.cast(typing.Any, self), lightshow)

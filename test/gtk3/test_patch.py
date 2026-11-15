@@ -64,24 +64,24 @@ def test_dmx_outputs_tab_behavior(app_gui: Application) -> None:
     # 3. Test patch changes reflection
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
-    assert len(app_gui.core.lightshow.patch.outputs) == 0
+    assert len(app_gui.core.lightshow.patch.devices) == 0
 
     app_gui.core.action_registry.execute("patch.set_1on1")
     process_events()
-    assert len(app_gui.core.lightshow.patch.outputs) > 0, (
+    assert len(app_gui.core.lightshow.patch.devices) > 0, (
         "1:1 Patch should populate outputs."
     )
 
     app_gui.core.action_registry.execute("patch.clear")
     process_events()
-    assert len(app_gui.core.lightshow.patch.outputs) == 0, (
+    assert len(app_gui.core.lightshow.patch.devices) == 0, (
         "Unpatch should empty outputs."
     )
 
     # 5. Undo unpatch all
     app_gui.activate_action("undo", None)
     process_events()
-    assert len(app_gui.core.lightshow.patch.outputs) > 0, (
+    assert len(app_gui.core.lightshow.patch.devices) > 0, (
         "Undo should restore 1:1 patch."
     )
 

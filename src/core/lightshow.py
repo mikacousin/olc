@@ -26,7 +26,7 @@ from olc.devices.builtin import populate_builtin_library
 from olc.fader_bank import FaderBank
 from olc.group import Groups
 from olc.independent import Independents
-from olc.patch import DMXPatch
+from olc.patch import PatchManager
 from olc.sequence import Sequence
 
 if typing.TYPE_CHECKING:
@@ -97,7 +97,7 @@ class LightShow(ShowFile):
     groups: Groups
     fader_bank: FaderBank
     independents: Independents
-    patch: DMXPatch
+    patch: PatchManager
     park: ParkManager
     universe_map: UniverseMap
     workspace: dict[str, typing.Any]
@@ -124,7 +124,7 @@ class LightShow(ShowFile):
         # Independents
         self.independents = Independents(lightshow_type)
         # Patch
-        self.patch = DMXPatch(list(DEFAULT_UNIVERSES), lightshow=lightshow_type)
+        self.patch = PatchManager(list(DEFAULT_UNIVERSES), lightshow=lightshow_type)
         # Park
         self.park = ParkManager()
         # Universe configurations

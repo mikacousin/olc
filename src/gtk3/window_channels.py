@@ -234,11 +234,12 @@ class LiveChannelsView(ChannelsView):
             if not self.app.core.lightshow.patch.is_patched(channel):
                 continue
             level = None
-            for output in self.app.core.lightshow.patch.channels[channel]:
-                out = output[0]
-                univ = output[1]
-                if out is not None and univ is not None:
-                    patch_universes = self.app.core.lightshow.patch.universes
+            dev = self.app.core.lightshow.patch.get_device(channel)
+            if dev is not None:
+                patch_universes = self.app.core.lightshow.patch.universes
+                for ch in dev.channels:
+                    out = ch.address
+                    univ = ch.universe
                     if univ in patch_universes:
                         index = patch_universes.index(univ)
                         if index < len(self.app.core.backend.dmx.frame):

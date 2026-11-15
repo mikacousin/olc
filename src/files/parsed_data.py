@@ -175,21 +175,15 @@ class ParsedData:
                 output = int(out["output"])
                 universe = int(out["universe"])
                 curve_nb = int(out.get("curve", 0))
-                if ch_int in self.lightshow.patch.devices:
-                    existing_pairs = self.lightshow.patch.channels.get(ch_int, [])
-                    if [output, universe] not in existing_pairs:
+                dev = self.lightshow.patch.get_device(ch_int)
+                if dev is not None:
+                    existing_pairs = [(ch.address, ch.universe) for ch in dev.channels]
+                    if (output, universe) not in existing_pairs:
                         self.lightshow.patch.add_output(
                             ch_int, output, universe, curve_nb
                         )
-                    elif curve_nb:
-                        if (
-                            universe in self.lightshow.patch.outputs
-                            and output in self.lightshow.patch.outputs[universe]
-                        ):
-                            self.lightshow.patch.outputs[universe][output][1] = curve_nb
-                        dev = self.lightshow.patch.devices[ch_int]
-                        if dev.curve_id == 0:
-                            dev.set_curve_id(curve_nb)
+                    elif curve_nb and dev.curve_id == 0:
+                        dev.set_curve_id(curve_nb)
                 else:
                     self.lightshow.patch.add_output(ch_int, output, universe, curve_nb)
 

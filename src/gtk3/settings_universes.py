@@ -218,7 +218,7 @@ class UniversesSettingsMixin:
         patch = getattr(getattr(self.app, "core", None), "lightshow", None)
         patched_count = 0
         if patch is not None and hasattr(patch, "patch"):
-            patched_outputs = patch.patch.outputs.get(universe, {})
+            patched_outputs = patch.patch.get_universe_outputs(universe)
             patched_count = len(patched_outputs)
 
         if patched_count > 0:

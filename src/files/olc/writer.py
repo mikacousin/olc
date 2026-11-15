@@ -48,7 +48,6 @@ class OlcWriter(WriteFile):
         self._curves()
         self._fixture_definitions()
         self._devices()
-        self._patch()
         self._sequences()
         self._cues()
         self._groups()
@@ -78,32 +77,6 @@ class OlcWriter(WriteFile):
             dev_id: dev.to_dict()
             for dev_id, dev in self.lightshow.patch.devices.items()
         }
-
-    def _patch(self) -> None:
-        self.data["patch"] = {}
-        for channel, values in self.lightshow.patch.channels.items():
-            if not self.lightshow.patch.is_patched(channel):
-                continue
-            self.data["patch"][channel] = []
-            for outputs in values:
-                output = outputs[0]
-                univ = outputs[1]
-                if univ is None or output is None:
-                    continue
-                curve_num = self.lightshow.patch.outputs[univ][output][1]
-                if curve_num:
-                    self.data["patch"][channel].append(
-                        {"output": output, "universe": univ, "curve": curve_num}
-                    )
-                else:
-                    self.data["patch"][channel].append(
-                        {
-                            "output": output,
-                            "universe": univ,
-                        }
-                    )
-        if not self.data["patch"]:
-            del self.data["patch"]
 
     def _sequences(self) -> None:
         self.data["sequences"] = {}

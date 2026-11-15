@@ -451,8 +451,8 @@ def test_legacy_olc_file_without_devices_key(tmp_path: pathlib.Path) -> None:
     app = CoreApplication(settings)
     app.action_registry.execute("show.open", str(legacy_path))
 
-    assert app.lightshow.patch.outputs[1][10] == [1, 0]
-    assert app.lightshow.patch.outputs[1][20] == [2, 1]
+    assert app.lightshow.patch.get_output_info(1, 10) == (1, 0)
+    assert app.lightshow.patch.get_output_info(1, 20) == (2, 1)
     dev1 = app.lightshow.patch.get_device(1)
     assert dev1 is not None
     assert dev1.address == 10

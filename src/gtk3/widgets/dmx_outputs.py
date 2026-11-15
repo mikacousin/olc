@@ -118,11 +118,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
         parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
         is_selected = parent is not None and parent.is_selected()
         occupant = self.lightshow.patch.get_address_occupant(self.universe, self.output)
-        if (
-            self.universe in self.lightshow.patch.outputs
-            and self.output in self.lightshow.patch.outputs[self.universe]
-        ):
-            number = self.lightshow.patch.outputs[self.universe][self.output][1]
+        output_info = self.lightshow.patch.get_output_info(self.universe, self.output)
+        if output_info is not None:
+            dev_id, number = output_info
             curve = self.lightshow.curves.get_curve(number)
             if curve and curve.is_all_zero():
                 # Level output blocked at 0
@@ -131,7 +129,7 @@ class DMXOutputWidget(Gtk.DrawingArea):
                 else:
                     cr.set_source_rgb(0.5, 0.1, 0.1)
                 rounded_rectangle_fill(cr, area, 10)
-            elif self.lightshow.patch.outputs[self.universe][self.output][0] != 0:
+            elif dev_id != 0:
                 # Patch output
                 cr.set_source_rgb(0.3, 0.3, 0.3)
                 rounded_rectangle_fill(cr, area, 10)
@@ -207,17 +205,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
             short_name = param_info.short_name
             param_color = param_info.param_color
         else:
-            if (
-                self.universe in self.lightshow.patch.outputs
-                and self.output in self.lightshow.patch.outputs[self.universe]
-            ):
-                ch_num = self.lightshow.patch.outputs[self.universe][self.output][0]
-            else:
-                occ = self.lightshow.patch.get_address_occupant(
-                    self.universe, self.output
-                )
-                if occ is not None:
-                    ch_num = occ
+            occ = self.lightshow.patch.get_address_occupant(self.universe, self.output)
+            if occ is not None:
+                ch_num = occ
 
         if ch_num <= 0:
             return
@@ -351,11 +341,9 @@ class DMXOutputWidget(Gtk.DrawingArea):
             cr: Cairo context
             allocation: Widget allocation
         """
-        if (
-            self.universe in self.lightshow.patch.outputs
-            and self.output in self.lightshow.patch.outputs[self.universe]
-        ):
-            number = self.lightshow.patch.outputs[self.universe][self.output][1]
+        output_info = self.lightshow.patch.get_output_info(self.universe, self.output)
+        if output_info is not None:
+            number = output_info[1]
             # Don't draw linear curve
             if number:
                 curve = self.lightshow.curves.get_curve(number)

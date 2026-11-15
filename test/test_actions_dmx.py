@@ -24,7 +24,7 @@ import pytest
 from olc.core.app import CoreApplication
 from olc.core.universe_config import UniverseMap
 from olc.define import UNIVERSES
-from olc.patch import DMXPatch
+from olc.patch import PatchManager
 
 
 def test_universe_blackout_action_and_undo_redo() -> None:
@@ -303,11 +303,11 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
     mock_engine.universe_map = umap
     app.engine = mock_engine
 
-    patch = DMXPatch()
+    patch = PatchManager()
     patch.universes = [1, 2]
     # Patch channel 10 to universe 2, output 5, curve 2
     patch.add_output(10, 5, 2, 2)
-    assert patch.outputs[2][5] == [10, 2]
+    assert patch.get_output_info(2, 5) == (10, 2)
 
     lightshow = MagicMock()
     lightshow.patch = patch
@@ -328,15 +328,14 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
     assert 2 not in lightshow.universe_map
     mock_engine.remove_universe.assert_called_once_with(2)
     assert 2 not in patch.universes
-    assert 2 not in patch.outputs
+    assert not patch.get_universe_outputs(2)
     assert removed_events == [2]
 
     # Undo
     app.history.undo()
     assert 2 in lightshow.universe_map
     assert 2 in patch.universes
-    assert 2 in patch.outputs
-    assert patch.outputs[2][5] == [10, 2]
+    assert patch.get_output_info(2, 5) == (10, 2)
     assert added_events == [2]
 
     # Redo

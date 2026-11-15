@@ -222,18 +222,17 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("CLEAR PATCH\n\n", "ascii"))
         i = 1
         patch = ""
-        for channel, outputs in self.lightshow.patch.channels.items():
-            if not self.lightshow.patch.is_patched(channel):
+        for channel, dev in self.lightshow.patch.devices.items():
+            if not dev.channels:
                 continue
-            for values in outputs:
-                output = values[0]
-                univ = values[1]
-                if univ is None or output is None:
+            for ch in dev.channels:
+                if ch.channel_type.value != "intensity" or ch.fine or ch.ultra_fine:
                     continue
+                output = ch.address
+                univ = ch.universe
                 index = UNIVERSES.index(univ)
                 limit = 255
-                curve_num = self.lightshow.patch.outputs[univ][output][1]
-                curve = self.lightshow.curves.get_curve(curve_num)
+                curve = self.lightshow.curves.get_curve(dev.curve_id)
                 if isinstance(curve, LimitCurve):
                     limit = curve.limit
                 level = "H" + format(limit, "02X")

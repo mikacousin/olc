@@ -534,14 +534,6 @@ class ShowImportAction(Action):
         snapshot["patch_devices"] = {
             dev_id: dev.to_dict() for dev_id, dev in lightshow.patch.devices.items()
         }
-        snapshot["patch_channels"] = {
-            ch: [list(item) for item in pairs]
-            for ch, pairs in lightshow.patch.channels.items()
-        }
-        snapshot["patch_outputs"] = {
-            univ: {out: list(val) for out, val in outs.items()}
-            for univ, outs in lightshow.patch.outputs.items()
-        }
         if hasattr(lightshow, "universe_map"):
             snapshot["universe_map"] = copy.deepcopy(lightshow.universe_map)
 
@@ -614,14 +606,6 @@ class ShowImportAction(Action):
             dev = LightingDevice.from_dict(dev_dict)
             lightshow.patch.restore_device(dev)
 
-        lightshow.patch.channels = {
-            ch: [list(item) for item in pairs]
-            for ch, pairs in snapshot["patch_channels"].items()
-        }
-        lightshow.patch.outputs = {
-            univ: {out: list(val) for out, val in outs.items()}
-            for univ, outs in snapshot["patch_outputs"].items()
-        }
         lightshow.patch.invalidate_cache()
         if "universe_map" in snapshot:
             lightshow.universe_map = copy.deepcopy(snapshot["universe_map"])

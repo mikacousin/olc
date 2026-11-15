@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.devices.device import ChannelType, LightingDevice
+from olc.devices.device import LightingDevice
 from olc.devices.fixture import FixtureDefinition
 
 if typing.TYPE_CHECKING:
@@ -60,16 +60,16 @@ class PatchAddOutputAction(Action):
         patch = self.app.lightshow.patch
 
         # Save previous state of this output
-        if self.univ in patch.outputs and self.output in patch.outputs[self.univ]:
-            self.old_channel = patch.outputs[self.univ][self.output][0]
-            self.old_curve = patch.outputs[self.univ][self.output][1]
+        info = patch.get_output_info(self.univ, self.output)
+        if info is not None:
+            self.old_channel, self.old_curve = info
         else:
             self.old_channel = None
             self.old_curve = 0
 
         # Execute
         if self.old_channel is not None:
-            patch.unpatch(self.old_channel, self.output, self.univ)
+            patch.unpatch_address(self.univ, self.output)
         patch.add_output(self.channel, self.output, self.univ, self.curve)
 
         self.app.lightshow.set_modified()
@@ -77,7 +77,7 @@ class PatchAddOutputAction(Action):
 
     def undo(self) -> None:
         patch = self.app.lightshow.patch
-        patch.unpatch(self.channel, self.output, self.univ)
+        patch.unpatch_address(self.univ, self.output)
         if self.old_channel is not None:
             patch.add_output(self.old_channel, self.output, self.univ, self.old_curve)
 
@@ -87,7 +87,7 @@ class PatchAddOutputAction(Action):
     def redo(self) -> None:
         patch = self.app.lightshow.patch
         if self.old_channel is not None:
-            patch.unpatch(self.old_channel, self.output, self.univ)
+            patch.unpatch_address(self.univ, self.output)
         patch.add_output(self.channel, self.output, self.univ, self.curve)
 
         self.app.lightshow.set_modified()
@@ -120,15 +120,15 @@ class PatchUnpatchOutputAction(Action):
     def execute(self) -> None:
         """Execute the action, unpatching the configured output."""
         patch = self.app.lightshow.patch
-        if self.univ in patch.outputs and self.output in patch.outputs[self.univ]:
-            self.old_channel = patch.outputs[self.univ][self.output][0]
-            self.old_curve = patch.outputs[self.univ][self.output][1]
+        info = patch.get_output_info(self.univ, self.output)
+        if info is not None:
+            self.old_channel, self.old_curve = info
         else:
             self.old_channel = None
             self.old_curve = 0
 
         if self.old_channel is not None:
-            patch.unpatch(self.old_channel, self.output, self.univ)
+            patch.unpatch_address(self.univ, self.output)
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
@@ -143,7 +143,7 @@ class PatchUnpatchOutputAction(Action):
     def redo(self) -> None:
         if self.old_channel is not None:
             patch = self.app.lightshow.patch
-            patch.unpatch(self.old_channel, self.output, self.univ)
+            patch.unpatch_address(self.univ, self.output)
             self.app.lightshow.set_modified()
             self.app.emit("patch.changed")
 
@@ -156,17 +156,12 @@ class PatchClearAction(Action):
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
-        self.saved_patch: list[tuple[int, int, int, int]] = []
         self.saved_devices: list[dict[str, typing.Any]] = []
 
     def execute(self) -> None:
         patch = self.app.lightshow.patch
 
-        # Save all patched outputs and devices
-        self.saved_patch = []
-        for univ, outputs in patch.outputs.items():
-            for output, (channel, curve) in outputs.items():
-                self.saved_patch.append((channel, output, univ, curve))
+        # Save all patched devices
         self.saved_devices = [
             dev.to_dict() for dev in getattr(patch, "devices", {}).values()
         ]
@@ -179,8 +174,6 @@ class PatchClearAction(Action):
     def undo(self) -> None:
         patch = self.app.lightshow.patch
         patch.patch_empty()
-        for channel, output, univ, curve in self.saved_patch:
-            patch.add_output(channel, output, univ, curve)
         for dev_data in self.saved_devices:
             patch.restore_device(LightingDevice.from_dict(dev_data))
 
@@ -203,17 +196,12 @@ class PatchSet1on1Action(Action):
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
-        self.saved_patch: list[tuple[int, int, int, int]] = []
         self.saved_devices: list[dict[str, typing.Any]] = []
 
     def execute(self) -> None:
         patch = self.app.lightshow.patch
 
-        # Save all patched outputs and devices
-        self.saved_patch = []
-        for univ, outputs in patch.outputs.items():
-            for output, (channel, curve) in outputs.items():
-                self.saved_patch.append((channel, output, univ, curve))
+        # Save all patched devices
         self.saved_devices = [
             dev.to_dict() for dev in getattr(patch, "devices", {}).values()
         ]
@@ -226,8 +214,6 @@ class PatchSet1on1Action(Action):
     def undo(self) -> None:
         patch = self.app.lightshow.patch
         patch.patch_empty()
-        for channel, output, univ, curve in self.saved_patch:
-            patch.add_output(channel, output, univ, curve)
         for dev_data in self.saved_devices:
             patch.restore_device(LightingDevice.from_dict(dev_data))
 
@@ -270,10 +256,10 @@ class PatchSetOutputCurveAction(Action):
     def execute(self) -> None:
         """Execute the action, assigning the configured curve to the output."""
         patch = self.app.lightshow.patch
-        if self.univ in patch.outputs and self.output in patch.outputs[self.univ]:
-            self.old_curve = patch.outputs[self.univ][self.output][1]
-            patch.outputs[self.univ][self.output][1] = self.curve
-            patch.invalidate_cache()
+        info = patch.get_output_info(self.univ, self.output)
+        if info is not None:
+            self.old_curve = info[1]
+            patch.set_output_curve(self.univ, self.output, self.curve)
         else:
             raise ValueError(
                 f"Output {self.output} in universe {self.univ} is not patched."
@@ -284,17 +270,13 @@ class PatchSetOutputCurveAction(Action):
 
     def undo(self) -> None:
         patch = self.app.lightshow.patch
-        if self.univ in patch.outputs and self.output in patch.outputs[self.univ]:
-            patch.outputs[self.univ][self.output][1] = self.old_curve
-            patch.invalidate_cache()
+        if patch.set_output_curve(self.univ, self.output, self.old_curve):
             self.app.lightshow.set_modified()
             self.app.emit("patch.changed")
 
     def redo(self) -> None:
         patch = self.app.lightshow.patch
-        if self.univ in patch.outputs and self.output in patch.outputs[self.univ]:
-            patch.outputs[self.univ][self.output][1] = self.curve
-            patch.invalidate_cache()
+        if patch.set_output_curve(self.univ, self.output, self.curve):
             self.app.lightshow.set_modified()
             self.app.emit("patch.changed")
 
@@ -327,17 +309,6 @@ class PatchSetDeviceCurveAction(Action):
         if dev is None:
             raise ValueError(f"Device {self.device_id} is not patched.")
         dev.set_curve_id(curve_id)
-        for ch in dev.channels:
-            if (
-                ch.channel_type == ChannelType.INTENSITY
-                and not ch.fine
-                and not ch.ultra_fine
-            ):
-                if (
-                    ch.universe in patch.outputs
-                    and ch.address in patch.outputs[ch.universe]
-                ):
-                    patch.outputs[ch.universe][ch.address][1] = curve_id
         patch.invalidate_cache()
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")

@@ -64,7 +64,7 @@ def test_show_new_resets_show_state() -> None:
     assert app.lightshow.basename == ""
     assert app.lightshow.modified is False
     assert app.lightshow.main_playback.position == 0
-    assert len(app.lightshow.patch.outputs) == 0
+    assert len(app.lightshow.patch.devices) == 0
     assert not app.lightshow.patch.is_patched(1)
 
     if app.backend and app.backend.dmx:
@@ -163,7 +163,7 @@ def test_show_open_ascii() -> None:
     assert len(loaded_events) == 1
     assert app.lightshow.basename == "sample.asc"
     assert app.lightshow.modified is False
-    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+    assert app.lightshow.patch.get_output_info(1, 47) == (7, 0)
     assert len(app.history.undo_stack) == 0
 
 
@@ -196,7 +196,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     group = app2.lightshow.groups.get(1.0)
     assert group is not None
     assert group.channels == {1: 255, 2: 128}
-    assert app2.lightshow.patch.outputs[1][20] == [5, 0]
+    assert app2.lightshow.patch.get_output_info(1, 20) == (5, 0)
 
 
 def test_show_save_without_path(tmp_path: pathlib.Path) -> None:
@@ -288,7 +288,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     assert len(imported_events) == 1
     assert app.lightshow.modified is True
     # In sample file, output 47 is patched to channel 7
-    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+    assert app.lightshow.patch.get_output_info(1, 47) == (7, 0)
 
     # Verify cue from sample file was imported
     assert app.lightshow.cues.get(1.0, 0) is not None
@@ -296,7 +296,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     # Undo
     app.history.undo()
     assert len(imported_events) == 2
-    assert app.lightshow.patch.outputs[1][47] == [1, 0]
+    assert app.lightshow.patch.get_output_info(1, 47) == (1, 0)
     assert app.lightshow.groups.get(99.0) is not None
     assert app.lightshow.cues.get(99.0, 1) is not None
     assert app.lightshow.modified is False
@@ -304,7 +304,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     # Redo
     app.history.redo()
     assert len(imported_events) == 3
-    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+    assert app.lightshow.patch.get_output_info(1, 47) == (7, 0)
     assert app.lightshow.modified is True
 
 
@@ -328,7 +328,7 @@ def test_show_import_partial_options() -> None:
     app.action_registry.execute("show.import", "test/sample.asc", options)
 
     # Patch should NOT have changed because of IGNORE
-    assert app.lightshow.patch.outputs[1][47] == [42, 0]
+    assert app.lightshow.patch.get_output_info(1, 47) == (42, 0)
     # Cues should have been imported
     assert app.lightshow.cues.get(1.0, 0) is not None
 

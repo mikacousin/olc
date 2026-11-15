@@ -31,7 +31,7 @@ def test_patch_add_output_and_undo_redo() -> None:
 
     # 1. Initialize empty patch
     app.action_registry.execute("patch.clear")
-    assert len(patch.outputs) == 0
+    assert len(patch.devices) == 0
 
     patch_events = 0
 
@@ -44,37 +44,35 @@ def test_patch_add_output_and_undo_redo() -> None:
     # Add output patch: Channel 5 to Output 10, Universe 1
     app.action_registry.execute("patch.add_output", 5, 10, 1)
     assert patch_events == 1
-    assert 1 in patch.outputs
-    assert 10 in patch.outputs[1]
-    assert patch.outputs[1][10] == [5, 0]  # [channel, curve]
-    assert patch.channels[5] == [[10, 1]]
+    assert patch.get_output_info(1, 10) == (5, 0)  # (channel, curve)
+    assert [(ch.address, ch.universe) for ch in patch.devices[5].channels] == [(10, 1)]
 
     # Undo add patch
     app.history.undo()
     assert patch_events == 2
-    assert 10 not in patch.outputs.get(1, {})
+    assert patch.get_output_info(1, 10) is None
 
     # Redo add patch
     app.history.redo()
     assert patch_events == 3
-    assert patch.outputs[1][10] == [5, 0]
+    assert patch.get_output_info(1, 10) == (5, 0)
 
     # Add another patch to the same output: Channel 6 to Output 10, Universe 1
     # This should unpatch Channel 5 from Output 10 first
     app.action_registry.execute("patch.add_output", 6, 10, 1)
-    assert patch.outputs[1][10] == [6, 0]
-    assert patch.channels[5] == [[None, None]]
-    assert patch.channels[6] == [[10, 1]]
+    assert patch.get_output_info(1, 10) == (6, 0)
+    assert not patch.is_patched(5)
+    assert [(ch.address, ch.universe) for ch in patch.devices[6].channels] == [(10, 1)]
 
     # Undo setting to Channel 6 -> should restore Channel 5 on Output 10
     app.history.undo()
-    assert patch.outputs[1][10] == [5, 0]
-    assert patch.channels[5] == [[10, 1]]
-    assert patch.channels[6] == [[None, None]]
+    assert patch.get_output_info(1, 10) == (5, 0)
+    assert [(ch.address, ch.universe) for ch in patch.devices[5].channels] == [(10, 1)]
+    assert not patch.is_patched(6)
 
     # Redo -> Channel 6 on Output 10
     app.history.redo()
-    assert patch.outputs[1][10] == [6, 0]
+    assert patch.get_output_info(1, 10) == (6, 0)
 
 
 def test_patch_unpatch_and_undo_redo() -> None:
@@ -85,17 +83,17 @@ def test_patch_unpatch_and_undo_redo() -> None:
 
     app.action_registry.execute("patch.clear")
     app.action_registry.execute("patch.add_output", 6, 10, 1)
-    assert patch.outputs[1][10] == [6, 0]
+    assert patch.get_output_info(1, 10) == (6, 0)
 
     # Unpatch output 10
     app.action_registry.execute("patch.unpatch_output", 10, 1)
-    assert 10 not in patch.outputs.get(1, {})
-    assert patch.channels[6] == [[None, None]]
+    assert patch.get_output_info(1, 10) is None
+    assert not patch.is_patched(6)
 
     # Undo unpatch -> restore Channel 6 on Output 10
     app.history.undo()
-    assert patch.outputs[1][10] == [6, 0]
-    assert patch.channels[6] == [[10, 1]]
+    assert patch.get_output_info(1, 10) == (6, 0)
+    assert [(ch.address, ch.universe) for ch in patch.devices[6].channels] == [(10, 1)]
 
 
 def test_patch_set_1on1_and_undo_redo() -> None:
@@ -110,18 +108,18 @@ def test_patch_set_1on1_and_undo_redo() -> None:
     # Set 1on1 patch
     app.action_registry.execute("patch.set_1on1")
     # Output 1 should be Channel 1, Output 10 should be Channel 10
-    assert patch.outputs[1][1] == [1, 0]
-    assert patch.outputs[1][10] == [10, 0]
+    assert patch.get_output_info(1, 1) == (1, 0)
+    assert patch.get_output_info(1, 10) == (10, 0)
 
     # Undo 1on1 -> should restore Channel 6 on Output 10 and clear others
     app.history.undo()
-    assert patch.outputs[1][10] == [6, 0]
-    assert 1 not in patch.outputs.get(1, {})
+    assert patch.get_output_info(1, 10) == (6, 0)
+    assert patch.get_output_info(1, 1) is None
 
     # Redo 1on1
     app.history.redo()
-    assert patch.outputs[1][1] == [1, 0]
-    assert patch.outputs[1][10] == [10, 0]
+    assert patch.get_output_info(1, 1) == (1, 0)
+    assert patch.get_output_info(1, 10) == (10, 0)
 
 
 def test_patch_set_output_curve_and_undo_redo() -> None:
@@ -131,19 +129,19 @@ def test_patch_set_output_curve_and_undo_redo() -> None:
     patch = app.lightshow.patch
 
     app.action_registry.execute("patch.set_1on1")
-    assert patch.outputs[1][10] == [10, 0]
+    assert patch.get_output_info(1, 10) == (10, 0)
 
     # Set output curve
     app.action_registry.execute("patch.set_output_curve", 10, 1, 5)
-    assert patch.outputs[1][10] == [10, 5]
+    assert patch.get_output_info(1, 10) == (10, 5)
 
     # Undo set output curve
     app.history.undo()
-    assert patch.outputs[1][10] == [10, 0]
+    assert patch.get_output_info(1, 10) == (10, 0)
 
     # Redo set output curve
     app.history.redo()
-    assert patch.outputs[1][10] == [10, 5]
+    assert patch.get_output_info(1, 10) == (10, 5)
 
 
 def test_universe_blackout_and_undo_redo() -> None:

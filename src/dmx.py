@@ -28,7 +28,7 @@ from olc.core.tracking import (
 )
 from olc.define import MAX_CHANNELS
 from olc.main_fader import MainFader
-from olc.patch import DMXPatch
+from olc.patch import PatchManager
 
 if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
@@ -51,7 +51,7 @@ class Dmx:
     """Send levels to backend"""
 
     backend: Optional[DMXBackend]
-    patch: DMXPatch
+    patch: PatchManager
     main_fader: MainFader
     blackout: bool
     levels: DmxLevels
