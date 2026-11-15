@@ -87,6 +87,10 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
                 self._on_universe_config_updated, universe
             ),
         )
+        self.app.core.subscribe(
+            "artnet.devices_changed",
+            lambda *_: self._run_idle(self._on_artnet_devices_changed),
+        )
 
     def _safe_refresh_patch(self) -> bool:
         """Refresh patch UI tabs and live channels view safely in the GTK thread.
@@ -184,6 +188,8 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
                 )
                 if hasattr(settings_tab, "add_universe_ui"):
                     settings_tab.add_universe_ui(universe)
+                if hasattr(settings_tab, "refresh_artnet"):
+                    settings_tab.refresh_artnet()
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         return False
@@ -215,6 +221,8 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
                 )
                 if hasattr(settings_tab, "remove_universe_ui"):
                     settings_tab.remove_universe_ui(universe)
+                if hasattr(settings_tab, "refresh_artnet"):
+                    settings_tab.refresh_artnet()
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         return False
@@ -255,4 +263,14 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             if hasattr(settings_tab, "update_universe_ui"):
                 settings_tab.update_universe_ui(universe)
+            if hasattr(settings_tab, "refresh_artnet"):
+                settings_tab.refresh_artnet()
+        return False
+
+    def _on_artnet_devices_changed(self) -> bool:
+        """Refresh the Art-Net devices list in Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "refresh_artnet"):
+                settings_tab.refresh_artnet()
         return False

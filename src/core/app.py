@@ -153,6 +153,12 @@ class CoreApplication(EventDispatcher):
                 pass
         return 0
 
+    def get_artnet_devices(self) -> list[list[str]]:
+        """Return a thread-safe snapshot of discovered Art-Net devices."""
+        if self.engine is not None:
+            return self.engine.get_artnet_devices_snapshot()
+        return []
+
     def _register_actions(self) -> None:
         """Register all concrete actions from the actions package."""
         register_all_actions(self.action_registry)

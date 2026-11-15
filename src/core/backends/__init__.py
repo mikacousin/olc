@@ -82,11 +82,18 @@ class DMXBackend:
             "enttec-connect-fail": "_enttec_connect_fail",
             "enttec-disconnect": "_enttec_disconnect",
         }
+        result = None
         attr = actions.get(action, None)
         if attr:
             if func := getattr(self, f"{attr}", None):
-                return func(*args, **kwargs)
-        return None
+                result = func(*args, **kwargs)
+        if (
+            action.startswith("artnet-")
+            and self.dmx
+            and self.dmx.lightshow.app is not None
+        ):
+            self.dmx.lightshow.app.emit("artnet.devices_changed")
+        return result
 
     def _artnet_add_node(self, ip: str, universe: int) -> None:
         if self.dmx:

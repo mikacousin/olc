@@ -85,6 +85,76 @@ class ArtNetManager:  # pylint: disable=too-many-instance-attributes
         # Filter out local loopback virtual node to get real external nodes
         return [node.ip for node in nodes.values() if node.ip != "127.0.0.1"]
 
+    def get_devices_snapshot(self) -> list[list[str]]:
+        """Return a thread-safe snapshot of discovered Art-Net devices and loopback.
+
+        Returns:
+            List of rows [name, ip, device_type, universes] sorted for display.
+        """
+        active_universes = set(self.universes)
+        if not active_universes:
+            return []
+
+        nodes = list(self.discovery.nodes.values())
+        consoles = list(self.discovery.consoles.values())
+        senders = dict(self.senders)
+
+        grouped: dict[tuple[tuple[int, ...], str], dict[str, typing.Any]] = {}
+        for devices_list, device_type in ((nodes, "Node"), (consoles, "Controller")):
+            for device in devices_list:
+                key = (device.mac, device_type)
+                dev_univs = set(device.universes) & active_universes
+                if key not in grouped:
+                    grouped[key] = {
+                        "name": device.names.get("long", ""),
+                        "ip": device.ip,
+                        "type": device_type,
+                        "universes": set(dev_univs),
+                    }
+                else:
+                    grouped[key]["universes"].update(dev_univs)
+                    if not grouped[key]["name"] and device.names.get("long", ""):
+                        grouped[key]["name"] = device.names.get("long", "")
+
+        rows = [
+            [
+                g["name"],
+                g["ip"],
+                g["type"],
+                ", ".join(str(u) for u in sorted(g["universes"])),
+            ]
+            for g in grouped.values()
+            if g["universes"]
+        ]
+
+        loopback_key = ((0, 0, 0, 0, 0, 0), 0, "127.0.0.1")
+        virtual_univs = sorted(
+            u
+            for u, sender in senders.items()
+            if u in active_universes and loopback_key in dict(sender.nodes)
+        )
+        if virtual_univs:
+            rows.append(
+                [
+                    "Virtual Node (Local Loopback)",
+                    "127.0.0.1",
+                    "Node",
+                    ", ".join(str(u) for u in virtual_univs),
+                ]
+            )
+
+        type_prio = {"Node": 1, "Controller": 2}
+        rows.sort(
+            key=lambda x: (
+                0
+                if x[0] == "Virtual Node (Local Loopback)"
+                else type_prio.get(x[2], 99),
+                x[1],
+                x[0],
+            )
+        )
+        return rows
+
     def send(self, universe: int, packet: bytes) -> None:
         """Send Art-Net universe DMX data to registered nodes."""
         if self.senders.get(universe, None):

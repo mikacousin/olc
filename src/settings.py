@@ -435,7 +435,7 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 break
 
     def _artnet(self, builder: Gtk.Builder) -> None:
-        # pylint: disable=too-many-locals,protected-access
+        # pylint: disable=too-many-locals
         self.liststore_artnet = Gtk.ListStore(str, str, str, str)
         treeview = Gtk.TreeView(model=self.liststore_artnet)
 
@@ -476,76 +476,20 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             artnet_grid.attach(scrolled_window, 0, 1, 1, 1)
             scrolled_window.show_all()
 
-            GLib.timeout_add_seconds(1, self._refresh_artnet)
+            self.refresh_artnet()
 
-    def _collect_devices(
-        self,
-        devices: dict,
-        device_type: str,
-        grouped: dict,
-        active_universes: list[int] | None = None,
-    ) -> None:
-        """Helper to collect and merge devices"""
-        for device in devices.values():
-            key = (device.mac, device_type)
-            dev_univs = set(device.universes)
-            if active_universes is not None:
-                dev_univs &= set(active_universes)
-            if key not in grouped:
-                grouped[key] = {
-                    "name": device.names.get("long", ""),
-                    "ip": device.ip,
-                    "type": device_type,
-                    "universes": dev_univs,
-                }
-            else:
-                grouped[key]["universes"].update(dev_univs)
+    def refresh_artnet(self) -> None:
+        """Refresh the Art-Net discovered devices list from CoreApplication."""
+        if self.app is None or self.app.core is None:
+            return
 
-    def _refresh_artnet(self) -> bool:
-        if not self.tabs or not self.tabs.tabs.get("settings"):
-            return False
-
-        engine = self.app.core.engine if self.app is not None else None
-        if engine is None:
-            return True
-
-        artnet = engine.artnet_manager
-
-        grouped = {}
-        self._collect_devices(
-            artnet.discovery.nodes,
-            "Node",
-            grouped,
-            artnet.universes,
-        )
-        self._collect_devices(
-            artnet.discovery.consoles,
-            "Controller",
-            grouped,
-            artnet.universes,
-        )
-
-        new_state = [
-            [g["name"], g["ip"], g["type"], ", ".join(map(str, sorted(g["universes"])))]
-            for g in grouped.values()
-        ]
-
-        if any(((0, 0, 0, 0, 0, 0), 0) in s.nodes for s in artnet.senders.values()):
-            univs = ", ".join(str(u) for u in sorted(artnet.senders.keys()))
-            new_state.append(
-                ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
-            )
-
-        type_prio = {"Virtual": 0, "Node": 1, "Controller": 2}
-        new_state.sort(key=lambda x: (type_prio.get(x[2], 99), x[1], x[0]))
+        new_state = self.app.core.get_artnet_devices()
 
         if self._last_artnet_state != new_state:
             self.liststore_artnet.clear()
             for row in new_state:
                 self.liststore_artnet.append(row)
             self._last_artnet_state = new_state
-
-        return True
 
     def _on_change_percent(self, widget: Gtk.SpinButton) -> None:
         lvl = widget.get_value_as_int()

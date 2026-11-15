@@ -309,6 +309,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         """Return the Art-Net manager."""
         return self._artnet_manager
 
+    def get_artnet_devices_snapshot(self) -> list[list[str]]:
+        """Return a thread-safe snapshot of discovered Art-Net devices."""
+        return self._artnet_manager.get_devices_snapshot()
+
     @property
     def sacn_manager(self) -> SacnManager:
         """Return the sACN manager."""
@@ -425,6 +429,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             self._artnet_manager.senders.pop(uid, None)
             if self.is_running and not self._artnet_manager.universes:
                 self._artnet_manager.stop()
+        self._artnet_manager._notify_forwarder("devices-changed")
 
     def _reload_sacn(self, uid: int, config: UniverseConfig) -> None:
         """Update sACN manager configuration for a universe reload."""

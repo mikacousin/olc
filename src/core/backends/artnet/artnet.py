@@ -428,6 +428,7 @@ class Discovery:
         if not node:
             node = Node(reply=reply, notify=self.notify)
             self.nodes[uid] = node
+            notified = False
             for universe in node.output_universes:
                 if universe in self.senders:
                     if not any(
@@ -436,7 +437,16 @@ class Discovery:
                         self.senders[universe].add_node(uid, node)
                         if self.notify:
                             self.notify("add-node", node.ip, universe)
+                            notified = True
+            if (
+                not notified
+                and self.notify
+                and (set(node.universes) & set(self.universes))
+            ):
+                self.notify("devices-changed")
         else:
+            old_names = node.names.copy()
+            old_all_univs = set(node.universes)
             old_universes = node.output_universes.copy()
             node.from_poll_reply(reply)
             new_universes = node.output_universes
@@ -454,6 +464,11 @@ class Discovery:
                     if not any(n.ip == node.ip for n in self.senders[u].nodes.values()):
                         self.senders[u].add_node(uid, node)
 
+            if self.notify and (
+                node.names != old_names or set(node.universes) != old_all_univs
+            ):
+                self.notify("devices-changed")
+
     def _handle_console_reply(self, reply: ArtPollReply) -> None:
         """Process an ArtPollReply from a Console/Controller."""
         uid = (reply.mac, reply.bind_index, str(ipaddress.IPv4Address(reply.ip)))
@@ -464,7 +479,13 @@ class Discovery:
             if self.notify:
                 self.notify("add-console", console.ip, 0)
         else:
+            old_names = console.names.copy()
+            old_univs = set(console.universes)
             console.from_poll_reply(reply)
+            if self.notify and (
+                console.names != old_names or set(console.universes) != old_univs
+            ):
+                self.notify("console-modified", console.ip)
 
     def on_art_poll_reply(self, data: bytes) -> None:
         """ArtPollReply packet received.

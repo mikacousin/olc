@@ -490,3 +490,113 @@ class TestArtNetManager:
         mock_notify.assert_called_once_with("add-node", "192.168.1.100", 2)
 
         manager.stop()
+
+    def test_artnet_manager_get_devices_snapshot_console_node_and_virtual(
+        self,
+    ) -> None:
+        """Verify snapshot groups, filters, sorts nodes, controllers, and loopback."""
+        umap = UniverseMap(5)
+        umap.enable_protocol(1, Protocol.ARTNET)
+        umap.enable_protocol(2, Protocol.ARTNET)
+
+        notify_mock = MagicMock()
+        manager = ArtNetManager(umap, notify=notify_mock)
+
+        # Register external Art-Net Node on active universe 2 and inactive universe 3
+        node_reply = ArtPollReply(universes=[2, 3])
+        node_reply.ip = int(ipaddress.IPv4Address("192.168.1.20"))
+        node_reply.mac = (0x00, 0x11, 0x22, 0x33, 0x44, 0x55)
+        node_reply.long_name = "Stage Node"
+        node_reply.port_types = (0x80, 0x80, 0, 0)
+        node_reply.sw_out = (2, 3, 0, 0)
+        node_reply.num_ports = 2
+        node_reply.style = StyleCodes.ST_NODE
+        manager.discovery._handle_node_reply(node_reply)
+
+        # Same MAC with another bind_index adding active universe 1 merges universes
+        node_reply_2 = ArtPollReply(universes=[1])
+        node_reply_2.ip = int(ipaddress.IPv4Address("192.168.1.20"))
+        node_reply_2.mac = (0x00, 0x11, 0x22, 0x33, 0x44, 0x55)
+        node_reply_2.bind_index = 2
+        node_reply_2.long_name = "Stage Node"
+        node_reply_2.port_types = (0x80, 0, 0, 0)
+        node_reply_2.sw_out = (1, 0, 0, 0)
+        node_reply_2.num_ports = 1
+        node_reply_2.style = StyleCodes.ST_NODE
+        manager.discovery._handle_node_reply(node_reply_2)
+
+        # Register node only on inactive universe 4 -> should be excluded
+        inactive_node = ArtPollReply(universes=[4])
+        inactive_node.ip = int(ipaddress.IPv4Address("192.168.1.99"))
+        inactive_node.mac = (0x00, 0x11, 0x22, 0x33, 0x44, 0x99)
+        inactive_node.long_name = "Unused Node"
+        inactive_node.port_types = (0x80, 0, 0, 0)
+        inactive_node.sw_out = (4, 0, 0, 0)
+        inactive_node.num_ports = 1
+        inactive_node.style = StyleCodes.ST_NODE
+        manager.discovery._handle_node_reply(inactive_node)
+
+        # Register Art-Net Controller (console) on universe 1 and inactive universe 4
+        console_reply = ArtPollReply(universes=[1, 4])
+        console_reply.ip = int(ipaddress.IPv4Address("192.168.1.10"))
+        console_reply.mac = (0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01)
+        console_reply.long_name = "Open Lighting Console"
+        console_reply.port_types = (0x40, 0x40, 0, 0)
+        console_reply.sw_in = (1, 4, 0, 0)
+        console_reply.num_ports = 2
+        console_reply.style = StyleCodes.ST_CONTROLLER
+        manager.discovery._handle_console_reply(console_reply)
+
+        snapshot = manager.get_devices_snapshot()
+        assert snapshot == [
+            ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", "1, 2"],
+            ["Stage Node", "192.168.1.20", "Node", "1, 2"],
+            ["Open Lighting Console", "192.168.1.10", "Controller", "1"],
+        ]
+
+        # Updating console universes should trigger console-modified notification
+        notify_mock.reset_mock()
+        console_reply.sw_in = (1, 2, 0, 0)
+        manager.discovery._handle_console_reply(console_reply)
+        notify_mock.assert_any_call("console-modified", "192.168.1.10")
+        assert manager.get_devices_snapshot()[2] == [
+            "Open Lighting Console",
+            "192.168.1.10",
+            "Controller",
+            "1, 2",
+        ]
+
+        manager.stop()
+
+    def test_core_app_get_artnet_devices_and_event(self) -> None:
+        """Verify CoreApplication.get_artnet_devices and artnet.devices_changed."""
+        from olc.core.app import CoreApplication
+        from olc.core.backends import DMXBackend
+
+        core_app = CoreApplication(MagicMock())
+        assert core_app.get_artnet_devices() == []
+
+        core_app.backend = DMXBackend(core_app.lightshow)
+        core_app.init_engine(no_listen=True, no_transmit=True)
+        assert core_app.engine is not None
+
+        try:
+            expected_univs = ", ".join(
+                str(c.universe_id)
+                for c in core_app.lightshow.universe_map
+                if Protocol.ARTNET in c.protocols
+            )
+            assert core_app.get_artnet_devices() == [
+                ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", expected_univs]
+            ]
+
+            events: list[bool] = []
+            core_app.subscribe("artnet.devices_changed", lambda: events.append(True))
+
+            core_app.backend.notify_artnet("add-console", "192.168.1.10", 0)
+            assert len(events) == 1
+
+            core_app.engine.reload_universe(1)
+            assert len(events) == 2
+        finally:
+            core_app.engine.stop()
