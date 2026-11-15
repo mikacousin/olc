@@ -129,12 +129,6 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        if self.app.tabs:
-            if self.app.tabs.tabs.get("dmx_outputs") is not None:
-                dmx_outputs = typing.cast(
-                    "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
-                )
-                dmx_outputs.select_outputs()
         self.app.core.commandline.set_string("")
         return False
 

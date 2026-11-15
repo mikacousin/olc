@@ -215,7 +215,7 @@ class ChannelsView(Gtk.Box):
         """Find the logical tab name this channels view belongs to."""
         if self.__class__.__name__ == "LiveChannelsView":
             return "channels"
-        tabs_mgr = getattr(self, "tabs", None) or getattr(self.app, "tabs", None)
+        tabs_mgr = self.tabs
         if tabs_mgr and hasattr(tabs_mgr, "tabs"):
             for name, widget in tabs_mgr.tabs.items():
                 if widget is not None:

@@ -229,7 +229,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
             curves_tab.curve_edition.points_curve()
 
         # Redraw Cairo widgets
-        curves_tab.curve_edition.values.queue_draw()
+        curves_tab.curve_edition.refresh_views()
         if curves_tab.curve_edition.edit_curve is not None:
             curves_tab.curve_edition.edit_curve.queue_draw()
 

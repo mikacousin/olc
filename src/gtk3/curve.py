@@ -37,23 +37,6 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.window import Window
 
 
-# Backward compatibility alias
-CurveValues = CurveSampledMonitor
-
-
-class _ValuesCompatibilityWrapper:
-    """Compatibility shim for legacy curve_edition.values.queue_draw() calls."""
-
-    def __init__(self, edition: CurveEdition) -> None:
-        self._edition = edition
-
-    def queue_draw(self) -> None:
-        if hasattr(self._edition, "sampled_monitor") and self._edition.sampled_monitor:
-            self._edition.sampled_monitor.queue_draw()
-        if hasattr(self._edition, "points_table") and self._edition.points_table:
-            self._edition.points_table.refresh()
-
-
 # pylint: disable=too-many-instance-attributes
 class CurveEdition(Gtk.Box):
     """Edition Widget"""
@@ -205,9 +188,6 @@ class CurveEdition(Gtk.Box):
         vbox.pack_start(self.bottom_box, True, True, 0)
         self.pack_start(vbox, True, True, 0)
 
-        # Backward compatibility wrapper for values.queue_draw()
-        self.values = _ValuesCompatibilityWrapper(self)
-
     def _on_unit_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         """Handle change of active unit mode."""
         active_id = combo.get_active_id()
@@ -279,8 +259,15 @@ class CurveEdition(Gtk.Box):
             self.limit_box.set_visible(False)
 
         self.sampled_monitor.set_curve(curve_nb)
-        self.values.queue_draw()
+        self.refresh_views()
         self.show_all()
+
+    def refresh_views(self) -> None:
+        """Redraw the sampled monitor and refresh the points table."""
+        if hasattr(self, "sampled_monitor") and self.sampled_monitor:
+            self.sampled_monitor.queue_draw()
+        if hasattr(self, "points_table") and self.points_table:
+            self.points_table.refresh()
 
     def points_curve(self) -> None:
         """Generate PointWidgets"""
@@ -609,8 +596,6 @@ class CurvesTab(Gtk.Box):
         self.buttons["interpolate"].connect("clicked", self.on_new_curve)
         self.top_header.pack_start(self.buttons["interpolate"])
 
-        # Backward compatibility alias
-        self.header = self.top_header
         self.pack_start(self.top_header, False, False, 0)
 
         # Horizontal Paned: Sidebar (left) and CurveEdition (right)

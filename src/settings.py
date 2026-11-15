@@ -697,11 +697,7 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             return False
 
         core_app = getattr(self.app, "core", None)
-        osc = (
-            getattr(core_app, "osc", None)
-            if core_app is not None
-            else getattr(self.app, "osc", None)
-        )
+        osc = getattr(core_app, "osc", None) if core_app is not None else None
         if hasattr(self, "label_osc_mdns") and self.label_osc_mdns is not None:
             if (
                 osc is not None

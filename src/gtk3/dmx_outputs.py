@@ -91,9 +91,6 @@ class DMXOutputsTab(Gtk.Box):
         """Close Tab on close clicked."""
         self.tabs.close("dmx_outputs")
 
-    def select_outputs(self) -> None:
-        """Compatibility no-op for passive visualizer."""
-
     def cleanup(self) -> None:
         """Clean up resources on tab destruction."""
 
