@@ -197,7 +197,7 @@ def test_midi_headless_event_feedback_and_serialization() -> None:
         core_app.emit("playback.xfade_moved", "b", 64)
         mock_in_state.assert_called_with(64)
 
-    # Serialization roundtrip + legacy key mapping
+    # Serialization roundtrip
     midi.messages.notes.notes["time"] = [1, 42]
     midi.messages.notes.cc_notes["playback.go"] = [2, 10]
     midi.messages.control_change.control_change["fader_1"] = [1, 7]
@@ -207,7 +207,7 @@ def test_midi_headless_event_feedback_and_serialization() -> None:
     core_app2 = CoreApplication(None)
     midi2 = core_app2.init_midi()
     assert midi2 is not None
-    exported["note"]["go"] = [3, 12]
+    exported["note"]["playback.go"] = [3, 12]
     midi2.from_dict(exported)
 
     assert midi2.messages.notes.notes["time"] == [1, 42]

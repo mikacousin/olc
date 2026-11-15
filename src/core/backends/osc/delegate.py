@@ -1439,22 +1439,6 @@ class OSCDelegate:
 
             fixture_lib = self.app.lightshow.fixture_library
             fixture_def = fixture_lib.get_by_key(fixture_key)
-            if fixture_def is None:
-                aliases = {
-                    "rgb": "Generic:LED RGB",
-                    "generic:rgb": "Generic:LED RGB",
-                    "rgbw": "Generic:LED RGBW",
-                    "generic:rgbw": "Generic:LED RGBW",
-                    "rgba": "Generic:LED RGBA",
-                    "generic:rgba": "Generic:LED RGBA",
-                    "dimmer": "Generic:Dimmer",
-                    "generic:dimmer": "Generic:Dimmer",
-                    "moving_head": "Generic:Moving Head Spot",
-                    "generic:moving_head": "Generic:Moving Head Spot",
-                }
-                alias = aliases.get(fixture_key.lower().strip())
-                if alias:
-                    fixture_def = fixture_lib.get_by_key(alias)
 
             if fixture_def is None:
                 self._send_patch_status(

@@ -33,12 +33,11 @@ def test_parse_osc_normalized_floats() -> None:
     assert pytest.approx(parse_osc_normalized(0.7534)) == 0.7534
 
 
-def test_parse_osc_normalized_legacy_dmx_scale() -> None:
-    """Test legacy DMX integers and floats (> 1.0) are properly normalized."""
+def test_parse_osc_normalized_clamping() -> None:
+    """Test numeric values > 1.0 are clamped to 1.0."""
+    assert parse_osc_normalized(1.5) == 1.0
     assert parse_osc_normalized(255) == 1.0
-    assert parse_osc_normalized(255.0) == 1.0
-    assert pytest.approx(parse_osc_normalized(128)) == 128 / 255.0
-    assert parse_osc_normalized(512) == 1.0  # Clamped to 1.0
+    assert parse_osc_normalized(512) == 1.0
 
 
 def test_parse_osc_normalized_special_and_releases() -> None:
@@ -63,8 +62,6 @@ def test_parse_osc_level_dmx() -> None:
     assert parse_osc_level_dmx(1.0) == 255
     assert parse_osc_level_dmx(0.0) == 0
     assert parse_osc_level_dmx(0.5) == 128
-    assert parse_osc_level_dmx(255) == 255
-    assert parse_osc_level_dmx(128) == 128
     assert parse_osc_level_dmx(-1) == -1
 
 

@@ -259,10 +259,10 @@ def test_osc_cell_and_channel_touch_and_level_routes() -> None:
     delegate._channel_touch("/olc/channel/3/touch", [1])
     assert 3 in app.selected_channels
 
-    # 5. Set level via channel 3 directly (using 0..255)
-    delegate._channel_level("/olc/channel/3/level", [150])
+    # 5. Set level via channel 3 directly (normalized [0.0..1.0])
+    delegate._channel_level("/olc/channel/3/level", [0.6])
     assert app.backend is not None and app.backend.dmx is not None
-    assert app.backend.dmx.levels["user"][2] == 150
+    assert app.backend.dmx.levels["user"][2] == round(0.6 * 255)
 
 
 def test_osc_wheels_and_color_control_routes() -> None:

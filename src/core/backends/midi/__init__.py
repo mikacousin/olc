@@ -529,26 +529,14 @@ class Midi:
 
     def from_dict(self, midi_data: dict[str, typing.Any]) -> None:
         """Restore MIDI mappings from parsed show data."""
-        legacy_mapping = {
-            "go": "playback.go",
-            "go_back": "playback.go_back",
-            "pause": "playback.pause",
-            "seq_plus": "playback.sequence_plus",
-            "seq_minus": "playback.sequence_minus",
-        }
-
         for action, value in midi_data.get("note", {}).items():
-            if value != [0, -1]:
-                normalized_action = legacy_mapping.get(action, action)
-                if normalized_action in self.messages.notes.notes:
-                    self.messages.notes.notes[normalized_action] = value
+            if value != [0, -1] and action in self.messages.notes.notes:
+                self.messages.notes.notes[action] = value
         note_cc = midi_data.get("note_cc")
         if note_cc:
             for action, value in note_cc.items():
-                if value != [0, -1]:
-                    normalized_action = legacy_mapping.get(action, action)
-                    if normalized_action in self.messages.notes.cc_notes:
-                        self.messages.notes.cc_notes[normalized_action] = value
+                if value != [0, -1] and action in self.messages.notes.cc_notes:
+                    self.messages.notes.cc_notes[action] = value
         for action, value in midi_data.get("control_change", {}).items():
             if value != [0, -1]:
                 self.messages.control_change.control_change[action] = value

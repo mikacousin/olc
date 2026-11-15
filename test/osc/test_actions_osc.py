@@ -537,7 +537,7 @@ def test_osc_delegate_patch_device() -> None:
     # 1. Valid fixture patch
     mock_osc.publish.reset_mock()
     delegate._patch_device(
-        "/olc/patch/device", [10, "Generic:RGBW", 1, 30, "Default", "LED 1"]
+        "/olc/patch/device", [10, "Generic:LED RGBW", 1, 30, "Default", "LED 1"]
     )
     assert 10 in app.lightshow.patch.devices
     dev = app.lightshow.patch.devices[10]
@@ -677,7 +677,7 @@ def test_osc_delegate_patch_get_and_dump() -> None:
     delegate = OSCDelegate(app)
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
     delegate._patch_device(
-        "/olc/patch/device", [2, "Generic:RGBW", 1, 20, "Default", "Wash 1"]
+        "/olc/patch/device", [2, "Generic:LED RGBW", 1, 20, "Default", "Wash 1"]
     )
 
     # 1. Query patched device 1
@@ -1115,9 +1115,9 @@ def test_osc_mainfader_and_blackout_routes() -> None:
     assert getattr(app, "main_fader_level", 0.0) == 0.75
     mock_osc.publish.assert_any_call("playback", "/olc/mainfader", 0.75)
 
-    # 2. Set mainfader via int 128 (normalized to 128/255)
-    delegate._mainfader("/olc/mainfader", [128])
-    assert abs(getattr(app, "main_fader_level", 0.0) - (128 / 255.0)) < 0.01
+    # 2. Set mainfader via float 0.5
+    delegate._mainfader("/olc/mainfader", [0.5])
+    assert abs(getattr(app, "main_fader_level", 0.0) - 0.5) < 0.01
 
     # 3. Query mainfader without args
     mock_osc.send_direct.reset_mock()
@@ -1207,10 +1207,10 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
     action = app.action_registry.get("main_fader.set_level")
     assert action.get_feedback_state()["level"] == 0.75
 
-    # 2. Main fader legacy DMX scale
-    delegate._mainfader("/olc/mainfader", [128])
+    # 2. Main fader normalized float 0.5
+    delegate._mainfader("/olc/mainfader", [0.5])
     action = app.action_registry.get("main_fader.set_level")
-    assert pytest.approx(action.get_feedback_state()["level"]) == 128 / 255.0
+    assert pytest.approx(action.get_feedback_state()["level"]) == 0.5
 
     # 3. Channel level normalized float
     delegate._channel_level("/olc/channel/3/level", [0.8])
@@ -1218,10 +1218,10 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
     assert action.get_feedback_state()["normalized_level"] == 0.8
     assert mock_backend.dmx.levels["user"][2] == round(0.8 * 255.0)
 
-    # 4. Channel level legacy DMX int
-    delegate._channel_level("/olc/channel/3/level", [200])
+    # 4. Channel level normalized float
+    delegate._channel_level("/olc/channel/3/level", [0.5])
     action = app.action_registry.get("channel.set_level")
-    assert action.get_feedback_state()["level"] == 200
+    assert action.get_feedback_state()["level"] == round(0.5 * 255.0)
 
     # 5. Blackout bool / string
     delegate._blackout("/olc/blackout", ["true"])

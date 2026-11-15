@@ -20,8 +20,7 @@ from __future__ import annotations
 def parse_osc_normalized(arg: object) -> float:
     """Normalize any OSC level argument into a float in range [0.0, 1.0].
 
-    - Floats in range [0.0, 1.0] are preserved directly.
-    - Values > 1.0 (legacy 8-bit DMX scale 0..255) are normalized by dividing by 255.0.
+    - Floats in [0.0, 1.0] are preserved; values > 1.0 are clamped to 1.0.
     - Negative values are treated as release signals (-1.0).
     - Booleans evaluate to 1.0 for True, 0.0 for False.
     - Keywords 'full' -> 1.0, 'out'/'zero'/'off' -> 0.0, 'release' -> -1.0.
@@ -42,10 +41,7 @@ def parse_osc_normalized(arg: object) -> float:
         val = float(arg)
         if val < 0.0:
             return -1.0
-        if val <= 1.0:
-            return max(0.0, val)
-        # Value > 1.0: treat as legacy 0..255 DMX scale
-        return min(1.0, val / 255.0)
+        return max(0.0, min(1.0, val))
 
     if isinstance(arg, str):
         cleaned = arg.strip().lower()
