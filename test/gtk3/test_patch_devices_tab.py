@@ -309,7 +309,7 @@ def test_patch_device_updates_live_view_and_open_tabs(app_gui: Application) -> N
 
     assert ch5_child.get_visible() is True
     assert len(inspector.selected_devices) == 1
-    assert inspector.selected_devices[0].device_id == 5
+    assert inspector.selected_devices[0].fixture_id == 5
 
     # Removing device 5 updates LiveView and DeviceInspector again
     patch_tab.remove_patched_device(5)

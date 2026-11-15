@@ -346,7 +346,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
             )
             points.append(
                 FixtureColorPoint(
-                    device_id=int(getattr(dev, "device_id", 0)),
+                    device_id=int(getattr(dev, "fixture_id", 0)),
                     rgb=rgb_tuple,
                     xy=xy_tuple,
                     is_lead=dev is lead,

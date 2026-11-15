@@ -89,10 +89,6 @@ class CIEXYZ:
 
         return sRGB(gamma(r_lin), gamma(g_lin), gamma(b_lin))
 
-    def to_sRGB(self) -> sRGB:  # pylint: disable=invalid-name
-        """Alias for to_srgb()."""
-        return self.to_srgb()
-
     def as_array(self) -> np.ndarray:
         """Return [X, Y, Z] as a 1D NumPy array."""
         return np.array([self.X, self.Y, self.Z], dtype=np.float64)

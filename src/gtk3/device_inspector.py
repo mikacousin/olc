@@ -409,7 +409,7 @@ class DeviceInspectorWidget(Gtk.Box):
     def _apply_channel_level_update(self, channel_id: int, level: int) -> None:
         if self._updating_ui or self._syncing_devices:
             return
-        matched = [dev for dev in self.selected_devices if dev.device_id == channel_id]
+        matched = [dev for dev in self.selected_devices if dev.fixture_id == channel_id]
         if not matched:
             return
         eff_lvl = max(0, int(level))
@@ -439,7 +439,7 @@ class DeviceInspectorWidget(Gtk.Box):
         if self._updating_ui or self._syncing_devices:
             return
         if not channel_ids or any(
-            dev.device_id in channel_ids for dev in self.selected_devices
+            dev.fixture_id in channel_ids for dev in self.selected_devices
         ):
             self.refresh_ui()
 
@@ -457,9 +457,9 @@ class DeviceInspectorWidget(Gtk.Box):
         try:
             if sync_intensity:
                 channels_dict = {
-                    dev.device_id: round(dev.intensity * 255)
+                    dev.fixture_id: round(dev.intensity * 255)
                     for dev in devices
-                    if self._has_intensity(dev) and dev.device_id >= 1
+                    if self._has_intensity(dev) and dev.fixture_id >= 1
                 }
                 if channels_dict and getattr(core, "action_registry", None) is not None:
                     core.action_registry.execute(
@@ -470,7 +470,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 dmx = getattr(backend, "dmx", None) if backend is not None else None
                 if dmx is not None:
                     dmx.set_levels()
-                dev_ids = [dev.device_id for dev in devices if dev.device_id >= 1]
+                dev_ids = [dev.fixture_id for dev in devices if dev.fixture_id >= 1]
                 if dev_ids:
                     if is_color:
                         lead = self.lead_device or devices[0]
@@ -486,7 +486,7 @@ class DeviceInspectorWidget(Gtk.Box):
             if live_view is not None:
                 for dev in devices:
                     live_view.update_channel_widget(
-                        dev.device_id, round(dev.intensity * 255)
+                        dev.fixture_id, round(dev.intensity * 255)
                     )
                 if sync_intensity:
                     live_view.channels_view.flowbox.invalidate_filter()
@@ -542,7 +542,7 @@ class DeviceInspectorWidget(Gtk.Box):
     def set_lead_device_id(self, device_id: int) -> bool:
         """Select a specific device_id as the Lead Fixture if in selection."""
         for idx, dev in enumerate(self.selected_devices):
-            if dev.device_id == device_id:
+            if dev.fixture_id == device_id:
                 self.lead_index = idx
                 self.refresh_ui()
                 return True
@@ -818,7 +818,7 @@ class DeviceInspectorWidget(Gtk.Box):
             if self._has_position(dev):
                 points.append(
                     {
-                        "device_id": dev.device_id,
+                        "device_id": dev.fixture_id,
                         "pan": dev.pan_degrees,
                         "tilt": dev.tilt_degrees,
                         "is_lead": dev is lead,
@@ -1269,7 +1269,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 self.lead_label.set_text("None")
             else:
                 ids_str = ", ".join(
-                    f"#{d.device_id}" for d in self.selected_devices[:6]
+                    f"#{d.fixture_id}" for d in self.selected_devices[:6]
                 )
                 if total > 6:
                     ids_str += f" (+{total - 6})"
@@ -1279,7 +1279,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 lead = self.lead_device
                 if lead is not None:
                     self.lead_label.set_text(
-                        f"#{lead.device_id}: {lead.label or lead.fixture_type.value}"
+                        f"#{lead.fixture_id}: {lead.label or lead.fixture_type.value}"
                     )
 
             counts = self.get_section_counts()

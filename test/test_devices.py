@@ -472,7 +472,7 @@ def test_fixture_library() -> None:
     lib = FixtureLibrary()
     populate_builtin_library(lib)
 
-    assert len(lib.list_fixtures()) >= 5
+    assert len(lib.all()) >= 5
     dimmer_def = lib.get("Generic", "Dimmer")
     assert dimmer_def.manufacturer == "Generic"
 
@@ -526,7 +526,7 @@ def test_srgb_to_xyz_and_back() -> None:
     assert xyz.X > 0.0
     assert xyz.Y > 0.0
 
-    restored_rgb = xyz.to_sRGB()
+    restored_rgb = xyz.to_srgb()
     assert pytest.approx(restored_rgb.r, abs=1e-3) == 1.0
     assert pytest.approx(restored_rgb.g, abs=1e-3) == 0.0
     assert pytest.approx(restored_rgb.b, abs=1e-3) == 0.0

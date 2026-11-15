@@ -751,11 +751,11 @@ class OSCDelegate:
 
         if topic in ("patch", "all"):
             devices = sorted(
-                self.app.lightshow.patch.devices.values(), key=lambda d: d.device_id
+                self.app.lightshow.patch.devices.values(), key=lambda d: d.fixture_id
             )
             dump_data = [
                 {
-                    "device_id": d.device_id,
+                    "device_id": d.fixture_id,
                     "universe": d.universe,
                     "address": d.address,
                     "footprint": d.channel_count(),
@@ -1549,7 +1549,7 @@ class OSCDelegate:
                 self._emit_osc(
                     "patch",
                     "/olc/patch/device/info",
-                    dev.device_id,
+                    dev.fixture_id,
                     dev.universe,
                     dev.address,
                     dev.channel_count(),
@@ -1584,11 +1584,11 @@ class OSCDelegate:
             return
 
         devices = sorted(
-            self.app.lightshow.patch.devices.values(), key=lambda d: d.device_id
+            self.app.lightshow.patch.devices.values(), key=lambda d: d.fixture_id
         )
         dump_data = [
             {
-                "device_id": d.device_id,
+                "device_id": d.fixture_id,
                 "universe": d.universe,
                 "address": d.address,
                 "footprint": d.channel_count(),

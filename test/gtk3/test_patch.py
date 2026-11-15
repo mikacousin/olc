@@ -111,7 +111,7 @@ def test_patch_channels_tab_behavior(app_gui: Application) -> None:
     )
     process_events()
 
-    assert dev.device_id == 5
+    assert dev.fixture_id == 5
     assert len(patch_chan_tab.devices_store) == 1
     row = patch_chan_tab.devices_store[0]
     assert row[COL_ID] == "5"

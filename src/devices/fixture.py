@@ -545,10 +545,6 @@ class FixtureLibrary:
         """Return all registered fixture definitions."""
         return list(self._definitions.values())
 
-    def list_fixtures(self) -> list[FixtureDefinition]:
-        """Alias for all()."""
-        return self.all()
-
     def __len__(self) -> int:
         return len(self._definitions)
 

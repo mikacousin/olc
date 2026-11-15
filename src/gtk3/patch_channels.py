@@ -283,9 +283,9 @@ class PatchChannelsTab(Gtk.Box):
         """Populate only patched devices, sorted according to sort_mode."""
         devices = list(self.patch.devices.values())
         if self.sort_mode == "physical":
-            devices.sort(key=lambda d: (d.universe, d.address, d.device_id))
+            devices.sort(key=lambda d: (d.universe, d.address, d.fixture_id))
         else:
-            devices.sort(key=lambda d: d.device_id)
+            devices.sort(key=lambda d: d.fixture_id)
 
         for dev in devices:
             curve = self.lightshow.curves.get_curve(dev.curve_id)
@@ -297,8 +297,8 @@ class PatchChannelsTab(Gtk.Box):
             mode_str = dev.mode_name if dev.mode_name else "-"
             self.devices_store.append(
                 [
-                    str(dev.device_id),
-                    dev.label or f"Device {dev.device_id}",
+                    str(dev.fixture_id),
+                    dev.label or f"Device {dev.fixture_id}",
                     dev.fixture_name,
                     mode_str,
                     str(dev.universe),
@@ -307,7 +307,7 @@ class PatchChannelsTab(Gtk.Box):
                     curve_str,
                     "#dedede",
                     True,
-                    dev.device_id,
+                    dev.fixture_id,
                     dev.universe,
                     dev.address,
                 ]
@@ -329,8 +329,8 @@ class PatchChannelsTab(Gtk.Box):
                 mode_str = dev.mode_name if dev.mode_name else "-"
                 self.devices_store.append(
                     [
-                        str(dev.device_id),
-                        dev.label or f"Device {dev.device_id}",
+                        str(dev.fixture_id),
+                        dev.label or f"Device {dev.fixture_id}",
                         dev.fixture_name,
                         mode_str,
                         str(dev.universe),
@@ -339,7 +339,7 @@ class PatchChannelsTab(Gtk.Box):
                         curve_str,
                         "#dedede",
                         True,
-                        dev.device_id,
+                        dev.fixture_id,
                         dev.universe,
                         dev.address,
                     ]
@@ -387,12 +387,12 @@ class PatchChannelsTab(Gtk.Box):
                             else ""
                         )
                         label_str = (
-                            f"{dev.label or f'Device {dev.device_id}'}{param_suffix}"
+                            f"{dev.label or f'Device {dev.fixture_id}'}{param_suffix}"
                         )
                         fixture_str = dev.fixture_name
                         mode_str = dev.mode_name if dev.mode_name else "-"
                         footprint_str = str(dev.channel_count())
-                        raw_id = dev.device_id
+                        raw_id = dev.fixture_id
                     else:
                         output_info = self.patch.get_output_info(u, addr)
                         dim_curve_id = output_info[1] if output_info is not None else 0

@@ -376,16 +376,16 @@ def apply_color_to_devices(
             if not has_rgb:
                 wheel_de = snap_device_color_wheel(dev, r_n, g_n, b_n)
                 if wheel_de is not None:
-                    result.delta_e[dev.device_id] = wheel_de
+                    result.delta_e[dev.fixture_id] = wheel_de
                     continue
             dev.set_color_srgb(r_n, g_n, b_n)
-            result.delta_e[dev.device_id] = 0.0
+            result.delta_e[dev.fixture_id] = 0.0
             continue
         match = solver.solve(profile, r_n, g_n, b_n)
         dev.set_color_srgb(r_n, g_n, b_n, solved=match)
-        result.delta_e[dev.device_id] = match.delta_e if match else 0.0
+        result.delta_e[dev.fixture_id] = match.delta_e if match else 0.0
         if match and match.warning:
-            result.warnings[dev.device_id] = match.warning
+            result.warnings[dev.fixture_id] = match.warning
     return result
 
 
@@ -406,7 +406,7 @@ def apply_color_cie_to_devices(
         if profile is None:
             rgb = xy_to_srgb(x_n, y_n)
             dev.set_color_srgb(rgb[0], rgb[1], rgb[2])
-            result.delta_e[dev.device_id] = 0.0
+            result.delta_e[dev.fixture_id] = 0.0
             continue
         match = solver.solve_cie(profile, x_n, y_n, Y=y_lum)
         if match is not None:
@@ -417,11 +417,11 @@ def apply_color_cie_to_devices(
                 dev.set_color_srgb(
                     rgb_achieved.r, rgb_achieved.g, rgb_achieved.b, solved=match
                 )
-            result.delta_e[dev.device_id] = match.delta_e
+            result.delta_e[dev.fixture_id] = match.delta_e
             if match.warning:
-                result.warnings[dev.device_id] = match.warning
+                result.warnings[dev.fixture_id] = match.warning
         else:
-            result.delta_e[dev.device_id] = 0.0
+            result.delta_e[dev.fixture_id] = 0.0
     return result
 
 

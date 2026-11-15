@@ -86,11 +86,6 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._init_base_emitters()
 
     @property
-    def device_id(self) -> int:
-        """Logical device identifier (alias for fixture_id)."""
-        return self.fixture_id
-
-    @property
     def universe(self) -> int:
         """Primary starting DMX universe of this device."""
         if not self.channels:
@@ -486,10 +481,6 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
     def set_color_rgb(self, r: int, g: int, b: int) -> None:
         """Set color from 8-bit integer RGB components [0..255]."""
         self.set_color_srgb(r / 255.0, g / 255.0, b / 255.0)
-
-    def set_color_rgb_float(self, r: float, g: float, b: float) -> None:
-        """Set color from normalized float RGB [0.0..1.0] (alias for set_color_srgb)."""
-        self.set_color_srgb(r, g, b)
 
     def set_color_hex(self, hex_str: str) -> None:
         """Set color from HTML hex string (#RRGGBB)."""
@@ -1107,7 +1098,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             if shutter_ch is not None:
                 shutter_ch.reset()
         else:
-            self.set_color_rgb_float(1.0, 1.0, 1.0)
+            self.set_color_srgb(1.0, 1.0, 1.0)
             self.set_intensity(1.0)
 
     def _apply_color_param(self, value: Any) -> None:  # noqa: ANN401
@@ -1121,7 +1112,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 and all(0.0 <= c <= 1.0 for c in (c0, c1, c2))
                 and any(isinstance(c, float) for c in (c0, c1, c2))
             ):
-                self.set_color_rgb_float(float(c0), float(c1), float(c2))
+                self.set_color_srgb(float(c0), float(c1), float(c2))
             else:
                 self.set_color_rgb(int(c0), int(c1), int(c2))
 

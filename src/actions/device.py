@@ -309,7 +309,7 @@ class DeviceSetColorAction(Action):
 
             srgb = dev.color_srgb
             self.old_colors[ch] = (srgb.r, srgb.g, srgb.b)
-            dev.set_color_rgb_float(self.r, self.g, self.b)
+            dev.set_color_srgb(self.r, self.g, self.b)
             self.new_colors[ch] = (self.r, self.g, self.b)
 
         if not self.new_colors:
@@ -332,7 +332,7 @@ class DeviceSetColorAction(Action):
         for ch, (r, g, b) in self.old_colors.items():
             dev = patch.devices.get(ch)
             if dev is not None:
-                dev.set_color_rgb_float(r, g, b)
+                dev.set_color_srgb(r, g, b)
 
         _update_dmx_and_send(self.app)
         self.app.emit("device.color_changed", list(self.old_colors.keys()), None)
@@ -346,7 +346,7 @@ class DeviceSetColorAction(Action):
         for ch, (r, g, b) in self.new_colors.items():
             dev = patch.devices.get(ch)
             if dev is not None:
-                dev.set_color_rgb_float(r, g, b)
+                dev.set_color_srgb(r, g, b)
 
         _update_dmx_and_send(self.app)
         self.app.emit(
