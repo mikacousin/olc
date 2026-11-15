@@ -190,7 +190,4 @@ class GroupEditor(TempChannelsEditor[float]):
         """
         index = key
         if self.lightshow and self.lightshow.app:
-            app = self.lightshow.app
-            if hasattr(app, "core"):
-                app = app.core
-            app.emit("group_editor.changed", index)
+            self.lightshow.app.emit("group_editor.changed", index)

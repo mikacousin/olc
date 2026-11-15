@@ -718,7 +718,6 @@ class PlaybackSneakAction(Action):
 
     def execute(self) -> None:
         """Execute sneak across all manual channels."""
-        core = getattr(self.app, "core", self.app)
-        sneak_ctrl = getattr(core, "sneak_controller", None)
+        sneak_ctrl = getattr(self.app, "sneak_controller", None)
         if sneak_ctrl is not None:
             sneak_ctrl.sneak_channels(None, self.duration)

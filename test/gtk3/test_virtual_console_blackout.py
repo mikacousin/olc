@@ -145,8 +145,8 @@ def test_virtual_console_blackout_midi_learning(app_gui: Application) -> None:
     vc.blackout.set_active(True)
     process_events()
 
-    assert app_gui.midi is not None
-    assert app_gui.midi.learning == "dmx.blackout_all"
+    assert app_gui.core.midi is not None
+    assert app_gui.core.midi.learning == "dmx.blackout_all"
     # Blackout state should not have toggled in core during learn mode
     assert app_gui.core.blackout_active is False
 
@@ -159,8 +159,8 @@ def test_virtual_console_blackout_midi_learning(app_gui: Application) -> None:
 
 def test_midi_notes_blackout_all(app_gui: Application) -> None:
     """Test MIDI notes handler dispatches dmx.blackout_all on note velocity 127."""
-    assert app_gui.midi is not None
-    notes = app_gui.midi.messages.notes
+    assert app_gui.core.midi is not None
+    notes = app_gui.core.midi.messages.notes
 
     assert "dmx.blackout_all" in notes.notes
 

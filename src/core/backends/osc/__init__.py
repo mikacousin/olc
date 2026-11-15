@@ -81,15 +81,14 @@ class _OSCLoopThread(threading.Thread):
 class Osc:
     """Unified OSC controller owning UDP transport, delegate, OSCQuery, and mDNS."""
 
-    def __init__(self, app_delegate: CoreApplication) -> None:
+    def __init__(self, app: CoreApplication) -> None:
         """Initialize the OSC backend.
 
         Args:
-            app_delegate: CoreApplication or delegate owning this backend.
+            app: CoreApplication owning this backend.
         """
-        self.app = app_delegate
-        self.core = app_delegate.core
-        self.lightshow = self.core.lightshow
+        self.app = app
+        self.lightshow = app.lightshow
         self._lock = threading.RLock()
         self._network_thread: _OSCLoopThread | None = None
 
@@ -99,7 +98,7 @@ class Osc:
         self.mdns: MDNSAdvertiser | None = None
         self.oscquery_server: OSCQueryServer | None = None
         self.delegate = OSCDelegate(
-            self.core, osc=typing.cast("olc.core.backends.osc.Osc", self)
+            self.app, osc=typing.cast("olc.core.backends.osc.Osc", self)
         )
 
     @property

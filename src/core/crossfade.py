@@ -76,7 +76,7 @@ class CrossFade:
 
     def _get_next_step_idx(self) -> int:
         """Return the target step index for the current transition."""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         next_step = main_pb.position + 1
         if next_step >= main_pb.last - 1:
             return 0
@@ -84,7 +84,7 @@ class CrossFade:
 
     def _resolve_step(self, step_idx: int) -> ResolvedState:
         """Resolve full sequential state for step_idx via TrackingEngine."""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         return TrackingEngine.resolve_step_state(
             main_pb,
             step_idx,
@@ -94,7 +94,7 @@ class CrossFade:
 
     def _ensure_start_state(self) -> None:
         """Capture baseline conventional and device states when manual fade starts."""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         if self._start_channels is None:
             resolved_curr = self._resolve_step(main_pb.position)
             self._start_channels = resolved_curr.channels.astype(np.int32)
@@ -121,16 +121,15 @@ class CrossFade:
         main_pb.thread = None
 
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            if hasattr(core, "action_registry"):
-                core.action_registry.trigger_feedback("playback.pause")
-                core.action_registry.trigger_feedback("playback.go")
-            if hasattr(core, "emit"):
-                core.emit(
+            if hasattr(self.app, "action_registry"):
+                self.app.action_registry.trigger_feedback("playback.pause")
+                self.app.action_registry.trigger_feedback("playback.go")
+            if hasattr(self.app, "emit"):
+                self.app.emit(
                     "playback.pause_triggered",
                     {"active": False, "label": "PAUSE"},
                 )
-                core.emit("playback.stopped")
+                self.app.emit("playback.stopped")
 
     def scale_moved(self, scale: Scale) -> None:
         """On moved
@@ -140,7 +139,7 @@ class CrossFade:
         """
         scale.moved = True
         level = scale.get_value()
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
 
         self._takeover_background_thread(main_pb)
 
@@ -177,7 +176,7 @@ class CrossFade:
 
     def at_full(self) -> None:
         """Slider A and B at Full"""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         if not main_pb.on_go:
             return
         self.scale_a.moved = False
@@ -223,11 +222,11 @@ class CrossFade:
             f"- Next Mem. : {next_cue} "
             f"{main_pb.steps[next_step].text}"
         )
-        self.app.core.emit("crossfade.at_full", next_step, subtitle)
+        self.app.emit("crossfade.at_full", next_step, subtitle)
         # If Wait
         if main_pb.steps[next_step].wait:
             main_pb.on_go = False
-            self.app.core.action_registry.execute("playback.go")
+            self.app.action_registry.execute("playback.go")
 
     def update_slider(  # pylint: disable=too-many-locals
         self, scale: Scale, level: int | float
@@ -238,7 +237,7 @@ class CrossFade:
             scale: Scale object
             level: int or float
         """
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         step_idx = main_pb.position + 1
         step = main_pb.steps[step_idx]
         total_time = step.total_time * 1000
@@ -300,7 +299,7 @@ class CrossFade:
         total_time: float,
     ) -> None:
         """Interpolate multi-parameter devices according to scale_a and scale_b."""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         if main_pb.patch is None or not resolved.device_values:
             return
 
@@ -387,13 +386,11 @@ class CrossFade:
     ) -> None:
         """Emit scale update events to be handled by the UI bridge."""
         scale_name = "scale_a" if scale == self.scale_a else "scale_b"
-        self.app.core.emit(
-            "crossfade.scale_updated", scale_name, position, total_time, step
-        )
+        self.app.emit("crossfade.scale_updated", scale_name, position, total_time, step)
 
     def _resolve_endpoints(self) -> tuple[np.ndarray, np.ndarray]:
         """Resolve old_levels and next_levels arrays for conventional channels."""
-        main_pb = self.app.core.lightshow.main_playback
+        main_pb = self.app.lightshow.main_playback
         old_levels = (
             self._start_channels
             if self._start_channels is not None

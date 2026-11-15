@@ -99,4 +99,4 @@ class MidiXFade:
             self.fader_in.value = 0
 
         fader_key = "a" if fader == self.fader_out else "b"
-        self.app.core.action_registry.execute("playback.manual_xfade", fader_key, value)
+        self.app.action_registry.execute("playback.manual_xfade", fader_key, value)

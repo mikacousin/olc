@@ -104,13 +104,13 @@ def test_virtual_console_sneak_midi_learning_and_dispatch(
     vc.sneak.emit("clicked")
     process_events()
 
-    assert app_gui.midi is not None
-    assert app_gui.midi.learning == "sneak"
+    assert app_gui.core.midi is not None
+    assert app_gui.core.midi.learning == "sneak"
 
     # Programmatic crossfade updates during MIDI learn must not overwrite target
     vc.update_crossfade_display(128, 128)
     process_events()
-    assert app_gui.midi.learning == "sneak"
+    assert app_gui.core.midi.learning == "sneak"
     vc.update_crossfade_display(0, 0)
 
     # Disable MIDI learning
@@ -119,9 +119,9 @@ def test_virtual_console_sneak_midi_learning_and_dispatch(
 
     # Test MIDI message dispatch for sneak
     app_gui.core.commandline.set_string("")
-    assert "sneak" in app_gui.midi.messages.notes.notes
+    assert "sneak" in app_gui.core.midi.messages.notes.notes
     msg = mido.Message("note_on", note=60, velocity=127)
-    app_gui.midi.messages.notes._dispatch("sneak", msg)
+    app_gui.core.midi.messages.notes._dispatch("sneak", msg)
     assert app_gui.core.commandline.get_string().strip() == "SNEAK"
 
     # Cleanup

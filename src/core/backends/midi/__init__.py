@@ -154,9 +154,7 @@ class Midi:
         on_ports_changed: typing.Callable[[], None] | None = None,
     ) -> None:
         self.app = app
-        self.app_delegate = app
-        self.core = app.core
-        self.lightshow = app.core.lightshow
+        self.lightshow = app.lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
@@ -176,7 +174,7 @@ class Midi:
 
     def _subscribe_core_events(self) -> None:
         """Subscribe to Core events to drive hardware feedback (headless safe)."""
-        core = self.core
+        core = self.app
         core.subscribe("fader.page_changed", self._on_fader_page_changed)
         core.subscribe("fader.level_changed", self._on_fader_level_changed)
         core.subscribe("fader.flash_changed", self._on_fader_flash_changed)
@@ -328,10 +326,13 @@ class Midi:
         if self.ports.ports:
             self.enqueue(msg)
 
-        core = getattr(self.app, "core", None)
-        if core is not None and hasattr(core, "action_registry") and self.learning:
+        if (
+            self.app is not None
+            and hasattr(self.app, "action_registry")
+            and self.learning
+        ):
             if msg.type == "note_on":
-                core.action_registry.execute(
+                self.app.action_registry.execute(
                     "midi.assign_mapping",
                     "note",
                     self.learning,
@@ -340,7 +341,7 @@ class Midi:
                 )
                 return
             if msg.type == "control_change":
-                core.action_registry.execute(
+                self.app.action_registry.execute(
                     "midi.assign_mapping",
                     "control_change",
                     self.learning,
@@ -349,7 +350,7 @@ class Midi:
                 )
                 return
             if msg.type == "pitchwheel":
-                core.action_registry.execute(
+                self.app.action_registry.execute(
                     "midi.assign_mapping",
                     "pitchwheel",
                     self.learning,

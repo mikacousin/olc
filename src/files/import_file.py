@@ -318,9 +318,9 @@ class ImportFile:
                 self.lightshow.park.from_dict(park_data)
             else:
                 self.lightshow.park.clear()
-            core = getattr(self.lightshow.app, "core", self.lightshow.app)
-            if core is not None and hasattr(core, "emit"):
-                core.emit("park.changed", self.lightshow.park.total_parked_count())
+            app = self.lightshow.app
+            if app is not None and hasattr(app, "emit"):
+                app.emit("park.changed", self.lightshow.park.total_parked_count())
 
     def _update_ui(self) -> None:
         if self.window is not None and self.window.live_view is not None:

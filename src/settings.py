@@ -39,7 +39,7 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         self.app = app
         self.settings = app.settings
         self.tabs = app.tabs
-        self.midi = app.midi
+        self.midi = app.core.midi
         self.backend = app.core.backend
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)

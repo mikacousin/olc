@@ -51,6 +51,10 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda *args: self._run_idle(self._safe_on_show_imported),
         )
         self.app.core.subscribe(
+            "show.before_save",
+            self._on_show_before_save,
+        )
+        self.app.core.subscribe(
             "gui.zoom_changed",
             lambda level: self._run_idle(self._on_zoom_changed, level),
         )
@@ -160,6 +164,11 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 self._on_default_time_changed, default_time
             ),
         )
+
+    def _on_show_before_save(self) -> None:
+        """Capture GUI workspace state into lightshow.workspace before saving."""
+        if self.app.tabs is not None and hasattr(self.app.tabs, "get_workspace_state"):
+            self.app.core.lightshow.workspace = self.app.tabs.get_workspace_state()
 
     def _safe_on_show_new(self) -> bool:
         """Handle show.new event in GUI main thread.

@@ -60,22 +60,15 @@ class CoreApplication(EventDispatcher):
     blackout_active: bool
     main_fader_level: float
 
-    @property
-    def core(self) -> CoreApplication:
-        """Return self as the core application."""
-        return self
-
     def __init__(
         self,
         settings: object,
-        app: object = None,
         lightshow: typing.Optional[LightShow] = None,
     ) -> None:
         """Initialize the CoreApplication.
 
         Args:
             settings: Configuration settings instance.
-            app: Optional parent application instance.
             lightshow: Optional pre-instantiated LightShow model.
         """
         super().__init__()
@@ -84,9 +77,9 @@ class CoreApplication(EventDispatcher):
         # Load standard LightShow state model
         if lightshow is not None:
             self.lightshow = lightshow
-            self.lightshow.app = typing.cast(typing.Any, app or self)
+            self.lightshow.app = typing.cast(typing.Any, self)
         else:
-            self.lightshow = LightShow(typing.cast(typing.Any, app or self))
+            self.lightshow = LightShow(typing.cast(typing.Any, self))
 
         # Initialize engines and control backends as None
         self.backend = None
@@ -97,8 +90,7 @@ class CoreApplication(EventDispatcher):
         self.main_fader_level = 1.0
 
         # For crossfade
-        app_delegate = app if app is not None else self
-        self.crossfade = CrossFade(typing.cast(typing.Any, app_delegate))
+        self.crossfade = CrossFade(self)
 
         # Command line logical state helper
         self.commandline = CoreCommandLine(typing.cast(typing.Any, self))

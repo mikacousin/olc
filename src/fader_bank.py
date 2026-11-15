@@ -199,7 +199,6 @@ class FaderBank:
             self.faders[page][index].set_level(0)
         self.update_active_faders()
         self.update_levels()
-        self._refresh_faders_display(page, index)
 
     def _set_fader_contents(
         self,
@@ -223,29 +222,6 @@ class FaderBank:
             if self.lightshow and isinstance(contents, (int, float)):
                 chaser = self.lightshow.get_chaser(contents)
             self.faders[page][index].set_contents(chaser)
-        self._refresh_faders_display(page, index)
-
-    def _refresh_faders_display(self, page: int, index: int) -> None:
-        if page == self.active_page:
-            # Refresh Virtual Console
-            app_any = typing.cast(typing.Any, self.app)
-            if (
-                app_any
-                and hasattr(app_any, "virtual_console")
-                and app_any.virtual_console
-            ):
-                widget = app_any.virtual_console.faders[
-                    self.faders[page][index].index - 1
-                ]
-                level = self.faders[page][index].level * 255
-                widget.set_value(level)
-                app_any.virtual_console.fader_moved(widget)
-                app_any.virtual_console.flashes[
-                    self.faders[page][index].index - 1
-                ].label = self.faders[page][index].text
-                app_any.virtual_console.flashes[
-                    self.faders[page][index].index - 1
-                ].queue_draw()
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""

@@ -162,7 +162,7 @@ def test_virtual_console_commandline_buttons() -> None:
     mock_app = MagicMock()
     mock_app.core.commandline = MagicMock()
     mock_app.core.action_registry = MagicMock()
-    mock_app.midi = None
+    mock_app.core.midi = None
 
     vc = VirtualConsoleWindow.__new__(VirtualConsoleWindow)
     vc.app = mock_app
@@ -230,7 +230,7 @@ def test_virtual_console_button_sensitivity() -> None:
     from olc.gtk3.widgets.button import ButtonWidget
 
     mock_app = MagicMock()
-    mock_app.midi = None
+    mock_app.core.midi = None
 
     vc = VirtualConsoleWindow.__new__(VirtualConsoleWindow)
     vc.app = mock_app

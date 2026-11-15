@@ -45,16 +45,7 @@ def test_midi_headless_execution() -> None:
     mock_backend.dmx = mock_dmx
     core_app.backend = mock_backend
 
-    # Mock delegate mimicking headless Application
-    app_delegate = MagicMock()
-    app_delegate.core = core_app
-    app_delegate.settings = settings
-    app_delegate.window = None
-    app_delegate.virtual_console = None
-    app_delegate.tabs = None
-    app_delegate.crossfade = core_app.crossfade
-
-    midi = Midi(app_delegate)
+    midi = Midi(core_app)
     core_app.midi = midi
 
     # 1. Test MIDI Notes in headless mode (e.g. commandline append '5')

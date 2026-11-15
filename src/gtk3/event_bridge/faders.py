@@ -89,26 +89,35 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
                 self.app.virtual_console.updating_fader = False
         return False
 
-    def _on_fader_flash_changed(self, fader_index: int, _pressed: bool) -> bool:
-        """Queue a redraw on the virtual console flash button.
+    def _on_fader_flash_changed(self, fader_index: int, pressed: bool) -> bool:
+        """Synchronize flash button redraw and slider level on Virtual Console.
 
         Args:
             fader_index: Fader index (1-based).
-            _pressed: Flash button pressed state.
+            pressed: Flash button pressed state.
 
         Returns:
             Always False.
         """
         if self.app.virtual_console:
-            self.app.virtual_console.flashes[fader_index - 1].queue_draw()
+            vc = self.app.virtual_console
+            fader = self.app.core.lightshow.fader_bank.get_fader(fader_index)
+            vc.updating_fader = True
+            try:
+                vc.faders[fader_index - 1].set_value(
+                    255 if pressed else round(fader.level * 255)
+                )
+            finally:
+                vc.updating_fader = False
+            vc.flashes[fader_index - 1].queue_draw()
         return False
 
-    def _on_fader_assignment_changed(self, _page: int, _index: int) -> bool:
-        """Refresh the FaderTab when a fader assignment changes.
+    def _on_fader_assignment_changed(self, page: int, index: int) -> bool:
+        """Refresh the FaderTab and Virtual Console when a fader assignment changes.
 
         Args:
-            _page: Fader page number (unused, full refresh is simpler).
-            _index: Fader index within the page (unused).
+            page: Fader page number.
+            index: Fader index within the page.
 
         Returns:
             Always False.
@@ -116,6 +125,17 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
             fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
             fader_tab.refresh()
+        fader_bank = self.app.core.lightshow.fader_bank
+        if self.app.virtual_console and page == fader_bank.active_page:
+            vc = self.app.virtual_console
+            fader = fader_bank.faders[page][index]
+            vc.updating_fader = True
+            try:
+                vc.faders[index - 1].set_value(round(fader.level * 255))
+            finally:
+                vc.updating_fader = False
+            vc.flashes[index - 1].label = fader.text
+            vc.flashes[index - 1].queue_draw()
         return False
 
     def _on_button_pressed(self, name: str, pressed: bool) -> bool:

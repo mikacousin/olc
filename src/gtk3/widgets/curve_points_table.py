@@ -213,7 +213,7 @@ class CurvePointsTable(Gtk.Box):
 
         new_points = list(curve.points)
         new_points[idx] = (new_x, new_points[idx][1])
-        self.lightshow.app.core.action_registry.execute(
+        self.lightshow.app.action_registry.execute(
             "curve.update_points", self.curve_nb, new_points
         )
 
@@ -236,7 +236,7 @@ class CurvePointsTable(Gtk.Box):
         new_y = round(parsed * 255.0)
         new_points = list(curve.points)
         new_points[idx] = (new_points[idx][0], new_y)
-        self.lightshow.app.core.action_registry.execute(
+        self.lightshow.app.action_registry.execute(
             "curve.update_points", self.curve_nb, new_points
         )
 
@@ -280,7 +280,7 @@ class CurvePointsTable(Gtk.Box):
             new_points.sort()
             inserted_idx = new_points.index((new_x, new_y))
             self.curve_edition.pending_active_point_idx = inserted_idx
-            self.lightshow.app.core.action_registry.execute(
+            self.lightshow.app.action_registry.execute(
                 "curve.update_points", self.curve_nb, new_points
             )
 
@@ -298,6 +298,6 @@ class CurvePointsTable(Gtk.Box):
 
         new_points = list(curve.points)
         del new_points[idx]
-        self.lightshow.app.core.action_registry.execute(
+        self.lightshow.app.action_registry.execute(
             "curve.update_points", self.curve_nb, new_points
         )

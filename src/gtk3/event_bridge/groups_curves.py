@@ -274,13 +274,12 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
                     faders_updated = True
 
         self._safe_refresh_groups()
-        if (
-            faders_updated
-            and self.app.tabs
-            and self.app.tabs.tabs.get("faders") is not None
-        ):
-            fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
-            fader_tab.refresh()
+        if faders_updated:
+            if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
+                fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
+                fader_tab.refresh()
+            if self.app.virtual_console:
+                self.app.virtual_console.update_page_display()
         return False
 
     def _on_independent_level_changed(self, number: int, level: float) -> bool:

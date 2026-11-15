@@ -203,8 +203,7 @@ def _next_step(sequence: Sequence) -> int:
 
     # Emit event for GUI (GuiEventBridge)
     if sequence.app is not None:
-        core = getattr(sequence.app, "core", sequence.app)
-        core.emit(
+        sequence.app.emit(
             "playback.step_changed",
             {
                 "position": sequence.position,
@@ -395,8 +394,7 @@ class ThreadGo(threading.Thread):
 
         # Emit event for GUI (GuiEventBridge)
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            core.emit(
+            self.app.emit(
                 "playback.transition_completed",
                 {
                     "next_step": next_step,
@@ -447,8 +445,7 @@ class ThreadGo(threading.Thread):
 
         # Emit event for GUI (GuiEventBridge)
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            core.emit(
+            self.app.emit(
                 "playback.transition_progress",
                 {
                     "time_spent": i,
@@ -791,8 +788,7 @@ class ThreadGoBack(threading.Thread):
 
         # Emit event for GUI (GuiEventBridge)
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            core.emit(
+            self.app.emit(
                 "playback.goback_completed",
                 {
                     "prev_step": prev_step,
@@ -861,8 +857,7 @@ class ThreadGoBack(threading.Thread):
 
         # Emit event for GUI (GuiEventBridge)
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            core.emit(
+            self.app.emit(
                 "playback.goback_progress",
                 {
                     "time_spent": i,

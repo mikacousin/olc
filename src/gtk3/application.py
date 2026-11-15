@@ -28,10 +28,6 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from olc.core.app import CoreApplication  # noqa: E402
-from olc.core.backends import DMXBackend  # noqa: E402
-from olc.core.backends.midi import Midi  # noqa: E402
-from olc.core.backends.osc import Osc  # noqa: E402
-from olc.core.engine import CoreEngine  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_dialog import DialogData  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
@@ -63,10 +59,6 @@ class Application(Gtk.Application):
     """Application Class"""
 
     core: CoreApplication
-    backend: DMXBackend | None
-    engine: CoreEngine | None
-    midi: Midi | None
-    osc: Osc | None
     version: str
     tabs: Tabs | None
     window: Window | None
@@ -75,7 +67,6 @@ class Application(Gtk.Application):
     shortcuts: Gtk.Window | None
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
-        self.engine = None
         self.version = version
         super().__init__(
             *args,
@@ -120,22 +111,14 @@ class Application(Gtk.Application):
         self.shortcuts = None
 
         self.tabs = None
-        self.crossfade = None
-        self.midi = None
-        self.osc = None
 
         # Core application and Light show initialization
         app_type = typing.cast("olc.gtk3.application.Application", self)
-        lightshow = GtkLightShow(typing.cast(typing.Any, app_type))
-        self.core = CoreApplication(self.settings, self, lightshow=lightshow)
+        lightshow = GtkLightShow()
+        self.core = CoreApplication(self.settings, lightshow=lightshow)
 
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)
-
-    @property
-    def backend(self) -> DMXBackend | None:
-        """Get the backend from core."""
-        return self.core.backend if hasattr(self, "core") and self.core else None
 
     def do_activate(self) -> None:
         app_type = typing.cast("olc.gtk3.application.Application", self)
@@ -192,12 +175,9 @@ class Application(Gtk.Application):
         )
         self.add_action(action)
 
-        # For Manual crossfade
-        self.crossfade = self.core.crossfade
-
         # Open MIDI Inputs/Outputs and initialize OSC controller
-        self.midi = self.core.init_midi()
-        self.osc = self.core.init_osc()
+        self.core.init_midi()
+        self.core.init_osc()
 
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
@@ -236,7 +216,7 @@ class Application(Gtk.Application):
             sys.exit()
 
         # If already running, present the window and conditionally load the file
-        if self.engine is not None:
+        if self.core.engine is not None:
             if self.window is not None:
                 self.window.present()
             arguments = command_line.get_arguments()
@@ -258,13 +238,12 @@ class Application(Gtk.Application):
                         self.core.action_registry.execute("show.open", path)
             return False
 
-        self.engine = self.core.init_engine(monitor_port=5555, no_listen=True)
+        self.core.init_engine(monitor_port=5555, no_listen=True)
 
         self.core.start()
 
         if self.settings.get_boolean("osc"):
             self.core.action_registry.execute("osc.toggle", True)
-        self.osc = self.core.osc
 
         def on_patch_empty_cb() -> None:
             if self.core.backend:
@@ -448,7 +427,7 @@ class Application(Gtk.Application):
                 open_dialog.get_file(),
                 file_type,
                 window=self.window,
-                midi=self.midi,
+                midi=self.core.midi,
                 settings=self.settings,
                 tabs=self.tabs,
                 importation=True,

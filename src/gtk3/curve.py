@@ -346,7 +346,7 @@ class CurveEdition(Gtk.Box):
         if not isinstance(curvebutton, CurveButton):
             return
         curve_nb = curvebutton.curve_nb
-        self.lightshow.app.core.action_registry.execute("curve.delete", curve_nb)
+        self.lightshow.app.action_registry.execute("curve.delete", curve_nb)
         tab.refresh()
         tab.select_curve(0)
         self.lightshow.set_modified()
@@ -415,7 +415,7 @@ class CurveEdition(Gtk.Box):
 
         new_limit = max(0, min(255, int(round(norm * 255.0))))
         if new_limit != curve.limit:
-            self.lightshow.app.core.action_registry.execute(
+            self.lightshow.app.action_registry.execute(
                 "curve.set_limit", self.curve_nb, new_limit
             )
 
@@ -768,7 +768,7 @@ class CurvesTab(Gtk.Box):
                 if toggle.get_active():
                     new_points = list(curve.points)
                     del new_points[toggle.number]
-                    self.lightshow.app.core.action_registry.execute(
+                    self.lightshow.app.action_registry.execute(
                         "curve.update_points", self.curve_edition.curve_nb, new_points
                     )
                     self.curve_edition.points_curve()
@@ -865,7 +865,7 @@ class CurvesTab(Gtk.Box):
             return
         new_points = list(curve.points)
         new_points[index] = (x, y)
-        self.lightshow.app.core.action_registry.execute(
+        self.lightshow.app.action_registry.execute(
             "curve.update_points", self.curve_edition.curve_nb, new_points
         )
         self.curve_edition.queue_draw()

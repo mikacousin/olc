@@ -328,10 +328,7 @@ class _CueTempChannelsEditor(TempChannelsEditor[tuple[float, int]]):
         """
         number, sequence = key
         if self.lightshow and self.lightshow.app:
-            app = self.lightshow.app
-            if hasattr(app, "core"):
-                app = app.core
-            app.emit("cue_editor.changed", sequence, number)
+            self.lightshow.app.emit("cue_editor.changed", sequence, number)
 
 
 class CueEditor:

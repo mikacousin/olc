@@ -335,20 +335,12 @@ class Dmx:
                 ]
                 self._old_user_mask[changed_indices] = user_mask[changed_indices]
                 changed_channels = (changed_indices + 1).tolist()
-                GLib.idle_add(self.trigger_channels_update, changed_channels)
+                self.trigger_channels_update(changed_channels)
 
     def trigger_channels_update(self, changed_channels: list[int]) -> None:
-        """Trigger channel widgets updates on the main thread."""
-        app_any = typing.cast(typing.Any, self.lightshow.app)
-        if app_any is not None and app_any.window is not None:
-            live_view = app_any.window.live_view
-            main_pb = self.lightshow.main_playback
-            for channel in changed_channels:
-                _, seq_level = classify_channel_tracking_state(
-                    main_pb, main_pb.position, channel
-                )
-                seq_next_level = main_pb.get_next_channel_level(channel, seq_level)
-                live_view.update_channel_widget(channel, seq_next_level)
+        """Emit channel updates via the CoreApplication event bus."""
+        if self.lightshow.app is not None:
+            self.lightshow.app.emit("channels.updated", changed_channels)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""

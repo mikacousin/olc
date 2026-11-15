@@ -489,11 +489,11 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
         self._on_pause_triggered({"active": is_paused})
 
         # 3. Sync Crossfade sliders
-        if hasattr(self.app, "crossfade") and self.app.crossfade:
+        if self.app.core.crossfade:
             if hasattr(vc, "update_crossfade_display"):
                 vc.update_crossfade_display(
-                    self.app.crossfade.scale_a.get_value(),
-                    self.app.crossfade.scale_b.get_value(),
+                    self.app.core.crossfade.scale_a.get_value(),
+                    self.app.core.crossfade.scale_b.get_value(),
                 )
 
     def _on_crossfade_at_full(self, next_step: int, subtitle: str) -> bool:
@@ -560,10 +560,10 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             self.app.window.playback.sequential.position_b = int(ratio)
             self.app.window.playback.show_timeleft_in(position)
 
-        if self.app.crossfade:
+        if self.app.core.crossfade:
             value = min(
-                self.app.crossfade.scale_a.get_value(),
-                self.app.crossfade.scale_b.get_value(),
+                self.app.core.crossfade.scale_a.get_value(),
+                self.app.core.crossfade.scale_b.get_value(),
             )
             progress = min(max(value / 255.0, 0.0), 1.0)
             self.app.window.playback.update_cue_crossfade_color(step, progress)

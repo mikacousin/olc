@@ -129,13 +129,12 @@ class Sequence:
         if getattr(self, "_on_go", False) != value:
             self._on_go = value
             if self.app is not None:
-                core = getattr(self.app, "core", self.app)
                 # Update action registry feedback for MIDI bindings
-                core.action_registry.trigger_feedback("playback.go")
+                self.app.action_registry.trigger_feedback("playback.go")
                 # Emit event for GUI (GuiEventBridge)
-                core.emit(
+                self.app.emit(
                     "playback.go_triggered",
-                    core.action_registry.get("playback.go").get_feedback_state(),
+                    self.app.action_registry.get("playback.go").get_feedback_state(),
                 )
 
     @property
@@ -163,16 +162,15 @@ class Sequence:
             if not self.thread.pause.is_set():
                 self.thread.pause.set()
                 if self.app is not None:
-                    core = getattr(self.app, "core", self.app)
-                    if hasattr(core, "action_registry"):
-                        core.action_registry.trigger_feedback("playback.pause")
-                    if hasattr(core, "emit"):
-                        core.emit(
+                    if hasattr(self.app, "action_registry"):
+                        self.app.action_registry.trigger_feedback("playback.pause")
+                    if hasattr(self.app, "emit"):
+                        self.app.emit(
                             "playback.pause_triggered",
-                            core.action_registry.get(
+                            self.app.action_registry.get(
                                 "playback.pause"
                             ).get_feedback_state()
-                            if hasattr(core, "action_registry")
+                            if hasattr(self.app, "action_registry")
                             else {"active": False, "label": "PAUSE"},
                         )
             else:
@@ -181,10 +179,8 @@ class Sequence:
             self.thread.join(timeout=1.0)
             self.thread = None
             self.on_go = False
-            if self.app is not None:
-                core = getattr(self.app, "core", self.app)
-                if hasattr(core, "emit"):
-                    core.emit("playback.stopped")
+            if self.app is not None and hasattr(self.app, "emit"):
+                self.app.emit("playback.stopped")
             if self.app is not None and self.app.crossfade is not None:
                 self.app.crossfade.scale_a.set_value(0)
                 self.app.crossfade.scale_b.set_value(0)
@@ -433,8 +429,7 @@ class Sequence:
 
                 # Emit event for GUI (GuiEventBridge) to setup times and view
                 if self.app is not None:
-                    core = getattr(self.app, "core", self.app)
-                    core.emit(
+                    self.app.emit(
                         "playback.goto_selected",
                         {
                             "old_pos": old_pos,
@@ -472,8 +467,7 @@ class Sequence:
                     self.position = i - 1
                     next_after = _next_step(typing.cast(typing.Any, self))
                     if self.app is not None:
-                        core = getattr(self.app, "core", self.app)
-                        core.emit(
+                        self.app.emit(
                             "playback.transition_completed",
                             {"next_step": next_after},
                         )
@@ -516,8 +510,7 @@ class Sequence:
 
             # Emit event for GUI (GuiEventBridge)
             if self.app is not None:
-                core = getattr(self.app, "core", self.app)
-                core.emit(
+                self.app.emit(
                     "playback.go_triggered_direct",
                     {
                         "position": position,
@@ -537,10 +530,8 @@ class Sequence:
         else:
             # Indicates that a Go is in progress
             self.on_go = True
-            if self.app is not None:
-                core = getattr(self.app, "core", self.app)
-                if hasattr(core, "emit"):
-                    core.emit("playback.go_started")
+            if self.app is not None and hasattr(self.app, "emit"):
+                self.app.emit("playback.go_started")
             self.thread = ThreadGo(
                 goto, typing.cast(typing.Any, self), override_time=override_time
             )
@@ -574,8 +565,7 @@ class Sequence:
 
         # Emit event for GUI (GuiEventBridge)
         if self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            core.emit(
+            self.app.emit(
                 "playback.go_back_started",
                 {
                     "position": position,
@@ -597,11 +587,10 @@ class Sequence:
             else:
                 self.thread.pause.set()
             if self.app is not None:
-                core = getattr(self.app, "core", self.app)
-                core.action_registry.trigger_feedback("playback.pause")
-                core.emit(
+                self.app.action_registry.trigger_feedback("playback.pause")
+                self.app.emit(
                     "playback.pause_triggered",
-                    core.action_registry.get("playback.pause").get_feedback_state(),
+                    self.app.action_registry.get("playback.pause").get_feedback_state(),
                 )
 
 

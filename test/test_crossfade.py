@@ -98,10 +98,6 @@ class _MockApp:
         self.crossfade: CrossFade | None = None
         self.settings = _MockSettings()
 
-    @property
-    def core(self) -> _MockApp:
-        return self
-
     def emit(self, event_name: str, *args: typing.Any) -> None:  # noqa: ANN401
         self.events.append((event_name, args))
 

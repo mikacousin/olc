@@ -88,7 +88,7 @@ class EditCurveWidget(Gtk.DrawingArea):
                 tab.curve_edition.pending_active_point_idx = idx
 
                 if self.lightshow.app is not None:
-                    self.lightshow.app.core.action_registry.execute(
+                    self.lightshow.app.action_registry.execute(
                         "curve.update_points", self.curve_nb, new_points
                     )
 

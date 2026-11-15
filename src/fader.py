@@ -80,26 +80,10 @@ class Fader:
         """Flash fader at full"""
         self.old_level = self.level
         self.set_level(1.0)
-        app_any = typing.cast(typing.Any, self.app)
-        if (
-            app_any
-            and hasattr(app_any, "virtual_console")
-            and app_any.virtual_console is not None
-        ):
-            app_any.virtual_console.faders[self.index - 1].set_value(255)
 
     def flash_off(self) -> None:
         """Stop flash"""
         self.set_level(self.old_level)
-        app_any = typing.cast(typing.Any, self.app)
-        if (
-            app_any
-            and hasattr(app_any, "virtual_console")
-            and app_any.virtual_console is not None
-        ):
-            app_any.virtual_console.faders[self.index - 1].set_value(
-                round(self.old_level * 255)
-            )
 
     def level_changed(self) -> None:
         """Fader level has changed"""
@@ -123,11 +107,11 @@ class FaderMain(Fader):
         """Fader level has changed"""
         if self.contents:
             self.contents.set_level(self.level)
-        if self.app and hasattr(self.app, "window") and self.app.window is not None:
-            app_any = typing.cast(typing.Any, self.app)
-            app_any.window.main_fader.queue_draw()
-        if self.app and hasattr(self.app, "backend") and self.app.backend:
-            self.app.backend.dmx.set_levels()
+        if self.app:
+            self.app.main_fader_level = self.level
+            self.app.emit("main_fader.level_changed", self.level)
+            if self.app.backend:
+                self.app.backend.dmx.set_levels()
 
 
 class FaderGroup(Fader):

@@ -360,7 +360,7 @@ class VirtualConsoleWindow(Gtk.Window):
             blue=0.7,
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
-            crossfade=self.app.crossfade,
+            crossfade=self.app.core.crossfade,
             is_crossfade=True,
         )
         self.scale_a.set_size_request(48, -1)
@@ -386,7 +386,7 @@ class VirtualConsoleWindow(Gtk.Window):
             blue=0.2,
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
-            crossfade=self.app.crossfade,
+            crossfade=self.app.core.crossfade,
             is_crossfade=True,
         )
         self.scale_b.set_size_request(48, -1)
@@ -600,7 +600,7 @@ class VirtualConsoleWindow(Gtk.Window):
     @property
     def is_learning_midi(self) -> bool:
         """Return True if the console is currently learning a MIDI command."""
-        return self.app.midi is not None and bool(self.app.midi.learning)
+        return self.app.core.midi is not None and bool(self.app.core.midi.learning)
 
     def _close(self, _widget: Gtk.Widget, _event: Gdk.Event) -> bool:
         """Mark Window as closed
@@ -1408,18 +1408,19 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             value = scale.get_value()
 
-            if not self.app.crossfade:
+            crossfade = self.app.core.crossfade
+            if not crossfade:
                 return
             if scale == self.scale_a:
-                self.app.crossfade.scale_a.set_value(int(value))
+                crossfade.scale_a.set_value(int(value))
                 self.app.core.emit("playback.xfade_moved", "a", int(value))
-                if self.app.crossfade.manual:
-                    self.app.crossfade.scale_moved(self.app.crossfade.scale_a)
+                if crossfade.manual:
+                    crossfade.scale_moved(crossfade.scale_a)
             elif scale == self.scale_b:
-                self.app.crossfade.scale_b.set_value(int(value))
+                crossfade.scale_b.set_value(int(value))
                 self.app.core.emit("playback.xfade_moved", "b", int(value))
-                if self.app.crossfade.manual:
-                    self.app.crossfade.scale_moved(self.app.crossfade.scale_b)
+                if crossfade.manual:
+                    crossfade.scale_moved(crossfade.scale_b)
 
     def _scale_clicked(self, scale: FaderWidget) -> None:
         """Crossfade clicked
@@ -1533,7 +1534,7 @@ class VirtualConsoleWindow(Gtk.Window):
             (hasattr(self, "shortcuts_toggle") and self.shortcuts_toggle.get_active())
             or getattr(self, "is_holding_f1", False)
         )
-        learning_target = self.app.midi.learning if self.app.midi else ""
+        learning_target = self.app.core.midi.learning if self.app.core.midi else ""
         if hasattr(self, "go_button") and self.go_button:
             self.go_button.is_learning = learning_target == "playback.go"
             self.go_button.show_shortcut = show_sc

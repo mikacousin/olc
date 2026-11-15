@@ -56,8 +56,7 @@ class BaseChannelLevelAction(Action):
                 processed_levels[ch] = (dmx_val, dmx_val / 255.0)
 
         if dmx is not None:
-            core = getattr(self.app, "core", self.app)
-            sneak_ctrl = getattr(core, "sneak_controller", None)
+            sneak_ctrl = getattr(self.app, "sneak_controller", None)
             for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
                 if sneak_ctrl is not None:
                     sneak_ctrl.cancel_channel(ch)
@@ -630,7 +629,6 @@ class ChannelSneakAction(Action):
 
     def execute(self) -> None:
         """Execute sneak on configured channels."""
-        core = getattr(self.app, "core", self.app)
-        sneak_ctrl = getattr(core, "sneak_controller", None)
+        sneak_ctrl = getattr(self.app, "sneak_controller", None)
         if sneak_ctrl is not None:
             sneak_ctrl.sneak_channels(self.channels, self.duration)

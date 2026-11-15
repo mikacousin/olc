@@ -115,8 +115,9 @@ def test_history_tab_behavior(app_gui: Application) -> None:
     assert len(app_gui.core.history.redo_stack) == 1
     # Check level of channel 2 is restored/undone to -1 (released), channel 1 is still
     # 200
-    assert app_gui.backend.dmx.levels["user"][1] == -1
-    assert app_gui.backend.dmx.levels["user"][0] == 200
+    assert app_gui.core.backend is not None
+    assert app_gui.core.backend.dmx.levels["user"][1] == -1
+    assert app_gui.core.backend.dmx.levels["user"][0] == 200
 
     # Jump forward to second channel action (idx=2)
     path = Gtk.TreePath.new_from_string("2")
@@ -125,7 +126,7 @@ def test_history_tab_behavior(app_gui: Application) -> None:
 
     assert len(app_gui.core.history.undo_stack) == 3
     assert len(app_gui.core.history.redo_stack) == 0
-    assert app_gui.backend.dmx.levels["user"][1] == 100
+    assert app_gui.core.backend.dmx.levels["user"][1] == 100
 
     # 6. Test Clear History
     history_tab.on_clear_clicked(history_tab.btn_clear)

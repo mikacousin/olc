@@ -98,8 +98,7 @@ class Independent:
             cancel_sneak: Whether to cancel any in-progress sneak fade
         """
         if cancel_sneak and self.app is not None:
-            core = getattr(self.app, "core", self.app)
-            sneak_ctrl = getattr(core, "sneak_controller", None)
+            sneak_ctrl = getattr(self.app, "sneak_controller", None)
             if sneak_ctrl is not None:
                 sneak_ctrl.cancel_independent(self.number)
         self.level = value

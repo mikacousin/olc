@@ -148,7 +148,7 @@ class CurvePointWidget(Gtk.DrawingArea):
                 self.curve.points = list(self.drag_start_points)
                 tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
                 if self.lightshow and self.lightshow.app is not None:
-                    self.lightshow.app.core.action_registry.execute(
+                    self.lightshow.app.action_registry.execute(
                         "curve.update_points", tab.curve_edition.curve_nb, final_points
                     )
 
@@ -405,7 +405,7 @@ class LimitPointWidget(Gtk.DrawingArea):
                 # properly
                 self.curve.limit = self.drag_start_limit
                 self.curve.populate_values()
-                self.lightshow.app.core.action_registry.execute(
+                self.lightshow.app.action_registry.execute(
                     "curve.set_limit", self.curve_nb, final_limit
                 )
 

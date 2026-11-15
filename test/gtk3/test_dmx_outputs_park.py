@@ -35,7 +35,7 @@ def test_dmx_outputs_tab_realtime_park_unpatched_address(
 ) -> None:
     """Test that DMX visualizer updates in real time when parking an address."""
     app = app_gui
-    assert app.backend is not None and app.backend.dmx is not None
+    assert app.core.backend is not None and app.core.backend.dmx is not None
 
     # Open dmx_outputs tab
     app.activate_action("dmx_outputs", None)
@@ -51,13 +51,13 @@ def test_dmx_outputs_tab_realtime_park_unpatched_address(
 
     # Address 1/1 is unpatched
     assert app.core.lightshow.patch.get_address_occupant(1, 1) is None
-    assert app.backend.dmx.frame[0][0] == 0
+    assert app.core.backend.dmx.frame[0][0] == 0
 
     # 1. Park unpatched address 1/1 at 200
     app.core.action_registry.execute("address.park", (1, 1), 200)
     process_events()
 
-    assert app.backend.dmx.frame[0][0] == 200
+    assert app.core.backend.dmx.frame[0][0] == 200
     assert w0._is_parked() is True
     assert w0.queue_draw.called
 
@@ -66,7 +66,7 @@ def test_dmx_outputs_tab_realtime_park_unpatched_address(
     app.core.action_registry.execute("address.unpark", (1, 1))
     process_events()
 
-    assert app.backend.dmx.frame[0][0] == 0
+    assert app.core.backend.dmx.frame[0][0] == 0
     assert w0._is_parked() is False
     assert w0.queue_draw.called
 

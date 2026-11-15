@@ -78,7 +78,7 @@ def app_gui_instance() -> Generator[Application, None, None]:
     app.register(None)
 
     # Initialize Engine and Backend (normally done in do_command_line)
-    app.engine = app.core.init_engine(monitor_port=5555, no_listen=True)
+    app.core.init_engine(monitor_port=5555, no_listen=True)
 
     app.core.start()
 
@@ -138,8 +138,8 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.curves.reset()
     app.core.commandline.set_string("")
     app.core.selected_channels = []
-    if app.midi is not None:
-        app.midi.learning = ""
+    if app.core.midi is not None:
+        app.core.midi.learning = ""
     if app.virtual_console is not None:
         app.virtual_console.close()
     if app.core.backend and getattr(app.core.backend, "dmx", None):

@@ -41,7 +41,7 @@ def test_control_change_wheel_executes_action() -> None:
     msg = mido.Message("control_change", channel=0, control=60, value=1)
     cc._function_wheel("test_port", msg)
 
-    mock_app.core.action_registry.execute.assert_called_once_with(
+    mock_app.action_registry.execute.assert_called_once_with(
         "channel.wheel_adjust", 1, 1
     )
 
@@ -61,14 +61,14 @@ def test_control_change_fader_executes_action() -> None:
     mock_target_fader = MagicMock()
     mock_target_fader.level = 0.0
     mock_fader_bank.get_fader.return_value = mock_target_fader
-    mock_app.core.lightshow.fader_bank = mock_fader_bank
+    mock_app.lightshow.fader_bank = mock_fader_bank
 
     cc = MidiControlChanges(mock_midi, mock_app)
 
     msg = mido.Message("control_change", channel=0, control=0, value=127)
     cc._function_fader(msg, 1)
 
-    mock_app.core.action_registry.execute.assert_called_once_with(
+    mock_app.action_registry.execute.assert_called_once_with(
         "fader.set_level", 1, 1, 1.0
     )
 
@@ -86,6 +86,6 @@ def test_midi_xfade_executes_action() -> None:
 
     xfade._xfade(xfade.fader_out, 200)
 
-    mock_app.core.action_registry.execute.assert_called_once_with(
+    mock_app.action_registry.execute.assert_called_once_with(
         "playback.manual_xfade", "a", 200
     )

@@ -91,10 +91,10 @@ class MidiPitchWheel:
 
     def _update_fader(self, msg: mido.Message, index: int) -> None:
         val = (msg.pitch + 8192) / 16383
-        fader_bank = self.app.core.lightshow.fader_bank
+        fader_bank = self.app.lightshow.fader_bank
         number = index + 1
-        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
-            self.app.core.action_registry.execute(
+        if self.app is not None and hasattr(self.app, "action_registry"):
+            self.app.action_registry.execute(
                 "fader.set_level", fader_bank.active_page, number, val
             )
         else:

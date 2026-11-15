@@ -655,9 +655,8 @@ class PatchManager:
         )
         if self.lightshow is not None:
             app = getattr(self.lightshow, "app", None)
-            core = getattr(app, "core", app) if app is not None else None
-            if core is not None and hasattr(core, "emit"):
-                core.emit(
+            if app is not None and hasattr(app, "emit"):
+                app.emit(
                     "patch.fixture_exchanged",
                     new_dev,
                     self.last_exchange_warnings,

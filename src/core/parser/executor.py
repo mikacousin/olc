@@ -569,8 +569,7 @@ class CommandExecutor:
         )
 
     def _execute_sneak(self, node: SneakCommandNode) -> CommandResult:
-        core = getattr(self.app, "core", self.app)
-        sneak_ctrl = getattr(core, "sneak_controller", None)
+        sneak_ctrl = getattr(self.app, "sneak_controller", None)
         if sneak_ctrl is None:
             return CommandResult(False, "Sneak controller not available")
 

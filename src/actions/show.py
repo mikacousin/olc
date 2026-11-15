@@ -272,11 +272,8 @@ class ShowSaveAction(Action):
         lightshow.file_path = path
         lightshow.basename = os.path.basename(path)
 
-        # Sync GUI workspace state if GUI application is present
-        app_parent = getattr(lightshow, "app", self.app)
-        tabs_mgr = getattr(app_parent, "tabs", None)
-        if tabs_mgr and hasattr(tabs_mgr, "get_workspace_state"):
-            lightshow.workspace = tabs_mgr.get_workspace_state()
+        # Request workspace state synchronization before export
+        self.app.emit("show.before_save")
 
         exported = ExportFile(
             gio_file,

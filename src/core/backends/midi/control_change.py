@@ -186,7 +186,7 @@ class MidiControlChanges:
         """
         step, direction = self.__get_step(msg, port)
         dir_val = 1 if direction >= 0 else -1
-        self.app.core.action_registry.execute("channel.wheel_adjust", step, dir_val)
+        self.app.action_registry.execute("channel.wheel_adjust", step, dir_val)
 
     def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
         """Faders
@@ -197,11 +197,11 @@ class MidiControlChanges:
         """
         val = msg.value / 127
         midi_fader = self.midi.faders.faders[fader_index - 1]
-        fader_bank = self.app.core.lightshow.fader_bank
+        fader_bank = self.app.lightshow.fader_bank
         fader = fader_bank.get_fader(fader_index)
         if not midi_fader.is_valid(val, fader.level):
             return
-        self.app.core.action_registry.execute(
+        self.app.action_registry.execute(
             "fader.set_level", fader_bank.active_page, fader_index, val
         )
 
@@ -249,7 +249,7 @@ class MidiControlChanges:
         self, independent: int, step: int
     ) -> tuple[Independent | None, int]:
         inde = None
-        for inde in self.app.core.lightshow.independents.independents:
+        for inde in self.app.lightshow.independents.independents:
             if inde.number == independent:
                 val = round(inde.level * 255) + step
                 if val < 0:
@@ -261,8 +261,8 @@ class MidiControlChanges:
 
     def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
         level_float = val / 255.0
-        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
-            self.app.core.action_registry.execute(
+        if self.app is not None and hasattr(self.app, "action_registry"):
+            self.app.action_registry.execute(
                 "independent.set_level", independent, level_float
             )
         else:

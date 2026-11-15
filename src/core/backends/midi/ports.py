@@ -111,9 +111,9 @@ class MidiPorts:
             self.mido_ports = port_names
             self.open(self._get_configured_ports())
             self.midi.update_faders()
-            core = getattr(self.midi, "core", None)
-            if core is not None:
-                core.emit("midi.ports_changed")
+            app = getattr(self.midi, "app", None)
+            if app is not None and hasattr(app, "emit"):
+                app.emit("midi.ports_changed")
             if self.on_ports_changed:
                 self.on_ports_changed()
 

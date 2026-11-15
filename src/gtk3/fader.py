@@ -175,9 +175,8 @@ class FaderEdit(Gtk.Box):
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
         app = self.lightshow.app
-        core = getattr(app, "core", app)
-        if core is not None and hasattr(core, "action_registry"):
-            core.action_registry.execute(
+        if app is not None and hasattr(app, "action_registry"):
+            app.action_registry.execute(
                 "fader.assign", self.page, self.index, fader_type
             )
         else:
@@ -201,9 +200,8 @@ class FaderEdit(Gtk.Box):
             # Max label size: 30 characters
             self.contents_button.set_label(f"{widget.get_label():<.30}")
         app = self.lightshow.app
-        core = getattr(app, "core", app)
-        if core is not None and hasattr(core, "action_registry"):
-            core.action_registry.execute(
+        if app is not None and hasattr(app, "action_registry"):
+            app.action_registry.execute(
                 "fader.assign", self.page, self.index, fader_type, contents
             )
         else:
