@@ -143,9 +143,7 @@ class Cue:
         if lvl == 0 and channel in self.device_values:
             dev_int = self.device_values[channel].get("intensity")
             if isinstance(dev_int, (int, float)):
-                val = float(dev_int)
-                lvl = val * 255.0 if val <= 1.0 else val
-                lvl = max(0.0, min(255.0, lvl))
+                lvl = max(0.0, min(255.0, float(dev_int) * 255.0))
         return lvl
 
     def get_active_channels_count(self) -> int:

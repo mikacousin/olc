@@ -112,19 +112,17 @@ def test_cue_continuous_float_channels() -> None:
     assert cue.channels_array[2] == pytest.approx(204.8)
 
 
-def test_cue_get_level_fallback_normalized_and_legacy() -> None:
-    """Test get_level fallback to device_values intensity
-    for normalized and legacy scales.
-    """
+def test_cue_get_level_fallback_normalized() -> None:
+    """Test get_level fallback to normalized device_values intensity."""
     cue = Cue(sequence=1, number=1.0)
 
-    # 1. Modern normalized intensity (<= 1.0) -> scaled to 0..255 float
+    # 1. Normalized intensity [0.0..1.0] -> scaled to 0..255 float
     cue.set_device_parameter(1, "intensity", 0.5)
     assert cue.get_level(1) == pytest.approx(127.5)
 
-    # 2. Legacy 0..255 integer intensity (> 1.0) -> preserved directly
-    cue.set_device_parameter(2, "intensity", 200)
-    assert cue.get_level(2) == 200
+    # 2. Out-of-range intensity (> 1.0) -> clamped to 255.0
+    cue.set_device_parameter(2, "intensity", 1.5)
+    assert cue.get_level(2) == 255.0
 
     # 3. Explicit channel overrides fallback
     cue.set_level(1, 100)

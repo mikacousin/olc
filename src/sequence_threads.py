@@ -76,10 +76,11 @@ def _parse_rgb_norm(value: typing.Any) -> Optional[tuple[float, float, float]]: 
             except ValueError:
                 return None
     elif isinstance(value, (tuple, list)) and len(value) >= 3:
-        v0, v1, v2 = float(value[0]), float(value[1]), float(value[2])
-        if max(v0, v1, v2) > 1.0:
-            return (v0 / 255.0, v1 / 255.0, v2 / 255.0)
-        return (v0, v1, v2)
+        return (
+            max(0.0, min(1.0, float(value[0]))),
+            max(0.0, min(1.0, float(value[1]))),
+            max(0.0, min(1.0, float(value[2]))),
+        )
     return None
 
 

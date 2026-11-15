@@ -56,11 +56,6 @@ class Scale:
         """
         return self.value
 
-    @property
-    def value_255(self) -> int:
-        """Return scale value as 8-bit integer [0..255] for legacy UI widgets."""
-        return round(self.value * 255.0)
-
 
 class CrossFade:
     """For Manual Crossfade"""
