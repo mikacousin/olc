@@ -15,10 +15,9 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
-from gi.repository import GLib
 
 from olc.core.park import ParkManager
 from olc.core.tracking import (
@@ -59,8 +58,6 @@ class Dmx:
     frame: list[np.ndarray]
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
-    output_callbacks: list[Callable[[int, list[int]], None]]
-    notification_callbacks: list[Callable[[str, str], None]]
 
     def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
         self.backend = backend
@@ -83,12 +80,16 @@ class Dmx:
         self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
         # To test outputs
         self.user_outputs = {}
-        # Callbacks for UI updates
-        self.output_callbacks = []
-        # Callbacks for notifications
-        self.notification_callbacks = []
+        # Wire patch callbacks cleanly
+        self.patch.on_patch_empty_cb = self.all_outputs_at_zero
+        self.patch.on_unpatch_cb = self._on_unpatch_output
         # Thread to send DMX every DMX_INTERVAL ms
         self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
+
+    def _on_unpatch_output(self, index: int, output: int) -> None:
+        """Zero the DMX output slot in frame when unpatched."""
+        if 0 <= index < len(self.frame) and 0 <= output < 512:
+            self.frame[index][output] = 0
 
     def add_universe(self, universe: int) -> None:
         """Add a universe frame to Dmx."""
@@ -298,13 +299,12 @@ class Dmx:
                 if not np.array_equal(current_frame, old_frame):
                     changed_outputs = np.where(current_frame != old_frame)[0].tolist()
                     if changed_outputs:
-                        GLib.idle_add(
-                            self.trigger_output_callbacks, universe, changed_outputs
-                        )
+                        self.trigger_output_callbacks(universe, changed_outputs)
                     np.copyto(self._old_frame[index], current_frame)
-                univ_slot = engine.universe(universe)
-                if univ_slot is not None:
-                    univ_slot.apply_array(current_frame)
+                try:
+                    engine.apply_universe_frame(universe, current_frame)
+                except KeyError:
+                    pass
 
             # Compute composite levels for all channels to check for modifications
             self.patch.update_numpy_cache_if_dirty()
@@ -348,9 +348,10 @@ class Dmx:
             if index < len(self.frame):
                 self.frame[index].fill(0)
             if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-                univ_slot = self.lightshow.app.engine.universe(universe)
-                if univ_slot is not None:
-                    univ_slot.blackout()
+                try:
+                    self.lightshow.app.engine.blackout(universe)
+                except KeyError:
+                    pass
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -368,43 +369,102 @@ class Dmx:
         if not level:
             self.user_outputs.pop((output, universe), None)
         if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            univ_slot = self.lightshow.app.engine.universe(universe)
-            if univ_slot is not None:
-                univ_slot.array[output - 1] = level
+            try:
+                self.lightshow.app.engine.set_output_level(universe, output, level)
+            except (KeyError, IndexError):
+                pass
 
-    def add_output_callback(self, callback: Callable[[int, list[int]], None]) -> None:
-        """Register a callback for output level changes."""
-        if callback not in self.output_callbacks:
-            self.output_callbacks.append(callback)
+    def get_output_level(self, universe: int, output: int) -> int:
+        """Return current DMX level (0-255) for 1-indexed *output* in *universe*."""
+        if universe in self.patch.universes and 1 <= output <= 512:
+            univ_idx = self.patch.universes.index(universe)
+            if univ_idx < len(self.frame):
+                return int(self.frame[univ_idx][output - 1])
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            try:
+                return self.lightshow.app.engine.get_output_level(universe, output)
+            except (KeyError, IndexError):
+                pass
+        return 0
 
-    def remove_output_callback(
-        self, callback: Callable[[int, list[int]], None]
-    ) -> None:
-        """Remove a callback for output level changes."""
-        if callback in self.output_callbacks:
-            self.output_callbacks.remove(callback)
+    def snapshot_universe(self, universe: int) -> np.ndarray:
+        """Return a copy of the 512-byte DMX buffer for *universe*."""
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            try:
+                return self.lightshow.app.engine.snapshot_universe(universe)
+            except KeyError:
+                pass
+        if universe in self.patch.universes:
+            univ_idx = self.patch.universes.index(universe)
+            if univ_idx < len(self.frame):
+                return self.frame[univ_idx].copy()
+        return np.zeros(512, dtype=np.uint8)
+
+    def apply_universe_frame(self, universe: int, frame: np.ndarray) -> None:
+        """Apply a 512-byte DMX buffer to *universe* in both frame and CoreEngine."""
+        if universe in self.patch.universes:
+            univ_idx = self.patch.universes.index(universe)
+            if univ_idx < len(self.frame):
+                np.copyto(self.frame[univ_idx], frame, casting="unsafe")
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            try:
+                self.lightshow.app.engine.apply_universe_frame(universe, frame)
+            except KeyError:
+                pass
+
+    def blackout_universe(self, universe: int) -> None:
+        """Zero all 512 DMX outputs for *universe* in both frame and CoreEngine."""
+        if universe in self.patch.universes:
+            univ_idx = self.patch.universes.index(universe)
+            if univ_idx < len(self.frame):
+                self.frame[univ_idx].fill(0)
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            try:
+                self.lightshow.app.engine.blackout(universe)
+            except KeyError:
+                pass
+
+    def set_universe_levels(self, universe: int, channels: dict[int, int]) -> None:
+        """Set multiple 0-indexed DMX outputs (0..511) in frame and CoreEngine."""
+        if universe in self.patch.universes:
+            univ_idx = self.patch.universes.index(universe)
+            if univ_idx < len(self.frame):
+                frame = self.frame[univ_idx]
+                for ch, val in channels.items():
+                    if 0 <= ch < 512:
+                        frame[ch] = int(np.clip(val, 0, 255))
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            try:
+                self.lightshow.app.engine.set_channels(universe, channels)
+            except KeyError:
+                pass
+
+    def reset_levels(self, *, reset_main_fader: bool = True) -> None:
+        """Reset sequence/manual/fader levels and optionally main fader to 1.0."""
+        self.levels["sequence"].fill(0)
+        self.levels["user"].fill(-1)
+        if "faders" in self.levels:
+            self.levels["faders"].fill(0)
+        if reset_main_fader:
+            self.main_fader.set_level(1.0)
+        self.set_levels()
 
     def trigger_output_callbacks(self, universe: int, outputs: list[int]) -> None:
-        """Trigger registered callbacks.
+        """Emit dmx.outputs_changed event via CoreApplication event bus.
 
         Args:
             universe: Universe number
             outputs: List of changed output indices
         """
-        for callback in self.output_callbacks:
-            callback(universe, outputs)
-
-    def add_notification_callback(self, callback: Callable[[str, str], None]) -> None:
-        """Register a callback for notifications."""
-        if callback not in self.notification_callbacks:
-            self.notification_callbacks.append(callback)
+        if self.lightshow.app is not None:
+            self.lightshow.app.emit("dmx.outputs_changed", universe, outputs)
 
     def trigger_notification(self, title: str, body: str) -> None:
-        """Trigger registered notification callbacks.
+        """Emit backend.notification event via CoreApplication event bus.
 
         Args:
             title: Notification title
             body: Notification body text
         """
-        for callback in self.notification_callbacks:
-            callback(title, body)
+        if self.lightshow.app is not None:
+            self.lightshow.app.emit("backend.notification", title, body)

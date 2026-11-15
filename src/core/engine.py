@@ -19,6 +19,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
+import numpy as np
+
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
@@ -302,9 +304,26 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         return self._map
 
     @property
+    def artnet_manager(self) -> ArtNetManager:
+        """Return the Art-Net manager."""
+        return self._artnet_manager
+
+    @property
     def sacn_manager(self) -> SacnManager:
         """Return the sACN manager."""
         return self._sacn_manager
+
+    def set_notification_callbacks(
+        self,
+        *,
+        artnet: Callable | None = None,
+        sacn: Callable | None = None,
+        enttec: Callable | None = None,
+    ) -> None:
+        """Register notification callbacks for network and USB DMX outputs."""
+        self._artnet_manager.notify = artnet
+        self._sacn_manager.notify = sacn
+        self.notify_enttec = enttec
 
     def __enter__(self) -> "CoreEngine":
         self.start()
@@ -568,6 +587,22 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
     def set_channels(self, uid: int, channels: dict[int, int]) -> None:
         """Write a dict of {channel: value} to a universe."""
         self._get_slot(uid).universe.set_channels(channels)
+
+    def snapshot_universe(self, uid: int) -> np.ndarray:
+        """Return a copy of the 512-byte DMX buffer for universe *uid*."""
+        return self._get_slot(uid).universe.snapshot()
+
+    def apply_universe_frame(self, uid: int, frame: np.ndarray) -> None:
+        """Bulk-copy a 512-element numpy array into universe *uid*."""
+        self._get_slot(uid).universe.apply_array(frame)
+
+    def get_output_level(self, uid: int, output: int) -> int:
+        """Return the current DMX level (0-255) of 1-indexed *output* (1..512)."""
+        return self._get_slot(uid).universe[output - 1]
+
+    def set_output_level(self, uid: int, output: int, level: int) -> None:
+        """Set the DMX level (0-255) of 1-indexed *output* (1..512)."""
+        self._get_slot(uid).universe[output - 1] = level
 
     def _htp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
         """

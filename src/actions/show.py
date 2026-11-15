@@ -99,11 +99,7 @@ class ShowNewAction(Action):
         # Reset DMX levels
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
-            backend.dmx.levels["sequence"][:] = 0
-            backend.dmx.levels["user"][:] = -1
-            if getattr(backend.dmx, "main_fader", None):
-                backend.dmx.main_fader.set_level(1.0)
-            backend.dmx.set_levels()
+            backend.dmx.reset_levels()
 
         # Clear channel selection
         if hasattr(self.app, "live_selection"):
@@ -223,11 +219,7 @@ class ShowOpenAction(Action):
         # Reset DMX levels
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
-            backend.dmx.levels["sequence"][:] = 0
-            backend.dmx.levels["user"][:] = -1
-            if getattr(backend.dmx, "main_fader", None):
-                backend.dmx.main_fader.set_level(1.0)
-            backend.dmx.set_levels()
+            backend.dmx.reset_levels()
 
         # Clear channel selection
         if hasattr(self.app, "live_selection"):

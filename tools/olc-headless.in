@@ -38,7 +38,6 @@ except ImportError as err:
 sys.path.insert(1, "@pythondir@")
 
 from olc.core.app import CoreApplication
-from olc.core.backends import DMXBackend
 from olc.core.binding import OscBinding
 
 
@@ -59,12 +58,10 @@ def main() -> None:
     # 2. Instantiate the core application
     app = CoreApplication(settings)
 
-    # 3. Create the CoreEngine and DMXBackend
+    # 3. Initialize CoreEngine and start application
     print("[olc-headless] Starting CoreEngine...")
-    engine = app.init_engine(monitor_port=5555, no_listen=True)
-    app.backend = DMXBackend(app.lightshow)
-
-    engine.start()
+    app.init_engine(monitor_port=5555, no_listen=True)
+    app.start()
 
     # 4. Start OSC Server and register dynamic trigger routes
     osc_enabled = settings.get_boolean("osc") if settings else True

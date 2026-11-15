@@ -22,11 +22,8 @@ from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.dmx import Dmx
 
 
-def test_dmx_send_triggers_callbacks() -> None:
-    """Test that Dmx.send() correctly identifies frame changes and triggers
-    callbacks.
-    """
-
+def test_dmx_send_emits_outputs_changed() -> None:
+    """Test Dmx.send() pushes frames to CoreEngine and emits dmx.outputs_changed."""
     # Mock lightshow and app
     lightshow = MagicMock()
     lightshow.patch.universes = list(UNIVERSES)
@@ -38,55 +35,114 @@ def test_dmx_send_triggers_callbacks() -> None:
     lightshow.app = app
     app.engine = engine
 
-    # Mock universe buffers in engine
-    universe_mocks = {}
-    for universe in UNIVERSES:
-        univ_mock = MagicMock()
-        univ_mock.array = [0] * 512
+    universe_buffers = {u: np.zeros(512, dtype=np.uint8) for u in UNIVERSES}
 
-        def make_apply(m):  # noqa: ANN001,ANN202
-            def apply_array(arr):  # noqa: ANN001,ANN202
-                m.array[:] = list(arr)
+    def apply_universe_frame(uid: int, arr: np.ndarray) -> None:
+        np.copyto(universe_buffers[uid], arr)
 
-            return apply_array
-
-        univ_mock.apply_array.side_effect = make_apply(univ_mock)
-        universe_mocks[universe] = univ_mock
-
-    engine.universe.side_effect = lambda u: universe_mocks[u]
+    engine.apply_universe_frame.side_effect = apply_universe_frame
 
     # Initialize Dmx, patching RepeatedTimer to avoid starting actual background threads
     with patch("olc.dmx.RepeatedTimer") as mock_timer_class:
         dmx = Dmx(backend=None, lightshow=lightshow)
         mock_timer_class.assert_called_once()
 
-    # Register output callback
-    callback = MagicMock()
-    dmx.add_output_callback(callback)
+    # Simulate change on Universe 1 (index 0) at address 0 and 10
+    dmx.frame[0][0] = 255
+    dmx.frame[0][10] = 128
 
-    # Mock GLib on the olc.dmx module
-    mock_glib = MagicMock()
-    with patch("olc.dmx.GLib", mock_glib):
-        # Simulate change on Universe 1 (index 0) at address 0 and 10
-        dmx.frame[0][0] = 255
-        dmx.frame[0][10] = 128
+    # Trigger send
+    dmx.send()
 
-        # Trigger send
-        dmx.send()
+    # Verify dmx.outputs_changed event was emitted directly via CoreApplication
+    outputs_events = [
+        call.args
+        for call in app.emit.call_args_list
+        if call.args and call.args[0] == "dmx.outputs_changed"
+    ]
+    assert outputs_events == [("dmx.outputs_changed", UNIVERSES[0], [0, 10])]
 
-        # Assert GLib.idle_add was called
-        mock_glib.idle_add.assert_called_once()
-        args, _ = mock_glib.idle_add.call_args
-        assert args[0] == dmx.trigger_output_callbacks
-        assert args[1] == UNIVERSES[0]
-        assert args[2] == [0, 10]
+    # Verify old_frame and engine buffer were updated
+    assert dmx._old_frame[0][0] == 255
+    assert dmx._old_frame[0][10] == 128
+    assert np.array_equal(universe_buffers[UNIVERSES[0]], dmx.frame[0])
 
-        # Verify old_frame was updated
-        assert dmx._old_frame[0][0] == 255
-        assert dmx._old_frame[0][10] == 128
 
-        # Verify engine.universe was updated
-        assert engine.universe(UNIVERSES[0]).array[:] == list(dmx.frame[0])
+def test_dmx_notification_event_and_native_patch_callbacks() -> None:
+    """Test notification event emission and native DMXPatch callback wiring."""
+    lightshow = MagicMock()
+    lightshow.patch.universes = [1, 2]
+    app = MagicMock()
+    engine = MagicMock()
+    lightshow.app = app
+    app.engine = engine
+
+    with patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=lightshow)
+
+    # Patch callbacks must be wired automatically in Dmx.__init__
+    assert lightshow.patch.on_patch_empty_cb == dmx.all_outputs_at_zero
+    assert lightshow.patch.on_unpatch_cb == dmx._on_unpatch_output
+
+    dmx.frame[0][4] = 200
+    dmx._on_unpatch_output(0, 4)
+    assert dmx.frame[0][4] == 0
+
+    dmx.all_outputs_at_zero()
+    assert engine.blackout.call_count == 2
+
+    dmx.trigger_notification("Alert", "Test body")
+    app.emit.assert_called_with("backend.notification", "Alert", "Test body")
+
+
+def test_dmx_facade_methods() -> None:
+    """Test unified DMX facade helpers on Dmx."""
+    lightshow = MagicMock()
+    lightshow.patch.universes = [1]
+    lightshow.patch.is_patched_mask = np.zeros(MAX_CHANNELS, dtype=bool)
+    lightshow.patch.map_src_channels = np.array([], dtype=np.intp)
+    lightshow.patch.map_dst_curves = np.array([], dtype=np.intp)
+    lightshow.patch.map_dst_universes = np.array([], dtype=np.intp)
+    lightshow.patch.map_dst_outputs = np.array([], dtype=np.intp)
+    lightshow.patch.dynamic_intensity_devices = []
+    lightshow.patch.device_channel_refs = []
+    lightshow.independents.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+    lightshow.park = None
+
+    app = MagicMock()
+    engine = MagicMock()
+    engine.snapshot_universe.return_value = np.full(512, 42, dtype=np.uint8)
+    lightshow.app = app
+    app.engine = engine
+
+    with patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=lightshow)
+
+    dmx.set_universe_levels(1, {0: 255, 5: 128})
+    assert dmx.get_output_level(1, 1) == 255
+    assert dmx.get_output_level(1, 6) == 128
+    engine.set_channels.assert_called_once_with(1, {0: 255, 5: 128})
+
+    snap = dmx.snapshot_universe(1)
+    assert np.all(snap == 42)
+
+    dmx.blackout_universe(1)
+    assert np.all(dmx.frame[0] == 0)
+    engine.blackout.assert_called_once_with(1)
+
+    dmx.apply_universe_frame(1, snap)
+    assert np.all(dmx.frame[0] == 42)
+    engine.apply_universe_frame.assert_called_once_with(1, snap)
+
+    dmx.levels["sequence"][0] = 200.0
+    dmx.levels["user"][1] = 150
+    dmx.levels["faders"][2] = 100.0
+    dmx.main_fader.set_level(0.5)
+    dmx.reset_levels()
+    assert np.all(dmx.levels["sequence"] == 0)
+    assert np.all(dmx.levels["user"] == -1)
+    assert np.all(dmx.levels["faders"] == 0)
+    assert dmx.main_fader.value == 1.0
 
 
 def test_dmx_add_remove_universe() -> None:

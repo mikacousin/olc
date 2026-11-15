@@ -175,15 +175,12 @@ class TestUniverseOSCRoutes:
         """Blackout endpoint must execute universe.blackout for the target universe."""
         app = CoreApplication(MagicMock())
         mock_engine = MagicMock()
-        mock_univ = MagicMock()
-        mock_univ.frame = bytearray(512)
-        mock_engine.universe.return_value = mock_univ
         app.engine = mock_engine
         server = CoreOSCServer(port=9999)
         server.register_delegate(OSCDelegate(app))
 
         server.dispatch("/olc/universe/3/blackout", [])
-        mock_engine.universe.assert_called_once_with(3)
+        mock_engine.blackout.assert_called_once_with(3)
 
     def test_osc_facade_lifecycle_headless(self) -> None:
         """Osc facade starts, exposes state, and stops cleanly without an engine."""

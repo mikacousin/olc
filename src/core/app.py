@@ -194,6 +194,8 @@ class CoreApplication(EventDispatcher):
             loopback=loopback,
             no_transmit=no_transmit,
         )
+        if self.backend is not None:
+            self.backend.bind_engine(typing.cast(typing.Any, self.engine))
         return self.engine
 
     def init_midi(

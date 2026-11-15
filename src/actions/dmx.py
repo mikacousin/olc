@@ -24,6 +24,7 @@ import numpy as np
 from olc.core.action import Action
 from olc.core.universe_config import Protocol, UniverseConfig
 from olc.define import DEFAULT_UNIVERSES
+from olc.dmx import Dmx
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -99,58 +100,72 @@ class UniverseBlackoutAction(Action):
     def execute(self) -> None:
         """Execute blackout on the configured universe."""
         self.old_frame = None
-
-        if self.app.engine is not None:
-            try:
-                univ = self.app.engine.universe(self.universe)
-                self.old_frame = univ.snapshot()
-                univ.blackout()
-            except KeyError:
-                pass
-
         backend = getattr(self.app, "backend", None)
-        if backend is not None and getattr(backend, "dmx", None) is not None:
-            patch_universes = _get_patch_universes(self.app)
-            if self.universe in patch_universes:
-                idx = patch_universes.index(self.universe)
-                if idx < len(backend.dmx.frame):
-                    if self.old_frame is None:
-                        self.old_frame = backend.dmx.frame[idx].copy()
-                    backend.dmx.frame[idx].fill(0)
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+
+        if isinstance(backend_dmx, Dmx):
+            self.old_frame = backend_dmx.snapshot_universe(self.universe)
+            backend_dmx.blackout_universe(self.universe)
+        else:
+            if self.app.engine is not None:
+                try:
+                    self.old_frame = self.app.engine.snapshot_universe(self.universe)
+                    self.app.engine.blackout(self.universe)
+                except KeyError:
+                    pass
+
+            if backend_dmx is not None:
+                patch_universes = _get_patch_universes(self.app)
+                if self.universe in patch_universes:
+                    idx = patch_universes.index(self.universe)
+                    if idx < len(backend_dmx.frame):
+                        if self.old_frame is None:
+                            self.old_frame = backend_dmx.frame[idx].copy()
+                        backend_dmx.frame[idx].fill(0)
 
         self.app.emit("universe.blackout_changed", self.universe)
 
     def undo(self) -> None:
         """Restore universe channel levels prior to blackout."""
         if self.old_frame is not None:
-            if self.app.engine is not None:
-                try:
-                    self.app.engine.universe(self.universe).apply_array(self.old_frame)
-                except KeyError:
-                    pass
             backend = getattr(self.app, "backend", None)
-            if backend is not None and getattr(backend, "dmx", None) is not None:
-                patch_universes = _get_patch_universes(self.app)
-                if self.universe in patch_universes:
-                    idx = patch_universes.index(self.universe)
-                    if idx < len(backend.dmx.frame):
-                        np.copyto(backend.dmx.frame[idx], self.old_frame)
+            backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+            if isinstance(backend_dmx, Dmx):
+                backend_dmx.apply_universe_frame(self.universe, self.old_frame)
+            else:
+                if self.app.engine is not None:
+                    try:
+                        self.app.engine.apply_universe_frame(
+                            self.universe, self.old_frame
+                        )
+                    except KeyError:
+                        pass
+                if backend_dmx is not None:
+                    patch_universes = _get_patch_universes(self.app)
+                    if self.universe in patch_universes:
+                        idx = patch_universes.index(self.universe)
+                        if idx < len(backend_dmx.frame):
+                            np.copyto(backend_dmx.frame[idx], self.old_frame)
         self.app.emit("universe.blackout_changed", self.universe)
 
     def redo(self) -> None:
         """Re-apply blackout on the configured universe."""
-        if self.app.engine is not None:
-            try:
-                self.app.engine.universe(self.universe).blackout()
-            except KeyError:
-                pass
         backend = getattr(self.app, "backend", None)
-        if backend is not None and getattr(backend, "dmx", None) is not None:
-            patch_universes = _get_patch_universes(self.app)
-            if self.universe in patch_universes:
-                idx = patch_universes.index(self.universe)
-                if idx < len(backend.dmx.frame):
-                    backend.dmx.frame[idx].fill(0)
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+        if isinstance(backend_dmx, Dmx):
+            backend_dmx.blackout_universe(self.universe)
+        else:
+            if self.app.engine is not None:
+                try:
+                    self.app.engine.blackout(self.universe)
+                except KeyError:
+                    pass
+            if backend_dmx is not None:
+                patch_universes = _get_patch_universes(self.app)
+                if self.universe in patch_universes:
+                    idx = patch_universes.index(self.universe)
+                    if idx < len(backend_dmx.frame):
+                        backend_dmx.frame[idx].fill(0)
         self.app.emit("universe.blackout_changed", self.universe)
 
 
@@ -177,22 +192,26 @@ class DmxSetUniverseLevelsAction(Action):
 
     def execute(self) -> None:
         """Apply channel levels to the target universe."""
-        if self.app.engine is not None:
-            try:
-                self.app.engine.set_channels(self.universe, self.channels)
-            except KeyError:
-                pass
-
         backend = getattr(self.app, "backend", None)
-        if backend is not None and getattr(backend, "dmx", None) is not None:
-            patch_universes = _get_patch_universes(self.app)
-            if self.universe in patch_universes:
-                idx = patch_universes.index(self.universe)
-                if idx < len(backend.dmx.frame):
-                    frame = backend.dmx.frame[idx]
-                    for ch, val in self.channels.items():
-                        if 0 <= ch < 512:
-                            frame[ch] = int(np.clip(val, 0, 255))
+        backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+        if isinstance(backend_dmx, Dmx):
+            backend_dmx.set_universe_levels(self.universe, self.channels)
+        else:
+            if self.app.engine is not None:
+                try:
+                    self.app.engine.set_channels(self.universe, self.channels)
+                except KeyError:
+                    pass
+
+            if backend_dmx is not None:
+                patch_universes = _get_patch_universes(self.app)
+                if self.universe in patch_universes:
+                    idx = patch_universes.index(self.universe)
+                    if idx < len(backend_dmx.frame):
+                        frame = backend_dmx.frame[idx]
+                        for ch, val in self.channels.items():
+                            if 0 <= ch < 512:
+                                frame[ch] = int(np.clip(val, 0, 255))
 
         self.app.emit("universe.dmx_changed", self.universe, self.channels)
 
@@ -240,8 +259,8 @@ class DmxTestOutputAction(Action):
                 backend.dmx.send_user_output(out, univ, self.level)
             elif self.app.engine is not None:
                 try:
-                    old = int(self.app.engine.universe(univ).array[out - 1])
-                    self.app.engine.universe(univ).array[out - 1] = self.level
+                    old = self.app.engine.get_output_level(univ, out)
+                    self.app.engine.set_output_level(univ, out, self.level)
                 except (KeyError, IndexError, AttributeError):
                     pass
             self.old_levels[(out, univ)] = old
@@ -255,7 +274,7 @@ class DmxTestOutputAction(Action):
                 backend.dmx.send_user_output(out, univ, old)
             elif self.app.engine is not None:
                 try:
-                    self.app.engine.universe(univ).array[out - 1] = old
+                    self.app.engine.set_output_level(univ, out, old)
                 except (KeyError, IndexError, AttributeError):
                     pass
             self.app.emit("dmx.user_output_changed", univ, out, old)
@@ -268,7 +287,7 @@ class DmxTestOutputAction(Action):
                 backend.dmx.send_user_output(out, univ, self.level)
             elif self.app.engine is not None:
                 try:
-                    self.app.engine.universe(univ).array[out - 1] = self.level
+                    self.app.engine.set_output_level(univ, out, self.level)
                 except (KeyError, IndexError, AttributeError):
                     pass
             self.app.emit("dmx.user_output_changed", univ, out, self.level)
@@ -344,31 +363,34 @@ class DmxBlackoutAllAction(Action):
 
         if backend_dmx is not None:
             backend_dmx.blackout = self.target_state
-            if type(backend_dmx).__name__ == "Dmx":
+            if isinstance(backend_dmx, Dmx):
                 backend_dmx.set_levels()
                 backend_dmx.send()
-            else:
-                patch_universes = _get_patch_universes(self.app)
-                for idx, universe in enumerate(patch_universes):
-                    if idx < len(backend_dmx.frame):
-                        if universe not in self.old_frames:
-                            self.old_frames[universe] = backend_dmx.frame[idx].copy()
-                        if self.target_state:
-                            backend_dmx.frame[idx].fill(0)
+                self.app.emit("dmx.blackout_all_changed", self.target_state)
+                return
+            patch_universes = _get_patch_universes(self.app)
+            for idx, universe in enumerate(patch_universes):
+                if idx < len(backend_dmx.frame):
+                    if universe not in self.old_frames:
+                        self.old_frames[universe] = backend_dmx.frame[idx].copy()
+                    if self.target_state:
+                        backend_dmx.frame[idx].fill(0)
 
         # Handle engine universes (standalone or mock testing)
         if self.app.engine is not None:
             universes = _get_active_universes(self.app)
             for universe in universes:
                 try:
-                    univ = self.app.engine.universe(universe)
                     if universe not in self.old_frames:
-                        self.old_frames[universe] = univ.snapshot()
+                        self.old_frames[universe] = self.app.engine.snapshot_universe(
+                            universe
+                        )
                     if self.target_state:
-                        univ.blackout()
-                    else:
-                        if universe in self.old_frames:
-                            univ.apply_array(self.old_frames[universe])
+                        self.app.engine.blackout(universe)
+                    elif universe in self.old_frames:
+                        self.app.engine.apply_universe_frame(
+                            universe, self.old_frames[universe]
+                        )
                 except (KeyError, AttributeError):
                     pass
 
@@ -382,23 +404,23 @@ class DmxBlackoutAllAction(Action):
 
         if backend_dmx is not None:
             backend_dmx.blackout = self.old_state
-            if type(backend_dmx).__name__ == "Dmx":
+            if isinstance(backend_dmx, Dmx):
                 backend_dmx.set_levels()
                 backend_dmx.send()
-            else:
-                patch_universes = _get_patch_universes(self.app)
-                for idx, universe in enumerate(patch_universes):
-                    if universe in self.old_frames and idx < len(backend_dmx.frame):
-                        np.copyto(backend_dmx.frame[idx], self.old_frames[universe])
+                self.app.emit("dmx.blackout_all_changed", self.old_state)
+                return
+            patch_universes = _get_patch_universes(self.app)
+            for idx, universe in enumerate(patch_universes):
+                if universe in self.old_frames and idx < len(backend_dmx.frame):
+                    np.copyto(backend_dmx.frame[idx], self.old_frames[universe])
 
         if self.app.engine is not None:
             for universe, old_frame in self.old_frames.items():
                 try:
-                    univ = self.app.engine.universe(universe)
                     if self.old_state:
-                        univ.blackout()
+                        self.app.engine.blackout(universe)
                     else:
-                        univ.apply_array(old_frame)
+                        self.app.engine.apply_universe_frame(universe, old_frame)
                 except (KeyError, AttributeError):
                     pass
 

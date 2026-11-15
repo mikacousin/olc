@@ -152,10 +152,8 @@ def test_universe_blackout_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     mock_engine = MagicMock()
-    mock_universe = MagicMock()
     initial_frame = np.full(512, 120, dtype=np.uint8)
-    mock_universe.snapshot.return_value = initial_frame.copy()
-    mock_engine.universe.return_value = mock_universe
+    mock_engine.snapshot_universe.return_value = initial_frame.copy()
     app.engine = mock_engine
 
     blackout_events: list[int] = []
@@ -167,19 +165,22 @@ def test_universe_blackout_and_undo_redo() -> None:
 
     # Execute blackout on universe 2
     app.action_registry.execute("universe.blackout", 2)
-    mock_engine.universe.assert_called_with(2)
-    mock_universe.blackout.assert_called_once()
+    mock_engine.snapshot_universe.assert_called_with(2)
+    mock_engine.blackout.assert_called_once_with(2)
     assert blackout_events == [2]
 
     # Undo blackout -> should restore initial frame
     app.history.undo()
-    mock_universe.apply_array.assert_called_once()
-    assert np.array_equal(mock_universe.apply_array.call_args[0][0], initial_frame)
+    mock_engine.apply_universe_frame.assert_called_once()
+    assert mock_engine.apply_universe_frame.call_args[0][0] == 2
+    assert np.array_equal(
+        mock_engine.apply_universe_frame.call_args[0][1], initial_frame
+    )
     assert blackout_events == [2, 2]
 
     # Redo blackout
     app.history.redo()
-    assert mock_universe.blackout.call_count == 2
+    assert mock_engine.blackout.call_count == 2
     assert blackout_events == [2, 2, 2]
 
 

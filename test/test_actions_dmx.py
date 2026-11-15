@@ -33,10 +33,8 @@ def test_universe_blackout_action_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     mock_engine = MagicMock()
-    mock_universe = MagicMock()
     initial_frame = np.full(512, 120, dtype=np.uint8)
-    mock_universe.snapshot.return_value = initial_frame.copy()
-    mock_engine.universe.return_value = mock_universe
+    mock_engine.snapshot_universe.return_value = initial_frame.copy()
     app.engine = mock_engine
 
     mock_backend = MagicMock()
@@ -48,19 +46,23 @@ def test_universe_blackout_action_and_undo_redo() -> None:
 
     # Execute blackout
     app.action_registry.execute("universe.blackout", 1)
-    mock_universe.blackout.assert_called_once()
+    mock_engine.blackout.assert_called_once_with(1)
     assert np.all(mock_backend.dmx.frame[0] == 0)
     assert blackout_events == [1]
 
     # Undo
     app.history.undo()
-    mock_universe.apply_array.assert_called_once()
+    mock_engine.apply_universe_frame.assert_called_once()
+    assert mock_engine.apply_universe_frame.call_args[0][0] == 1
+    assert np.array_equal(
+        mock_engine.apply_universe_frame.call_args[0][1], initial_frame
+    )
     assert np.all(mock_backend.dmx.frame[0] == 120)
     assert blackout_events == [1, 1]
 
     # Redo
     app.history.redo()
-    assert mock_universe.blackout.call_count == 2
+    assert mock_engine.blackout.call_count == 2
     assert np.all(mock_backend.dmx.frame[0] == 0)
     assert blackout_events == [1, 1, 1]
 
@@ -210,13 +212,7 @@ def test_dmx_blackout_all_action_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     mock_engine = MagicMock()
-    engine_universes: dict[int, MagicMock] = {}
-    for univ_id in UNIVERSES:
-        u_mock = MagicMock()
-        u_mock.snapshot.return_value = np.full(512, 75, dtype=np.uint8)
-        engine_universes[univ_id] = u_mock
-
-    mock_engine.universe.side_effect = lambda uid: engine_universes[uid]
+    mock_engine.snapshot_universe.return_value = np.full(512, 75, dtype=np.uint8)
     app.engine = mock_engine
 
     mock_backend = MagicMock()
@@ -233,16 +229,14 @@ def test_dmx_blackout_all_action_and_undo_redo() -> None:
 
     # Execute blackout_all
     app.action_registry.execute("dmx.blackout_all")
-    for u_mock in engine_universes.values():
-        u_mock.blackout.assert_called_once()
+    assert mock_engine.blackout.call_count == len(UNIVERSES)
     for frame in mock_backend.dmx.frame:
         assert np.all(frame == 0)
     assert blackout_all_events == [True]
 
     # Undo
     app.history.undo()
-    for u_mock in engine_universes.values():
-        u_mock.apply_array.assert_called_once()
+    assert mock_engine.apply_universe_frame.call_count == len(UNIVERSES)
     for frame in mock_backend.dmx.frame:
         assert np.all(frame == 75)
     assert blackout_all_events == [True, False]

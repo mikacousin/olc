@@ -22,3 +22,5 @@ pyproject.toml
 /.rtk
 /stubs
 /olc
+olc-bench-report.json
+olc-bench-report.md

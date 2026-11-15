@@ -58,6 +58,12 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             lambda state: self._run_idle(self._on_blackout_all_changed, state),
         )
         self.app.core.subscribe(
+            "dmx.outputs_changed",
+            lambda universe, outputs: self._run_idle(
+                self._on_dmx_outputs_changed, universe, outputs
+            ),
+        )
+        self.app.core.subscribe(
             "park.changed",
             lambda *_: self._run_idle(self._safe_refresh_dmx_outputs),
         )
@@ -225,6 +231,15 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         self._safe_refresh_dmx_outputs()
+        return False
+
+    def _on_dmx_outputs_changed(self, universe: int, outputs: list[int]) -> bool:
+        """Refresh DMX outputs widgets when Core DMX levels change."""
+        if self.app.tabs and self.app.tabs.tabs.get("dmx_outputs") is not None:
+            dmx_outputs = typing.cast(
+                "DMXOutputsTab", self.app.tabs.tabs["dmx_outputs"]
+            )
+            dmx_outputs.on_network_dmx_changed(universe, outputs)
         return False
 
     def _on_universe_config_updated(self, universe: int) -> bool:

@@ -245,21 +245,6 @@ class Application(Gtk.Application):
         if self.settings.get_boolean("osc"):
             self.core.action_registry.execute("osc.toggle", True)
 
-        def on_patch_empty_cb() -> None:
-            if self.core.backend:
-                self.core.backend.dmx.all_outputs_at_zero()
-
-        def on_unpatch_cb(index: int, output: int) -> None:
-            if self.core.backend:
-                self.core.backend.dmx.frame[index][output] = 0
-
-        self.core.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
-        self.core.lightshow.patch.on_unpatch_cb = on_unpatch_cb
-
-        if self.core.backend:
-            self.core.backend.dmx.add_notification_callback(
-                self.on_backend_notification
-            )
         # Activate olc
         self.activate()
         arguments = command_line.get_arguments()

@@ -19,7 +19,8 @@ import typing
 
 from olc.core.action import Action
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, UNIVERSES
+from olc.define import MAX_CHANNELS
+from olc.dmx import Dmx
 from olc.sequence import get_cue
 from olc.step import Step
 
@@ -374,15 +375,17 @@ def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
             if output is None or univ is None:
                 continue
             level = 0
-            if backend_dmx is not None and univ in UNIVERSES:
-                idx = UNIVERSES.index(univ)
+            if isinstance(backend_dmx, Dmx):
+                level = backend_dmx.get_output_level(univ, output)
+            elif backend_dmx is not None and univ in patch.universes:
+                idx = patch.universes.index(univ)
                 if idx < len(backend_dmx.frame):
                     dimmer_idx = output - 1
                     if 0 <= dimmer_idx < len(backend_dmx.frame[idx]):
                         level = int(backend_dmx.frame[idx][dimmer_idx])
             elif app.engine is not None:
                 try:
-                    level = int(app.engine.universe(univ).array[output - 1])
+                    level = app.engine.get_output_level(univ, output)
                 except (KeyError, IndexError, AttributeError):
                     pass
             channels[channel] = max(channels.get(channel, 0), level)

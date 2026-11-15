@@ -83,9 +83,6 @@ class DMXOutputsTab(Gtk.Box):
         scrolled.add(self.flowbox)
         self.pack_start(scrolled, True, True, 0)
 
-        # Register callback for network DMX updates
-        self.backend.dmx.add_output_callback(self.on_network_dmx_changed)
-
     def refresh(self) -> None:
         """Refresh display."""
         self.flowbox.queue_draw()
@@ -98,8 +95,7 @@ class DMXOutputsTab(Gtk.Box):
         """Compatibility no-op for passive visualizer."""
 
     def cleanup(self) -> None:
-        """Remove network DMX callbacks on tab destruction."""
-        self.backend.dmx.remove_output_callback(self.on_network_dmx_changed)
+        """Clean up resources on tab destruction."""
 
     def rebuild_outputs_ui(self) -> None:
         """Rebuild the output widgets in flowbox for all active universes."""

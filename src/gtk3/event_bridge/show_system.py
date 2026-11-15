@@ -139,6 +139,12 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda: self._run_idle(self._on_virtual_console_requested),
         )
         self.app.core.subscribe(
+            "backend.notification",
+            lambda title, body: self._run_idle(
+                self._on_backend_notification, title, body
+            ),
+        )
+        self.app.core.subscribe(
             "gui.fullscreen_toggle_requested",
             lambda: self._run_idle(self._on_fullscreen_toggle_requested),
         )
@@ -646,4 +652,9 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             self.app.virtual_console, "update_blackout_display"
         ):
             self.app.virtual_console.update_blackout_display()
+        return False
+
+    def _on_backend_notification(self, title: str, body: str) -> bool:
+        """Dispatch backend notification to GTK Application safely in UI thread."""
+        self.app.on_backend_notification(title, body)
         return False

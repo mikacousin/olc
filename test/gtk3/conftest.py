@@ -82,19 +82,6 @@ def app_gui_instance() -> Generator[Application, None, None]:
 
     app.core.start()
 
-    def on_patch_empty_cb() -> None:
-        if app.core.backend:
-            app.core.backend.dmx.all_outputs_at_zero()
-
-    def on_unpatch_cb(index: int, output: int) -> None:
-        if app.core.backend:
-            app.core.backend.dmx.frame[index][output] = 0
-
-    app.core.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
-    app.core.lightshow.patch.on_unpatch_cb = on_unpatch_cb
-    if app.core.backend:
-        app.core.backend.dmx.add_notification_callback(app.on_backend_notification)
-
     # Activate
     app.activate()
     process_events()

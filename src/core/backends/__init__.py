@@ -18,42 +18,34 @@ import typing
 from gettext import gettext as _
 from typing import Callable
 
-from olc.core.backends.artnet import ArtNetManager
-from olc.core.backends.sacn import SacnManager
 from olc.dmx import Dmx
 
 if typing.TYPE_CHECKING:
+    from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
     from olc.patch import DMXPatch
 
 
 # pylint: disable=too-few-public-methods
 class DMXBackend:
-    """Unified DMX Backend coordinating multiple active protocols from CoreEngine."""
+    """Unified DMX Backend coordinating notification dispatch from CoreEngine."""
 
     dmx: Dmx
     patch: DMXPatch
-    artnet: ArtNetManager | None
-    sacn: SacnManager | None
 
     def __init__(self, lightshow: LightShow) -> None:
         self.dmx = Dmx(typing.cast(typing.Any, self), lightshow)
         self.patch = lightshow.patch
-        self.artnet = None
-        self.sacn = None
-        if lightshow.app is not None:
-            self.artnet = getattr(lightshow.app.engine, "_artnet_manager", None)
-            self.sacn = getattr(lightshow.app.engine, "_sacn_manager", None)
+        self.bind_engine(lightshow.app.engine if lightshow.app is not None else None)
 
-        # Wire up callbacks on active managers
-        if self.artnet is not None:
-            self.artnet.notify = self.notify_artnet
-
-        if self.sacn is not None:
-            self.sacn.notify = self.notify_sacn
-
-        if lightshow.app is not None and hasattr(lightshow.app.engine, "notify_enttec"):
-            lightshow.app.engine.notify_enttec = self.notify_enttec
+    def bind_engine(self, engine: CoreEngine | None) -> None:
+        """Bind notification callbacks to the given CoreEngine instance."""
+        if engine is not None:
+            engine.set_notification_callbacks(
+                artnet=self.notify_artnet,
+                sacn=self.notify_sacn,
+                enttec=self.notify_enttec,
+            )
 
     def stop(self) -> None:
         """Stop backend"""
