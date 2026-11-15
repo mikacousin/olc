@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import gzip
 import json
 import pathlib
 from unittest.mock import MagicMock
@@ -423,42 +422,6 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_chaser.tracking_mode is True
     assert r_chaser.mib_enabled is False
     assert r_chaser.mib_fade_time == pytest.approx(1.5)
-
-
-def test_legacy_olc_file_without_devices_key(tmp_path: pathlib.Path) -> None:
-    """Test backward compatibility with legacy .olc files having only 'patch'."""
-    legacy_data = {
-        "application": "olc",
-        "version": "0.8.0",
-        "patch": {
-            "1": [{"output": 10, "universe": 1}],
-            "2": [{"output": 20, "universe": 1, "curve": 1}],
-        },
-        "sequences": {
-            "1": {
-                "label": "Main",
-                "steps": {"1": {"cue": 1.0, "time_in": 2.0, "time_out": 2.0}},
-                "cues": {"1.0": {"label": "Cue 1", "channels": {"1": 255}}},
-            }
-        },
-        "cues": {"1.0": {"label": "Cue 1", "channels": {"1": 255}}},
-    }
-    legacy_path = tmp_path / "legacy.olc"
-    with gzip.open(legacy_path, "wt", encoding="utf-8") as f:
-        json.dump(legacy_data, f)
-
-    settings = MagicMock()
-    app = CoreApplication(settings)
-    app.action_registry.execute("show.open", str(legacy_path))
-
-    assert app.lightshow.patch.get_output_info(1, 10) == (1, 0)
-    assert app.lightshow.patch.get_output_info(1, 20) == (2, 1)
-    dev1 = app.lightshow.patch.get_device(1)
-    assert dev1 is not None
-    assert dev1.address == 10
-    dev2 = app.lightshow.patch.get_device(2)
-    assert dev2 is not None
-    assert dev2.curve_id == 1
 
 
 def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:

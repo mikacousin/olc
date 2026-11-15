@@ -109,28 +109,6 @@ def test_get_curve_display_name_translated(monkeypatch: pytest.MonkeyPatch) -> N
     assert get_curve_display_name(limit) == "Limite à 50%"
 
 
-def test_legacy_curve_names_import() -> None:
-    lightshow = MagicMock()
-    curves_dict: dict = {}
-    lightshow.curves.curves = curves_dict
-    parsed = ParsedData(lightshow)
-    parsed.data = {
-        "curves": {
-            10: {
-                "type": "SegmentsCurve",
-                "points": [[0, 0], [255, 255]],
-                "label": "Segments",
-            },
-            11: {"type": "LimitCurve", "limit": 128, "label": "Limite à"},
-            12: {"type": "LimitCurve", "limit": 200, "label": "Custom Limit"},
-        }
-    }
-    parsed.import_curves()
-    assert curves_dict[10].name == "Segment"
-    assert curves_dict[11].name == "Limit"
-    assert curves_dict[12].name == "Custom Limit"
-
-
 def test_normalized_curves_import() -> None:
     lightshow = MagicMock()
     curves_dict: dict = {}

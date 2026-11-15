@@ -33,16 +33,6 @@ from olc.step import Step
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
 
-LEGACY_CURVE_NAMES: dict[str, str] = {
-    "Linéaire": "Linear",
-    "Racine carrée": "Square root",
-    "Limite à": "Limit",
-    "Limite": "Limit",
-    "Segments": "Segment",
-    "Interpolation": "Interpolate",
-    "Full à 1%": "Full at 1%",
-}
-
 
 class ParsedData:
     """To store imported information"""
@@ -153,7 +143,7 @@ class ParsedData:
             self.lightshow.curves.curves[curve_nb] = curve
             label = values.get("label")
             if label:
-                curve.name = LEGACY_CURVE_NAMES.get(label, label)
+                curve.name = label
 
     def import_fixture_definitions(self) -> None:
         """Import embedded fixture definitions into lightshow.fixture_library."""
@@ -164,28 +154,6 @@ class ParsedData:
             if isinstance(fdef_dict, dict):
                 fdef = FixtureDefinition.from_dict(fdef_dict)
                 self.lightshow.fixture_library.register(fdef)
-
-    def _sync_legacy_patch_with_devices(self) -> None:
-        """Synchronize per-output curves and extra outputs from legacy patch dict."""
-        if not self.data.get("patch"):
-            return
-        for channel, values in self.data["patch"].items():
-            ch_int = int(channel)
-            for out in values:
-                output = int(out["output"])
-                universe = int(out["universe"])
-                curve_nb = int(out.get("curve", 0))
-                dev = self.lightshow.patch.get_device(ch_int)
-                if dev is not None:
-                    existing_pairs = [(ch.address, ch.universe) for ch in dev.channels]
-                    if (output, universe) not in existing_pairs:
-                        self.lightshow.patch.add_output(
-                            ch_int, output, universe, curve_nb
-                        )
-                    elif curve_nb and dev.curve_id == 0:
-                        dev.set_curve_id(curve_nb)
-                else:
-                    self.lightshow.patch.add_output(ch_int, output, universe, curve_nb)
 
     def import_patch(self) -> None:
         """Import data patch and lighting devices."""
@@ -208,7 +176,6 @@ class ParsedData:
                     if fdef is not None and fdef.color_profile is not None:
                         device.color_profile = fdef.color_profile
                 self.lightshow.patch.restore_device(device)
-            self._sync_legacy_patch_with_devices()
             self.lightshow.patch.invalidate_cache()
             return
 
