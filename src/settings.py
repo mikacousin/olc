@@ -40,7 +40,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         self.settings = app.settings
         self.tabs = app.tabs
         self.midi = app.core.midi
-        self.backend = app.core.backend
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._last_artnet_state: list[list[str]] | None = None
@@ -506,12 +505,11 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         if not self.tabs or not self.tabs.tabs.get("settings"):
             return False
 
-        if not self.backend:
+        engine = self.app.core.engine if self.app is not None else None
+        if engine is None:
             return True
 
-        artnet = getattr(self.backend, "artnet", None)
-        if artnet is None:
-            return True
+        artnet = engine.artnet_manager
 
         grouped = {}
         self._collect_devices(

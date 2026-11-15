@@ -23,6 +23,7 @@ import numpy as np
 
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
+from olc.core.backends.artnet.protocol import ArtPollReply
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
@@ -410,6 +411,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         ]
         self._artnet_manager.listeners.universes = self._artnet_manager.universes
         self._artnet_manager.discovery.universes = self._artnet_manager.universes
+        self._artnet_manager.discovery.artpollreply = ArtPollReply(
+            self._artnet_manager.universes
+        )
         if Protocol.ARTNET in config.protocols:
             if uid not in self._artnet_manager.senders:
                 self._artnet_manager.senders[uid] = ArtNetSenderClass(
