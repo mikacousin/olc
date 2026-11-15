@@ -78,17 +78,7 @@ def app_gui_instance() -> Generator[Application, None, None]:
     app.register(None)
 
     # Initialize Engine and Backend (normally done in do_command_line)
-    from olc.core.engine import CoreEngine
-    from olc.core.universe_config import Protocol, UniverseMap
-    from olc.define import UNIVERSES
-
-    universe_map = UniverseMap(UNIVERSES)
-    for u in UNIVERSES:
-        universe_map.enable_protocol(u, Protocol.ARTNET)
-        universe_map.enable_protocol(u, Protocol.SACN)
-
-    app.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
-    app.core.engine = app.engine
+    app.engine = app.core.init_engine(monitor_port=5555, no_listen=True)
 
     app.core.start()
 

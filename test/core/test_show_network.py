@@ -48,6 +48,7 @@ def test_universes_serialization_deserialization() -> None:
 
     lightshow = MagicMock()
     lightshow.app = app
+    lightshow.universe_map = umap
 
     # Serialize
     file_mock = MagicMock(spec=Gio.File)
@@ -74,11 +75,11 @@ def test_universes_serialization_deserialization() -> None:
     imported.file_type = FileType.OLC
     imported.lightshow = lightshow
 
-    # Prepare new clean UniverseMap for target engine
+    # Prepare new clean UniverseMap on lightshow and mock engine
     target_umap = UniverseMap(5)
+    lightshow.universe_map = target_umap
     target_engine = MagicMock()
     target_engine.universe_map = target_umap
-    target_engine._map = target_umap
     app.engine = target_engine
 
     # Load serialized universes into parsed data
@@ -87,8 +88,8 @@ def test_universes_serialization_deserialization() -> None:
     # Import
     ImportFile._do_import_universes(imported)
 
-    # Verify reload_universe was called for the universes 1, 2, 3, 4
-    assert target_engine.reload_universe.call_count == 4
+    # Verify engine was synchronized with lightshow universe_map
+    target_engine.sync_universe_map.assert_called_once_with(target_umap)
 
     # Verify state was restored
     config1 = target_umap[1]
@@ -101,3 +102,47 @@ def test_universes_serialization_deserialization() -> None:
     assert Protocol.SACN in config2.protocols
     assert config2.sacn.priority == 150
     assert config2.sacn.sync_address == 42
+
+
+def test_universes_serialization_deserialization_without_engine() -> None:
+    """Verify OLC universe persistence works when app or engine is None."""
+    # pylint: disable=protected-access
+    from olc.core.lightshow import LightShow
+
+    source = LightShow(app=None)
+    source.universe_map[1].set_protocols({Protocol.ARTNET})
+    source.universe_map[1].artnet.net = 4
+    source.universe_map[1].artnet.sub = 2
+    source.universe_map[1].artnet.sync_active = True
+
+    source.universe_map.add_universe(5)
+    source.universe_map[5].set_protocols({Protocol.SACN})
+    source.universe_map[5].sacn.priority = 120
+    source.universe_map[5].sacn.sync_address = 15
+
+    file_mock = MagicMock(spec=Gio.File)
+    writer = OlcWriter(file_mock, source)
+    writer._universes()
+    serialized = writer.data["universes"]
+
+    target = LightShow(app=None)
+    target.universe_map = UniverseMap(5)
+
+    parser_data = MagicMock()
+    parser_data.data = {"universes": serialized}
+    imported = MagicMock(spec=ImportFile)
+    imported.data = parser_data
+    imported.file_type = FileType.OLC
+    imported.lightshow = target
+
+    ImportFile._do_import_universes(imported)
+
+    assert Protocol.ARTNET in target.universe_map[1].protocols
+    assert target.universe_map[1].artnet.net == 4
+    assert target.universe_map[1].artnet.sub == 2
+    assert target.universe_map[1].artnet.sync_active is True
+    assert 5 in target.universe_map
+    assert 5 in target.patch.universes
+    assert Protocol.SACN in target.universe_map[5].protocols
+    assert target.universe_map[5].sacn.priority == 120
+    assert target.universe_map[5].sacn.sync_address == 15

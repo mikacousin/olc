@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 
 from olc.core.app import CoreApplication
+from olc.core.universe_config import UniverseMap
 from olc.define import UNIVERSES
 from olc.patch import DMXPatch
 
@@ -258,8 +259,12 @@ def test_universe_add_action_and_undo_redo() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
+    umap = UniverseMap([1, 2])
+    app.lightshow.universe_map = umap
+    app.lightshow.patch.universes = [1, 2]
+
     mock_engine = MagicMock()
-    mock_engine.universe_map = {1: MagicMock(), 2: MagicMock()}
+    mock_engine.universe_map = umap
     app.engine = mock_engine
 
     mock_backend = MagicMock()
@@ -273,6 +278,7 @@ def test_universe_add_action_and_undo_redo() -> None:
 
     # Execute adding universe 3
     app.action_registry.execute("universe.add", 3)
+    assert 3 in app.lightshow.universe_map
     mock_engine.add_universe.assert_called_once_with(3, None)
     mock_backend.dmx.patch.add_universe.assert_called_once_with(3)
     mock_backend.dmx.add_universe.assert_called_once_with(3)
@@ -280,6 +286,7 @@ def test_universe_add_action_and_undo_redo() -> None:
 
     # Undo
     app.history.undo()
+    assert 3 not in app.lightshow.universe_map
     mock_backend.dmx.remove_universe.assert_called_once()
     mock_backend.dmx.patch.remove_universe.assert_called_once_with(3)
     mock_engine.remove_universe.assert_called_once_with(3)
@@ -287,6 +294,7 @@ def test_universe_add_action_and_undo_redo() -> None:
 
     # Redo
     app.history.redo()
+    assert 3 in app.lightshow.universe_map
     assert mock_engine.add_universe.call_count == 2
     assert added_events == [3, 3]
 
@@ -296,8 +304,9 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
+    umap = UniverseMap([1, 2])
     mock_engine = MagicMock()
-    mock_engine.universe_map = {1: MagicMock(), 2: MagicMock()}
+    mock_engine.universe_map = umap
     app.engine = mock_engine
 
     patch = DMXPatch()
@@ -308,6 +317,7 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
 
     lightshow = MagicMock()
     lightshow.patch = patch
+    lightshow.universe_map = umap
     app.lightshow = lightshow
 
     mock_backend = MagicMock()
@@ -321,6 +331,7 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
 
     # Remove universe 2
     app.action_registry.execute("universe.remove", 2)
+    assert 2 not in lightshow.universe_map
     mock_engine.remove_universe.assert_called_once_with(2)
     assert 2 not in patch.universes
     assert 2 not in patch.outputs
@@ -328,6 +339,7 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
 
     # Undo
     app.history.undo()
+    assert 2 in lightshow.universe_map
     assert 2 in patch.universes
     assert 2 in patch.outputs
     assert patch.outputs[2][5] == [10, 2]
@@ -335,10 +347,13 @@ def test_universe_remove_action_and_undo_redo_with_patch() -> None:
 
     # Redo
     app.history.redo()
+    assert 2 not in lightshow.universe_map
     assert 2 not in patch.universes
     assert removed_events == [2, 2]
 
     # Removing the last remaining universe should raise ValueError
-    mock_engine.universe_map = {1: MagicMock()}
+    lightshow.universe_map = UniverseMap([1])
+    patch.universes = [1]
+    mock_engine.universe_map = lightshow.universe_map
     with pytest.raises(ValueError, match="Cannot remove the last universe"):
         app.action_registry.execute("universe.remove", 1)

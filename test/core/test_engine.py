@@ -402,3 +402,26 @@ class TestCoreEngineNoListen:
         # Universe array should remain untouched (all zeros)
         assert np.all(engine.universe(1).array == 0)
         assert np.all(engine.universe(2).array == 0)
+
+    def test_sync_universe_map_adds_removes_and_reloads(self) -> None:
+        """sync_universe_map() reconciles runtime slots and protocol maps."""
+        umap1 = UniverseMap([1, 2])
+        umap1.enable_protocol(1, Protocol.ARTNET)
+        engine = CoreEngine(umap1, no_listen=True, no_transmit=True)
+        try:
+            assert set(engine._slots.keys()) == {1, 2}
+
+            umap2 = UniverseMap([2, 5])
+            umap2.enable_protocol(2, Protocol.SACN)
+            umap2.enable_protocol(5, Protocol.ARTNET)
+
+            engine.sync_universe_map(umap2)
+
+            assert engine.universe_map is umap2
+            assert engine.sacn_manager.universe_map is umap2
+            assert set(engine._slots.keys()) == {2, 5}
+            assert 1 not in engine._slots
+            assert 2 in engine.sacn_manager.universes
+            assert 5 in engine._artnet_manager.universes
+        finally:
+            engine.stop()

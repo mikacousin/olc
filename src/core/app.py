@@ -165,6 +165,45 @@ class CoreApplication(EventDispatcher):
         """Register all concrete actions from the actions package."""
         register_all_actions(self.action_registry)
 
+    def init_engine(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        hz: float = 44.0,
+        monitor_port: int | None = None,
+        monitor_fps: float = 15.0,
+        no_listen: bool = False,
+        loopback: bool = False,
+        no_transmit: bool = False,
+    ) -> CoreEngine:
+        """Create the CoreEngine bound to the lightshow UniverseMap.
+
+        Args:
+            hz: Output refresh frequency in Hz.
+            monitor_port: Optional ZMQ PUB port for DMX monitoring.
+            monitor_fps: Monitor update rate in FPS.
+            no_listen: Disable incoming network listeners if True.
+            loopback: Force loopback IP for network output if True.
+            no_transmit: Disable actual network/hardware transmission if True.
+
+        Returns:
+            The CoreEngine instance attached to this application.
+        """
+        if self.engine is not None:
+            return self.engine
+
+        # pylint: disable=import-outside-toplevel
+        from olc.core.engine import CoreEngine
+
+        self.engine = CoreEngine(
+            self.lightshow.universe_map,
+            hz=hz,
+            monitor_port=monitor_port,
+            monitor_fps=monitor_fps,
+            no_listen=no_listen,
+            loopback=loopback,
+            no_transmit=no_transmit,
+        )
+        return self.engine
+
     def init_midi(
         self, on_ports_changed: typing.Optional[typing.Callable[[], None]] = None
     ) -> Midi:

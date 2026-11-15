@@ -53,9 +53,11 @@ def _create_headless_app() -> tuple[CoreApplication, MagicMock]:
     mock_backend.dmx = mock_dmx
     core_app.backend = mock_backend
 
-    # Attach mock engine
+    # Attach UniverseMap on lightshow and mock engine
+    umap = UniverseMap(8)
+    core_app.lightshow.universe_map = umap
     mock_engine = MagicMock()
-    mock_engine.universe_map = UniverseMap(8)
+    mock_engine.universe_map = umap
     core_app.engine = mock_engine
 
     return core_app, mock_backend

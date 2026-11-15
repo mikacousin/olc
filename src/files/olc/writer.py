@@ -272,13 +272,12 @@ class OlcWriter(WriteFile):
             self.data["midi_mapping"] = Midi.to_dict(self.midi)
 
     def _universes(self) -> None:
-        app = self.lightshow.app
-        if app is None or app.engine is None:
+        universe_map = getattr(self.lightshow, "universe_map", None)
+        if universe_map is None:
             return
 
         self.data["universes"] = {}
-        engine = app.engine
-        for config in engine.universe_map:
+        for config in universe_map:
             u = config.universe_id
             # We only serialize configured universes (like 1 to 4)
             if u == 0:

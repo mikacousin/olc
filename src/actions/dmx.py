@@ -30,16 +30,19 @@ if typing.TYPE_CHECKING:
 
 
 def _get_active_universes(app: CoreApplication) -> list[int]:
-    """Return active universe IDs from engine, patch, or backend."""
-    if app.engine is not None and hasattr(app.engine, "universe_map"):
-        umap = getattr(app.engine, "universe_map", None)
+    """Return active universe IDs from lightshow universe_map, patch, or backend."""
+    if hasattr(app, "lightshow") and app.lightshow is not None:
+        umap = getattr(app.lightshow, "universe_map", None)
         if isinstance(umap, dict):
             return list(umap.keys())
-        if hasattr(umap, "keys") and not hasattr(umap, "_mock_return_value"):
+        if (
+            umap is not None
+            and hasattr(umap, "keys")
+            and not hasattr(umap, "_mock_return_value")
+        ):
             keys = list(umap.keys())
             if keys:
                 return keys
-    if hasattr(app, "lightshow") and app.lightshow is not None:
         patch = getattr(app.lightshow, "patch", None)
         if patch is not None and isinstance(getattr(patch, "universes", None), list):
             return list(patch.universes)
@@ -464,14 +467,11 @@ class UniverseSetProtocolAction(Action):
 
     def execute(self) -> None:
         """Enable or disable the protocol on the universe."""
-        engine = getattr(self.app, "engine", None)
-        if engine is None:
-            raise RuntimeError("Engine is not available")
-
-        if self.universe not in engine.universe_map:
+        universe_map = self.app.lightshow.universe_map
+        if self.universe not in universe_map:
             raise ValueError(f"Universe {self.universe} not found")
 
-        config = engine.universe_map[self.universe]
+        config = universe_map[self.universe]
         self.old_enabled = self.protocol in config.protocols
 
         if self.enabled:
@@ -479,9 +479,9 @@ class UniverseSetProtocolAction(Action):
         else:
             config.disable(self.protocol)
 
-        engine.reload_universe(self.universe)
-        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
-            self.app.lightshow.set_modified()
+        if self.app.engine is not None:
+            self.app.engine.reload_universe(self.universe)
+        self.app.lightshow.set_modified()
 
         self.app.emit(
             "universe.protocol_changed",
@@ -492,19 +492,19 @@ class UniverseSetProtocolAction(Action):
 
     def undo(self) -> None:
         """Restore previous protocol enable/disable state."""
-        engine = getattr(self.app, "engine", None)
-        if engine is None or self.universe not in engine.universe_map:
+        universe_map = self.app.lightshow.universe_map
+        if self.universe not in universe_map:
             return
 
-        config = engine.universe_map[self.universe]
+        config = universe_map[self.universe]
         if self.old_enabled:
             config.enable(self.protocol)
         else:
             config.disable(self.protocol)
 
-        engine.reload_universe(self.universe)
-        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
-            self.app.lightshow.set_modified()
+        if self.app.engine is not None:
+            self.app.engine.reload_universe(self.universe)
+        self.app.lightshow.set_modified()
 
         self.app.emit(
             "universe.protocol_changed",
@@ -550,35 +550,32 @@ class UniverseSetConfigAction(Action):
 
     def execute(self) -> None:
         """Apply configured parameters to the universe."""
-        engine = getattr(self.app, "engine", None)
-        if engine is None:
-            raise RuntimeError("Engine is not available")
-
-        if self.universe not in engine.universe_map:
+        universe_map = self.app.lightshow.universe_map
+        if self.universe not in universe_map:
             raise ValueError(f"Universe {self.universe} not found")
 
-        config = engine.universe_map[self.universe]
+        config = universe_map[self.universe]
         self.old_settings = {}
         self._apply_dict(config, self.settings, self.old_settings)
 
-        engine.reload_universe(self.universe)
-        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
-            self.app.lightshow.set_modified()
+        if self.app.engine is not None:
+            self.app.engine.reload_universe(self.universe)
+        self.app.lightshow.set_modified()
 
         self.app.emit("universe.config_changed", self.universe, dict(self.settings))
 
     def undo(self) -> None:
         """Restore previous configuration parameters."""
-        engine = getattr(self.app, "engine", None)
-        if engine is None or self.universe not in engine.universe_map:
+        universe_map = self.app.lightshow.universe_map
+        if self.universe not in universe_map:
             return
 
-        config = engine.universe_map[self.universe]
+        config = universe_map[self.universe]
         self._apply_dict(config, self.old_settings, {})
 
-        engine.reload_universe(self.universe)
-        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
-            self.app.lightshow.set_modified()
+        if self.app.engine is not None:
+            self.app.engine.reload_universe(self.universe)
+        self.app.lightshow.set_modified()
 
         self.app.emit("universe.config_changed", self.universe, dict(self.old_settings))
 
@@ -629,10 +626,11 @@ class UniverseSetConfigAction(Action):
 def _snapshot_universe_config(
     app: CoreApplication, universe: int
 ) -> UniverseConfig | None:
-    """Return a deep copy of the universe configuration from engine if present."""
-    if app.engine is not None and hasattr(app.engine, "universe_map"):
-        if universe in app.engine.universe_map:
-            return copy.deepcopy(app.engine.universe_map[universe])
+    """Return a deep copy of the universe configuration from lightshow if present."""
+    lightshow = getattr(app, "lightshow", None)
+    universe_map = getattr(lightshow, "universe_map", None)
+    if universe_map is not None and universe in universe_map:
+        return copy.deepcopy(universe_map[universe])
     return None
 
 
@@ -670,10 +668,14 @@ class UniverseAddAction(Action):
         self.config = config
 
     def execute(self) -> None:
-        """Add the universe to Engine, Patch and Dmx."""
+        """Add the universe to LightShow, Engine, Patch and Dmx."""
+        universe_map = getattr(self.app.lightshow, "universe_map", None)
+        if universe_map is not None:
+            if self.universe in universe_map:
+                raise ValueError(f"Universe {self.universe} already exists")
+            universe_map.add_universe(self.universe, self.config)
+
         if self.app.engine is not None:
-            if self.universe in self.app.engine.universe_map:
-                raise ValueError(f"Universe {self.universe} already exists in engine")
             self.app.engine.add_universe(self.universe, self.config)
 
         for p in _get_patches(self.app):
@@ -703,8 +705,12 @@ class UniverseAddAction(Action):
         if backend is not None and getattr(backend, "dmx", None) is not None:
             backend.dmx.remove_universe(self.universe, index=idx)
 
+        self.saved_config = _snapshot_universe_config(self.app, self.universe)
+        universe_map = getattr(self.app.lightshow, "universe_map", None)
+        if universe_map is not None and self.universe in universe_map:
+            universe_map.remove_universe(self.universe)
+
         if self.app.engine is not None:
-            self.saved_config = _snapshot_universe_config(self.app, self.universe)
             self.app.engine.remove_universe(self.universe)
 
         if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
@@ -715,6 +721,10 @@ class UniverseAddAction(Action):
     def redo(self) -> None:
         """Redo universe addition."""
         cfg = self.saved_config or self.config
+        universe_map = getattr(self.app.lightshow, "universe_map", None)
+        if universe_map is not None:
+            universe_map.add_universe(self.universe, cfg)
+
         if self.app.engine is not None:
             self.app.engine.add_universe(self.universe, cfg)
 
@@ -755,7 +765,7 @@ class UniverseRemoveAction(Action):
         self.universe = universe
 
     def execute(self) -> None:
-        """Remove the universe from Engine, Patch and Dmx."""
+        """Remove the universe from LightShow, Engine, Patch and Dmx."""
         existing = _get_active_universes(self.app)
         if len(existing) <= 1:
             raise ValueError(
@@ -779,6 +789,10 @@ class UniverseRemoveAction(Action):
         if backend is not None and getattr(backend, "dmx", None) is not None:
             backend.dmx.remove_universe(self.universe, index=idx)
 
+        universe_map = getattr(self.app.lightshow, "universe_map", None)
+        if universe_map is not None and self.universe in universe_map:
+            universe_map.remove_universe(self.universe)
+
         if self.app.engine is not None:
             self.app.engine.remove_universe(self.universe)
 
@@ -789,6 +803,10 @@ class UniverseRemoveAction(Action):
 
     def undo(self) -> None:
         """Undo universe removal by re-adding it and restoring unpatched outputs."""
+        universe_map = getattr(self.app.lightshow, "universe_map", None)
+        if universe_map is not None:
+            universe_map.add_universe(self.universe, self.saved_config)
+
         if self.app.engine is not None:
             self.app.engine.add_universe(self.universe, self.saved_config)
 

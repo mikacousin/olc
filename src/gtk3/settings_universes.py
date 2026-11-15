@@ -29,6 +29,7 @@ from olc.core.universe_config import Protocol
 from olc.define import DEFAULT_UNIVERSES
 
 if typing.TYPE_CHECKING:
+    from olc.core.universe_config import UniverseMap
     from olc.gtk3.application import Application
 
 
@@ -76,14 +77,20 @@ class UniversesSettingsMixin:
 
         return serial_ports
 
+    def _get_universe_map(self) -> UniverseMap | None:
+        """Return the active UniverseMap from lightshow."""
+        core = getattr(self.app, "core", self.app)
+        lightshow = getattr(core, "lightshow", None)
+        return getattr(lightshow, "universe_map", None)
+
     def update_universe_ui(self, universe: int) -> None:
-        """Update widgets for given universe from core/engine state."""
+        """Update widgets for given universe from lightshow state."""
         if universe not in self.universe_widgets:
             return
-        engine = getattr(self.app, "engine", None)
-        if engine is None or universe not in engine.universe_map:
+        umap = self._get_universe_map()
+        if umap is None or universe not in umap:
             return
-        config = engine.universe_map[universe]
+        config = umap[universe]
         widgets = self.universe_widgets[universe]
 
         self._updating_settings = True
@@ -121,14 +128,13 @@ class UniversesSettingsMixin:
 
     def _get_active_universes(self) -> list[int]:
         """Get list of active universe IDs."""
-        core = getattr(self.app, "core", None)
+        core = getattr(self.app, "core", self.app)
         lightshow = getattr(core, "lightshow", None)
         patch = getattr(lightshow, "patch", None)
         if patch is not None and hasattr(patch, "universes"):
             return list(patch.universes)
-        engine = getattr(self.app, "engine", None)
-        if engine is not None and hasattr(engine, "universe_map"):
-            umap = engine.universe_map
+        umap = self._get_universe_map()
+        if umap is not None:
             if hasattr(umap, "keys"):
                 return list(umap.keys())
             return [univ.universe_id for univ in umap]
@@ -202,11 +208,6 @@ class UniversesSettingsMixin:
         if response == Gtk.ResponseType.OK and chosen not in active:
             if self.app.core is not None and hasattr(self.app.core, "action_registry"):
                 self.app.core.action_registry.execute("universe.add", universe=chosen)
-            else:
-                engine = getattr(self.app, "engine", None)
-                if engine is not None:
-                    engine.add_universe(chosen)
-                self.add_universe_ui(chosen)
 
     def _on_remove_universe_clicked(self, _widget: Gtk.Widget, universe: int) -> None:
         """Handle Remove Universe button click."""
@@ -244,11 +245,6 @@ class UniversesSettingsMixin:
 
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("universe.remove", universe=universe)
-        else:
-            engine = getattr(self.app, "engine", None)
-            if engine is not None:
-                engine.remove_universe(universe)
-            self.remove_universe_ui(universe)
 
     def add_universe_ui(self, universe: int) -> None:
         """Add universe frame to UI."""
@@ -282,7 +278,6 @@ class UniversesSettingsMixin:
     # pylint: disable=too-many-locals,too-many-statements
     def _create_universe_frame(self, u: int) -> Gtk.Frame:
         """Create configuration frame widget for a specific universe."""
-        engine = getattr(self.app, "engine", None)
         frame = Gtk.Frame()
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -307,7 +302,7 @@ class UniversesSettingsMixin:
         frame_box.set_margin_bottom(10)
         frame.add(frame_box)
 
-        umap = getattr(engine, "universe_map", None)
+        umap = self._get_universe_map()
         config = None
         if umap is not None:
             if hasattr(umap, "get"):
@@ -611,13 +606,13 @@ class UniversesSettingsMixin:
         if getattr(self, "_updating_settings", False):
             return
 
-        engine = getattr(self.app, "engine", None)
-        if engine is None:
+        umap = self._get_universe_map()
+        if umap is None or universe not in umap:
             return
 
         self._updating_settings = True
         try:
-            config = engine.universe_map[universe]
+            config = umap[universe]
             widgets = self.universe_widgets[universe]
 
             # 1. Update protocols
@@ -742,19 +737,6 @@ class UniversesSettingsMixin:
                     universe=universe,
                     settings=settings_dict,
                 )
-            else:
-                config.set_protocols(protocols)
-                config.artnet.net = settings_dict["artnet_net"]
-                config.artnet.sub = settings_dict["artnet_sub"]
-                config.artnet.sync_active = settings_dict["artnet_sync_active"]
-                config.sacn.priority = settings_dict["sacn_priority"]
-                config.sacn.sync_address = settings_dict["sacn_sync_address"]
-                config.dmx_usb_pro.port = settings_dict["dmx_usb_pro_port"]
-                config.dmx_usb_pro.port_index = settings_dict["dmx_usb_pro_port_index"]
-                config.dmx_usb_pro.model = settings_dict["dmx_usb_pro_model"]
-                engine.reload_universe(universe)
-                if self.app is not None:
-                    self.app.core.lightshow.set_modified()
         finally:
             self._updating_settings = False
 

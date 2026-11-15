@@ -18,6 +18,7 @@ import os
 import typing
 
 from olc.core.park import ParkManager
+from olc.core.universe_config import UniverseMap, default_universe_map
 from olc.cue import Cues
 from olc.curve import Curves
 from olc.define import DEFAULT_UNIVERSES
@@ -98,6 +99,7 @@ class LightShow(ShowFile):
     independents: Independents
     patch: DMXPatch
     park: ParkManager
+    universe_map: UniverseMap
     workspace: dict[str, typing.Any]
 
     def __init__(self, app: CoreApplication | None = None) -> None:
@@ -125,6 +127,8 @@ class LightShow(ShowFile):
         self.patch = DMXPatch(list(DEFAULT_UNIVERSES), lightshow=lightshow_type)
         # Park
         self.park = ParkManager()
+        # Universe configurations
+        self.universe_map = default_universe_map()
 
     def get_cue(self, number: float) -> None | Cue:
         """Get Cue with his number
@@ -178,3 +182,4 @@ class LightShow(ShowFile):
         self.fader_bank.reset_faders()
         self.independents = Independents(lightshow_type)
         self.patch.patch_empty()
+        self.universe_map = default_universe_map()

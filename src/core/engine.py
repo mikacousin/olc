@@ -481,11 +481,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if uid in self._slots:
                 return self._slots[uid].universe
 
-            if uid not in self._map:
-                cfg = self._map.add_universe(uid) if config is None else config
-                if config is not None and uid not in self._map:
-                    self._map.add_universe(uid)
-                    self._map._universes[uid] = config  # pylint: disable=protected-access
+            if config is not None or uid not in self._map:
+                cfg = self._map.add_universe(uid, config)
             else:
                 cfg = self._map[uid]
 
@@ -527,12 +524,11 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
             self.blackout(uid)
             if uid in self._map:
-                cfg = self._map[uid]
-                cfg.disable_all()
-                self._reload_artnet(uid, cfg)
-                self._reload_sacn(uid, cfg)
-                self._reload_dmx_usb_pro(uid, cfg)
                 self._map.remove_universe(uid)
+            empty_cfg = UniverseConfig(uid)
+            self._reload_artnet(uid, empty_cfg)
+            self._reload_sacn(uid, empty_cfg)
+            self._reload_dmx_usb_pro(uid, empty_cfg)
 
             del self._slots[uid]
 
@@ -547,6 +543,23 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 meta_bytes = json.dumps(metadata).encode("utf-8")
                 topic = f"universe:{uid}".encode("ascii")
                 self._zmq_pub.send_multipart([topic, meta_bytes, b""])
+
+    def sync_universe_map(self, universe_map: UniverseMap) -> None:
+        """Synchronize runtime slots and protocol managers with a UniverseMap."""
+        with self._lock:
+            self._map = universe_map
+            self._sacn_manager.universe_map = universe_map
+            current_uids = set(self._slots.keys())
+            target_uids = set(universe_map.keys())
+
+            for uid in current_uids - target_uids:
+                self.remove_universe(uid)
+
+            for uid in target_uids - current_uids:
+                self.add_universe(uid, universe_map[uid])
+
+            for uid in current_uids & target_uids:
+                self.reload_universe(uid)
 
     def blackout(self, uid: int) -> None:
         """Zero all channels of a universe immediately."""

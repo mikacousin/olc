@@ -27,11 +27,13 @@ from olc.settings import SettingsTab
 
 
 def _create_app_with_universe_map() -> tuple[CoreApplication, MagicMock]:
-    """Helper to instantiate CoreApplication with a mock engine holding UniverseMap."""
+    """Instantiate CoreApplication with LightShow UniverseMap and mock engine."""
     settings = MagicMock()
     app = CoreApplication(settings)
+    umap = UniverseMap(8)
+    app.lightshow.universe_map = umap
     mock_engine = MagicMock()
-    mock_engine.universe_map = UniverseMap(8)
+    mock_engine.universe_map = umap
     app.engine = mock_engine
     return app, mock_engine
 
@@ -247,16 +249,16 @@ def test_settings_tab_update_universe_ui() -> None:
     tab = SettingsTab.__new__(SettingsTab)
     tab._updating_settings = False
 
-    mock_engine = MagicMock()
-    mock_engine.universe_map = UniverseMap(8)
-    u1 = mock_engine.universe_map[1]
+    umap = UniverseMap(8)
+    u1 = umap[1]
     u1.enable(Protocol.ARTNET)
     u1.artnet.net = 3
     u1.artnet.sub = 7
     u1.artnet.sync_active = True
 
     tab.app = MagicMock()
-    tab.app.engine = mock_engine
+    tab.app.core.lightshow.universe_map = umap
+    tab.app.engine = None
 
     widgets = {
         "artnet_check": MagicMock(),
@@ -334,3 +336,89 @@ def test_settings_tab_delete_buttons_sensitivity() -> None:
     tab._update_delete_buttons_sensitivity()
     btn1.set_sensitive.assert_called_with(False)
     btn2.set_sensitive.assert_called_with(False)
+
+
+def test_universe_actions_without_engine() -> None:
+    """Test universe actions execute/undo/redo cleanly when app.engine is None."""
+    app = CoreApplication(MagicMock())
+    assert app.engine is None
+
+    # Disable Art-Net on universe 1, then undo and redo
+    assert Protocol.ARTNET in app.lightshow.universe_map[1].protocols
+    app.action_registry.execute("universe.set_protocol", 1, Protocol.ARTNET, False)
+    assert Protocol.ARTNET not in app.lightshow.universe_map[1].protocols
+    app.history.undo()
+    assert Protocol.ARTNET in app.lightshow.universe_map[1].protocols
+    app.history.redo()
+    assert Protocol.ARTNET not in app.lightshow.universe_map[1].protocols
+
+    # Update universe config without engine
+    app.action_registry.execute(
+        "universe.set_config", 1, artnet_net=4, sacn_priority=150
+    )
+    assert app.lightshow.universe_map[1].artnet.net == 4
+    assert app.lightshow.universe_map[1].sacn.priority == 150
+    app.history.undo()
+    assert app.lightshow.universe_map[1].artnet.net == 0
+    assert app.lightshow.universe_map[1].sacn.priority == 100
+
+    # Add and remove universe without engine
+    app.action_registry.execute("universe.add", 5)
+    assert 5 in app.lightshow.universe_map
+    assert 5 in app.lightshow.patch.universes
+    app.history.undo()
+    assert 5 not in app.lightshow.universe_map
+    app.history.redo()
+    assert 5 in app.lightshow.universe_map
+
+    app.action_registry.execute("universe.remove", 5)
+    assert 5 not in app.lightshow.universe_map
+    app.history.undo()
+    assert 5 in app.lightshow.universe_map
+
+
+def test_show_new_and_init_engine_universe_map() -> None:
+    """Test init_engine sharing and show.new resetting universe_map."""
+    app = CoreApplication(MagicMock())
+    engine = app.init_engine(no_listen=True, no_transmit=True)
+    try:
+        assert app.engine is engine
+        assert engine.universe_map is app.lightshow.universe_map
+
+        app.action_registry.execute("universe.add", 7)
+        app.action_registry.execute("universe.set_config", 1, artnet_net=5)
+        assert 7 in engine.universe_map
+        assert engine.universe_map[1].artnet.net == 5
+
+        app.action_registry.execute("show.new")
+        assert 7 not in app.lightshow.universe_map
+        assert app.lightshow.universe_map[1].artnet.net == 0
+        assert engine.universe_map is app.lightshow.universe_map
+        assert engine.universe_map[1].artnet.net == 0
+    finally:
+        engine.stop()
+
+
+def test_show_import_snapshot_restores_universe_map() -> None:
+    """Test ShowImportAction snapshot captures and restores universe_map."""
+    from olc.actions.show import ShowImportAction
+
+    app = CoreApplication(MagicMock())
+    app.lightshow.universe_map[1].artnet.net = 6
+    app.lightshow.universe_map.add_universe(9)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    action = ShowImportAction(app)
+    snapshot = action._take_snapshot()  # pylint: disable=protected-access
+
+    # Mutate universe_map as an import would
+    app.lightshow.universe_map[1].artnet.net = 1
+    app.lightshow.universe_map.remove_universe(9)
+
+    action._snapshot = snapshot  # pylint: disable=protected-access
+    action._restore_snapshot()  # pylint: disable=protected-access
+
+    assert app.lightshow.universe_map[1].artnet.net == 6
+    assert 9 in app.lightshow.universe_map
+    mock_engine.sync_universe_map.assert_called_once_with(app.lightshow.universe_map)

@@ -32,8 +32,6 @@ from olc.core.backends import DMXBackend  # noqa: E402
 from olc.core.backends.midi import Midi  # noqa: E402
 from olc.core.backends.osc import Osc  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
-from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
-from olc.define import UNIVERSES  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_dialog import DialogData  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
@@ -260,14 +258,7 @@ class Application(Gtk.Application):
                         self.core.action_registry.execute("show.open", path)
             return False
 
-        # Set up UniverseMap for CoreEngine
-        universe_map = UniverseMap(UNIVERSES)
-        for u in UNIVERSES:
-            universe_map.enable_protocol(u, Protocol.ARTNET)
-            universe_map.enable_protocol(u, Protocol.SACN)
-
-        self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
-        self.core.engine = self.engine
+        self.engine = self.core.init_engine(monitor_port=5555, no_listen=True)
 
         self.core.start()
 

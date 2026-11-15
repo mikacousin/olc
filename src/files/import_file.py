@@ -37,15 +37,15 @@ if typing.TYPE_CHECKING:
 
     import olc.files.import_file
     from olc.core.backends.midi import Midi
-    from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
+    from olc.core.universe_config import UniverseMap
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
 
 
-def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:
+def _import_single_universe(u: int, val: dict, universe_map: UniverseMap) -> None:
     """Helper to import configuration for a single universe."""
-    config = engine.universe_map[u]
+    config = universe_map[u]
     protocols_set = set()
     for p_name in val.get("protocols", []):
         if p_name == "ARTNET":
@@ -72,9 +72,6 @@ def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:
         config.dmx_usb_pro.port = dmx_usb_pro_val.get("port", "Auto-detect")
         config.dmx_usb_pro.port_index = dmx_usb_pro_val.get("port_index", 1)
         config.dmx_usb_pro.model = dmx_usb_pro_val.get("model", "Auto-detect")
-
-    # Hot-reload sender registry for this universe
-    engine.reload_universe(u)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -287,11 +284,10 @@ class ImportFile:
         if not universes_data:
             return
 
+        universe_map = getattr(self.lightshow, "universe_map", None)
         app = self.lightshow.app
-        if app is None:
-            return
-        engine = app.engine
-        backend = getattr(app, "backend", None)
+        engine = getattr(app, "engine", None) if app is not None else None
+        backend = getattr(app, "backend", None) if app is not None else None
 
         for u_str, val in universes_data.items():
             try:
@@ -299,8 +295,10 @@ class ImportFile:
             except ValueError:
                 continue
 
-            if engine is not None and u not in engine.universe_map:
-                engine.add_universe(u)
+            if universe_map is not None:
+                if u not in universe_map:
+                    universe_map.add_universe(u)
+                _import_single_universe(u, val, universe_map)
 
             if u not in self.lightshow.patch.universes:
                 self.lightshow.patch.add_universe(u)
@@ -310,8 +308,8 @@ class ImportFile:
                     backend.dmx.patch.add_universe(u)
                 backend.dmx.add_universe(u)
 
-            if engine is not None:
-                _import_single_universe(u, val, engine)
+        if engine is not None and universe_map is not None:
+            engine.sync_universe_map(universe_map)
 
     def _do_import_park(self) -> None:
         park_data = self.data.data.get("park")

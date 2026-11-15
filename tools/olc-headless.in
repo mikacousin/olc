@@ -37,12 +37,9 @@ except ImportError as err:
 
 sys.path.insert(1, "@pythondir@")
 
-from olc.core.backends import DMXBackend
 from olc.core.app import CoreApplication
+from olc.core.backends import DMXBackend
 from olc.core.binding import OscBinding
-from olc.core.engine import CoreEngine
-from olc.core.universe_config import Protocol, UniverseMap
-from olc.define import UNIVERSES
 
 
 def main() -> None:
@@ -62,17 +59,12 @@ def main() -> None:
     # 2. Instantiate the core application
     app = CoreApplication(settings)
 
-    # 3. Create the UniverseMap and CoreEngine
-    universe_map = UniverseMap(UNIVERSES)
-    for u in UNIVERSES:
-        universe_map.enable_protocol(u, Protocol.ARTNET)
-        universe_map.enable_protocol(u, Protocol.SACN)
-
+    # 3. Create the CoreEngine and DMXBackend
     print("[olc-headless] Starting CoreEngine...")
-    app.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
+    engine = app.init_engine(monitor_port=5555, no_listen=True)
     app.backend = DMXBackend(app.lightshow)
 
-    app.engine.start()
+    engine.start()
 
     # 4. Start OSC Server and register dynamic trigger routes
     osc_enabled = settings.get_boolean("osc") if settings else True

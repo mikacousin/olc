@@ -16,6 +16,8 @@ from collections.abc import ItemsView, Iterable, Iterator, KeysView, ValuesView
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from olc.define import DEFAULT_UNIVERSES
+
 
 class Protocol(Enum):
     """Output protocol."""
@@ -171,11 +173,15 @@ class UniverseMap:
         """Return universe ID and configuration items."""
         return self._universes.items()
 
-    def add_universe(self, universe_id: int) -> UniverseConfig:
+    def add_universe(
+        self, universe_id: int, config: UniverseConfig | None = None
+    ) -> UniverseConfig:
         """Add a universe if it does not already exist, and return its config."""
         if universe_id < 0:
             raise ValueError("universe_id must be non-negative")
-        if universe_id not in self._universes:
+        if config is not None:
+            self._universes[universe_id] = config
+        elif universe_id not in self._universes:
             self._universes[universe_id] = UniverseConfig(universe_id)
         return self._universes[universe_id]
 
@@ -211,3 +217,12 @@ class UniverseMap:
                 f"Universe {universe_id} does not exist "
                 f"(valid universes: {sorted(self._universes.keys())})"
             )
+
+
+def default_universe_map() -> UniverseMap:
+    """Build the default show UniverseMap with Art-Net and sACN enabled."""
+    universe_map = UniverseMap(list(DEFAULT_UNIVERSES))
+    for u in DEFAULT_UNIVERSES:
+        universe_map.enable_protocol(u, Protocol.ARTNET)
+        universe_map.enable_protocol(u, Protocol.SACN)
+    return universe_map

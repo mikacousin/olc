@@ -25,6 +25,7 @@ from gi.repository import Gio
 
 from olc.core.action import Action
 from olc.core.lightshow import default_workspace
+from olc.core.universe_config import default_universe_map
 from olc.cue import Cue
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.devices.builtin import populate_builtin_library
@@ -78,9 +79,12 @@ class ShowNewAction(Action):
         # Reset independents
         lightshow.independents = Independents(lightshow)
 
-        # Reset fixture library and patch (empty)
+        # Reset fixture library, patch (empty), and universe configurations
         lightshow.fixture_library = populate_builtin_library()
         lightshow.patch.patch_empty()
+        lightshow.universe_map = default_universe_map()
+        if self.app.engine is not None:
+            self.app.engine.sync_universe_map(lightshow.universe_map)
 
         # Reset park
         if hasattr(lightshow, "park"):
@@ -549,6 +553,8 @@ class ShowImportAction(Action):
             univ: {out: list(val) for out, val in outs.items()}
             for univ, outs in lightshow.patch.outputs.items()
         }
+        if hasattr(lightshow, "universe_map"):
+            snapshot["universe_map"] = copy.deepcopy(lightshow.universe_map)
 
         # 3. Groups
         snapshot["groups"] = [
@@ -628,6 +634,10 @@ class ShowImportAction(Action):
             for univ, outs in snapshot["patch_outputs"].items()
         }
         lightshow.patch.invalidate_cache()
+        if "universe_map" in snapshot:
+            lightshow.universe_map = copy.deepcopy(snapshot["universe_map"])
+            if self.app.engine is not None:
+                self.app.engine.sync_universe_map(lightshow.universe_map)
 
     def _restore_groups_and_cues(
         self, snapshot: dict[str, typing.Any], lightshow: LightShow
