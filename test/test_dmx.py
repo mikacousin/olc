@@ -13,11 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # pylint: disable=protected-access, comparison-with-callable
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 
 import olc.core.lightshow  # noqa: F401  # Pre-import to resolve circular import cycle
+from olc.core.app import CoreApplication
+from olc.core.backends import DMXBackend
+from olc.core.universe_config import Protocol
 from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.dmx import Dmx
 
@@ -42,10 +45,8 @@ def test_dmx_send_emits_outputs_changed() -> None:
 
     engine.apply_universe_frame.side_effect = apply_universe_frame
 
-    # Initialize Dmx, patching RepeatedTimer to avoid starting actual background threads
-    with patch("olc.dmx.RepeatedTimer") as mock_timer_class:
-        dmx = Dmx(backend=None, lightshow=lightshow)
-        mock_timer_class.assert_called_once()
+    dmx = Dmx(backend=None, lightshow=lightshow)
+    assert not hasattr(dmx, "thread")
 
     # Simulate change on Universe 1 (index 0) at address 0 and 10
     dmx.frame[0][0] = 255
@@ -77,8 +78,7 @@ def test_dmx_notification_event_and_native_patch_callbacks() -> None:
     lightshow.app = app
     app.engine = engine
 
-    with patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=lightshow)
+    dmx = Dmx(backend=None, lightshow=lightshow)
 
     # Patch callbacks must be wired automatically in Dmx.__init__
     assert lightshow.patch.on_patch_empty_cb == dmx.all_outputs_at_zero
@@ -115,8 +115,7 @@ def test_dmx_facade_methods() -> None:
     lightshow.app = app
     app.engine = engine
 
-    with patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=lightshow)
+    dmx = Dmx(backend=None, lightshow=lightshow)
 
     dmx.set_universe_levels(1, {0: 255, 5: 128})
     assert dmx.get_output_level(1, 1) == 255
@@ -149,8 +148,7 @@ def test_dmx_add_remove_universe() -> None:
     """Test dynamic addition and removal of universes in Dmx."""
     lightshow = MagicMock()
     lightshow.patch.universes = [1, 2, 3, 4]
-    with patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=lightshow)
+    dmx = Dmx(backend=None, lightshow=lightshow)
 
     assert len(dmx.frame) == 4
     assert len(dmx._old_frame) == 4
@@ -198,8 +196,7 @@ def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
     seq.on_go = False
     lightshow.main_playback = seq
 
-    with patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=lightshow)
+    dmx = Dmx(backend=None, lightshow=lightshow)
 
     dmx.levels["sequence"][:3] = [120, 255, 80]
 
@@ -242,3 +239,81 @@ def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
         240,
         {"red": 0.4, "green": 0.4, "blue": 0.7},
     )
+
+
+def test_dmx_set_levels_pushes_synchronously_without_timer_thread() -> None:
+    """Verify Dmx pushes updated frames and events synchronously in set_levels()."""
+    app = CoreApplication(MagicMock())
+    app.lightshow.patch.patch_empty()
+    app.lightshow.patch.add_output(1, 1, 1)
+    app.backend = DMXBackend(app.lightshow)
+    app.init_engine(no_listen=True, no_transmit=True)
+    assert app.engine is not None
+
+    output_events: list[tuple[int, list[int]]] = []
+    channel_events: list[list[int]] = []
+    app.subscribe("dmx.outputs_changed", lambda u, o: output_events.append((u, o)))
+    app.subscribe("channels.updated", channel_events.append)
+
+    try:
+        assert not hasattr(app.backend.dmx, "thread")
+        app.backend.dmx.levels["user"][0] = 180
+        app.backend.dmx.set_levels()
+
+        assert app.engine.universe(1)[0] == 180
+        assert (1, [0]) in output_events
+        assert [1] in channel_events
+    finally:
+        app.engine.stop()
+
+
+def test_dmx_in_htp_merge_and_non_overwrite_on_set_levels() -> None:
+    """Verify Art-Net/sACN DMX-In HTP merges with console without overwriting."""
+    app = CoreApplication(MagicMock())
+    app.lightshow.patch.patch_empty()
+    app.lightshow.patch.add_output(1, 1, 1)
+    app.lightshow.patch.add_output(2, 2, 1)
+    app.lightshow.universe_map.enable_protocol(1, Protocol.ARTNET)
+    app.lightshow.universe_map.enable_protocol(1, Protocol.SACN)
+
+    app.backend = DMXBackend(app.lightshow)
+    app.init_engine(no_listen=False, no_transmit=True)
+    assert app.engine is not None
+
+    input_events: list[tuple[int, int, int, int]] = []
+    app.subscribe(
+        "dmx.input_received",
+        lambda u, arr: input_events.append((u, int(arr[0]), int(arr[1]), int(arr[2]))),
+    )
+
+    try:
+        dmx = app.backend.dmx
+        dmx.levels["user"][0] = 100
+        dmx.levels["user"][1] = 200
+        dmx.set_levels()
+
+        # Receive Art-Net frame on universe 1: ch1=220 (>100), ch2=120 (<200), ch3=90
+        app.engine._on_artnet_dmx_received(1, [220, 120, 90])
+        assert input_events[-1] == (1, 220, 120, 90)
+        assert list(app.engine.universe(1).array[:3]) == [220, 200, 90]
+
+        # Receive sACN frame on universe 1: HTP across Art-Net Rx, sACN Rx, and console
+        app.engine._on_sacn_dmx_received(1, [150, 240, 0])
+        assert input_events[-1] == (1, 220, 240, 90)
+        assert list(app.engine.universe(1).array[:3]) == [220, 240, 90]
+
+        # Subsequent console recalculation must preserve DMX-In HTP contribution
+        dmx.set_levels()
+        assert list(app.engine.universe(1).array[:3]) == [220, 240, 90]
+
+        # Parked address must override both console and DMX-In
+        app.lightshow.park.park_address(1, 1, 50)
+        dmx.set_levels()
+        assert list(app.engine.universe(1).array[:3]) == [50, 240, 90]
+
+        # Dropping DMX-In back to 0 restores console level immediately
+        app.engine._on_artnet_dmx_received(1, [0, 0, 0])
+        app.engine._on_sacn_dmx_received(1, [0, 0, 0])
+        assert list(app.engine.universe(1).array[:3]) == [50, 200, 0]
+    finally:
+        app.engine.stop()

@@ -18,7 +18,6 @@ and Grand Master isolation.
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-from unittest.mock import patch as mock_patch
 
 import pytest
 
@@ -116,42 +115,41 @@ def test_grand_master_isolation_moving_head() -> None:
     zoom_ch.set_value(42)
     spot.set_intensity_8bit(200)
 
-    with mock_patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=app.lightshow)
+    dmx = Dmx(backend=None, lightshow=app.lightshow)
+    dmx.main_fader.value = 1.0
 
-        # 1. Main Fader at 100%
-        dmx.main_fader.value = 1.0
-        dmx.set_levels()
+    # 1. Main Fader at 100%
+    dmx.set_levels()
 
-        u1 = dmx.frame[0]
-        assert u1[9] == 0x12  # Pan coarse (LTP)
-        assert u1[10] == 0x34  # Pan fine (LTP)
-        assert u1[11] == 0x56  # Tilt coarse (LTP)
-        assert u1[12] == 0x78  # Tilt fine (LTP)
-        assert u1[13] == 200  # Dimmer coarse (HTP)
-        assert u1[16] == 42  # Zoom (LTP)
+    u1 = dmx.frame[0]
+    assert u1[9] == 0x12  # Pan coarse (LTP)
+    assert u1[10] == 0x34  # Pan fine (LTP)
+    assert u1[11] == 0x56  # Tilt coarse (LTP)
+    assert u1[12] == 0x78  # Tilt fine (LTP)
+    assert u1[13] == 200  # Dimmer coarse (HTP)
+    assert u1[16] == 42  # Zoom (LTP)
 
-        # 2. Main Fader scaled to 50%
-        dmx.main_fader.value = 0.5
-        dmx.set_levels()
+    # 2. Main Fader scaled to 50%
+    dmx.main_fader.value = 0.5
+    dmx.set_levels()
 
-        assert u1[9] == 0x12  # Pan coarse UNCHANGED
-        assert u1[10] == 0x34  # Pan fine UNCHANGED
-        assert u1[11] == 0x56  # Tilt coarse UNCHANGED
-        assert u1[12] == 0x78  # Tilt fine UNCHANGED
-        assert u1[13] == 100  # Dimmer SCALED (200 * 0.5 = 100)
-        assert u1[16] == 42  # Zoom UNCHANGED
+    assert u1[9] == 0x12  # Pan coarse UNCHANGED
+    assert u1[10] == 0x34  # Pan fine UNCHANGED
+    assert u1[11] == 0x56  # Tilt coarse UNCHANGED
+    assert u1[12] == 0x78  # Tilt fine UNCHANGED
+    assert u1[13] == 100  # Dimmer SCALED (200 * 0.5 = 100)
+    assert u1[16] == 42  # Zoom UNCHANGED
 
-        # 3. Main Fader at 0% (Full Blackout)
-        dmx.main_fader.value = 0.0
-        dmx.set_levels()
+    # 3. Main Fader at 0% (Full Blackout)
+    dmx.main_fader.value = 0.0
+    dmx.set_levels()
 
-        assert u1[9] == 0x12  # Pan coarse STILL UNCHANGED
-        assert u1[10] == 0x34  # Pan fine STILL UNCHANGED
-        assert u1[11] == 0x56  # Tilt coarse STILL UNCHANGED
-        assert u1[12] == 0x78  # Tilt fine STILL UNCHANGED
-        assert u1[13] == 0  # Dimmer BLACKOUT (0)
-        assert u1[16] == 42  # Zoom STILL UNCHANGED
+    assert u1[9] == 0x12  # Pan coarse STILL UNCHANGED
+    assert u1[10] == 0x34  # Pan fine STILL UNCHANGED
+    assert u1[11] == 0x56  # Tilt coarse STILL UNCHANGED
+    assert u1[12] == 0x78  # Tilt fine STILL UNCHANGED
+    assert u1[13] == 0  # Dimmer BLACKOUT (0)
+    assert u1[16] == 42  # Zoom STILL UNCHANGED
 
 
 def test_device_with_8bit_curve() -> None:
@@ -274,29 +272,28 @@ def test_virtual_dimmer_dmx_levels_and_main_fader() -> None:
     assert par.uses_virtual_dimmer
     par.set_color_srgb(1.0, 0.0, 0.0)  # Pure Red
 
-    with mock_patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=app.lightshow)
-        dmx.main_fader.value = 1.0
+    dmx = Dmx(backend=None, lightshow=app.lightshow)
+    dmx.main_fader.value = 1.0
 
-        # Channel 1 at 50% (128 / 255) in user levels
-        dmx.levels["user"][0] = 128
-        dmx.set_levels()
+    # Channel 1 at 50% (128 / 255) in user levels
+    dmx.levels["user"][0] = 128
+    dmx.set_levels()
 
-        u1 = dmx.frame[0]
-        # Red should be dimmed to 50% (~128), Green/Blue at 0
-        assert u1[0] == 128
-        assert u1[1] == 0
-        assert u1[2] == 0
+    u1 = dmx.frame[0]
+    # Red should be dimmed to 50% (~128), Green/Blue at 0
+    assert u1[0] == 128
+    assert u1[1] == 0
+    assert u1[2] == 0
 
-        # Main Fader scaled to 50% -> Red is 25% (~64)
-        dmx.main_fader.value = 0.5
-        dmx.set_levels()
-        assert u1[0] == 64
+    # Main Fader scaled to 50% -> Red is 25% (~64)
+    dmx.main_fader.value = 0.5
+    dmx.set_levels()
+    assert u1[0] == 64
 
-        # Main Fader at 0.0 -> Blackout
-        dmx.main_fader.value = 0.0
-        dmx.set_levels()
-        assert u1[0] == 0
+    # Main Fader at 0.0 -> Blackout
+    dmx.main_fader.value = 0.0
+    dmx.set_levels()
+    assert u1[0] == 0
 
 
 def test_16bit_dimmer_dmx_frame_output() -> None:
@@ -310,24 +307,23 @@ def test_16bit_dimmer_dmx_frame_output() -> None:
     dev = patch.patch_dimmer(channel=2, universe=1, address=10, fine=True)
     assert dev.has_16bit_dimmer
 
-    with mock_patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=app.lightshow)
-        dmx.main_fader.value = 1.0
+    dmx = Dmx(backend=None, lightshow=app.lightshow)
+    dmx.main_fader.value = 1.0
 
-        # Set channel 2 to level 128 (norm = 128/255 -> val_16 = 32896 = 0x8080)
-        dmx.levels["user"][1] = 128
-        dmx.set_levels()
+    # Set channel 2 to level 128 (norm = 128/255 -> val_16 = 32896 = 0x8080)
+    dmx.levels["user"][1] = 128
+    dmx.set_levels()
 
-        u1 = dmx.frame[0]
-        coarse_byte = int(u1[9])
-        fine_byte = int(u1[10])
-        val_16 = (coarse_byte << 8) | fine_byte
-        assert coarse_byte == 128
-        assert fine_byte == 128
-        assert val_16 == pytest.approx(32896, abs=2)
+    u1 = dmx.frame[0]
+    coarse_byte = int(u1[9])
+    fine_byte = int(u1[10])
+    val_16 = (coarse_byte << 8) | fine_byte
+    assert coarse_byte == 128
+    assert fine_byte == 128
+    assert val_16 == pytest.approx(32896, abs=2)
 
-        # Scale by Main Fader at 0.5 -> val_16 = 16448 (0x4040)
-        dmx.main_fader.value = 0.5
-        dmx.set_levels()
-        assert u1[9] == 64
-        assert u1[10] == 64
+    # Scale by Main Fader at 0.5 -> val_16 = 16448 (0x4040)
+    dmx.main_fader.value = 0.5
+    dmx.set_levels()
+    assert u1[9] == 64
+    assert u1[10] == 64

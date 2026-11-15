@@ -45,11 +45,16 @@ class DMXBackend:
                 artnet=self.notify_artnet,
                 sacn=self.notify_sacn,
                 enttec=self.notify_enttec,
+                dmx_in=self.on_dmx_received,
             )
+
+    def on_dmx_received(self, universe: int, data: list[int]) -> None:
+        """Forward incoming DMX-In frames from CoreEngine into Dmx."""
+        self.dmx.on_dmx_received(universe, data)
 
     def stop(self) -> None:
         """Stop backend"""
-        self.dmx.thread.stop()
+        self.dmx.stop()
 
     def notify_artnet(
         self, action: str, *args: str | int, **kwargs: str

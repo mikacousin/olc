@@ -365,7 +365,6 @@ class DmxBlackoutAllAction(Action):
             backend_dmx.blackout = self.target_state
             if isinstance(backend_dmx, Dmx):
                 backend_dmx.set_levels()
-                backend_dmx.send()
                 self.app.emit("dmx.blackout_all_changed", self.target_state)
                 return
             patch_universes = _get_patch_universes(self.app)
@@ -406,7 +405,6 @@ class DmxBlackoutAllAction(Action):
             backend_dmx.blackout = self.old_state
             if isinstance(backend_dmx, Dmx):
                 backend_dmx.set_levels()
-                backend_dmx.send()
                 self.app.emit("dmx.blackout_all_changed", self.old_state)
                 return
             patch_universes = _get_patch_universes(self.app)

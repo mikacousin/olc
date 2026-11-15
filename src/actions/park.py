@@ -37,7 +37,6 @@ def _refresh_dmx(app: CoreApplication) -> None:
     backend = getattr(app, "backend", None)
     if backend is not None and getattr(backend, "dmx", None) is not None:
         backend.dmx.set_levels()
-        backend.dmx.send()
 
 
 def _clear_unpatched_addresses(

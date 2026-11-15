@@ -470,8 +470,6 @@ class DeviceInspectorWidget(Gtk.Box):
                 dmx = getattr(backend, "dmx", None) if backend is not None else None
                 if dmx is not None:
                     dmx.set_levels()
-                    if type(dmx).__name__ == "Dmx":
-                        dmx.send()
                 dev_ids = [dev.device_id for dev in devices if dev.device_id >= 1]
                 if dev_ids:
                     if is_color:

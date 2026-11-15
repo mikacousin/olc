@@ -62,7 +62,6 @@ class MainFaderSetLevelAction(Action):
             backend_dmx.main_fader.set_level(self.level)
             if type(backend_dmx).__name__ == "Dmx":
                 backend_dmx.set_levels()
-                backend_dmx.send()
 
         # Synchronize any virtual faders assigned to Main Fader
         fader_bank = getattr(self.app.lightshow, "fader_bank", None)
@@ -85,7 +84,6 @@ class MainFaderSetLevelAction(Action):
             backend_dmx.main_fader.set_level(self.old_level)
             if type(backend_dmx).__name__ == "Dmx":
                 backend_dmx.set_levels()
-                backend_dmx.send()
 
         fader_bank = getattr(self.app.lightshow, "fader_bank", None)
         if fader_bank is not None:

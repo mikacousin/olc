@@ -31,7 +31,6 @@ def _update_dmx_and_send(app: CoreApplication) -> None:
     backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
     if backend_dmx is not None and type(backend_dmx).__name__ == "Dmx":
         backend_dmx.set_levels()
-        backend_dmx.send()
 
 
 class DevicePanTiltAdjustAction(Action):

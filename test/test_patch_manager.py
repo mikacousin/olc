@@ -18,7 +18,6 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-from unittest.mock import patch as mock_patch
 
 import pytest
 
@@ -239,21 +238,20 @@ def test_engine_vectorized_levels_with_devices() -> None:
     # Set pan to 16-bit value: 0x1234
     spot.set_pan_16bit(0x1234)
 
-    with mock_patch("olc.dmx.RepeatedTimer"):
-        dmx = Dmx(backend=None, lightshow=app.lightshow)
-        # Set dimmer level for ch 1 to 200
-        dmx.levels["sequence"][0] = 200
+    dmx = Dmx(backend=None, lightshow=app.lightshow)
+    # Set dimmer level for ch 1 to 200
+    dmx.levels["sequence"][0] = 200
 
-        # Call set_levels()
-        dmx.set_levels()
+    # Call set_levels()
+    dmx.set_levels()
 
-        # Check universe 1 frame:
-        # addr 1 (index 0) = dimmer = 200
-        assert dmx.frame[0][0] == 200
-        # addr 10 (index 9) = pan coarse = 0x12
-        assert dmx.frame[0][9] == 0x12
-        # addr 11 (index 10) = pan fine = 0x34
-        assert dmx.frame[0][10] == 0x34
+    # Check universe 1 frame:
+    # addr 1 (index 0) = dimmer = 200
+    assert dmx.frame[0][0] == 200
+    # addr 10 (index 9) = pan coarse = 0x12
+    assert dmx.frame[0][9] == 0x12
+    # addr 11 (index 10) = pan fine = 0x34
+    assert dmx.frame[0][10] == 0x34
 
 
 def test_patch_clear_and_set_1on1_undo_preserves_multi_param_devices() -> None:

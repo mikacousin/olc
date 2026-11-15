@@ -18,7 +18,6 @@
 from __future__ import annotations
 
 import typing
-from unittest.mock import patch as mock_patch
 
 import numpy as np
 import pytest
@@ -407,60 +406,59 @@ def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: d
     dev = patch.patch_dimmer(channel=1, universe=1, address=1, fine=True)
     assert dev.has_16bit_dimmer
 
-    with mock_patch("olc.dmx.RepeatedTimer"):
-        real_dmx = Dmx(backend=None, lightshow=typing.cast(typing.Any, app.lightshow))
-        real_dmx.main_fader.value = 1.0
-        app.backend.dmx = real_dmx
+    real_dmx = Dmx(backend=None, lightshow=typing.cast(typing.Any, app.lightshow))
+    real_dmx.main_fader.value = 1.0
+    app.backend.dmx = real_dmx
 
-        # Step 0: Cue 0 (Channels at 0)
-        seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+    # Step 0: Cue 0 (Channels at 0)
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
-        # Step 1 (Cue 1): Ch 1 @ 0
-        cue1 = Cue(1, 1.0)
-        cue1.channels = {1: 0}
-        seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
+    # Step 1 (Cue 1): Ch 1 @ 0
+    cue1 = Cue(1, 1.0)
+    cue1.channels = {1: 0}
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
 
-        # Step 2 (Cue 2): Ch 1 @ 100
-        cue2 = Cue(1, 2.0)
-        cue2.channels = {1: 100}
-        step2 = Step(sequence=1, cue=cue2, time_in=1.0, time_out=1.0)
-        seq.add_step(step2)
+    # Step 2 (Cue 2): Ch 1 @ 100
+    cue2 = Cue(1, 2.0)
+    cue2.channels = {1: 100}
+    step2 = Step(sequence=1, cue=cue2, time_in=1.0, time_out=1.0)
+    seq.add_step(step2)
 
-        # Sentinel last step
-        seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+    # Sentinel last step
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
-        # 1. Manual crossfade test
-        seq.load_step(1)
-        xfade.manual = True
-        # Set manual slider to 12.3% of 255
-        xfade.scale_b.set_value(255.0 * 0.123)
-        xfade.scale_moved(xfade.scale_b)
+    # 1. Manual crossfade test
+    seq.load_step(1)
+    xfade.manual = True
+    # Set manual slider to 12.3% of 255
+    xfade.scale_b.set_value(255.0 * 0.123)
+    xfade.scale_moved(xfade.scale_b)
 
-        # Level in sequence must be continuous float: 100 * 0.123 = 12.3
-        seq_level = real_dmx.levels["sequence"][0]
-        assert isinstance(seq_level, (float, np.floating))
-        assert seq_level == pytest.approx(12.3, abs=1e-5)
+    # Level in sequence must be continuous float: 100 * 0.123 = 12.3
+    seq_level = real_dmx.levels["sequence"][0]
+    assert isinstance(seq_level, (float, np.floating))
+    assert seq_level == pytest.approx(12.3, abs=1e-5)
 
-        # Output DMX frame must compute fine byte from float:
-        # 12.3 / 255.0 * 65535 = 3161.4 -> coarse=12, fine=89
-        u1 = real_dmx.frame[0]
-        coarse = int(u1[0])
-        fine = int(u1[1])
-        val_16 = (coarse << 8) | fine
-        assert coarse == 12
-        assert fine == 89
-        assert val_16 == 3161
+    # Output DMX frame must compute fine byte from float:
+    # 12.3 / 255.0 * 65535 = 3161.4 -> coarse=12, fine=89
+    u1 = real_dmx.frame[0]
+    coarse = int(u1[0])
+    fine = int(u1[1])
+    val_16 = (coarse << 8) | fine
+    assert coarse == 12
+    assert fine == 89
+    assert val_16 == 3161
 
-        # 2. Automated ThreadGo transition test
-        # pylint: disable=protected-access
-        thread_go = ThreadGo(False, seq)
-        thread_go._capture_start_levels()
-        # Progress at 123ms out of 1000ms (factor = 0.123)
-        thread_go._calculate_transitions_go(123.0, step2)
-        real_dmx.set_levels()
+    # 2. Automated ThreadGo transition test
+    # pylint: disable=protected-access
+    thread_go = ThreadGo(False, seq)
+    thread_go._capture_start_levels()
+    # Progress at 123ms out of 1000ms (factor = 0.123)
+    thread_go._calculate_transitions_go(123.0, step2)
+    real_dmx.set_levels()
 
-        seq_level_go = real_dmx.levels["sequence"][0]
-        assert seq_level_go == pytest.approx(12.3, abs=1e-5)
-        u1_go = real_dmx.frame[0]
-        val_16_go = (int(u1_go[0]) << 8) | int(u1_go[1])
-        assert val_16_go == 3161
+    seq_level_go = real_dmx.levels["sequence"][0]
+    assert seq_level_go == pytest.approx(12.3, abs=1e-5)
+    u1_go = real_dmx.frame[0]
+    val_16_go = (int(u1_go[0]) << 8) | int(u1_go[1])
+    assert val_16_go == 3161

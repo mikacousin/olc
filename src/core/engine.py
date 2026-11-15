@@ -184,6 +184,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         # Initialize DMX USB Pro managers registry
         self._dmx_usb_pro_managers: dict[str, DmxUsbProManager] = {}
         self.notify_enttec: Callable | None = None
+        self.notify_dmx_in: Callable[[int, list[int]], None] | None = None
+        self._artnet_rx: dict[int, np.ndarray] = {}
+        self._sacn_rx: dict[int, np.ndarray] = {}
 
         # Build one runtime slot per universe declared in the map
         self._slots: dict[int, _RuntimeSlot] = {}
@@ -324,11 +327,13 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         artnet: Callable | None = None,
         sacn: Callable | None = None,
         enttec: Callable | None = None,
+        dmx_in: Callable[[int, list[int]], None] | None = None,
     ) -> None:
         """Register notification callbacks for network and USB DMX outputs."""
         self._artnet_manager.notify = artnet
         self._sacn_manager.notify = sacn
         self.notify_enttec = enttec
+        self.notify_dmx_in = dmx_in
 
     def __enter__(self) -> "CoreEngine":
         self.start()
@@ -427,6 +432,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self._artnet_manager.start()
         else:
             self._artnet_manager.senders.pop(uid, None)
+            self._artnet_rx.pop(uid, None)
             if self.is_running and not self._artnet_manager.universes:
                 self._artnet_manager.stop()
         self._artnet_manager._notify_forwarder("devices-changed")
@@ -459,6 +465,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if uid in old_universes:
                 self._sacn_manager.network.leave_multicast(uid)
             self._sacn_manager.mergers.pop(uid, None)
+            self._sacn_rx.pop(uid, None)
             if uid in self._sacn_manager.senders:
                 self._sacn_manager.senders.pop(uid).close()
             if self.is_running and not self._sacn_manager.universes:
@@ -557,6 +564,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             self._reload_artnet(uid, empty_cfg)
             self._reload_sacn(uid, empty_cfg)
             self._reload_dmx_usb_pro(uid, empty_cfg)
+            self._artnet_rx.pop(uid, None)
+            self._sacn_rx.pop(uid, None)
 
             del self._slots[uid]
 
@@ -722,8 +731,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             raise KeyError(f"Universe {uid} is not registered in this CoreEngine.")
         return self._slots[uid]
 
-    def _on_artnet_dmx_received(self, universe_id: int, data: list[int]) -> None:
-        """Callback when an external ArtDmx packet is received."""
+    def _handle_dmx_received(
+        self, universe_id: int, data: list[int], source_cache: dict[int, np.ndarray]
+    ) -> None:
+        """Store incoming DMX-In frame, HTP-merge network sources, and notify."""
         if self._no_listen:
             return
         try:
@@ -731,19 +742,28 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         except KeyError:
             return
 
-        channels = dict(enumerate(data))
+        arr = np.zeros(512, dtype=np.uint8)
+        raw = np.asarray(data[:512], dtype=np.uint8)
+        arr[: len(raw)] = raw
+
         with self._lock:
-            slot.universe.set_channels(channels)
+            source_cache[universe_id] = arr
+            artnet_arr = self._artnet_rx.get(universe_id)
+            sacn_arr = self._sacn_rx.get(universe_id)
+            if artnet_arr is not None and sacn_arr is not None:
+                merged_rx = np.maximum(artnet_arr, sacn_arr)
+            else:
+                merged_rx = arr.copy()
+            slot.universe.apply_array(merged_rx)
+            callback = self.notify_dmx_in
+
+        if callback is not None:
+            callback(universe_id, merged_rx.tolist())
+
+    def _on_artnet_dmx_received(self, universe_id: int, data: list[int]) -> None:
+        """Callback when an external ArtDmx packet is received."""
+        self._handle_dmx_received(universe_id, data, self._artnet_rx)
 
     def _on_sacn_dmx_received(self, universe_id: int, data: list[int]) -> None:
         """Callback when an external sACN packet is received."""
-        if self._no_listen:
-            return
-        try:
-            slot = self._get_slot(universe_id)
-        except KeyError:
-            return
-
-        channels = dict(enumerate(data))
-        with self._lock:
-            slot.universe.set_channels(channels)
+        self._handle_dmx_received(universe_id, data, self._sacn_rx)

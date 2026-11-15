@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import threading
 import typing
 from typing import Optional
 
@@ -25,10 +26,9 @@ from olc.core.tracking import (
     classify_channel_tracking_state,
     get_tracking_color,
 )
-from olc.define import DMX_INTERVAL, MAX_CHANNELS
+from olc.define import MAX_CHANNELS
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
-from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
@@ -56,10 +56,11 @@ class Dmx:
     blackout: bool
     levels: DmxLevels
     frame: list[np.ndarray]
+    external_dmx: dict[int, np.ndarray]
     user_outputs: dict[tuple[int, int], int]
-    thread: RepeatedTimer
 
     def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
+        self._lock = threading.RLock()
         self.backend = backend
         self.lightshow = lightshow
         self.patch = self.lightshow.patch
@@ -78,36 +79,42 @@ class Dmx:
         self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
+        self.external_dmx = {}
         # To test outputs
         self.user_outputs = {}
         # Wire patch callbacks cleanly
         self.patch.on_patch_empty_cb = self.all_outputs_at_zero
         self.patch.on_unpatch_cb = self._on_unpatch_output
-        # Thread to send DMX every DMX_INTERVAL ms
-        self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
+
+    def stop(self) -> None:
+        """Stop DMX resources (no background timer thread to join)."""
 
     def _on_unpatch_output(self, index: int, output: int) -> None:
         """Zero the DMX output slot in frame when unpatched."""
-        if 0 <= index < len(self.frame) and 0 <= output < 512:
-            self.frame[index][output] = 0
+        with self._lock:
+            if 0 <= index < len(self.frame) and 0 <= output < 512:
+                self.frame[index][output] = 0
 
     def add_universe(self, universe: int) -> None:
         """Add a universe frame to Dmx."""
-        index = self.patch.universes.index(universe)
-        self.frame.insert(index, np.zeros(512, dtype=np.uint8))
-        self._old_frame.insert(index, np.zeros(512, dtype=np.uint8))
+        with self._lock:
+            index = self.patch.universes.index(universe)
+            self.frame.insert(index, np.zeros(512, dtype=np.uint8))
+            self._old_frame.insert(index, np.zeros(512, dtype=np.uint8))
 
     def remove_universe(self, universe: int, index: int | None = None) -> None:
         """Remove a universe frame from Dmx."""
-        to_del = [key for key in self.user_outputs if key[1] == universe]
-        for key in to_del:
-            del self.user_outputs[key]
-        if index is None:
-            if universe in self.patch.universes:
-                index = self.patch.universes.index(universe)
-        if index is not None and 0 <= index < len(self.frame):
-            self.frame.pop(index)
-            self._old_frame.pop(index)
+        with self._lock:
+            self.external_dmx.pop(universe, None)
+            to_del = [key for key in self.user_outputs if key[1] == universe]
+            for key in to_del:
+                del self.user_outputs[key]
+            if index is None:
+                if universe in self.patch.universes:
+                    index = self.patch.universes.index(universe)
+            if index is not None and 0 <= index < len(self.frame):
+                self.frame.pop(index)
+                self._old_frame.pop(index)
 
     def get_composite_level(self, channel_idx: int) -> tuple[int, dict[str, float]]:
         """Get the composite level and state color for a channel (0-indexed).
@@ -200,97 +207,136 @@ class Dmx:
                 dev._target_intensity = target_norm
                 dev.set_intensity(target_norm * main_val)
 
+    def on_dmx_received(self, universe: int, data: list[int] | np.ndarray) -> None:
+        """Store incoming external DMX-In frame, re-merge HTP, and emit event."""
+        arr = np.zeros(512, dtype=np.uint8)
+        raw = np.asarray(data[:512], dtype=np.uint8)
+        arr[: len(raw)] = raw
+        with self._lock:
+            self.external_dmx[universe] = arr
+        self.set_levels()
+        if self.lightshow.app is not None:
+            self.lightshow.app.emit("dmx.input_received", universe, arr.copy())
+
     def set_levels(self) -> None:
-        """Set DMX frame levels"""
-        composite = self.get_all_composite_levels()
+        """Set DMX frame levels and push updated frames to CoreEngine."""
+        with self._lock:
+            composite = self.get_all_composite_levels()
 
-        self.patch.update_numpy_cache_if_dirty()
+            self.patch.update_numpy_cache_if_dirty()
 
-        self._update_dynamic_devices(composite)
+            self._update_dynamic_devices(composite)
 
-        # Extract levels for each patched output slot
-        out_levels = composite[self.patch.map_src_channels].astype(np.float64)
+            for index, univ in enumerate(self.patch.universes):
+                if index < len(self.frame) and univ in self.external_dmx:
+                    np.copyto(self.frame[index], self.external_dmx[univ])
 
-        # Apply curves by block with continuous normalized evaluation
-        unique_curves = np.unique(self.patch.map_dst_curves)
-        for curve_numb in unique_curves:
-            if curve_numb != 0:
-                curve = self.lightshow.curves.get_curve(curve_numb)
-                if curve:
-                    curve_mask = self.patch.map_dst_curves == curve_numb
-                    try:
-                        norm_in = out_levels[curve_mask] / 255.0
-                        out_levels[curve_mask] = (
-                            curve.evaluate_normalized(norm_in) * 255.0
-                        )
-                    except NotImplementedError:
-                        out_levels[curve_mask] = curve.values_array[
-                            out_levels[curve_mask].astype(np.uint8)
-                        ]
+            # Extract levels for each patched output slot
+            out_levels = composite[self.patch.map_src_channels].astype(np.float64)
 
-        # Scale by Main Fader and Blackout (unless channel is parked)
-        intensity_mult = self.effective_intensity_mult
-        park_mgr = getattr(self.lightshow, "park", None)
-        if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
-            parked_indices = np.array(
-                [ch - 1 for ch in park_mgr.parked_channels], dtype=int
-            )
-            is_parked_slot = np.isin(self.patch.map_src_channels, parked_indices)
-            scaled = np.round(out_levels * intensity_mult)
-            scaled[is_parked_slot] = np.round(out_levels[is_parked_slot])
-            out_levels = scaled.astype(np.uint8)
-        else:
-            out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
+            # Apply curves by block with continuous normalized evaluation
+            unique_curves = np.unique(self.patch.map_dst_curves)
+            for curve_numb in unique_curves:
+                if curve_numb != 0:
+                    curve = self.lightshow.curves.get_curve(curve_numb)
+                    if curve:
+                        curve_mask = self.patch.map_dst_curves == curve_numb
+                        try:
+                            norm_in = out_levels[curve_mask] / 255.0
+                            out_levels[curve_mask] = (
+                                curve.evaluate_normalized(norm_in) * 255.0
+                            )
+                        except NotImplementedError:
+                            out_levels[curve_mask] = curve.values_array[
+                                out_levels[curve_mask].astype(np.uint8)
+                            ]
 
-        # Distribute levels to self.frame using advanced indexing
-        map_dst_univ = self.patch.map_dst_universes
-        map_dst_out = self.patch.map_dst_outputs
-        for index in range(len(self.patch.universes)):
-            if len(map_dst_univ) != len(map_dst_out) or len(map_dst_univ) != len(
-                out_levels
-            ):
-                break
-            univ_mask = map_dst_univ == index
-            if np.any(univ_mask) and index < len(self.frame):
-                self.frame[index][map_dst_out[univ_mask]] = out_levels[univ_mask]
+            # Scale by Main Fader and Blackout (unless channel is parked)
+            intensity_mult = self.effective_intensity_mult
+            park_mgr = getattr(self.lightshow, "park", None)
+            if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
+                parked_indices = np.array(
+                    [ch - 1 for ch in park_mgr.parked_channels], dtype=int
+                )
+                is_parked_slot = np.isin(self.patch.map_src_channels, parked_indices)
+                scaled = np.round(out_levels * intensity_mult)
+                scaled[is_parked_slot] = np.round(out_levels[is_parked_slot])
+                out_levels = scaled.astype(np.uint8)
+            else:
+                out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
 
-        # Distribute multi-parameter device channels (Pan, Tilt, Color, Gobo...)
-        if (
-            hasattr(self.patch, "device_channel_refs")
-            and self.patch.device_channel_refs
-        ):
-            dev_vals = np.fromiter(
-                (ch.value for _, ch in self.patch.device_channel_refs),
-                dtype=np.float64,
-                count=len(self.patch.device_channel_refs),
-            )
-            # Scale HTP channels by Main Fader and Blackout, leaving LTP untouched
-            if hasattr(self.patch, "map_dev_is_htp") and np.any(
-                self.patch.map_dev_is_htp
-            ):
-                htp_mask = self.patch.map_dev_is_htp
-                dev_vals[htp_mask] = np.round(dev_vals[htp_mask] * intensity_mult)
-
-            dev_vals_u8 = dev_vals.astype(np.uint8)
+            # Distribute levels to self.frame using advanced indexing
+            map_dst_univ = self.patch.map_dst_universes
+            map_dst_out = self.patch.map_dst_outputs
             for index in range(len(self.patch.universes)):
-                univ_mask = self.patch.map_dev_dst_universes == index
+                if len(map_dst_univ) != len(map_dst_out) or len(map_dst_univ) != len(
+                    out_levels
+                ):
+                    break
+                univ_mask = map_dst_univ == index
                 if np.any(univ_mask) and index < len(self.frame):
-                    self.frame[index][self.patch.map_dev_dst_outputs[univ_mask]] = (
-                        dev_vals_u8[univ_mask]
-                    )
+                    dst = map_dst_out[univ_mask]
+                    if self.patch.universes[index] in self.external_dmx:
+                        self.frame[index][dst] = np.maximum(
+                            self.frame[index][dst], out_levels[univ_mask]
+                        )
+                    else:
+                        self.frame[index][dst] = out_levels[univ_mask]
 
-        # Override physical DMX output addresses that are parked
-        if isinstance(park_mgr, ParkManager) and park_mgr.parked_addresses:
-            for (univ, out), level in park_mgr.parked_addresses.items():
-                if univ in self.patch.universes:
+            # Distribute multi-parameter device channels (Pan, Tilt, Color, Gobo...)
+            if (
+                hasattr(self.patch, "device_channel_refs")
+                and self.patch.device_channel_refs
+            ):
+                dev_vals = np.fromiter(
+                    (ch.value for _, ch in self.patch.device_channel_refs),
+                    dtype=np.float64,
+                    count=len(self.patch.device_channel_refs),
+                )
+                # Scale HTP channels by Main Fader and Blackout, leaving LTP untouched
+                if hasattr(self.patch, "map_dev_is_htp") and np.any(
+                    self.patch.map_dev_is_htp
+                ):
+                    htp_mask = self.patch.map_dev_is_htp
+                    dev_vals[htp_mask] = np.round(dev_vals[htp_mask] * intensity_mult)
+
+                dev_vals_u8 = dev_vals.astype(np.uint8)
+                for index in range(len(self.patch.universes)):
+                    univ_mask = self.patch.map_dev_dst_universes == index
+                    if np.any(univ_mask) and index < len(self.frame):
+                        dst = self.patch.map_dev_dst_outputs[univ_mask]
+                        if self.patch.universes[index] in self.external_dmx:
+                            self.frame[index][dst] = np.maximum(
+                                self.frame[index][dst], dev_vals_u8[univ_mask]
+                            )
+                        else:
+                            self.frame[index][dst] = dev_vals_u8[univ_mask]
+
+            for (out, univ), level in self.user_outputs.items():
+                if univ in self.patch.universes and 1 <= out <= 512:
                     u_idx = self.patch.universes.index(univ)
-                    if u_idx < len(self.frame) and 1 <= out <= 512:
+                    if u_idx < len(self.frame):
                         self.frame[u_idx][out - 1] = level
 
+            # Override physical DMX output addresses that are parked
+            if isinstance(park_mgr, ParkManager) and park_mgr.parked_addresses:
+                for (univ, out), level in park_mgr.parked_addresses.items():
+                    if univ in self.patch.universes:
+                        u_idx = self.patch.universes.index(univ)
+                        if u_idx < len(self.frame) and 1 <= out <= 512:
+                            self.frame[u_idx][out - 1] = level
+
+        self.send()
+
     def send(self) -> None:
-        """Send DMX values to CoreEngine"""
-        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            engine = self.lightshow.app.engine
+        """Send DMX values to CoreEngine and emit output/channel update events."""
+        if self.lightshow.app is None:
+            return
+        engine = getattr(self.lightshow.app, "engine", None)
+        outputs_to_emit: list[tuple[int, list[int]]] = []
+        changed_channels: list[int] = []
+
+        with self._lock:
             for index, universe in enumerate(self.patch.universes):
                 if index >= len(self.frame) or index >= len(self._old_frame):
                     break
@@ -299,12 +345,13 @@ class Dmx:
                 if not np.array_equal(current_frame, old_frame):
                     changed_outputs = np.where(current_frame != old_frame)[0].tolist()
                     if changed_outputs:
-                        self.trigger_output_callbacks(universe, changed_outputs)
+                        outputs_to_emit.append((universe, changed_outputs))
                     np.copyto(self._old_frame[index], current_frame)
-                try:
-                    engine.apply_universe_frame(universe, current_frame)
-                except KeyError:
-                    pass
+                if engine is not None:
+                    try:
+                        engine.apply_universe_frame(universe, current_frame)
+                    except KeyError:
+                        pass
 
             # Compute composite levels for all channels to check for modifications
             self.patch.update_numpy_cache_if_dirty()
@@ -335,7 +382,11 @@ class Dmx:
                 ]
                 self._old_user_mask[changed_indices] = user_mask[changed_indices]
                 changed_channels = (changed_indices + 1).tolist()
-                self.trigger_channels_update(changed_channels)
+
+        for universe, changed_outputs in outputs_to_emit:
+            self.trigger_output_callbacks(universe, changed_outputs)
+        if changed_channels:
+            self.trigger_channels_update(changed_channels)
 
     def trigger_channels_update(self, changed_channels: list[int]) -> None:
         """Emit channel updates via the CoreApplication event bus."""
@@ -344,14 +395,19 @@ class Dmx:
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
-        for index, universe in enumerate(self.patch.universes):
-            if index < len(self.frame):
-                self.frame[index].fill(0)
-            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-                try:
-                    self.lightshow.app.engine.blackout(universe)
-                except KeyError:
-                    pass
+        with self._lock:
+            self.external_dmx.clear()
+            for index, universe in enumerate(self.patch.universes):
+                if index < len(self.frame):
+                    self.frame[index].fill(0)
+                if (
+                    self.lightshow.app is not None
+                    and self.lightshow.app.engine is not None
+                ):
+                    try:
+                        self.lightshow.app.engine.blackout(universe)
+                    except KeyError:
+                        pass
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -361,18 +417,19 @@ class Dmx:
             universe: Universe number (one in patch.universes)
             level: Output level (0-255)
         """
-        self.user_outputs[(output, universe)] = level
-        if universe in self.patch.universes:
-            index = self.patch.universes.index(universe)
-            if index < len(self.frame):
-                self.frame[index][output - 1] = level
-        if not level:
-            self.user_outputs.pop((output, universe), None)
-        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            try:
-                self.lightshow.app.engine.set_output_level(universe, output, level)
-            except (KeyError, IndexError):
-                pass
+        with self._lock:
+            self.user_outputs[(output, universe)] = level
+            if universe in self.patch.universes:
+                index = self.patch.universes.index(universe)
+                if index < len(self.frame):
+                    self.frame[index][output - 1] = level
+            if not level:
+                self.user_outputs.pop((output, universe), None)
+            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+                try:
+                    self.lightshow.app.engine.set_output_level(universe, output, level)
+                except (KeyError, IndexError):
+                    pass
 
     def get_output_level(self, universe: int, output: int) -> int:
         """Return current DMX level (0-255) for 1-indexed *output* in *universe*."""
@@ -402,42 +459,46 @@ class Dmx:
 
     def apply_universe_frame(self, universe: int, frame: np.ndarray) -> None:
         """Apply a 512-byte DMX buffer to *universe* in both frame and CoreEngine."""
-        if universe in self.patch.universes:
-            univ_idx = self.patch.universes.index(universe)
-            if univ_idx < len(self.frame):
-                np.copyto(self.frame[univ_idx], frame, casting="unsafe")
-        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            try:
-                self.lightshow.app.engine.apply_universe_frame(universe, frame)
-            except KeyError:
-                pass
+        with self._lock:
+            if universe in self.patch.universes:
+                univ_idx = self.patch.universes.index(universe)
+                if univ_idx < len(self.frame):
+                    np.copyto(self.frame[univ_idx], frame, casting="unsafe")
+            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+                try:
+                    self.lightshow.app.engine.apply_universe_frame(universe, frame)
+                except KeyError:
+                    pass
 
     def blackout_universe(self, universe: int) -> None:
         """Zero all 512 DMX outputs for *universe* in both frame and CoreEngine."""
-        if universe in self.patch.universes:
-            univ_idx = self.patch.universes.index(universe)
-            if univ_idx < len(self.frame):
-                self.frame[univ_idx].fill(0)
-        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            try:
-                self.lightshow.app.engine.blackout(universe)
-            except KeyError:
-                pass
+        with self._lock:
+            self.external_dmx.pop(universe, None)
+            if universe in self.patch.universes:
+                univ_idx = self.patch.universes.index(universe)
+                if univ_idx < len(self.frame):
+                    self.frame[univ_idx].fill(0)
+            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+                try:
+                    self.lightshow.app.engine.blackout(universe)
+                except KeyError:
+                    pass
 
     def set_universe_levels(self, universe: int, channels: dict[int, int]) -> None:
         """Set multiple 0-indexed DMX outputs (0..511) in frame and CoreEngine."""
-        if universe in self.patch.universes:
-            univ_idx = self.patch.universes.index(universe)
-            if univ_idx < len(self.frame):
-                frame = self.frame[univ_idx]
-                for ch, val in channels.items():
-                    if 0 <= ch < 512:
-                        frame[ch] = int(np.clip(val, 0, 255))
-        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            try:
-                self.lightshow.app.engine.set_channels(universe, channels)
-            except KeyError:
-                pass
+        with self._lock:
+            if universe in self.patch.universes:
+                univ_idx = self.patch.universes.index(universe)
+                if univ_idx < len(self.frame):
+                    frame = self.frame[univ_idx]
+                    for ch, val in channels.items():
+                        if 0 <= ch < 512:
+                            frame[ch] = int(np.clip(val, 0, 255))
+            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+                try:
+                    self.lightshow.app.engine.set_channels(universe, channels)
+                except KeyError:
+                    pass
 
     def reset_levels(self, *, reset_main_fader: bool = True) -> None:
         """Reset sequence/manual/fader levels and optionally main fader to 1.0."""
