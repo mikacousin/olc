@@ -76,22 +76,22 @@ def test_midi_binding_cc() -> None:
 
 
 def test_osc_binding() -> None:
-    """Test OscBinding feedback triggers correct engine OSC sends."""
+    """Test OscBinding feedback triggers correct app.osc sends."""
     binding = OscBinding("playback.pause", "/olc/playback/pause")
     assert binding.action_name == "playback.pause"
     assert binding.osc_address == "/olc/playback/pause"
 
-    # No app/engine set -> should return early
+    # No app/osc set -> should return early
     binding.send_feedback({"active": True})
 
     mock_app = MagicMock()
-    mock_engine = MagicMock()
-    mock_app.engine = mock_engine
+    mock_osc = MagicMock()
+    mock_app.osc = mock_osc
     binding.app = mock_app
 
     binding.send_feedback({"active": True})
-    mock_engine.send_osc.assert_called_once_with("/olc/playback/pause", 1.0)
+    mock_osc.send.assert_called_once_with("/olc/playback/pause", 1.0)
 
-    mock_engine.reset_mock()
+    mock_osc.reset_mock()
     binding.send_feedback({"active": False})
-    mock_engine.send_osc.assert_called_once_with("/olc/playback/pause", 0.0)
+    mock_osc.send.assert_called_once_with("/olc/playback/pause", 0.0)

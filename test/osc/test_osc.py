@@ -18,9 +18,11 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
-from olc.core.osc import (
+from olc.core.app import CoreApplication
+from olc.core.backends.osc import Osc
+from olc.core.backends.osc.delegate import OSCDelegate
+from olc.core.backends.osc.transport import (
     CoreOSCServer,
-    EngineOSCServer,
     OSCSubscriptionManager,
     build_message,
     make_method,
@@ -143,33 +145,63 @@ class TestOSCServerDispatch:
         assert delegate.triggered
 
 
-class TestEngineOSCServer:
-    """Test suite for direct CoreEngine control endpoints."""
+class TestUniverseOSCRoutes:
+    """Test suite for universe control endpoints routed through OSCDelegate."""
 
     def test_set_channels_direct(self) -> None:
-        """Direct channel values in list format must write to engine."""
+        """Direct channel list values must dispatch dmx.set_universe_levels."""
+        app = CoreApplication(MagicMock())
         mock_engine = MagicMock()
-        server = EngineOSCServer(port=9999, engine=mock_engine)
+        app.engine = mock_engine
+        server = CoreOSCServer(port=9999)
+        server.register_delegate(OSCDelegate(app))
 
         server.dispatch("/olc/universe/2/set_channels", [1, 255, 2, 128])
         mock_engine.set_channels.assert_called_once_with(2, {1: 255, 2: 128})
 
     def test_set_channels_json(self) -> None:
-        """JSON-encoded channel string must write to engine."""
+        """JSON-encoded channel string must dispatch dmx.set_universe_levels."""
+        app = CoreApplication(MagicMock())
         mock_engine = MagicMock()
-        server = EngineOSCServer(port=9999, engine=mock_engine)
+        app.engine = mock_engine
+        server = CoreOSCServer(port=9999)
+        server.register_delegate(OSCDelegate(app))
 
         channels_json = json.dumps({"5": 200, "6": 100})
         server.dispatch("/olc/universe/1/set_channels", [channels_json])
         mock_engine.set_channels.assert_called_once_with(1, {5: 200, 6: 100})
 
     def test_blackout(self) -> None:
-        """Blackout endpoint must trigger engine blackout."""
+        """Blackout endpoint must execute universe.blackout for the target universe."""
+        app = CoreApplication(MagicMock())
         mock_engine = MagicMock()
-        server = EngineOSCServer(port=9999, engine=mock_engine)
+        mock_univ = MagicMock()
+        mock_univ.frame = bytearray(512)
+        mock_engine.universe.return_value = mock_univ
+        app.engine = mock_engine
+        server = CoreOSCServer(port=9999)
+        server.register_delegate(OSCDelegate(app))
 
         server.dispatch("/olc/universe/3/blackout", [])
-        mock_engine.blackout.assert_called_once_with(3)
+        mock_engine.universe.assert_called_once_with(3)
+
+    def test_osc_facade_lifecycle_headless(self) -> None:
+        """Osc facade starts, exposes state, and stops cleanly without an engine."""
+        app = CoreApplication(MagicMock())
+        assert app.engine is None
+        osc = Osc(app)
+        assert not osc.is_running
+        osc.start("127.0.0.1", 18000, 19000)
+        try:
+            assert osc.is_running
+            assert osc.server is not None
+            assert osc.client is not None
+            assert osc.delegate is not None
+        finally:
+            osc.stop()
+        assert not osc.is_running
+        assert osc.server is None
+        assert osc.client is None
 
 
 class TestOSCSubscriptionManager:

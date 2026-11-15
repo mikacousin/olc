@@ -609,8 +609,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             return
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.toggle", state)
-        else:
-            self.settings.set_value("osc", GLib.Variant("b", state))
 
     def _switch_static_client(self, _widget: Gtk.Switch, state: bool) -> None:
         if getattr(self, "_updating_settings", False):
@@ -622,13 +620,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
 
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.toggle_static_client", state)
-        else:
-            try:
-                self.settings.set_value("osc-static-client", GLib.Variant("b", state))
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            if self.app.engine is not None:
-                self.app.engine.set_static_client(state)
 
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
         if getattr(self, "_updating_settings", False):
@@ -636,10 +627,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         port = widget.get_value_as_int()
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.set_config", client_port=port)
-        else:
-            self.settings.set_value("osc-client-port", GLib.Variant("i", port))
-            if self.app.engine is not None:
-                self.app.engine.update_osc_client(port=port)
 
     def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
         if getattr(self, "_updating_settings", False):
@@ -647,10 +634,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         port = widget.get_value_as_int()
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.set_config", server_port=port)
-        else:
-            self.settings.set_value("osc-server-port", GLib.Variant("i", port))
-            if self.app.engine is not None:
-                self.app.engine.update_osc_server(port)
 
     def _on_client_ip_focus_out(
         self, widget: Gtk.Entry, _event: Gdk.EventFocus
@@ -670,10 +653,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                     self.app.core.action_registry.execute(
                         "osc.set_config", host=ip_addr
                     )
-                else:
-                    self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
-                    if self.app.engine is not None:
-                        self.app.engine.update_osc_client(host=ip_addr)
             parent = self.get_parent()
             if parent:
                 parent.grab_focus()
@@ -775,16 +754,21 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         if not self.tabs or not self.tabs.tabs.get("settings"):
             return False
 
-        engine = getattr(self.app, "engine", None)
+        core_app = getattr(self.app, "core", None)
+        osc = (
+            getattr(core_app, "osc", None)
+            if core_app is not None
+            else getattr(self.app, "osc", None)
+        )
         if hasattr(self, "label_osc_mdns") and self.label_osc_mdns is not None:
             if (
-                engine is not None
-                and getattr(engine, "osc_mdns", None) is not None
-                and engine.osc_mdns.is_active
+                osc is not None
+                and getattr(osc, "mdns", None) is not None
+                and osc.mdns.is_active
             ):
-                port = getattr(engine.osc_mdns, "port", 9000)
-                http_port = getattr(engine.osc_mdns, "http_port", None)
-                name = getattr(engine.osc_mdns, "service_name", "Open Lighting Console")
+                port = getattr(osc.mdns, "port", 9000)
+                http_port = getattr(osc.mdns, "http_port", None)
+                name = getattr(osc.mdns, "service_name", "Open Lighting Console")
                 title = _("mDNS Discovery:")
                 oscq_suffix = f" • OSCQuery :{http_port}" if http_port else ""
                 self.label_osc_mdns.set_markup(
@@ -799,11 +783,11 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                     f"<i>{inactive_msg}</i>"
                 )
 
-        if engine is None:
+        if osc is None:
             return True
 
-        engine.osc_subscriptions.cleanup_expired(60.0)
-        snapshots = engine.osc_subscriptions.get_subscribers_snapshot()
+        osc.subscriptions.cleanup_expired(60.0)
+        snapshots = osc.subscriptions.get_subscribers_snapshot()
         self.update_osc_subscribers(snapshots)
         return True
 
@@ -819,11 +803,6 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             if self.app.core is not None and hasattr(self.app.core, "action_registry"):
                 self.app.core.action_registry.execute(
                     "osc.remove_subscriber", host, port
-                )
-            elif self.app.engine is not None:
-                self.app.engine.osc_subscriptions.unsubscribe(host, port, "all")
-                self.update_osc_subscribers(
-                    self.app.engine.osc_subscriptions.get_subscribers_snapshot()
                 )
 
     def update_percent_ui(self, percent: bool) -> None:

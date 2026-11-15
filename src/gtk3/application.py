@@ -30,6 +30,7 @@ from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends import DMXBackend  # noqa: E402
 from olc.core.backends.midi import Midi  # noqa: E402
+from olc.core.backends.osc import Osc  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
@@ -67,6 +68,7 @@ class Application(Gtk.Application):
     backend: DMXBackend | None
     engine: CoreEngine | None
     midi: Midi | None
+    osc: Osc | None
     version: str
     tabs: Tabs | None
     window: Window | None
@@ -122,7 +124,7 @@ class Application(Gtk.Application):
         self.tabs = None
         self.crossfade = None
         self.midi = None
-        self.osc_delegate = None
+        self.osc = None
 
         # Core application and Light show initialization
         app_type = typing.cast("olc.gtk3.application.Application", self)
@@ -195,8 +197,9 @@ class Application(Gtk.Application):
         # For Manual crossfade
         self.crossfade = self.core.crossfade
 
-        # Open MIDI Inputs and Outputs (Core manages MIDI lifecycle and feedback)
+        # Open MIDI Inputs/Outputs and initialize OSC controller
         self.midi = self.core.init_midi()
+        self.osc = self.core.init_osc()
 
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
@@ -269,8 +272,9 @@ class Application(Gtk.Application):
 
         self.core.start()
 
-        if self.settings.get_boolean("osc") and self.engine is not None:
+        if self.settings.get_boolean("osc"):
             self.core.action_registry.execute("osc.toggle", True)
+        self.osc = self.core.osc
 
         def on_patch_empty_cb() -> None:
             if self.core.backend:

@@ -22,13 +22,10 @@ from typing import Callable
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
-from olc.core.backends.osc.mdns import MDNSAdvertiser
-from olc.core.backends.osc.oscquery import OSCQueryServer
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
 from olc.core.mergers import HTPMerger, LTPMerger
-from olc.core.osc import CoreOSCClient, EngineOSCServer, OSCSubscriptionManager
 from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender
 from olc.core.universe_config import (
     DmxUsbProSettings,
@@ -151,12 +148,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self._loopback = loopback
         self._no_transmit = no_transmit
 
-        self.osc_server = None
-        self.osc_client = None
-        self.osc_mdns: MDNSAdvertiser | None = None
-        self.oscquery_server: OSCQueryServer | None = None
-        self.osc_subscriptions = OSCSubscriptionManager()
-        self._osc_delegate = None
         self.app = None
 
         # Raise soft open files limit to support 1024+ universes
@@ -268,7 +259,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
     def stop(self, timeout: float = 2.0) -> None:
         """Stop the DMX output loop."""
-        self.stop_osc()
         self._loop.stop(timeout=timeout)
         if self._artnet_manager is not None:
             self._artnet_manager.stop()
@@ -605,191 +595,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
     def effective_hz(self) -> float:
         """Average output frequency since start."""
         return self._loop.effective_hz
-
-    def start_osc(
-        self,
-        host: str,
-        client_port: int,
-        server_port: int,
-        enable_static_client: bool = False,
-    ) -> None:
-        """Start the OSC server and client asynchronously in the network loop."""
-        with self._lock:
-            if self.osc_server is not None or self.osc_client is not None:
-                self.stop_osc()
-
-            self.osc_client = CoreOSCClient(host, client_port)
-            self.osc_subscriptions.set_socket(self.osc_client._sock)
-            if enable_static_client:
-                # Register default static client as persistent subscriber to all topics
-                self.osc_subscriptions.subscribe(
-                    host, client_port, "all", is_static=True
-                )
-
-            self.osc_server = EngineOSCServer(server_port, engine=self)
-            if self._osc_delegate is not None:
-                self.osc_server.register_delegate(self._osc_delegate)
-
-            # Schedule the server start in the background event loop
-            asyncio.run_coroutine_threadsafe(
-                self.osc_server.start(), self._network_thread.loop
-            )
-
-            # Start OSCQuery HTTP JSON introspection server
-            http_port = server_port + 1
-            self.oscquery_server = OSCQueryServer(
-                host="0.0.0.0",
-                http_port=http_port,
-                on_client_connected=self._on_oscquery_client_connected,
-            )
-            asyncio.run_coroutine_threadsafe(
-                self.oscquery_server.start(http_port=http_port, osc_port=server_port),
-                self._network_thread.loop,
-            )
-
-            # Start mDNS advertisement for zero-config OSC and OSCQuery discovery
-            self.osc_mdns = MDNSAdvertiser()
-            self.osc_mdns.start(
-                service_name="Open Lighting Console",
-                port=server_port,
-                http_port=http_port,
-            )
-
-            if enable_static_client and self._osc_delegate is not None:
-                sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
-                if callable(sync_fn):
-                    sync_fn((host, client_port))
-
-    def _on_oscquery_client_connected(self, client_ip: str) -> None:
-        """Auto-subscribe and sync an OSCQuery client when it connects over HTTP."""
-        if not client_ip:
-            return
-        reply_port = (
-            self.osc_client._addr[1]
-            if self.osc_client is not None and hasattr(self.osc_client, "_addr")
-            else 8000
-        )
-        self.osc_subscriptions.subscribe(client_ip, reply_port, "all")
-        sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
-        if callable(sync_fn):
-            sync_fn((client_ip, reply_port))
-
-    def stop_osc(self) -> None:
-        """Stop the OSC server, OSCQuery HTTP server, and client."""
-        with self._lock:
-            if self.oscquery_server is not None:
-                asyncio.run_coroutine_threadsafe(
-                    self.oscquery_server.stop(), self._network_thread.loop
-                )
-                self.oscquery_server = None
-            if self.osc_mdns is not None:
-                self.osc_mdns.stop()
-                self.osc_mdns = None
-            if self.osc_server is not None:
-                # Stop the server asynchronously
-                self._network_thread.loop.call_soon_threadsafe(self.osc_server.stop)
-                self.osc_server = None
-            if self.osc_client is not None:
-                self.osc_client.close()
-                self.osc_client = None
-            self.osc_subscriptions.cleanup_expired(0.0)
-
-    def set_static_client(self, enable: bool, host: str = "", port: int = 0) -> None:
-        """Enable or disable the static fallback OSC client subscriber."""
-        with self._lock:
-            target_host = host
-            target_port = port
-            if self.osc_client is not None:
-                client_host, client_port = self.osc_client._addr
-                if not target_host:
-                    target_host = client_host
-                if target_port <= 0:
-                    target_port = client_port
-            elif not target_host:
-                target_host = "127.0.0.1"
-
-            if target_port <= 0:
-                target_port = 8000
-
-            # Remove existing static subscribers
-            for sub in list(self.osc_subscriptions.get_subscribers_snapshot()):
-                if sub.get("is_static", False):
-                    self.osc_subscriptions.unsubscribe(sub["host"], sub["port"], "all")
-
-            if enable:
-                self.osc_subscriptions.subscribe(
-                    target_host, target_port, "all", is_static=True
-                )
-                sync_fn = getattr(self._osc_delegate, "send_full_sync", None)
-                if callable(sync_fn):
-                    sync_fn((target_host, target_port))
-
-    def update_osc_client(self, host: str = "", port: int | None = None) -> None:
-        """Update client IP or port settings."""
-        with self._lock:
-            if self.osc_client is not None:
-                old_host, old_port = self.osc_client._addr
-                self.osc_client.target_changed(host, port)
-                new_host, new_port = self.osc_client._addr
-                # Update static subscriber if it was registered
-                was_subscribed = self.osc_subscriptions.unsubscribe(
-                    old_host, old_port, "all"
-                )
-                if was_subscribed:
-                    self.osc_subscriptions.subscribe(
-                        new_host, new_port, "all", is_static=True
-                    )
-
-    def update_osc_server(self, server_port: int) -> None:
-        """Restart the OSC server on a new port."""
-        with self._lock:
-            if self.osc_server is not None:
-                # Stop the old one
-                old_server = self.osc_server
-                self._network_thread.loop.call_soon_threadsafe(old_server.stop)
-
-                # Start the new one
-                self.osc_server = EngineOSCServer(server_port, engine=self)
-                if self._osc_delegate is not None:
-                    self.osc_server.register_delegate(self._osc_delegate)
-                asyncio.run_coroutine_threadsafe(
-                    self.osc_server.start(), self._network_thread.loop
-                )
-                http_port = server_port + 1
-                if self.oscquery_server is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        self.oscquery_server.start(
-                            http_port=http_port, osc_port=server_port
-                        ),
-                        self._network_thread.loop,
-                    )
-                if self.osc_mdns is not None:
-                    self.osc_mdns.start(
-                        service_name="Open Lighting Console",
-                        port=server_port,
-                        http_port=http_port,
-                    )
-
-    def register_osc_delegate(self, delegate: object) -> None:
-        """Register a delegate for GUI-specific OSC callbacks."""
-        with self._lock:
-            self._osc_delegate = delegate
-            if self.osc_server is not None:
-                self.osc_server.register_delegate(delegate)
-            if self.osc_subscriptions.get_subscribers_snapshot():
-                sync_fn = getattr(delegate, "send_full_sync", None)
-                if callable(sync_fn):
-                    sync_fn()
-
-    def publish_osc(self, topic: str, path: str, *args: object) -> None:
-        """Publish an OSC message to subscribers of a topic."""
-        with self._lock:
-            self.osc_subscriptions.publish(topic, path, *args)
-
-    def send_osc(self, path: str, *args: object) -> None:
-        """Send an OSC message to subscribers listening to all/general topics."""
-        with self._lock:
-            self.osc_subscriptions.publish("all", path, *args)
 
     def _send_all(self) -> None:
         """Called by DMXLoop on every tick. Dispatches to senders."""

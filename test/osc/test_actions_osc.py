@@ -27,9 +27,10 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
 from olc.core.app import CoreApplication  # noqa: E402
+from olc.core.backends.osc import Osc  # noqa: E402
 from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
+from olc.core.backends.osc.transport import CoreOSCServer  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
-from olc.core.osc import EngineOSCServer  # noqa: E402
 from olc.core.universe_config import UniverseMap  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
@@ -45,8 +46,8 @@ def test_osc_toggle_enable_and_disable() -> None:
     )
 
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     toggled_events: list[bool] = []
 
@@ -58,27 +59,64 @@ def test_osc_toggle_enable_and_disable() -> None:
     # 1. Enable OSC
     app.action_registry.execute("osc.toggle", True)
     assert toggled_events == [True]
-    mock_engine.start_osc.assert_called_once_with(
+    mock_osc.start.assert_called_once_with(
         host="192.168.1.100",
         client_port=8001,
         server_port=9001,
         enable_static_client=False,
     )
-    mock_engine.register_osc_delegate.assert_called_once()
-    assert getattr(app, "osc_delegate", None) is not None
     assert len(app.history.undo_stack) == 1
 
     # Undo toggle -> Disable OSC
     app.history.undo()
     assert toggled_events == [True, False]
-    mock_engine.stop_osc.assert_called_once()
-    assert getattr(app, "osc_delegate", None) is None
+    mock_osc.stop.assert_called_once()
 
     # Redo toggle -> Re-enable OSC
     app.history.redo()
     assert toggled_events == [True, False, True]
-    assert mock_engine.start_osc.call_count == 2
-    assert getattr(app, "osc_delegate", None) is not None
+    assert mock_osc.start.call_count == 2
+
+
+def test_osc_toggle_initializes_osc_headless_without_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test osc.toggle initializes app.osc when None even without an engine."""
+    settings = MagicMock()
+    settings.get_boolean.return_value = False
+    settings.get_string.return_value = "127.0.0.1"
+    settings.get_int.side_effect = lambda key: (
+        18000 if key == "osc-client-port" else 19000
+    )
+
+    started: list[tuple[str, int, int, bool]] = []
+    stopped: list[bool] = []
+
+    def fake_start(
+        _self: Osc,
+        host: str,
+        client_port: int,
+        server_port: int,
+        enable_static_client: bool = False,
+    ) -> None:
+        started.append((host, client_port, server_port, enable_static_client))
+
+    def fake_stop(_self: Osc) -> None:
+        stopped.append(True)
+
+    monkeypatch.setattr(Osc, "start", fake_start)
+    monkeypatch.setattr(Osc, "stop", fake_stop)
+
+    app = CoreApplication(settings)
+    assert app.engine is None
+    assert app.osc is None
+
+    app.action_registry.execute("osc.toggle", True)
+    assert isinstance(app.osc, Osc)
+    assert started == [("127.0.0.1", 18000, 19000, False)]
+
+    app.action_registry.execute("osc.toggle", False)
+    assert stopped == [True]
 
 
 def test_osc_set_config_and_undo_redo() -> None:
@@ -90,8 +128,8 @@ def test_osc_set_config_and_undo_redo() -> None:
     )
 
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     config_events: list[tuple[str, int, int]] = []
 
@@ -102,64 +140,64 @@ def test_osc_set_config_and_undo_redo() -> None:
 
     # Execute new configuration
     app.action_registry.execute("osc.set_config", "10.0.0.42", 8020, 9020)
-    mock_engine.update_osc_client.assert_called_once_with(host="10.0.0.42", port=8020)
-    mock_engine.update_osc_server.assert_called_once_with(9020)
+    mock_osc.update_client.assert_called_once_with(host="10.0.0.42", port=8020)
+    mock_osc.update_server.assert_called_once_with(9020)
     assert config_events == [("10.0.0.42", 8020, 9020)]
 
     # Undo configuration change
     app.history.undo()
-    assert mock_engine.update_osc_client.call_count == 2
-    mock_engine.update_osc_client.assert_called_with(host="127.0.0.1", port=8000)
-    assert mock_engine.update_osc_server.call_count == 2
-    mock_engine.update_osc_server.assert_called_with(9000)
+    assert mock_osc.update_client.call_count == 2
+    mock_osc.update_client.assert_called_with(host="127.0.0.1", port=8000)
+    assert mock_osc.update_server.call_count == 2
+    mock_osc.update_server.assert_called_with(9000)
     assert config_events == [("10.0.0.42", 8020, 9020), ("127.0.0.1", 8000, 9000)]
 
     # Redo configuration change
     app.history.redo()
-    assert mock_engine.update_osc_client.call_count == 3
-    mock_engine.update_osc_client.assert_called_with(host="10.0.0.42", port=8020)
-    assert mock_engine.update_osc_server.call_count == 3
-    mock_engine.update_osc_server.assert_called_with(9020)
+    assert mock_osc.update_client.call_count == 3
+    mock_osc.update_client.assert_called_with(host="10.0.0.42", port=8020)
+    assert mock_osc.update_server.call_count == 3
+    mock_osc.update_server.assert_called_with(9020)
     assert config_events[-1] == ("10.0.0.42", 8020, 9020)
 
 
 def test_osc_delegate_telemetry_events() -> None:
-    """Test OSCDelegate sends telemetry in response to core decoupled events."""
+    """Test OSCDelegate sends telemetry headless when engine is None."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    assert app.engine is None
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
-    app.osc_delegate = delegate
 
     # 1. Test commandline.changed telemetry
     app.action_registry.execute("commandline.set", "1 THRU 10 @ 80")
-    mock_engine.publish_osc.assert_called_with(
+    mock_osc.publish.assert_called_with(
         "commandline", "/olc/command_line", "1 THRU 10 @ 80"
     )
 
     # 2. Test fader.level_changed telemetry (normalized float 0.0..1.0)
     app.emit("fader.level_changed", 3, 0.5)
-    mock_engine.publish_osc.assert_called_with("faders", "/olc/fader/1/3/level", 0.5)
+    mock_osc.publish.assert_called_with("faders", "/olc/fader/1/3/level", 0.5)
 
     # 3. Test patch.changed telemetry
     app.emit("patch.changed")
-    mock_engine.publish_osc.assert_called_with(
+    mock_osc.publish.assert_called_with(
         "patch", "/olc/patch/changed", len(app.lightshow.patch.devices)
     )
+    assert delegate.osc is mock_osc
 
 
-def test_engine_osc_server_action_dispatch() -> None:
-    """Test EngineOSCServer dispatches blackout and set_channels via action registry."""
+def test_osc_server_action_dispatch() -> None:
+    """Test CoreOSCServer + OSCDelegate dispatches blackout and set_channels."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
     mock_engine = MagicMock()
-    mock_engine.app = app
     app.engine = mock_engine
 
-    server = EngineOSCServer(9000, engine=mock_engine)
+    server = CoreOSCServer(9000)
     delegate = OSCDelegate(app)
     server.register_delegate(delegate)
 
@@ -283,7 +321,7 @@ def test_settings_tab_client_ip_focus_out() -> None:
 
 
 def test_osc_start_stop_reentrant_lock(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test repeated start_osc calls without deadlocking on CoreEngine._lock."""
+    """Test repeated Osc.start calls without deadlocking on Osc._lock."""
 
     # Ensure coroutines passed to threadsafe call are closed when loop is mocked
     def mock_run_coroutine(
@@ -294,26 +332,53 @@ def test_osc_start_stop_reentrant_lock(monkeypatch: pytest.MonkeyPatch) -> None:
         return MagicMock()
 
     monkeypatch.setattr("asyncio.run_coroutine_threadsafe", mock_run_coroutine)
+    monkeypatch.setattr("olc.core.backends.osc.MDNSAdvertiser", MagicMock())
 
-    engine = CoreEngine(UniverseMap(1), monitor_port=5555, no_listen=True)
-    engine._network_thread = MagicMock()  # pylint: disable=protected-access
+    app = CoreApplication(MagicMock())
+    osc = Osc(app)
+    osc._network_thread = MagicMock()  # pylint: disable=protected-access
 
     # Start OSC first time
-    engine.start_osc("127.0.0.1", 8000, 9000)
-    assert engine.osc_server is not None
-    assert engine.osc_client is not None
+    osc.start("127.0.0.1", 18000, 19000)
+    assert osc.is_running
+    assert osc.server is not None
+    assert osc.client is not None
 
-    # Start OSC second time while already running -> should call stop_osc() internally
-    # and re-acquire lock without deadlock
-    engine.start_osc("127.0.0.1", 8001, 9001)
-    assert engine.osc_server is not None
-    assert engine.osc_client is not None
+    # Start OSC second time while already running -> stops services under RLock
+    osc.start("127.0.0.1", 18001, 19001)
+    assert osc.is_running
+    assert osc.server is not None
+    assert osc.client is not None
 
     # Cleanup
-    engine.stop_osc()
-    engine.stop()
-    assert engine.osc_server is None
-    assert engine.osc_client is None
+    osc.stop()
+    assert not osc.is_running
+    assert osc.server is None
+    assert osc.client is None
+
+
+def test_core_engine_has_no_osc() -> None:
+    """CoreEngine must be strictly reserved to DMX and have zero OSC attributes."""
+    engine = CoreEngine(UniverseMap(1), monitor_port=5555, no_listen=True)
+    try:
+        for attr in (
+            "start_osc",
+            "stop_osc",
+            "publish_osc",
+            "send_osc",
+            "osc_server",
+            "osc_client",
+            "osc_subscriptions",
+            "osc_mdns",
+            "oscquery_server",
+            "register_osc_delegate",
+            "update_osc_client",
+            "update_osc_server",
+            "set_static_client",
+        ):
+            assert not hasattr(engine, attr), f"Unexpected OSC attribute: {attr}"
+    finally:
+        engine.stop()
 
 
 def test_osc_toggle_noop_not_undoable() -> None:
@@ -322,8 +387,7 @@ def test_osc_toggle_noop_not_undoable() -> None:
     settings = MagicMock()
     settings.get_boolean.return_value = True
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    app.osc = MagicMock()
 
     # Executing toggle to True when already True should not push to history
     app.action_registry.execute("osc.toggle", True)
@@ -334,38 +398,38 @@ def test_osc_delegate_cmd_execution() -> None:
     """Test /olc/cmd endpoint in OSCDelegate executes command and sends status."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
 
     # 1. Valid command execution
     delegate._cmd("/olc/cmd", ["1 THRU 5 AT 80"])  # pylint: disable=protected-access
-    mock_engine.publish_osc.assert_called_with("commandline", "/olc/cmd/status", "OK")
+    mock_osc.publish.assert_called_with("commandline", "/olc/cmd/status", "OK")
 
     # 2. Stripping trailing ENTER keyword (case-insensitive)
     delegate._cmd("/olc/cmd", ["10 AT FULL Enter"])  # pylint: disable=protected-access
     assert app.commandline.get_string() == ""  # Successful execution clears buffer
-    mock_engine.publish_osc.assert_called_with("commandline", "/olc/cmd/status", "OK")
+    mock_osc.publish.assert_called_with("commandline", "/olc/cmd/status", "OK")
 
     # 3. Syntax error execution -> status sends error message
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._cmd("/olc/cmd", ["1 AT INVALID_TOKEN"])  # pylint: disable=protected-access
-    assert mock_engine.publish_osc.called
+    assert mock_osc.publish.called
     status_call = [
         call
-        for call in mock_engine.publish_osc.call_args_list
+        for call in mock_osc.publish.call_args_list
         if call[0][1] == "/olc/cmd/status"
     ]
     assert len(status_call) == 1
     assert "Syntax Error" in status_call[0][0][2]
 
     # 4. Empty or invalid args are safely ignored
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._cmd("/olc/cmd", [])  # pylint: disable=protected-access
     delegate._cmd("/olc/cmd", [""])  # pylint: disable=protected-access
     delegate._cmd("/olc/cmd", [123])  # pylint: disable=protected-access
-    mock_engine.publish_osc.assert_not_called()
+    mock_osc.publish.assert_not_called()
 
 
 # pylint: disable=protected-access
@@ -373,19 +437,19 @@ def test_osc_delegate_patch_dimmer() -> None:
     """Test /olc/patch/dimmer endpoint in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
 
     # 1. Valid patch with 3 integer arguments
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
     assert 1 in app.lightshow.patch.devices
     dev1 = app.lightshow.patch.devices[1]
     assert dev1.universe == 1
     assert dev1.address == 10
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch",
         "/olc/patch/status",
         "OK",
@@ -394,13 +458,13 @@ def test_osc_delegate_patch_dimmer() -> None:
     )
 
     # 2. Valid patch with format "universe/address"
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [2, "1/20"])
     assert 2 in app.lightshow.patch.devices
     dev2 = app.lightshow.patch.devices[2]
     assert dev2.universe == 1
     assert dev2.address == 20
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch",
         "/olc/patch/status",
         "OK",
@@ -409,32 +473,32 @@ def test_osc_delegate_patch_dimmer() -> None:
     )
 
     # 3. Invalid string format
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [3, "not_a_valid_format"])
     assert 3 not in app.lightshow.patch.devices
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
     # 4. Too few arguments
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [4])
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
 
     # 5. Collision detection error
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [5, 1, 10])  # Collides with Device 1
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
@@ -446,13 +510,13 @@ def test_osc_delegate_patch_dimmer() -> None:
     assert 2 in app.lightshow.patch.devices
 
     # 7. Backward compatibility with dot notation "1.25"
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dimmer("/olc/patch/dimmer", [22, "1.25"])
     assert 22 in app.lightshow.patch.devices
     dev22 = app.lightshow.patch.devices[22]
     assert dev22.universe == 1
     assert dev22.address == 25
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch",
         "/olc/patch/status",
         "OK",
@@ -465,13 +529,13 @@ def test_osc_delegate_patch_device() -> None:
     """Test /olc/patch/device endpoint in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
 
     # 1. Valid fixture patch
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_device(
         "/olc/patch/device", [10, "Generic:RGBW", 1, 30, "Default", "LED 1"]
     )
@@ -481,7 +545,7 @@ def test_osc_delegate_patch_device() -> None:
     assert dev.address == 30
     assert dev.channel_count() == 4
     assert dev.label == "LED 1"
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch",
         "/olc/patch/status",
         "OK",
@@ -490,23 +554,23 @@ def test_osc_delegate_patch_device() -> None:
     )
 
     # 2. Unknown fixture definition
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_device("/olc/patch/device", [11, "NonExistent:Fixture", 1, 40])
     assert 11 not in app.lightshow.patch.devices
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
     assert "not found in library" in status_calls[0][0][4]
 
     # 3. Insufficient arguments
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_device("/olc/patch/device", [12, "Generic:Dimmer"])
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
@@ -516,18 +580,18 @@ def test_osc_delegate_patch_unpatch() -> None:
     """Test /olc/patch/unpatch endpoint in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
     assert 1 in app.lightshow.patch.devices
 
     # 1. Unpatch device 1
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_unpatch("/olc/patch/unpatch", [1])
     assert 1 not in app.lightshow.patch.devices
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch", "/olc/patch/status", "OK", "/olc/patch/unpatch", "Device 1 unpatched"
     )
 
@@ -536,11 +600,11 @@ def test_osc_delegate_patch_unpatch() -> None:
     assert 1 in app.lightshow.patch.devices
 
     # 3. Missing argument
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_unpatch("/olc/patch/unpatch", [])
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
@@ -550,21 +614,21 @@ def test_osc_delegate_patch_1on1_and_clear() -> None:
     """Test /olc/patch/1on1 and /olc/patch/clear endpoints in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
 
     # 1. Clear patch
     delegate._patch_clear("/olc/patch/clear", [])
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch", "/olc/patch/status", "OK", "/olc/patch/clear", "Patch cleared"
     )
     assert len(app.lightshow.patch.devices) == 0
 
     # 2. Set 1:1 patch
     delegate._patch_1on1("/olc/patch/1on1", [])
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch", "/olc/patch/status", "OK", "/olc/patch/1on1", "Patch reset to 1:1"
     )
     assert len(app.lightshow.patch.devices) > 0
@@ -574,17 +638,17 @@ def test_osc_delegate_patch_curve() -> None:
     """Test /olc/patch/curve endpoint in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
 
     # 1. Set curve
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_curve("/olc/patch/curve", [1, 2])
     assert app.lightshow.patch.devices[1].curve_id == 2
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "patch",
         "/olc/patch/status",
         "OK",
@@ -593,11 +657,11 @@ def test_osc_delegate_patch_curve() -> None:
     )
 
     # 2. Missing args
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_curve("/olc/patch/curve", [1])
     status_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/patch/status" and c[0][2] == "ERROR"
     ]
     assert len(status_calls) == 1
@@ -607,8 +671,8 @@ def test_osc_delegate_patch_get_and_dump() -> None:
     """Test /olc/patch/get and /olc/patch/dump query endpoints in OSCDelegate."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
@@ -617,34 +681,32 @@ def test_osc_delegate_patch_get_and_dump() -> None:
     )
 
     # 1. Query patched device 1
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_get("/olc/patch/get", [1])
-    mock_engine.publish_osc.assert_called_with(
+    mock_osc.publish.assert_called_with(
         "patch", "/olc/patch/device/info", 1, 1, 10, 1, "Generic:Dimmer", "Dimmer 1"
     )
 
     # 2. Query patched device 2
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_get("/olc/patch/get", [2])
-    mock_engine.publish_osc.assert_called_with(
+    mock_osc.publish.assert_called_with(
         "patch", "/olc/patch/device/info", 2, 1, 20, 4, "Generic:LED RGBW", "Wash 1"
     )
 
     # 3. Query unpatched device 99
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_get("/olc/patch/get", [99])
-    mock_engine.publish_osc.assert_called_with(
+    mock_osc.publish.assert_called_with(
         "patch", "/olc/patch/device/info", 99, 0, 0, 0, "", ""
     )
 
     # 4. Dump patch as JSON
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._patch_dump("/olc/patch/dump", [])
-    assert mock_engine.publish_osc.called
+    assert mock_osc.publish.called
     dump_call = [
-        c
-        for c in mock_engine.publish_osc.call_args_list
-        if c[0][1] == "/olc/patch/dump"
+        c for c in mock_osc.publish.call_args_list if c[0][1] == "/olc/patch/dump"
     ]
     assert len(dump_call) == 1
     import json  # pylint: disable=import-outside-toplevel
@@ -660,9 +722,9 @@ def test_osc_pubsub_subscribe_and_direct_dump() -> None:
     """Test /olc/subscribe registers subscriber, dumps patch, and notifies app."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
+    mock_osc = MagicMock()
     mock_sub_manager = MagicMock()
-    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_osc.subscriptions = mock_sub_manager
     mock_sub_manager.get_subscribers_snapshot.return_value = [
         {
             "host": "192.168.1.44",
@@ -672,7 +734,7 @@ def test_osc_pubsub_subscribe_and_direct_dump() -> None:
             "is_static": False,
         }
     ]
-    app.engine = mock_engine
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     delegate._patch_dimmer("/olc/patch/dimmer", [1, 1, 10])
@@ -686,14 +748,12 @@ def test_osc_pubsub_subscribe_and_direct_dump() -> None:
     )
 
     mock_sub_manager.subscribe.assert_called_once_with("192.168.1.44", 8888, "patch")
-    mock_sub_manager.send_direct.assert_any_call(
+    mock_osc.send_direct.assert_any_call(
         "192.168.1.44", 8888, "/olc/subscribe/status", "OK", "patch"
     )
     # Direct patch dump sent to client
     dump_calls = [
-        c
-        for c in mock_sub_manager.send_direct.call_args_list
-        if c[0][2] == "/olc/patch/dump"
+        c for c in mock_osc.send_direct.call_args_list if c[0][2] == "/olc/patch/dump"
     ]
     assert len(dump_calls) == 1
     assert dump_calls[0][0][0] == "192.168.1.44"
@@ -708,11 +768,11 @@ def test_osc_pubsub_unsubscribe() -> None:
     """Test /olc/unsubscribe removes subscriber and emits osc.subscribers_changed."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
+    mock_osc = MagicMock()
     mock_sub_manager = MagicMock()
-    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_osc.subscriptions = mock_sub_manager
     mock_sub_manager.get_subscribers_snapshot.return_value = []
-    app.engine = mock_engine
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     changed_events: list[list] = []
@@ -723,7 +783,7 @@ def test_osc_pubsub_unsubscribe() -> None:
     )
 
     mock_sub_manager.unsubscribe.assert_called_once_with("192.168.1.44", 8888, "patch")
-    mock_sub_manager.send_direct.assert_called_once_with(
+    mock_osc.send_direct.assert_called_once_with(
         "192.168.1.44", 8888, "/olc/subscribe/status", "OK", "unsubscribed"
     )
     assert len(changed_events) == 1
@@ -733,16 +793,16 @@ def test_osc_pubsub_ping_pong() -> None:
     """Test /olc/ping refreshes keepalive and replies with /olc/pong."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
+    mock_osc = MagicMock()
     mock_sub_manager = MagicMock()
-    mock_engine.osc_subscriptions = mock_sub_manager
-    app.engine = mock_engine
+    mock_osc.subscriptions = mock_sub_manager
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
     delegate._ping("/olc/ping", [12345], sender_addr=("192.168.1.44", 8888))
 
     mock_sub_manager.refresh_keepalive.assert_called_once_with("192.168.1.44", 8888)
-    mock_sub_manager.send_direct.assert_called_once_with(
+    mock_osc.send_direct.assert_called_once_with(
         "192.168.1.44", 8888, "/olc/pong", 12345
     )
 
@@ -751,11 +811,11 @@ def test_osc_remove_subscriber_action() -> None:
     """Test osc.remove_subscriber action evicts subscriber and emits event."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
+    mock_osc = MagicMock()
     mock_sub_manager = MagicMock()
-    mock_engine.osc_subscriptions = mock_sub_manager
+    mock_osc.subscriptions = mock_sub_manager
     mock_sub_manager.get_subscribers_snapshot.return_value = []
-    app.engine = mock_engine
+    app.osc = mock_osc
 
     changed_events: list[list] = []
     app.subscribe("osc.subscribers_changed", changed_events.append)
@@ -834,10 +894,10 @@ def test_osc_toggle_static_client_action() -> None:
     settings.get_string.return_value = "192.168.1.50"
     settings.get_int.return_value = 8500
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
+    mock_osc = MagicMock()
     mock_sub_manager = MagicMock()
-    mock_engine.osc_subscriptions = mock_sub_manager
-    app.engine = mock_engine
+    mock_osc.subscriptions = mock_sub_manager
+    app.osc = mock_osc
 
     toggled_events: list[bool] = []
     app.subscribe("osc.static_client_toggled", toggled_events.append)
@@ -845,40 +905,38 @@ def test_osc_toggle_static_client_action() -> None:
     # 1. Enable static client
     app.action_registry.execute("osc.toggle_static_client", True)
     assert toggled_events == [True]
-    mock_engine.set_static_client.assert_called_once_with(
+    mock_osc.set_static_client.assert_called_once_with(
         True, host="192.168.1.50", port=8500
     )
 
     # 2. Undo -> revert to False
     app.history.undo()
     assert toggled_events == [True, False]
-    mock_engine.set_static_client.assert_called_with(
-        False, host="192.168.1.50", port=8500
-    )
+    mock_osc.set_static_client.assert_called_with(False, host="192.168.1.50", port=8500)
 
     # 3. Redo -> re-enable
     app.history.redo()
     assert toggled_events == [True, False, True]
 
 
-def test_core_engine_set_static_client() -> None:
-    """Test CoreEngine.set_static_client subscribes or unsubscribes static client."""
-    universe_map = UniverseMap()
-    engine = CoreEngine(universe_map)
-    engine.osc_client = MagicMock()
-    engine.osc_client._addr = ("127.0.0.1", 8000)
+def test_osc_set_static_client() -> None:
+    """Test Osc.set_static_client subscribes or unsubscribes static client."""
+    app = CoreApplication(MagicMock())
+    osc = Osc(app)
+    osc.client = MagicMock()
+    osc.client.target = ("127.0.0.1", 8000)
 
     # Enable static client
-    engine.set_static_client(True, "192.168.1.80", 8800)
-    subs = engine.osc_subscriptions.get_subscribers_snapshot()
+    osc.set_static_client(True, "192.168.1.80", 8800)
+    subs = osc.subscriptions.get_subscribers_snapshot()
     assert len(subs) == 1
     assert subs[0]["host"] == "192.168.1.80"
     assert subs[0]["port"] == 8800
     assert subs[0]["is_static"] is True
 
     # Disable static client
-    engine.set_static_client(False)
-    subs2 = engine.osc_subscriptions.get_subscribers_snapshot()
+    osc.set_static_client(False)
+    subs2 = osc.subscriptions.get_subscribers_snapshot()
     assert len(subs2) == 0
 
 
@@ -929,8 +987,8 @@ def test_osc_playback_subscribe_and_telemetry() -> None:
 
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     # Prepare some cues in main playback
     mp = app.lightshow.main_playback
@@ -943,12 +1001,12 @@ def test_osc_playback_subscribe_and_telemetry() -> None:
     mp.position = 2
 
     delegate = OSCDelegate(app)
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
 
     delegate._subscribe("/olc/subscribe", ["playback", 8888], ("192.168.1.50", 8888))
 
     # Check status and telemetry sent to client
-    direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list
+    direct_calls = mock_osc.send_direct.call_args_list
     sent_paths = [c[0][2] for c in direct_calls]
 
     assert "/olc/subscribe/status" in sent_paths
@@ -970,8 +1028,8 @@ def test_osc_playback_goto_cue_and_progress() -> None:
 
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     mp = app.lightshow.main_playback
     cue1 = Cue(sequence=1, number=1.0, text="Cue 1")
@@ -989,20 +1047,20 @@ def test_osc_playback_goto_cue_and_progress() -> None:
     assert get_cue(mp.steps[mp.position + 1]).number == 2.0
 
     # 2. Progress event
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     app.emit(
         "playback.transition_progress",
         {"total_time": 3000.0, "time_spent": 1500.0, "progress_val": 128},
     )
-    mock_engine.publish_osc.assert_any_call("playback", "/olc/playback/progress", 0.5)
+    mock_osc.publish.assert_any_call("playback", "/olc/playback/progress", 0.5)
 
     # 3. Transition completed
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     app.emit("playback.transition_completed", {"next_step": 2})
     # Emits 1.0, updates telemetry, then 0.0
     progress_calls = [
         c
-        for c in mock_engine.publish_osc.call_args_list
+        for c in mock_osc.publish.call_args_list
         if c[0][1] == "/olc/playback/progress"
     ]
     assert len(progress_calls) == 2
@@ -1019,8 +1077,8 @@ def test_osc_playback_dump_and_cue_dump() -> None:
 
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     mp = app.lightshow.main_playback
     cue1 = Cue(sequence=1, number=1.0, text="Scene 1")
@@ -1028,13 +1086,13 @@ def test_osc_playback_dump_and_cue_dump() -> None:
     mp.steps.append(step1)
 
     delegate = OSCDelegate(app)
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.send_direct.reset_mock()
+    mock_osc.publish.reset_mock()
 
     delegate._playback_dump("/olc/cue/dump", [], sender_addr=("192.168.1.10", 9000))
 
     # Verify direct reply
-    direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list
+    direct_calls = mock_osc.send_direct.call_args_list
     assert len(direct_calls) == 1
     dump_str = direct_calls[0][0][3]
     dump_data = json.loads(dump_str)
@@ -1046,38 +1104,38 @@ def test_osc_mainfader_and_blackout_routes() -> None:
     """Test /olc/mainfader and /olc/blackout execution and queries."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     delegate = OSCDelegate(app)
 
     # 1. Set mainfader via float 0.75
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._mainfader("/olc/mainfader", [0.75])
     assert getattr(app, "main_fader_level", 0.0) == 0.75
-    mock_engine.publish_osc.assert_any_call("playback", "/olc/mainfader", 0.75)
+    mock_osc.publish.assert_any_call("playback", "/olc/mainfader", 0.75)
 
     # 2. Set mainfader via int 128 (normalized to 128/255)
     delegate._mainfader("/olc/mainfader", [128])
     assert abs(getattr(app, "main_fader_level", 0.0) - (128 / 255.0)) < 0.01
 
     # 3. Query mainfader without args
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
     delegate._mainfader("/olc/mainfader", [], sender_addr=("10.0.0.1", 5000))
-    mock_engine.osc_subscriptions.send_direct.assert_called_once()
-    assert mock_engine.osc_subscriptions.send_direct.call_args[0][2] == "/olc/mainfader"
+    mock_osc.send_direct.assert_called_once()
+    assert mock_osc.send_direct.call_args[0][2] == "/olc/mainfader"
 
     # 4. Trigger Blackout ON
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._blackout("/olc/blackout", [1], sender_addr=("10.0.0.1", 5000))
     assert getattr(app, "blackout_active", False) is True
-    mock_engine.publish_osc.assert_any_call("playback", "/olc/blackout", 1)
+    mock_osc.publish.assert_any_call("playback", "/olc/blackout", 1)
 
     # 5. Toggle Blackout OFF (no args)
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._blackout("/olc/blackout", [], sender_addr=("10.0.0.1", 5000))
     assert getattr(app, "blackout_active", True) is False
-    mock_engine.publish_osc.assert_any_call("playback", "/olc/blackout", 0)
+    mock_osc.publish.assert_any_call("playback", "/olc/blackout", 0)
 
 
 def test_osc_playback_state_queries() -> None:
@@ -1087,8 +1145,8 @@ def test_osc_playback_state_queries() -> None:
 
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     mp = app.lightshow.main_playback
     cue1 = Cue(sequence=1, number=5.0, text="Dance")
@@ -1102,29 +1160,29 @@ def test_osc_playback_state_queries() -> None:
     delegate = OSCDelegate(app)
 
     # Query active cue
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
     delegate._playback_query_active_cue(
         "/olc/playback/active/cue", [], sender_addr=("10.0.0.2", 8000)
     )
-    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+    mock_osc.send_direct.assert_called_once_with(
         "10.0.0.2", 8000, "/olc/playback/active/cue", 5.0
     )
 
     # Query next cue
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
     delegate._playback_query_next_cue(
         "/olc/playback/next/cue", [], sender_addr=("10.0.0.2", 8000)
     )
-    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+    mock_osc.send_direct.assert_called_once_with(
         "10.0.0.2", 8000, "/olc/playback/next/cue", 6.0
     )
 
     # Query state
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
     delegate._playback_query_state(
         "/olc/playback/state", [], sender_addr=("10.0.0.2", 8000)
     )
-    mock_engine.osc_subscriptions.send_direct.assert_called_once_with(
+    mock_osc.send_direct.assert_called_once_with(
         "10.0.0.2", 8000, "/olc/playback/state", "idle"
     )
 
@@ -1140,8 +1198,8 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
     mock_backend.dmx.blackout = False
     app.backend = mock_backend
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     # 1. Main fader normalized float
@@ -1246,17 +1304,17 @@ def test_osc_fader_flash_feedback() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     # Trigger flash on fader 1
     delegate._fader_flash("/olc/fader/1/1/flash", [1])
-    mock_engine.publish_osc.assert_any_call("faders", "/olc/fader/1/1/flash", 1)
+    mock_osc.publish.assert_any_call("faders", "/olc/fader/1/1/flash", 1)
 
     # Release flash on fader 1
     delegate._fader_flash("/olc/fader/1/1/flash", [0])
-    mock_engine.publish_osc.assert_any_call("faders", "/olc/fader/1/1/flash", 0)
+    mock_osc.publish.assert_any_call("faders", "/olc/fader/1/1/flash", 0)
 
 
 def test_osc_selected_pan_tilt_norm_feedback() -> None:
@@ -1264,8 +1322,8 @@ def test_osc_selected_pan_tilt_norm_feedback() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     _delegate = OSCDelegate(app)
 
     # Patch moving head fixture on channel 1
@@ -1277,7 +1335,7 @@ def test_osc_selected_pan_tilt_norm_feedback() -> None:
     app.selected_channels = [1]
     app.action_registry.execute("device.set_pan_tilt", 0.0, 0.0)
 
-    calls = [call[0] for call in mock_engine.publish_osc.call_args_list]
+    calls = [call[0] for call in mock_osc.publish.call_args_list]
     # Check that both degrees and norm were published
     published_topics_addrs = [(c[0], c[1]) for c in calls if len(c) >= 2]
     assert ("channels", "/olc/selected/pan") in published_topics_addrs
@@ -1291,22 +1349,22 @@ def test_osc_manual_xfade_control_and_feedback() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     # 1. Move Scale A to 0.7
     delegate._playback_xfade_a("/olc/playback/xfade/a", [0.7])
     assert app.crossfade is not None
     assert pytest.approx(app.crossfade.scale_a.get_value(), 0.01) == 0.7
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "playback", "/olc/playback/xfade/a", pytest.approx(0.7, 0.01)
     )
 
     # 2. Move Scale B to 0.4
     delegate._playback_xfade_b("/olc/playback/xfade/b", [0.4])
     assert pytest.approx(app.crossfade.scale_b.get_value(), 0.01) == 0.4
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "playback", "/olc/playback/xfade/b", pytest.approx(0.4, 0.01)
     )
 

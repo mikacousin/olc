@@ -28,8 +28,8 @@ def test_osc_independent_level_control_and_feedback() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     inde1 = app.lightshow.independents.independents[0]
@@ -39,9 +39,7 @@ def test_osc_independent_level_control_and_feedback() -> None:
     # Send OSC normalized level 0.65
     delegate._independent_level("/olc/independent/1/level", [0.65])
     assert inde1.level == 0.65
-    mock_engine.publish_osc.assert_any_call(
-        "independents", "/olc/independent/1/level", 0.65
-    )
+    mock_osc.publish.assert_any_call("independents", "/olc/independent/1/level", 0.65)
 
 
 def test_osc_independent_button_press_and_release() -> None:
@@ -49,8 +47,8 @@ def test_osc_independent_button_press_and_release() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     inde2 = app.lightshow.independents.independents[1]
@@ -59,16 +57,12 @@ def test_osc_independent_button_press_and_release() -> None:
     # Press button -> level 1.0
     delegate._independent_button("/olc/independent/2/button", [1])
     assert inde2.level == 1.0
-    mock_engine.publish_osc.assert_any_call(
-        "independents", "/olc/independent/2/level", 1.0
-    )
+    mock_osc.publish.assert_any_call("independents", "/olc/independent/2/level", 1.0)
 
     # Release button -> level 0.0
     delegate._independent_button("/olc/independent/2/button", [0])
     assert inde2.level == 0.0
-    mock_engine.publish_osc.assert_any_call(
-        "independents", "/olc/independent/2/level", 0.0
-    )
+    mock_osc.publish.assert_any_call("independents", "/olc/independent/2/level", 0.0)
 
 
 def test_osc_independent_label_feedback() -> None:
@@ -76,12 +70,12 @@ def test_osc_independent_label_feedback() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     _delegate = OSCDelegate(app)
 
     app.action_registry.execute("independent.rename", 1, "Haze Machine")
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "independents", "/olc/independent/1/label", "Haze Machine"
     )
 
@@ -91,8 +85,8 @@ def test_osc_independent_dump_and_sync() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     sender = ("192.168.1.50", 9000)
@@ -102,7 +96,7 @@ def test_osc_independent_dump_and_sync() -> None:
     # Check that send_direct was called with valid JSON data
     dump_calls = [
         c[0]
-        for c in mock_engine.osc_subscriptions.send_direct.call_args_list
+        for c in mock_osc.send_direct.call_args_list
         if len(c[0]) >= 4 and c[0][2] == "/olc/independent/dump"
     ]
     assert len(dump_calls) == 1
@@ -111,9 +105,9 @@ def test_osc_independent_dump_and_sync() -> None:
     assert dump_data[0]["number"] == 1
 
     # 2. Full sync includes all 9 independents
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
     delegate.send_full_sync(sender)
-    direct_calls = mock_engine.osc_subscriptions.send_direct.call_args_list
+    direct_calls = mock_osc.send_direct.call_args_list
     direct_addrs = [c[0][2] for c in direct_calls]
     for i in range(1, 10):
         assert f"/olc/independent/{i}/level" in direct_addrs

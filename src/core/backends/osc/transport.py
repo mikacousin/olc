@@ -12,12 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""OSC 1.0 binary codec, UDP transport, and subscription management."""
+
 from __future__ import annotations
 
 import asyncio
 import fnmatch
 import inspect
-import json
 import socket
 import struct
 import threading
@@ -82,8 +83,8 @@ def build_message(address: str, *args: object) -> bytes:
 
 
 def make_method(address: str | None, typetags: str | None = None) -> Callable:
-    """
-    Decorator to register a method as an OSC handler.
+    """Decorator to register a method as an OSC handler.
+
     Supports exact match, glob match, and fallback.
     """
 
@@ -104,6 +105,16 @@ class CoreOSCClient:
         self._addr = (host, port)
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+    @property
+    def target(self) -> tuple[str, int]:
+        """Return target (host, port) tuple."""
+        return self._addr
+
+    @property
+    def sock(self) -> socket.socket:
+        """Return underlying UDP socket."""
+        return self._sock
 
     def target_changed(self, host: str = "", port: int | None = None) -> None:
         """Change the target IP or port."""
@@ -155,8 +166,8 @@ class OSCSubscriptionManager:
         self._sock = sock
         self._subscribers: dict[tuple[str, int], OSCSubscriber] = {}
 
-    def set_socket(self, sock: socket.socket) -> None:
-        """Assign or update the outgoing UDP socket."""
+    def set_socket(self, sock: socket.socket | None) -> None:
+        """Assign or clear the outgoing UDP socket."""
         with self._lock:
             self._sock = sock
 
@@ -279,8 +290,8 @@ class OSCSubscriptionManager:
 
 
 class CoreOSCServer:
-    """
-    Subclassable asynchronous OSC Server.
+    """Asynchronous OSC UDP server.
+
     Dispatches exact matches, glob patterns, and fallbacks.
     """
 
@@ -296,15 +307,30 @@ class CoreOSCServer:
                     cls._handler_map.append((address, attr))
 
     def __init__(
-        self, port: int, host: str = "0.0.0.0", engine: Optional[object] = None
+        self,
+        port: int,
+        host: str = "0.0.0.0",
+        subscriptions: OSCSubscriptionManager | None = None,
+        client: CoreOSCClient | None = None,
     ) -> None:
         self._port = port
         self._host = host
-        self._engine = engine
+        self.subscriptions = subscriptions
+        self.client = client
         self._transport: Optional[asyncio.DatagramTransport] = None
         self._delegate: Optional[object] = None
         # Copy the harvested class handlers to this instance's handler table
         self._handlers = list(self._handler_map)
+
+    @property
+    def is_running(self) -> bool:
+        """Return True when the UDP datagram transport is active."""
+        return self._transport is not None
+
+    @property
+    def delegate(self) -> Optional[object]:
+        """Return the registered OSC delegate, if any."""
+        return self._delegate
 
     def register_delegate(self, delegate: object) -> None:
         """Dynamically harvest and register OSC handlers from a delegate instance."""
@@ -392,15 +418,17 @@ class CoreOSCServer:
 
 
 class _OSCProtocol(asyncio.DatagramProtocol):
+    """UDP DatagramProtocol bridging incoming OSC packets to CoreOSCServer."""
+
     def __init__(self, server: CoreOSCServer) -> None:
         self._server = server
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         try:
             address, args = parse_message(data)
-            engine = getattr(self._server, "_engine", None)
+            sub_mgr = self._server.subscriptions
             if (
-                engine is not None
+                sub_mgr is not None
                 and (address.startswith("/olc/") or address == "/ping")
                 and address
                 not in (
@@ -409,65 +437,14 @@ class _OSCProtocol(asyncio.DatagramProtocol):
                     "/olc/channels/subscribe",
                 )
             ):
-                sub_mgr = getattr(engine, "osc_subscriptions", None)
-                osc_cli = getattr(engine, "osc_client", None)
-                if sub_mgr is not None and not sub_mgr.refresh_keepalive(
-                    addr[0], addr[1]
-                ):
-                    reply_port = (
-                        osc_cli._addr[1]
-                        if osc_cli is not None and hasattr(osc_cli, "_addr")
-                        else 8000
-                    )
+                if not sub_mgr.refresh_keepalive(addr[0], addr[1]):
+                    osc_cli = self._server.client
+                    reply_port = osc_cli.target[1] if osc_cli is not None else 8000
                     if sub_mgr.subscribe(addr[0], reply_port, "all"):
-                        delegate = getattr(self._server, "_delegate", None)
-                        if delegate is not None and hasattr(delegate, "send_full_sync"):
-                            delegate.send_full_sync((addr[0], reply_port))
+                        delegate = self._server.delegate
+                        send_full_sync = getattr(delegate, "send_full_sync", None)
+                        if callable(send_full_sync):
+                            send_full_sync((addr[0], reply_port))
             self._server.dispatch(address, args, addr)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Server] Warning: Parse error from {addr}: {err}")
-
-
-class EngineOSCServer(CoreOSCServer):
-    """Core OSC server subclass implementing direct DMX/CoreEngine control paths."""
-
-    @make_method("/olc/universe/*/set_channels")
-    def _set_channels(self, address: str, args: list) -> None:
-        if self._engine is None:
-            return
-        try:
-            parts = address.split("/")
-            universe_id = int(parts[3])
-            if args and isinstance(args[0], str):
-                channels = {int(k): int(v) for k, v in json.loads(args[0]).items()}
-            else:
-                channels = {}
-                for i in range(0, len(args), 2):
-                    if i + 1 < len(args):
-                        channels[int(args[i])] = int(args[i + 1])
-
-            delegate_app = getattr(self._delegate, "app", None)
-            if delegate_app is not None and hasattr(delegate_app, "action_registry"):
-                delegate_app.action_registry.execute(
-                    "dmx.set_universe_levels", universe_id, channels
-                )
-            else:
-                # Direct channel assignment fallback via CoreEngine
-                self._engine.set_channels(universe_id, channels)  # type: ignore
-        except Exception as err:  # pylint: disable=broad-exception-caught
-            print(f"[OSC Engine] Error in set_channels: {err}")
-
-    @make_method("/olc/universe/*/blackout")
-    def _blackout(self, address: str, _args: list) -> None:
-        if self._engine is None:
-            return
-        try:
-            parts = address.split("/")
-            universe_id = int(parts[3])
-            delegate_app = getattr(self._delegate, "app", None)
-            if delegate_app is not None and hasattr(delegate_app, "action_registry"):
-                delegate_app.action_registry.execute("universe.blackout", universe_id)
-            else:
-                self._engine.blackout(universe_id)  # type: ignore
-        except Exception as err:  # pylint: disable=broad-exception-caught
-            print(f"[OSC Engine] Error in blackout: {err}")

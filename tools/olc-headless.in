@@ -76,13 +76,14 @@ def main() -> None:
 
     # 4. Start OSC Server and register dynamic trigger routes
     osc_enabled = settings.get_boolean("osc") if settings else True
-    if osc_enabled and app.engine is not None:
+    if osc_enabled:
         host = settings.get_string("osc-host") if settings else "127.0.0.1"
         client_port = settings.get_int("osc-client-port") if settings else 8000
         server_port = settings.get_int("osc-server-port") if settings else 9000
 
         print(f"[olc-headless] Starting OSC server on port {server_port}...")
-        app.engine.start_osc(host, client_port, server_port)
+        osc = app.init_osc()
+        osc.start(host, client_port, server_port)
 
         # Create sample OSC bindings for testing / verification
         # /olc/playback/go -> executes app.action_registry.execute("playback.go")

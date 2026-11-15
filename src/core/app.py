@@ -32,7 +32,7 @@ from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
     from olc.core.backends.midi import Midi
-    from olc.core.backends.osc.delegate import OSCDelegate
+    from olc.core.backends.osc import Osc
     from olc.core.engine import CoreEngine
 
 
@@ -47,7 +47,7 @@ class CoreApplication(EventDispatcher):
     backend: typing.Optional[DMXBackend]
     engine: typing.Optional[CoreEngine]
     midi: typing.Optional[Midi]
-    osc_delegate: typing.Optional[OSCDelegate]
+    osc: typing.Optional[Osc]
     crossfade: typing.Optional[CrossFade]
     commandline: CoreCommandLine
     live_selection: SelectionManager
@@ -88,11 +88,11 @@ class CoreApplication(EventDispatcher):
         else:
             self.lightshow = LightShow(typing.cast(typing.Any, app or self))
 
-        # Initialize engines as None (to be attached by launcher or Gtk)
+        # Initialize engines and control backends as None
         self.backend = None
         self.engine = None
         self.midi = None
-        self.osc_delegate = None
+        self.osc = None
         self.blackout_active = False
         self.main_fader_level = 1.0
 
@@ -193,18 +193,41 @@ class CoreApplication(EventDispatcher):
             self.action_registry.register_binding(
                 name, MidiBinding(name, "note", 0, note)
             )
+        self.midi.messages.lcd.show_faders()
+        return self.midi
+
+    def init_osc(self) -> Osc:
+        """Create the OSC controller (if needed) and register default bindings.
+
+        Returns:
+            The OSC controller attached to this application.
+        """
+        if self.osc is not None:
+            return self.osc
+
+        # pylint: disable=import-outside-toplevel
+        from olc.core.backends.osc import Osc
+
+        self.osc = Osc(typing.cast(typing.Any, self))
+        for name in (
+            "playback.go",
+            "playback.go_back",
+            "playback.pause",
+            "playback.sequence_minus",
+            "playback.sequence_plus",
+        ):
             self.action_registry.register_binding(
                 name, OscBinding(name, f"/olc/{name.replace('.', '/')}")
             )
-        self.midi.messages.lcd.show_faders()
-        return self.midi
+        return self.osc
 
     def start(self) -> None:
         """Start backend hardware and communications services."""
         self.backend = DMXBackend(self.lightshow)
         if self.engine:
             self.engine.start()
-        # OSC is started by its manager/launcher
+        if self.osc is None:
+            self.init_osc()
         if self.midi is None:
             try:
                 self.init_midi()
@@ -212,9 +235,11 @@ class CoreApplication(EventDispatcher):
                 print(f"[MIDI] Unable to initialize MIDI: {err}")
 
     def stop(self) -> None:
-        """Gracefully stop DMX and MIDI services."""
+        """Gracefully stop DMX, OSC, and MIDI services."""
         if self.backend:
             self.backend.stop()
+        if self.osc:
+            self.osc.stop()
         if self.midi:
             self.midi.stop()
         if self.engine:

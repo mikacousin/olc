@@ -41,7 +41,6 @@ def test_park_show_persistence() -> None:
 def test_osc_delegate_park_endpoints() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
-    app.engine = MagicMock()
 
     delegate = OSCDelegate(app)
 

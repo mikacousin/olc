@@ -29,11 +29,11 @@ from olc.devices.channel import ChannelType
 
 
 def _setup_app_with_patch() -> tuple[CoreApplication, MagicMock]:
-    """Create CoreApplication with mock engine, mock backend and patched fixtures."""
+    """Create CoreApplication with mock osc, mock backend and patched fixtures."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
 
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
@@ -71,7 +71,7 @@ def _setup_app_with_patch() -> tuple[CoreApplication, MagicMock]:
     assert rgb_def is not None
     app.lightshow.patch.patch_device(3, rgb_def, 1, 20, label="Wash Cour")
 
-    return app, mock_engine
+    return app, mock_osc
 
 
 def test_channels_grid_manager_paging() -> None:
@@ -184,58 +184,55 @@ def test_device_set_color_action() -> None:
 
 def test_osc_channels_subscription_and_paging_routes() -> None:
     """Test /olc/channels/subscribe, page/+, page/-, start, and dump routes."""
-    app, mock_engine = _setup_app_with_patch()
+    app, mock_osc = _setup_app_with_patch()
     delegate = OSCDelegate(app)
 
     # 1. Subscribe to channels
-    mock_engine.osc_subscriptions.send_direct.reset_mock()
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.subscriptions.send_direct.reset_mock()
+    mock_osc.send_direct.reset_mock()
+    mock_osc.publish.reset_mock()
 
     delegate._channels_subscribe(
         "/olc/channels/subscribe", [24, 1], sender_addr=("10.0.0.1", 9000)
     )
-    mock_engine.osc_subscriptions.subscribe.assert_called_with(
-        "10.0.0.1", 9000, "channels"
-    )
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.subscriptions.subscribe.assert_called_with("10.0.0.1", 9000, "channels")
+    mock_osc.publish.assert_any_call(
         "channels", "/olc/channels/page/info", 1, 43, 1, 24
     )
-    mock_engine.publish_osc.assert_any_call("channels", "/olc/cell/1/channel", 1)
-    mock_engine.publish_osc.assert_any_call(
-        "channels", "/olc/cell/1/label", "Face Cour"
-    )
+    mock_osc.publish.assert_any_call("channels", "/olc/cell/1/channel", 1)
+    mock_osc.publish.assert_any_call("channels", "/olc/cell/1/label", "Face Cour")
 
     # 2. Next page
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._channels_page_next("/olc/channels/page/+", [])
     assert delegate.channels_grid.current_page == 2
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "channels", "/olc/channels/page/info", 2, 43, 25, 48
     )
 
     # 3. Prev page
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._channels_page_prev("/olc/channels/page/-", [])
     assert delegate.channels_grid.current_page == 1
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "channels", "/olc/channels/page/info", 1, 43, 1, 24
     )
 
     # 4. Jump start
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._channels_start("/olc/channels/start", [50])
     assert delegate.channels_grid.start_channel == 50
-    mock_engine.publish_osc.assert_any_call(
+    mock_osc.publish.assert_any_call(
         "channels", "/olc/channels/page/info", 3, 43, 50, 73
     )
 
     # 5. Dump
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._channels_dump("/olc/channels/dump", [], sender_addr=("10.0.0.1", 9000))
-    mock_engine.publish_osc.assert_called_once()
-    assert mock_engine.publish_osc.call_args[0][0] == "channels"
-    assert mock_engine.publish_osc.call_args[0][1] == "/olc/channels/dump"
-    parsed = json.loads(mock_engine.publish_osc.call_args[0][2])
+    mock_osc.publish.assert_called_once()
+    assert mock_osc.publish.call_args[0][0] == "channels"
+    assert mock_osc.publish.call_args[0][1] == "/olc/channels/dump"
+    parsed = json.loads(mock_osc.publish.call_args[0][2])
     assert len(parsed) == 24
 
 

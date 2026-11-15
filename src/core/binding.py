@@ -120,10 +120,10 @@ class OscBinding(TriggerBinding):
         self.osc_address = osc_address
 
     def send_feedback(self, state: dict[str, typing.Any]) -> None:
-        if not self.app or not self.app.engine:
+        if not self.app or not self.app.osc:
             return
 
         # TouchOSC style layout: send 1.0 (active/on) or 0.0 (inactive/off)
         active = state.get("active", False)
         val = 1.0 if active else 0.0
-        self.app.engine.send_osc(self.osc_address, val)
+        self.app.osc.send(self.osc_address, val)

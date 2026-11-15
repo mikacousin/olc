@@ -265,8 +265,8 @@ def test_osc_delegate_momentary_release_and_touchosc_routes() -> None:
 
     settings = MagicMock()
     app = CoreApplication(settings)
-    mock_engine = MagicMock()
-    app.engine = mock_engine
+    mock_osc = MagicMock()
+    app.osc = mock_osc
     delegate = OSCDelegate(app)
 
     # Momentary release (0.0) on keypad must be ignored
@@ -281,9 +281,9 @@ def test_osc_delegate_momentary_release_and_touchosc_routes() -> None:
     assert app.commandline.get_string() == ""
 
     # Sync / pageupdate triggers full sync
-    mock_engine.publish_osc.reset_mock()
+    mock_osc.publish.reset_mock()
     delegate._sub_launch("/olc/fader/pageupdate", [1.0])
-    published_paths = [c[0][1] for c in mock_engine.publish_osc.call_args_list]
+    published_paths = [c[0][1] for c in mock_osc.publish.call_args_list]
     assert "/olc/channels/page/label" in published_paths
     assert "/olc/fader/page/label" in published_paths
     assert "/olc/playback/active/cue" in published_paths

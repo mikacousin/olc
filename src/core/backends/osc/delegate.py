@@ -18,10 +18,11 @@ import colorsys
 import re
 import typing
 from json import dumps as json_dumps
+from json import loads as json_loads
 
 from olc.core.backends.osc.channels_grid import ChannelsGridManager
 from olc.core.backends.osc.parser import parse_osc_bool, parse_osc_normalized
-from olc.core.osc import make_method
+from olc.core.backends.osc.transport import make_method
 from olc.core.selection import SelectAddAction, SelectRemoveAction
 from olc.define import MAX_FADER_PAGE
 from olc.devices.builtin import create_dimmer_definition
@@ -31,6 +32,7 @@ from olc.sequence import get_cue
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.core.backends.osc import Osc
 
 
 # pylint: disable=too-few-public-methods
@@ -41,8 +43,9 @@ class OSCDelegate:
     Completely decoupled from any graphical user interface libraries.
     """
 
-    def __init__(self, app: CoreApplication) -> None:
+    def __init__(self, app: CoreApplication, osc: Osc | None = None) -> None:
         self.app = app
+        self._osc = osc
         self.channels_grid = ChannelsGridManager(app)
         self.app.subscribe("fader.page_changed", self._on_fader_page_changed)
         self.app.subscribe("fader.level_changed", self._on_fader_level_changed)
@@ -109,73 +112,95 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Send OSC status feedback for patch operations."""
-        if self.app.engine is not None:
-            if sender_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    sender_addr[0],
-                    sender_addr[1],
-                    "/olc/patch/status",
-                    status,
-                    command,
-                    message,
-                )
-            self.app.engine.publish_osc(
-                "patch", "/olc/patch/status", status, command, message
-            )
+        self._emit_osc(
+            "patch",
+            "/olc/patch/status",
+            status,
+            command,
+            message,
+            sender_addr=sender_addr,
+        )
+
+    @property
+    def osc(self) -> Osc | None:
+        """Return the attached Osc facade, falling back to app.osc."""
+        if self._osc is not None:
+            return self._osc
+        return getattr(self.app, "osc", None)
+
+    def _publish(self, topic: str, path: str, *args: object) -> None:
+        """Publish an OSC message to subscribed clients if OSC is active."""
+        osc = self.osc
+        if osc is not None:
+            osc.publish(topic, path, *args)
+
+    def _send(self, path: str, *args: object) -> None:
+        """Send an OSC message to the configured default client."""
+        osc = self.osc
+        if osc is not None:
+            osc.send(path, *args)
+
+    def _send_direct(
+        self,
+        sender_addr: tuple[str, int] | None,
+        path: str,
+        *args: object,
+    ) -> None:
+        """Send an OSC message directly to a requester address if present."""
+        if sender_addr is None:
+            return
+        osc = self.osc
+        if osc is not None:
+            osc.send_direct(sender_addr[0], sender_addr[1], path, *args)
+
+    def _emit_osc(
+        self,
+        topic: str,
+        path: str,
+        *args: object,
+        sender_addr: tuple[str, int] | None = None,
+    ) -> None:
+        """Send direct reply (if sender_addr given) and publish to topic."""
+        self._send_direct(sender_addr, path, *args)
+        self._publish(topic, path, *args)
 
     def _on_patch_changed(self) -> None:
         """Send OSC notification when the patch changes."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             self._send_channels_page()
             count = len(self.app.lightshow.patch.devices)
-            self.app.engine.publish_osc("patch", "/olc/patch/changed", count)
+            self._publish("patch", "/olc/patch/changed", count)
 
     def _send_faders_page(self, sender_addr: tuple[str, int] | None = None) -> None:
         """Send active fader page and all fader labels and levels."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         fader_bank = self.app.lightshow.fader_bank
         page = fader_bank.active_page
         page_lbl = f"Page {page}"
-        if sender_addr is not None:
-            host, port = sender_addr
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/fader/page", page
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/fader/page/label", page_lbl
-            )
-        self.app.engine.publish_osc("faders", "/olc/fader/page", page)
-        self.app.engine.publish_osc("faders", "/olc/fader/page/label", page_lbl)
+        self._emit_osc("faders", "/olc/fader/page", page, sender_addr=sender_addr)
+        self._emit_osc(
+            "faders", "/olc/fader/page/label", page_lbl, sender_addr=sender_addr
+        )
         for fader in fader_bank.faders[page].values():
             lbl_path = f"/olc/fader/1/{fader.index}/label"
             lvl_path = f"/olc/fader/1/{fader.index}/level"
             lbl_txt = fader.text or f"Fader {fader.index}"
             lvl_val = float(fader.level)
-            if sender_addr is not None:
-                host, port = sender_addr
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, lbl_path, lbl_txt
-                )
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, lvl_path, lvl_val
-                )
-            self.app.engine.publish_osc("faders", lbl_path, fader.text)
-            self.app.engine.publish_osc("faders", lvl_path, lvl_val)
+            self._send_direct(sender_addr, lbl_path, lbl_txt)
+            self._send_direct(sender_addr, lvl_path, lvl_val)
+            self._publish("faders", lbl_path, fader.text)
+            self._publish("faders", lvl_path, lvl_val)
 
     def _on_fader_page_changed(self, page: int) -> None:
         """Send OSC feedback when the active fader page changes."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             fader_bank = self.app.lightshow.fader_bank
-            self.app.engine.publish_osc("faders", "/olc/fader/page", page)
-            self.app.engine.publish_osc(
-                "faders", "/olc/fader/page/label", f"Page {page}"
-            )
+            self._publish("faders", "/olc/fader/page", page)
+            self._publish("faders", "/olc/fader/page/label", f"Page {page}")
             for fader in fader_bank.faders[page].values():
-                self.app.engine.publish_osc(
-                    "faders", f"/olc/fader/1/{fader.index}/label", fader.text
-                )
-                self.app.engine.publish_osc(
+                self._publish("faders", f"/olc/fader/1/{fader.index}/label", fader.text)
+                self._publish(
                     "faders",
                     f"/olc/fader/1/{fader.index}/level",
                     float(fader.level),
@@ -183,30 +208,25 @@ class OSCDelegate:
 
     def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
         """Send OSC feedback when a fader level changes."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             self._send_channels_page()
-            self.app.engine.publish_osc(
-                "faders", f"/olc/fader/1/{fader_index}/level", float(level)
-            )
+            self._publish("faders", f"/olc/fader/1/{fader_index}/level", float(level))
 
     def _on_fader_flash_changed(self, fader_index: int, pressed: bool) -> None:
         """Refresh channel grid and publish flash state on fader flash change."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc(
-                "faders", f"/olc/fader/1/{fader_index}/flash", 1 if pressed else 0
-            )
+        self._publish(
+            "faders", f"/olc/fader/1/{fader_index}/flash", 1 if pressed else 0
+        )
         self._send_channels_page()
 
     def _on_fader_changed(self, page: int, index: int) -> None:
         """Send OSC feedback when a fader label or assignment changes."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             fader_bank = self.app.lightshow.fader_bank
             if page == fader_bank.active_page:
                 fader = fader_bank.faders[page][index]
-                self.app.engine.publish_osc(
-                    "faders", f"/olc/fader/1/{index}/label", fader.text
-                )
-                self.app.engine.publish_osc(
+                self._publish("faders", f"/olc/fader/1/{index}/label", fader.text)
+                self._publish(
                     "faders",
                     f"/olc/fader/1/{index}/level",
                     float(fader.level),
@@ -216,7 +236,7 @@ class OSCDelegate:
         self, sender_addr: tuple[str, int] | None = None
     ) -> None:
         """Send telemetry for all 9 independents."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         independents = getattr(self.app.lightshow, "independents", None)
         if independents is None:
@@ -226,41 +246,36 @@ class OSCDelegate:
             lvl = float(inde.level)
             lbl = str(inde.text or f"Inde {num}")
             type_str = str(getattr(inde, "inde_type", "knob"))
-            if sender_addr is not None:
-                host, port = sender_addr
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, f"/olc/independent/{num}/level", lvl
-                )
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, f"/olc/independent/{num}/label", lbl
-                )
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, f"/olc/independent/{num}/type", type_str
-                )
-            self.app.engine.publish_osc(
-                "independents", f"/olc/independent/{num}/level", lvl
+            self._emit_osc(
+                "independents",
+                f"/olc/independent/{num}/level",
+                lvl,
+                sender_addr=sender_addr,
             )
-            self.app.engine.publish_osc(
-                "independents", f"/olc/independent/{num}/label", lbl
+            self._emit_osc(
+                "independents",
+                f"/olc/independent/{num}/label",
+                lbl,
+                sender_addr=sender_addr,
             )
-            self.app.engine.publish_osc(
-                "independents", f"/olc/independent/{num}/type", type_str
+            self._emit_osc(
+                "independents",
+                f"/olc/independent/{num}/type",
+                type_str,
+                sender_addr=sender_addr,
             )
 
     def _on_independent_level_changed(self, number: int, level: float) -> None:
         """Send OSC feedback when an independent level changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc(
+        if self.osc is not None:
+            self._publish(
                 "independents", f"/olc/independent/{number}/level", float(level)
             )
             self._send_channels_page()
 
     def _on_independent_text_changed(self, number: int, text: str) -> None:
         """Send OSC feedback when an independent label changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc(
-                "independents", f"/olc/independent/{number}/label", str(text)
-            )
+        self._publish("independents", f"/olc/independent/{number}/label", str(text))
 
     def _on_independent_channels_changed(self, _number: int) -> None:
         """Refresh channel grid telemetry on independent channel change."""
@@ -268,21 +283,17 @@ class OSCDelegate:
 
     def _on_xfade_moved(self, fader_key: str, val_255: int) -> None:
         """Publish manual crossfade slider position."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             norm_val = round(float(val_255) / 255.0, 4)
-            self.app.engine.publish_osc(
-                "playback", f"/olc/playback/xfade/{fader_key}", norm_val
-            )
+            self._publish("playback", f"/olc/playback/xfade/{fader_key}", norm_val)
 
     def _on_commandline_changed(self, keystring: str) -> None:
         """Send OSC feedback when the logical command line changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("commandline", "/olc/command_line", keystring)
+        self._publish("commandline", "/olc/command_line", keystring)
 
     def _on_commandline_error(self, err_msg: str) -> None:
         """Send OSC status feedback when a command line error occurs."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("commandline", "/olc/cmd/status", str(err_msg))
+        self._publish("commandline", "/olc/cmd/status", str(err_msg))
 
     def _on_show_changed(self, *_args: object) -> None:
         """Synchronize all OSC telemetry when a show is created or loaded."""
@@ -367,83 +378,71 @@ class OSCDelegate:
         self, sender_addr: tuple[str, int] | None = None
     ) -> None:
         """Send complete playback telemetry to subscribers and/or sender."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
 
         telem = self._get_playback_telemetry()
         blackout = 1 if getattr(self.app, "blackout_active", False) else 0
         mf_level = float(getattr(self.app, "main_fader_level", 1.0))
 
-        if sender_addr is not None:
-            host, port = sender_addr
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/playback/active/cue", telem["active_cue"]
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/playback/active/text", telem["active_text"]
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/playback/next/cue", telem["next_cue"]
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/playback/next/text", telem["next_text"]
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/playback/state", telem["state"]
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/blackout", blackout
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/mainfader", mf_level
-            )
-
-        self.app.engine.publish_osc(
-            "playback", "/olc/playback/active/cue", telem["active_cue"]
+        self._send_direct(sender_addr, "/olc/blackout", blackout)
+        self._send_direct(sender_addr, "/olc/mainfader", mf_level)
+        self._emit_osc(
+            "playback",
+            "/olc/playback/active/cue",
+            telem["active_cue"],
+            sender_addr=sender_addr,
         )
-        self.app.engine.publish_osc(
-            "playback", "/olc/playback/active/text", telem["active_text"]
+        self._emit_osc(
+            "playback",
+            "/olc/playback/active/text",
+            telem["active_text"],
+            sender_addr=sender_addr,
         )
-        self.app.engine.publish_osc(
-            "playback", "/olc/playback/next/cue", telem["next_cue"]
+        self._emit_osc(
+            "playback",
+            "/olc/playback/next/cue",
+            telem["next_cue"],
+            sender_addr=sender_addr,
         )
-        self.app.engine.publish_osc(
-            "playback", "/olc/playback/next/text", telem["next_text"]
+        self._emit_osc(
+            "playback",
+            "/olc/playback/next/text",
+            telem["next_text"],
+            sender_addr=sender_addr,
         )
-        self.app.engine.publish_osc("playback", "/olc/playback/state", telem["state"])
+        self._emit_osc(
+            "playback", "/olc/playback/state", telem["state"], sender_addr=sender_addr
+        )
 
     def _on_transition_progress(self, data: dict[str, typing.Any]) -> None:
         """Publish fade progress on /olc/playback/progress."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             total_time = float(data.get("total_time", 0.0))
             time_spent = float(data.get("time_spent", 0.0))
             if total_time > 0:
                 ratio = min(1.0, max(0.0, time_spent / total_time))
             else:
                 ratio = 1.0
-            self.app.engine.publish_osc(
-                "playback", "/olc/playback/progress", float(ratio)
-            )
+            self._publish("playback", "/olc/playback/progress", float(ratio))
 
     def _on_goback_progress(self, data: dict[str, typing.Any]) -> None:
         """Publish goback progress on /olc/playback/progress."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             goback_time = float(data.get("goback_time", 0.0))
             time_spent = float(data.get("time_spent", 0.0))
             ratio = (
                 min(1.0, max(0.0, time_spent / goback_time)) if goback_time > 0 else 1.0
             )
-            self.app.engine.publish_osc(
-                "playback", "/olc/playback/progress", float(ratio)
-            )
+            self._publish("playback", "/olc/playback/progress", float(ratio))
 
     def _on_transition_completed(self, _data: dict[str, typing.Any]) -> None:
         """Publish completed progress and refresh telemetry."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("playback", "/olc/playback/progress", 1.0)
+        if self.osc is not None:
+            self._publish("playback", "/olc/playback/progress", 1.0)
             self._send_playback_telemetry()
             self._send_channels_page()
-            self.app.engine.publish_osc("playback", "/olc/playback/progress", 0.0)
+            self._publish("playback", "/olc/playback/progress", 0.0)
 
     def _on_playback_triggered(self, _data: object = None) -> None:
         """Publish updated telemetry when a playback action is triggered."""
@@ -452,32 +451,32 @@ class OSCDelegate:
 
     def _on_pause_triggered(self, feedback: dict[str, typing.Any]) -> None:
         """Publish pause state change."""
-        if self.app.engine is not None:
+        if self.osc is not None:
             is_paused = bool(feedback.get("active", False))
             state = "paused" if is_paused else "running"
-            self.app.engine.publish_osc("playback", "/olc/playback/state", state)
+            self._publish("playback", "/olc/playback/state", state)
 
     def _on_main_fader_level_changed(self, level: float) -> None:
         """Publish Main Fader level changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("playback", "/olc/mainfader", float(level))
+        if self.osc is not None:
+            self._publish("playback", "/olc/mainfader", float(level))
             self._send_channels_page()
 
     def _on_blackout_changed(self, state: bool) -> None:
         """Publish Blackout state changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("playback", "/olc/blackout", 1 if state else 0)
+        if self.osc is not None:
+            self._publish("playback", "/olc/blackout", 1 if state else 0)
             self._send_channels_page()
 
     def _on_park_changed(self, count: int) -> None:
         """Publish park active state changes."""
-        if self.app.engine is not None:
-            self.app.engine.publish_osc("park", "/olc/park/active", int(count))
+        if self.osc is not None:
+            self._publish("park", "/olc/park/active", int(count))
             self._send_channels_page()
 
     def _on_channel_level_changed(self, channel: int, _level: int) -> None:
         """Publish updated cell level and color if channel is on current page."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         cell_idx = self.channels_grid.get_cell_for_channel(channel)
         norm_lvl = max(0.0, float(_level) / 255.0) if _level >= 0 else 0.0
@@ -486,12 +485,10 @@ class OSCDelegate:
             self._send_cell_telemetry(info)
             norm_lvl = float(info["level"])
 
-        self.app.engine.publish_osc(
-            "channels", f"/olc/channel/{channel}/level", norm_lvl
-        )
+        self._publish("channels", f"/olc/channel/{channel}/level", norm_lvl)
         selected_channels = getattr(self.app, "selected_channels", [])
         if channel in selected_channels:
-            self.app.engine.publish_osc("channels", "/olc/selected/intensity", norm_lvl)
+            self._publish("channels", "/olc/selected/intensity", norm_lvl)
 
     def _publish_color_components(
         self,
@@ -501,7 +498,7 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Publish RGB tuple, individual R/G/B channels, and Hue/Sat components."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         rf, gf, bf = float(r), float(g), float(b)
         hf, sf, _vf = colorsys.rgb_to_hsv(
@@ -509,32 +506,18 @@ class OSCDelegate:
             max(0.0, min(1.0, gf)),
             max(0.0, min(1.0, bf)),
         )
-        if sender_addr is not None:
-            host, port = sender_addr
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/rgb", rf, gf, bf
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/r", rf
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/g", gf
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/b", bf
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/hue", float(hf)
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/selected/color/sat", float(sf)
-            )
-        self.app.engine.publish_osc("channels", "/olc/selected/color/rgb", rf, gf, bf)
-        self.app.engine.publish_osc("channels", "/olc/selected/color/r", rf)
-        self.app.engine.publish_osc("channels", "/olc/selected/color/g", gf)
-        self.app.engine.publish_osc("channels", "/olc/selected/color/b", bf)
-        self.app.engine.publish_osc("channels", "/olc/selected/color/hue", float(hf))
-        self.app.engine.publish_osc("channels", "/olc/selected/color/sat", float(sf))
+        self._emit_osc(
+            "channels", "/olc/selected/color/rgb", rf, gf, bf, sender_addr=sender_addr
+        )
+        self._emit_osc("channels", "/olc/selected/color/r", rf, sender_addr=sender_addr)
+        self._emit_osc("channels", "/olc/selected/color/g", gf, sender_addr=sender_addr)
+        self._emit_osc("channels", "/olc/selected/color/b", bf, sender_addr=sender_addr)
+        self._emit_osc(
+            "channels", "/olc/selected/color/hue", float(hf), sender_addr=sender_addr
+        )
+        self._emit_osc(
+            "channels", "/olc/selected/color/sat", float(sf), sender_addr=sender_addr
+        )
 
     def _send_selected_fixture_telemetry(
         self,
@@ -542,7 +525,7 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Publish parameters and color of the last selected fixture."""
-        if self.app.engine is None or not channels:
+        if self.osc is None or not channels:
             return
         last_ch = channels[-1]
         backend = getattr(self.app, "backend", None)
@@ -552,15 +535,11 @@ class OSCDelegate:
                 comp_lvl, _ = backend_dmx.get_composite_level(last_ch - 1)
                 mult = float(getattr(backend_dmx, "effective_intensity_mult", 1.0))
                 int_norm = round(min(255.0, max(0.0, comp_lvl * mult)) / 255.0, 3)
-                if sender_addr is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/selected/intensity",
-                        float(int_norm),
-                    )
-                self.app.engine.publish_osc(
-                    "channels", "/olc/selected/intensity", float(int_norm)
+                self._emit_osc(
+                    "channels",
+                    "/olc/selected/intensity",
+                    float(int_norm),
+                    sender_addr=sender_addr,
                 )
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
@@ -575,41 +554,29 @@ class OSCDelegate:
         if dev.get_channel(ChannelType.PAN) is not None:
             pan_val = float(dev.pan_degrees)
             pan_norm = dev.get_parameter_normalized(ChannelType.PAN)
-            if sender_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    sender_addr[0], sender_addr[1], "/olc/selected/pan", pan_val
-                )
-                if pan_norm is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/selected/pan/norm",
-                        float(pan_norm),
-                    )
-            self.app.engine.publish_osc("channels", "/olc/selected/pan", pan_val)
+            self._emit_osc(
+                "channels", "/olc/selected/pan", pan_val, sender_addr=sender_addr
+            )
             if pan_norm is not None:
-                self.app.engine.publish_osc(
-                    "channels", "/olc/selected/pan/norm", float(pan_norm)
+                self._emit_osc(
+                    "channels",
+                    "/olc/selected/pan/norm",
+                    float(pan_norm),
+                    sender_addr=sender_addr,
                 )
 
         if dev.get_channel(ChannelType.TILT) is not None:
             tilt_val = float(dev.tilt_degrees)
             tilt_norm = dev.get_parameter_normalized(ChannelType.TILT)
-            if sender_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    sender_addr[0], sender_addr[1], "/olc/selected/tilt", tilt_val
-                )
-                if tilt_norm is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/selected/tilt/norm",
-                        float(tilt_norm),
-                    )
-            self.app.engine.publish_osc("channels", "/olc/selected/tilt", tilt_val)
+            self._emit_osc(
+                "channels", "/olc/selected/tilt", tilt_val, sender_addr=sender_addr
+            )
             if tilt_norm is not None:
-                self.app.engine.publish_osc(
-                    "channels", "/olc/selected/tilt/norm", float(tilt_norm)
+                self._emit_osc(
+                    "channels",
+                    "/olc/selected/tilt/norm",
+                    float(tilt_norm),
+                    sender_addr=sender_addr,
                 )
         for ch_type, sub_path in (
             (ChannelType.ZOOM, "/olc/selected/zoom"),
@@ -624,24 +591,16 @@ class OSCDelegate:
                 val = dev.get_parameter_normalized(ch_type)
                 if val is not None:
                     f_val = float(val)
-                    if sender_addr is not None:
-                        self.app.engine.osc_subscriptions.send_direct(
-                            sender_addr[0], sender_addr[1], sub_path, f_val
-                        )
-                    self.app.engine.publish_osc("channels", sub_path, f_val)
+                    self._emit_osc("channels", sub_path, f_val, sender_addr=sender_addr)
         if dev.get_channel(ChannelType.COLOR_TEMP) is not None:
             kelvin_val = getattr(dev, "color_temp_kelvin", None)
             if kelvin_val is not None:
                 kf = float(kelvin_val)
-                if sender_addr is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/selected/color/kelvin",
-                        kf,
-                    )
-                self.app.engine.publish_osc(
-                    "channels", "/olc/selected/color/kelvin", kf
+                self._emit_osc(
+                    "channels",
+                    "/olc/selected/color/kelvin",
+                    kf,
+                    sender_addr=sender_addr,
                 )
         has_color = any(c.channel_type in COLOR_CHANNEL_TYPES for c in dev.channels)
         if has_color:
@@ -650,15 +609,13 @@ class OSCDelegate:
 
     def _on_channels_selected_changed(self, channels: list[int]) -> None:
         """Publish updated selection states on visible cells and selected fixtures."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
 
         for cell_idx in range(1, self.channels_grid.grid_size + 1):
             ch = self.channels_grid.get_channel_for_cell(cell_idx)
             is_sel = 1 if (ch is not None and ch in channels) else 0
-            self.app.engine.publish_osc(
-                "channels", f"/olc/cell/{cell_idx}/selected", is_sel
-            )
+            self._publish("channels", f"/olc/cell/{cell_idx}/selected", is_sel)
 
         self._send_selected_fixture_telemetry(channels)
 
@@ -670,7 +627,7 @@ class OSCDelegate:
         self, _channels: list[int], color: tuple[float, float, float] | None
     ) -> None:
         """Publish updated color when fixture color changes."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         if color is not None:
             self._publish_color_components(color[0], color[1], color[2])
@@ -681,7 +638,7 @@ class OSCDelegate:
         self, info: dict[str, typing.Any], sender_addr: tuple[str, int] | None = None
     ) -> None:
         """Send individual cell telemetry."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         cell_idx = info["cell"]
         prefix = f"/olc/cell/{cell_idx}"
@@ -694,29 +651,28 @@ class OSCDelegate:
             (f"{prefix}/color", str(info["color"])),
         ]
         for addr, val in messages:
-            if sender_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    sender_addr[0], sender_addr[1], addr, val
-                )
-            self.app.engine.publish_osc("channels", addr, val)
+            self._emit_osc("channels", addr, val, sender_addr=sender_addr)
 
     def _send_channels_page(self, sender_addr: tuple[str, int] | None = None) -> None:
         """Send full channels page info and all cell states."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
 
         page_info = self.channels_grid.page_info
         cur_p, tot_p, start_ch, end_ch = page_info
         page_lbl = f"Page {cur_p}/{tot_p} (Ch {start_ch}-{end_ch})"
-        if sender_addr is not None:
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/channels/page/info", *page_info
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/channels/page/label", page_lbl
-            )
-        self.app.engine.publish_osc("channels", "/olc/channels/page/info", *page_info)
-        self.app.engine.publish_osc("channels", "/olc/channels/page/label", page_lbl)
+        self._emit_osc(
+            "channels",
+            "/olc/channels/page/info",
+            *page_info,
+            sender_addr=sender_addr,
+        )
+        self._emit_osc(
+            "channels",
+            "/olc/channels/page/label",
+            page_lbl,
+            sender_addr=sender_addr,
+        )
 
         for cell_idx in range(1, self.channels_grid.grid_size + 1):
             info = self.channels_grid.get_cell_info(cell_idx)
@@ -724,7 +680,7 @@ class OSCDelegate:
 
     def send_full_sync(self, sender_addr: tuple[str, int] | None = None) -> None:
         """Send full state synchronization for all OSC topics."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         self._send_playback_telemetry(sender_addr)
         self._send_channels_page(sender_addr)
@@ -734,16 +690,10 @@ class OSCDelegate:
         if selected:
             self._send_selected_fixture_telemetry(selected, sender_addr)
         cmd_str = self.app.commandline.get_string()
-        if sender_addr is not None:
-            host, port = sender_addr
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/command_line", cmd_str
-            )
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/cmd/status", "OK"
-            )
-        self.app.engine.publish_osc("commandline", "/olc/command_line", cmd_str)
-        self.app.engine.publish_osc("commandline", "/olc/cmd/status", "OK")
+        self._emit_osc(
+            "commandline", "/olc/command_line", cmd_str, sender_addr=sender_addr
+        )
+        self._emit_osc("commandline", "/olc/cmd/status", "OK", sender_addr=sender_addr)
 
     @make_method("/olc/subscribe")
     def _subscribe(
@@ -756,7 +706,8 @@ class OSCDelegate:
 
         Supported topics: patch, faders, playback, commandline, all.
         """
-        if self.app.engine is None:
+        osc = self.osc
+        if osc is None:
             return
 
         valid_topics = (
@@ -785,17 +736,15 @@ class OSCDelegate:
             except (ValueError, TypeError):
                 pass
         elif args and not isinstance(args[0], str):
-            osc_cli = getattr(self.app.engine, "osc_client", None)
-            if osc_cli is not None and hasattr(osc_cli, "_addr"):
-                port = int(osc_cli._addr[1])
+            osc_cli = osc.client
+            if osc_cli is not None:
+                port = int(osc_cli.target[1])
 
-        self.app.engine.osc_subscriptions.subscribe(host, port, topic)
-        self.app.engine.osc_subscriptions.send_direct(
-            host, port, "/olc/subscribe/status", "OK", topic
-        )
+        osc.subscriptions.subscribe(host, port, topic)
+        self._send_direct((host, port), "/olc/subscribe/status", "OK", topic)
         self.app.emit(
             "osc.subscribers_changed",
-            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+            osc.subscriptions.get_subscribers_snapshot(),
         )
 
         target_addr = (host, port) if sender_addr is not None else None
@@ -816,17 +765,12 @@ class OSCDelegate:
                 }
                 for d in devices
             ]
-            self.app.engine.osc_subscriptions.send_direct(
-                host, port, "/olc/patch/dump", json_dumps(dump_data)
-            )
+            self._send_direct((host, port), "/olc/patch/dump", json_dumps(dump_data))
 
         if topic in ("playback", "all"):
             self._send_playback_telemetry(target_addr)
             dump_json = self._get_cues_dump_json()
-            if target_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, "/olc/playback/dump", dump_json
-                )
+            self._send_direct(target_addr, "/olc/playback/dump", dump_json)
 
         if topic in ("channels", "all"):
             self._send_channels_page(target_addr)
@@ -839,11 +783,12 @@ class OSCDelegate:
 
         if topic in ("commandline", "all"):
             cmd_str = self.app.commandline.get_string()
-            if target_addr is not None:
-                self.app.engine.osc_subscriptions.send_direct(
-                    host, port, "/olc/command_line", cmd_str
-                )
-            self.app.engine.publish_osc("commandline", "/olc/command_line", cmd_str)
+            self._emit_osc(
+                "commandline",
+                "/olc/command_line",
+                cmd_str,
+                sender_addr=target_addr,
+            )
 
     @make_method("/olc/unsubscribe")
     def _unsubscribe(
@@ -853,7 +798,8 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Unsubscribe a client from an OSC topic."""
-        if self.app.engine is None:
+        osc = self.osc
+        if osc is None:
             return
 
         topic = str(args[0]).strip().lower() if args else "all"
@@ -866,13 +812,11 @@ class OSCDelegate:
             except (ValueError, TypeError):
                 pass
 
-        self.app.engine.osc_subscriptions.unsubscribe(host, port, topic)
-        self.app.engine.osc_subscriptions.send_direct(
-            host, port, "/olc/subscribe/status", "OK", "unsubscribed"
-        )
+        osc.subscriptions.unsubscribe(host, port, topic)
+        self._send_direct((host, port), "/olc/subscribe/status", "OK", "unsubscribed")
         self.app.emit(
             "osc.subscribers_changed",
-            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+            osc.subscriptions.get_subscribers_snapshot(),
         )
 
     @make_method("/olc/ping")
@@ -884,18 +828,19 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Handle keepalive ping from an OSC client."""
-        if self.app.engine is None or sender_addr is None:
+        osc = self.osc
+        if osc is None or sender_addr is None:
             return
 
         host, port = sender_addr
-        self.app.engine.osc_subscriptions.refresh_keepalive(host, port)
+        osc.subscriptions.refresh_keepalive(host, port)
         token = args[0] if args else 0
-        self.app.engine.osc_subscriptions.send_direct(host, port, "/olc/pong", token)
+        self._send_direct((host, port), "/olc/pong", token)
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
-        if self.app.engine:
-            self.app.engine.publish_osc(
+        if self.osc is not None:
+            self._publish(
                 "commandline",
                 "/olc/command_line",
                 self.app.commandline.get_string(),
@@ -906,7 +851,7 @@ class OSCDelegate:
         """Execute a full command line string received via OSC.
 
         Strips any optional trailing ENTER keyword and triggers execution.
-        Sends execution status feedback back on /olc/cmd/status if engine is running.
+        Sends execution status feedback back on /olc/cmd/status if OSC is running.
 
         Args:
             _address: The OSC address pattern (/olc/cmd).
@@ -923,12 +868,8 @@ class OSCDelegate:
         self._execute_action("commandline.set", clean_cmd)
         result = self._execute_action("commandline.execute")
 
-        if (
-            self.app.engine is not None
-            and hasattr(result, "success")
-            and result.success
-        ):
-            self.app.engine.publish_osc("commandline", "/olc/cmd/status", "OK")
+        if self.osc is not None and hasattr(result, "success") and result.success:
+            self._publish("commandline", "/olc/cmd/status", "OK")
 
     def _execute_action(self, name: str, *args: object, **kwargs: object) -> object:
         """Execute an action from the registry.
@@ -996,11 +937,10 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Query currently active cue number."""
-        if self.app.engine is not None and sender_addr is not None:
+        if self.osc is not None and sender_addr is not None:
             telem = self._get_playback_telemetry()
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0],
-                sender_addr[1],
+            self._send_direct(
+                sender_addr,
                 "/olc/playback/active/cue",
                 telem["active_cue"],
             )
@@ -1013,11 +953,10 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Query next cue number."""
-        if self.app.engine is not None and sender_addr is not None:
+        if self.osc is not None and sender_addr is not None:
             telem = self._get_playback_telemetry()
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0],
-                sender_addr[1],
+            self._send_direct(
+                sender_addr,
                 "/olc/playback/next/cue",
                 telem["next_cue"],
             )
@@ -1030,11 +969,10 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Query current playback state (idle, running, paused)."""
-        if self.app.engine is not None and sender_addr is not None:
+        if self.osc is not None and sender_addr is not None:
             telem = self._get_playback_telemetry()
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0],
-                sender_addr[1],
+            self._send_direct(
+                sender_addr,
                 "/olc/playback/state",
                 telem["state"],
             )
@@ -1048,14 +986,12 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Export JSON dump of all cues in main playback."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         dump_json = self._get_cues_dump_json()
-        if sender_addr is not None:
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/playback/dump", dump_json
-            )
-        self.app.engine.publish_osc("playback", "/olc/playback/dump", dump_json)
+        self._emit_osc(
+            "playback", "/olc/playback/dump", dump_json, sender_addr=sender_addr
+        )
 
     @make_method("/olc/playback/xfade/a")
     def _playback_xfade_a(self, _address: str, args: list) -> None:
@@ -1093,11 +1029,9 @@ class OSCDelegate:
         if args:
             norm_val = parse_osc_normalized(args[0])
             self._execute_action("main_fader.set_level", norm_val)
-        elif self.app.engine is not None and sender_addr is not None:
+        elif sender_addr is not None:
             lvl = float(getattr(self.app, "main_fader_level", 1.0))
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/mainfader", lvl
-            )
+            self._send_direct(sender_addr, "/olc/mainfader", lvl)
 
     @make_method("/olc/blackout")
     def _blackout(
@@ -1113,11 +1047,9 @@ class OSCDelegate:
         else:
             self._execute_action("dmx.blackout_all")
 
-        if self.app.engine is not None and sender_addr is not None:
+        if sender_addr is not None:
             curr_state = 1 if getattr(self.app, "blackout_active", False) else 0
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/blackout", curr_state
-            )
+            self._send_direct(sender_addr, "/olc/blackout", curr_state)
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, args: list) -> None:
@@ -1281,12 +1213,10 @@ class OSCDelegate:
         if not self._is_momentary_press(args):
             return
         fader_bank = self.app.lightshow.fader_bank
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/fader/page", fader_bank.active_page)
+        if self.osc is not None:
+            self._send("/olc/fader/page", fader_bank.active_page)
             for fader in fader_bank.faders[fader_bank.active_page].values():
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/label", fader.text
-                )
+                self._send(f"/olc/fader/1/{fader.index}/label", fader.text)
             self.send_full_sync()
 
     @make_method("/olc/fader/page+")
@@ -1386,7 +1316,7 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Send dump of all independents."""
-        if self.app.engine is None or sender_addr is None:
+        if self.osc is None or sender_addr is None:
             return
         independents = getattr(self.app.lightshow, "independents", None)
         if independents is None:
@@ -1402,9 +1332,7 @@ class OSCDelegate:
                     "channels": sorted(list(inde.channels)),
                 }
             )
-        self.app.engine.osc_subscriptions.send_direct(
-            sender_addr[0], sender_addr[1], "/olc/independent/dump", json_dumps(data)
-        )
+        self._send_direct(sender_addr, "/olc/independent/dump", json_dumps(data))
 
     @make_method("/olc/patch/dimmer")
     def _patch_dimmer(self, address: str, args: list) -> None:
@@ -1627,26 +1555,14 @@ class OSCDelegate:
         Sends response on /olc/patch/device/info.
         """
         try:
-            if not args or self.app.engine is None:
+            if not args or self.osc is None:
                 return
 
             device_id = int(args[0])
             dev = self.app.lightshow.patch.get_device(device_id)
             if dev is not None:
                 model_name = f"{dev.manufacturer}:{dev.model}"
-                if sender_addr is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/patch/device/info",
-                        dev.device_id,
-                        dev.universe,
-                        dev.address,
-                        dev.channel_count(),
-                        model_name,
-                        dev.label,
-                    )
-                self.app.engine.publish_osc(
+                self._emit_osc(
                     "patch",
                     "/olc/patch/device/info",
                     dev.device_id,
@@ -1655,21 +1571,10 @@ class OSCDelegate:
                     dev.channel_count(),
                     model_name,
                     dev.label,
+                    sender_addr=sender_addr,
                 )
             else:
-                if sender_addr is not None:
-                    self.app.engine.osc_subscriptions.send_direct(
-                        sender_addr[0],
-                        sender_addr[1],
-                        "/olc/patch/device/info",
-                        device_id,
-                        0,
-                        0,
-                        0,
-                        "",
-                        "",
-                    )
-                self.app.engine.publish_osc(
+                self._emit_osc(
                     "patch",
                     "/olc/patch/device/info",
                     device_id,
@@ -1678,6 +1583,7 @@ class OSCDelegate:
                     0,
                     "",
                     "",
+                    sender_addr=sender_addr,
                 )
         except Exception as err:  # pylint: disable=broad-exception-caught
             self._send_patch_status("ERROR", address, str(err), sender_addr)
@@ -1690,7 +1596,7 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Export JSON dump of all patched devices via OSC."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
 
         devices = sorted(
@@ -1709,11 +1615,7 @@ class OSCDelegate:
             for d in devices
         ]
         dump_json = json_dumps(dump_data)
-        if sender_addr is not None:
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/patch/dump", dump_json
-            )
-        self.app.engine.publish_osc("patch", "/olc/patch/dump", dump_json)
+        self._emit_osc("patch", "/olc/patch/dump", dump_json, sender_addr=sender_addr)
 
     @make_method("/olc/channels/subscribe")
     def _channels_subscribe(
@@ -1723,7 +1625,8 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Subscribe to channels topic with custom grid size and start channel."""
-        if self.app.engine is None:
+        osc = self.osc
+        if osc is None:
             return
 
         if len(args) >= 1:
@@ -1739,13 +1642,11 @@ class OSCDelegate:
 
         host = sender_addr[0] if sender_addr else "127.0.0.1"
         port = sender_addr[1] if sender_addr else 8000
-        self.app.engine.osc_subscriptions.subscribe(host, port, "channels")
-        self.app.engine.osc_subscriptions.send_direct(
-            host, port, "/olc/subscribe/status", "OK", "channels"
-        )
+        osc.subscriptions.subscribe(host, port, "channels")
+        self._send_direct((host, port), "/olc/subscribe/status", "OK", "channels")
         self.app.emit(
             "osc.subscribers_changed",
-            self.app.engine.osc_subscriptions.get_subscribers_snapshot(),
+            osc.subscriptions.get_subscribers_snapshot(),
         )
         self._send_channels_page(sender_addr)
 
@@ -1798,14 +1699,12 @@ class OSCDelegate:
         sender_addr: tuple[str, int] | None = None,
     ) -> None:
         """Dump JSON representation of current channels page."""
-        if self.app.engine is None:
+        if self.osc is None:
             return
         dump_json = self.channels_grid.get_page_snapshot_json()
-        if sender_addr is not None:
-            self.app.engine.osc_subscriptions.send_direct(
-                sender_addr[0], sender_addr[1], "/olc/channels/dump", dump_json
-            )
-        self.app.engine.publish_osc("channels", "/olc/channels/dump", dump_json)
+        self._emit_osc(
+            "channels", "/olc/channels/dump", dump_json, sender_addr=sender_addr
+        )
 
     @make_method("/olc/cell/*/touch")
     def _cell_touch(self, address: str, args: list) -> None:
@@ -2435,6 +2334,42 @@ class OSCDelegate:
     def _park_unpark_all(self, _address: str, _args: list) -> None:
         """Unpark all parked channels and addresses."""
         self._execute_action("park.unpark_all")
+
+    @make_method("/olc/universe/*/set_channels")
+    def _universe_set_channels(self, address: str, args: list) -> None:
+        """Set DMX universe channel levels via JSON payload or channel/value pairs."""
+        parts = address.split("/")
+        if len(parts) < 5 or not args:
+            return
+        try:
+            univ = int(parts[3])
+            raw_payload = args[0]
+            if isinstance(raw_payload, str):
+                decoded = json_loads(raw_payload)
+                if not isinstance(decoded, dict):
+                    return
+                channels = {int(k): int(v) for k, v in decoded.items()}
+            elif isinstance(raw_payload, dict):
+                channels = {int(k): int(v) for k, v in raw_payload.items()}
+            else:
+                channels = {
+                    int(args[i]): int(args[i + 1]) for i in range(0, len(args) - 1, 2)
+                }
+        except (ValueError, TypeError, KeyError):
+            return
+        self._execute_action("dmx.set_universe_levels", univ, channels)
+
+    @make_method("/olc/universe/*/blackout")
+    def _universe_blackout(self, address: str, _args: list) -> None:
+        """Blackout a specific DMX universe via OSC."""
+        parts = address.split("/")
+        if len(parts) < 5:
+            return
+        try:
+            univ = int(parts[3])
+        except ValueError:
+            return
+        self._execute_action("universe.blackout", univ)
 
     @make_method(None)
     def _fallback(self, address: str, args: list) -> None:

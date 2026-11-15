@@ -21,7 +21,6 @@ import typing
 from gi.repository import GLib
 
 from olc.core.action import Action
-from olc.core.backends.osc.delegate import OSCDelegate
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -75,9 +74,11 @@ class OscToggleAction(Action):
             elif hasattr(settings, "set_boolean"):
                 settings.set_boolean("osc", enable)
 
-        engine = getattr(self.app, "engine", None)
-        if engine is not None:
-            if enable:
+        osc = getattr(self.app, "osc", None)
+        if enable:
+            if osc is None and hasattr(self.app, "init_osc"):
+                osc = self.app.init_osc()
+            if osc is not None:
                 host = "127.0.0.1"
                 client_port = 8000
                 server_port = 9000
@@ -95,19 +96,14 @@ class OscToggleAction(Action):
                             )
                         except Exception:  # pylint: disable=broad-exception-caught
                             enable_static_client = False
-                engine.start_osc(
+                osc.start(
                     host=host,
                     client_port=client_port,
                     server_port=server_port,
                     enable_static_client=enable_static_client,
                 )
-                core_app = getattr(self.app, "core", self.app)
-                osc_delegate = OSCDelegate(core_app)
-                self.app.osc_delegate = osc_delegate
-                engine.register_osc_delegate(osc_delegate)
-            else:
-                engine.stop_osc()
-                self.app.osc_delegate = None
+        elif osc is not None:
+            osc.stop()
 
         self.app.emit("osc.toggled", enable)
 
@@ -201,21 +197,19 @@ class OscSetConfigAction(Action):
                 if server_port > 0:
                     settings.set_int("osc-server-port", server_port)
 
-    def _update_engine(self, host: str, client_port: int, server_port: int) -> None:
-        engine = getattr(self.app, "engine", None)
-        if engine is None:
+    def _update_osc(self, host: str, client_port: int, server_port: int) -> None:
+        osc = getattr(self.app, "osc", None)
+        if osc is None:
             return
 
         if host or client_port > 0:
-            engine.update_osc_client(
-                host=host, port=client_port if client_port > 0 else None
-            )
+            osc.update_client(host=host, port=client_port if client_port > 0 else None)
         if server_port > 0:
-            engine.update_osc_server(server_port)
+            osc.update_server(server_port)
 
     def _apply_config(self, host: str, client_port: int, server_port: int) -> None:
         self._update_settings(host, client_port, server_port)
-        self._update_engine(host, client_port, server_port)
+        self._update_osc(host, client_port, server_port)
         self.app.emit("osc.config_changed", host, client_port, server_port)
 
 
@@ -242,12 +236,12 @@ class OscRemoveSubscriberAction(Action):
 
     def execute(self) -> None:
         """Remove the subscriber from OSCSubscriptionManager and notify."""
-        engine = getattr(self.app, "engine", None)
-        if engine is not None and self.host and self.port > 0:
-            engine.osc_subscriptions.unsubscribe(self.host, self.port, "all")
+        osc = getattr(self.app, "osc", None)
+        if osc is not None and self.host and self.port > 0:
+            osc.subscriptions.unsubscribe(self.host, self.port, "all")
             self.app.emit(
                 "osc.subscribers_changed",
-                engine.osc_subscriptions.get_subscribers_snapshot(),
+                osc.subscriptions.get_subscribers_snapshot(),
             )
 
 
@@ -308,8 +302,8 @@ class OscToggleStaticClientAction(Action):
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
-        engine = getattr(self.app, "engine", None)
-        if engine is not None:
+        osc = getattr(self.app, "osc", None)
+        if osc is not None:
             host = ""
             port = 0
             if settings is not None:
@@ -317,10 +311,10 @@ class OscToggleStaticClientAction(Action):
                     host = settings.get_string("osc-host") or ""
                 if hasattr(settings, "get_int"):
                     port = settings.get_int("osc-client-port") or 0
-            engine.set_static_client(enable, host=host, port=port)
+            osc.set_static_client(enable, host=host, port=port)
             self.app.emit(
                 "osc.subscribers_changed",
-                engine.osc_subscriptions.get_subscribers_snapshot(),
+                osc.subscriptions.get_subscribers_snapshot(),
             )
 
         self.app.emit("osc.static_client_toggled", enable)

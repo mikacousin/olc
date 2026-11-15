@@ -24,8 +24,10 @@ import time
 sys.path.insert(1, "@pythondir@")
 
 from olc.core import CoreEngine
+from olc.core.app import CoreApplication
 from olc.core.universe_config import Protocol, UniverseMap
 
+app = CoreApplication(None)
 universe_map = UniverseMap(8)
 universe_map.enable_protocol(0, Protocol.ARTNET)
 universe_map.set_protocols(1, {Protocol.SACN, Protocol.ARTNET})
@@ -33,11 +35,13 @@ universe_map.enable_protocol(3, Protocol.SACN)
 engine = CoreEngine(
     universe_map, hz=44.0, monitor_port=5555, monitor_fps=15.0, no_listen=True
 )
+app.engine = engine
 engine.set_channels(0, {k: 0 for k in range(10)})
 engine.set_channels(1, {k: 0 for k in range(10)})
 engine.set_channels(3, {k: 0 for k in range(10)})
 engine.start()
-engine.start_osc(host="127.0.0.1", client_port=9000, server_port=7000)
+osc = app.init_osc()
+osc.start(host="127.0.0.1", client_port=9000, server_port=7000)
 
 step = 0
 try:
@@ -56,4 +60,4 @@ try:
         time.sleep(0.1)
 except KeyboardInterrupt:
     print("\nStopping olcd...")
-    engine.stop()
+    app.stop()
