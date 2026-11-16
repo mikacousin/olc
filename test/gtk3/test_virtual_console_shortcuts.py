@@ -76,11 +76,12 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.unpark.shortcut_text == "Alt+P"
     assert vc.undo.shortcut_text == "^Z"
     assert vc.redo.shortcut_text == "⇧^Z"
+    assert vc.patch.shortcut_text == "P"
 
     # Moving Lights & Tools
     assert vc.home.shortcut_text == "H / ⇧H"
     assert vc.locate.shortcut_text == "L / ⇧L"
-    assert vc.position.shortcut_text == "P"
+    assert vc.position.shortcut_text == "⇧Alt+P"
     assert vc.focus.shortcut_text == "Alt+F"
     assert vc.color.shortcut_text == "Alt+C"
     assert vc.beam.shortcut_text == "Alt+M"
@@ -91,6 +92,18 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.nine.shortcut_text == "9"
     assert vc.dot.shortcut_text == "."
     assert vc.backspace.shortcut_text == "⌫"
+
+    # Patch button sensitivity & click behavior
+    app_gui.core.action_registry.execute("commandline.clear")
+    process_events()
+    assert vc.patch.get_sensitive() is False
+    app_gui.core.action_registry.execute("commandline.append_char", "1")
+    process_events()
+    assert vc.patch.get_sensitive() is True
+    vc.patch.emit("clicked")
+    process_events()
+    assert app_gui.core.commandline.get_string() == "1 PATCH "
+    app_gui.core.action_registry.execute("commandline.clear")
 
     # Arrows
     assert vc.up.shortcut_text == "↑"

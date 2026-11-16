@@ -236,6 +236,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.undo.connect("clicked", self._on_undo)
         self.redo = ButtonWidget(label="Redo", text="redo", shortcut_text="⇧^Z")
         self.redo.connect("clicked", self._on_redo)
+        self.patch = ButtonWidget(label="Patch", text="patch", shortcut_text="P")
+        self.patch.connect("clicked", self._on_patch)
 
         # Attach Zone 2
         self.actions_pad.attach(self.at_level, 0, 0, 1, 1)
@@ -262,6 +264,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.actions_pad.attach(self.unpark, 1, 4, 1, 1)
         self.actions_pad.attach(self.undo, 2, 4, 1, 1)
         self.actions_pad.attach(self.redo, 3, 4, 1, 1)
+        self.actions_pad.attach(self.patch, 0, 5, 1, 1)
 
         # Zone 3: Moving Lights & Selection Tools (2x5)
         self.tools_pad = Gtk.Grid()
@@ -273,7 +276,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.locate.connect("clicked", self._on_locate)
 
         self.position = ButtonWidget(
-            label="Position", text="position", shortcut_text="P"
+            label="Position", text="position", shortcut_text="⇧Alt+P"
         )
         self.position.connect("clicked", self._on_position)
         self.focus = ButtonWidget(label="Focus", text="focus", shortcut_text="Alt+F")
@@ -690,6 +693,7 @@ class VirtualConsoleWindow(Gtk.Window):
         )
         set_sens("undo", can_undo)
         set_sens("redo", can_redo)
+        set_sens("patch", TokenType.PATCH in expected)
 
         # Zone 3: Tools & Moving Lights
         set_sens("home", TokenType.HOME in expected or is_empty)
@@ -897,6 +901,17 @@ class VirtualConsoleWindow(Gtk.Window):
             prefix = " " if (curr and not curr.endswith(" ")) else ""
             self.app.core.action_registry.execute(
                 "commandline.append_char", f"{prefix}UNPARK "
+            )
+
+    def _on_patch(self, _widget: Gtk.Widget) -> None:
+        """Patch button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("patch")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}PATCH "
             )
 
     def _on_park_changed(self, count: int) -> None:
