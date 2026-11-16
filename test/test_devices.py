@@ -1099,6 +1099,37 @@ def test_fixture_name_and_address_range_str() -> None:
         fixture_type=FixtureType.GENERIC,
     )
     assert dev_empty.address_range_str == "-"
+    assert dev_empty.universe_display_str == "-"
+
+    # 6. Non-consecutive dimmer addresses on the same universe
+    dev_nonconsec = LightingDevice(
+        fixture_id=6,
+        label="Dimmer NonConsec",
+        fixture_type=FixtureType.DIMMER,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 10),
+            Channel(ChannelType.INTENSITY, 1, 11),
+            Channel(ChannelType.INTENSITY, 1, 12),
+            Channel(ChannelType.INTENSITY, 1, 25),
+            Channel(ChannelType.INTENSITY, 1, 26),
+        ],
+    )
+    assert dev_nonconsec.universe_display_str == "1"
+    assert dev_nonconsec.address_range_str == "10-12, 25-26"
+
+    # 7. Multi-universe dimmer addresses
+    dev_multi_univ = LightingDevice(
+        fixture_id=7,
+        label="Dimmer MultiUniv",
+        fixture_type=FixtureType.DIMMER,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 10),
+            Channel(ChannelType.INTENSITY, 2, 5),
+            Channel(ChannelType.INTENSITY, 2, 6),
+        ],
+    )
+    assert dev_multi_univ.universe_display_str == "1, 2"
+    assert dev_multi_univ.address_range_str == "1/10, 2/5-6"
 
 
 def test_channel_definition_multibyte_defaults_and_highlight() -> None:

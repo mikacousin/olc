@@ -109,20 +109,50 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             return self.model
         return self.fixture_type.value.replace("_", " ").title()
 
+    def _addresses_by_universe(self) -> dict[int, list[int]]:
+        by_univ: dict[int, set[int]] = {}
+        for ch in self.channels:
+            by_univ.setdefault(ch.universe, set()).add(ch.address)
+        return {u: sorted(addrs) for u, addrs in sorted(by_univ.items())}
+
+    @staticmethod
+    def _format_contiguous_ranges(sorted_addrs: list[int], prefix: str = "") -> str:
+        ranges: list[str] = []
+        start = prev = sorted_addrs[0]
+        for addr in sorted_addrs[1:]:
+            if addr == prev + 1:
+                prev = addr
+            else:
+                ranges.append(
+                    f"{prefix}{start}" if start == prev else f"{prefix}{start}-{prev}"
+                )
+                start = prev = addr
+        ranges.append(
+            f"{prefix}{start}" if start == prev else f"{prefix}{start}-{prev}"
+        )
+        return ", ".join(ranges)
+
     @property
-    def address_range_str(self) -> str:
-        """Return human-readable address range string (e.g. '10-17' or '5')."""
+    def universe_display_str(self) -> str:
+        """Return human-readable universe list (e.g. '1' or '1, 2')."""
         if not self.channels:
             return "-"
-        u = self.universe
-        same_univ_addrs = [ch.address for ch in self.channels if ch.universe == u]
-        if not same_univ_addrs:
+        by_univ = self._addresses_by_universe()
+        return ", ".join(str(u) for u in by_univ)
+
+    @property
+    def address_range_str(self) -> str:
+        """Return human-readable address range string (e.g. '10-17', '10, 25')."""
+        if not self.channels:
             return "-"
-        start = min(same_univ_addrs)
-        end = max(same_univ_addrs)
-        if start == end:
-            return str(start)
-        return f"{start}-{end}"
+        by_univ = self._addresses_by_universe()
+        if len(by_univ) == 1:
+            addrs = next(iter(by_univ.values()))
+            return self._format_contiguous_ranges(addrs)
+        return ", ".join(
+            self._format_contiguous_ranges(addrs, prefix=f"{u}/")
+            for u, addrs in by_univ.items()
+        )
 
     def set_curve_id(self, curve_id: int) -> None:
         """Set curve ID for the device intensity transfer function."""
