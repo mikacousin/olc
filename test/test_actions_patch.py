@@ -205,3 +205,57 @@ def test_dmx_set_universe_levels() -> None:
 
     # Action should not be undoable
     assert len(app.history.undo_stack) == 0
+
+
+def test_patch_set_device_label_and_move_address_undo_redo() -> None:
+    """Test patch.set_device_label and patch.move_device_address."""
+    import pytest
+
+    from olc.show.patch import PatchCollisionError
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute("patch.clear")
+    patch = app.lightshow.patch
+    patch.add_universe(2)
+
+    patch.patch_dimmer(channel=1, universe=1, address=10)
+    patch.patch_dimmer(channel=2, universe=1, address=20)
+
+    # 1. Set device label + Undo/Redo
+    app.action_registry.execute("patch.set_device_label", 1, "Key Left")
+    dev1 = patch.get_device(1)
+    assert dev1 is not None
+    assert dev1.label == "Key Left"
+
+    app.history.undo()
+    dev1 = patch.get_device(1)
+    assert dev1 is not None
+    assert dev1.label != "Key Left"
+
+    app.history.redo()
+    dev1 = patch.get_device(1)
+    assert dev1 is not None
+    assert dev1.label == "Key Left"
+
+    # 2. Move address to universe 2, address 50 (no collision)
+    app.action_registry.execute("patch.move_device_address", 1, 2, 50)
+    assert patch.get_address_occupant(1, 10) is None
+    assert patch.get_address_occupant(2, 50) == 1
+
+    app.history.undo()
+    assert patch.get_address_occupant(1, 10) == 1
+    assert patch.get_address_occupant(2, 50) is None
+
+    # 3. Collision with force=False raises PatchCollisionError
+    with pytest.raises(PatchCollisionError):
+        app.action_registry.execute("patch.move_device_address", 1, 1, 20, force=False)
+
+    # 4. Collision with force=True overwrites channel 2, and Undo restores both
+    app.action_registry.execute("patch.move_device_address", 1, 1, 20, force=True)
+    assert patch.get_address_occupant(1, 20) == 1
+    assert patch.get_device(2) is None
+
+    app.history.undo()
+    assert patch.get_address_occupant(1, 10) == 1
+    assert patch.get_address_occupant(1, 20) == 2

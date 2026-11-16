@@ -16,17 +16,24 @@
 
 from __future__ import annotations
 
+import re
 import typing
 from gettext import gettext as _
 from typing import Any, Optional
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 from olc.define import MAX_CHANNELS
-from olc.devices.builtin import populate_builtin_library
+from olc.devices.builtin import create_dimmer_definition, populate_builtin_library
+from olc.devices.device import FixtureType
 from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
 from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
+from olc.gtk3.widgets.patch_popovers import (
+    FixtureSelectionPopover,
+    ModeSelectionPopover,
+)
+from olc.show.patch import PatchCollisionError
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -104,9 +111,15 @@ class PatchChannelsTab(Gtk.Box):
     remove_device_btn: Gtk.Button
     exchange_btn: Gtk.Button
     curve_column: Optional[Gtk.TreeViewColumn]
+    mode_column: Optional[Gtk.TreeViewColumn]
+    type_column: Optional[Gtk.TreeViewColumn]
     curve_popover: CurveSelectionPopover
+    mode_popover: ModeSelectionPopover
+    fixture_popover: FixtureSelectionPopover
     _active_curve_device_id: Optional[int]
+    _active_popover_device_id: Optional[int]
     tree_columns: dict[int, Gtk.TreeViewColumn]
+    cell_renderers: dict[int, Gtk.CellRendererText]
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self, app: Application) -> None:
@@ -131,10 +144,20 @@ class PatchChannelsTab(Gtk.Box):
         self.sort_mode = "logical"
         self.scope_mode = "patched"
         self.curve_column = None
+        self.mode_column = None
+        self.type_column = None
         self._active_curve_device_id = None
+        self._active_popover_device_id = None
         self.tree_columns = {}
+        self.cell_renderers = {}
         self.curve_popover = CurveSelectionPopover(
             self.lightshow, self._on_curve_selected
+        )
+        self.mode_popover = ModeSelectionPopover(self._on_mode_selected)
+        self.fixture_popover = FixtureSelectionPopover(
+            self.fixture_library,
+            self._on_fixture_selected,
+            self._on_fixture_advanced_selected,
         )
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -201,8 +224,15 @@ class PatchChannelsTab(Gtk.Box):
         self.devices_treeview = Gtk.TreeView(model=self.devices_store)
         self.devices_treeview.set_enable_search(True)
         selection = self.devices_treeview.get_selection()
-        selection.set_mode(Gtk.SelectionMode.SINGLE)
+        selection.set_mode(Gtk.SelectionMode.MULTIPLE)
         selection.connect("changed", self._on_selection_changed)
+
+        edit_callbacks = {
+            COL_ID: self._on_channel_edited,
+            COL_NAME: self._on_label_edited,
+            COL_UNIVERSE: self._on_universe_edited,
+            COL_ADDRESS: self._on_address_edited,
+        }
 
         columns_spec = [
             ("Channel", COL_ID, 70),
@@ -221,8 +251,19 @@ class PatchChannelsTab(Gtk.Box):
             column.add_attribute(renderer, "foreground", COL_COLOR)
             column.set_min_width(min_width)
             column.set_resizable(True)
+            if col_idx in edit_callbacks:
+                column.set_cell_data_func(renderer, self._cell_data_func, col_idx)
+                renderer.connect("edited", edit_callbacks[col_idx])
+                renderer.connect(
+                    "editing-started", self._on_cell_editing_started, col_idx
+                )
             if col_idx == COL_CURVE:
                 self.curve_column = column
+            elif col_idx == COL_MODE:
+                self.mode_column = column
+            elif col_idx == COL_TYPE:
+                self.type_column = column
+            self.cell_renderers[col_idx] = renderer
             self.tree_columns[col_idx] = column
             self.devices_treeview.append_column(column)
 
@@ -231,6 +272,7 @@ class PatchChannelsTab(Gtk.Box):
         self.devices_treeview.connect(
             "button-press-event", self._on_treeview_button_press
         )
+        self.devices_treeview.connect("key-press-event", self._on_treeview_key_press)
 
         self.devices_scroll = Gtk.ScrolledWindow()
         self.devices_scroll.set_policy(
@@ -448,6 +490,18 @@ class PatchChannelsTab(Gtk.Box):
                         ]
                     )
 
+    def _get_cell_pointing_rect(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> Gdk.Rectangle:
+        rect = treeview.get_cell_area(path, col)
+        rect_x, rect_y = treeview.convert_bin_window_to_widget_coords(rect.x, rect.y)
+        pointing_rect = Gdk.Rectangle()
+        pointing_rect.x = rect_x
+        pointing_rect.y = rect_y
+        pointing_rect.width = rect.width
+        pointing_rect.height = rect.height
+        return pointing_rect
+
     def _open_curve_popover_at_cell(
         self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
     ) -> bool:
@@ -464,18 +518,69 @@ class PatchChannelsTab(Gtk.Box):
             return False
 
         self._active_curve_device_id = device_id
-        treeview.get_selection().select_path(path)
+        selection = treeview.get_selection()
+        if not selection.path_is_selected(path):
+            selection.unselect_all()
+            selection.select_path(path)
 
-        rect = treeview.get_cell_area(path, col)
-        rect_x, rect_y = treeview.convert_bin_window_to_widget_coords(rect.x, rect.y)
-        pointing_rect = Gdk.Rectangle()
-        pointing_rect.x = rect_x
-        pointing_rect.y = rect_y
-        pointing_rect.width = rect.width
-        pointing_rect.height = rect.height
-
+        pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
         self.curve_popover.open_for_curve(
             dev.curve_id, relative_to=treeview, pointing_to=pointing_rect
+        )
+        return True
+
+    def _open_mode_popover_at_cell(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> bool:
+        """Open mode selection popover pointing to the specified cell."""
+        model = treeview.get_model()
+        if model is None:
+            return False
+        treeiter = model.get_iter(path)
+        if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+            return False
+        device_id = int(model.get_value(treeiter, COL_RAW_ID))
+        dev = self.patch.devices.get(device_id)
+        if dev is None:
+            return False
+        fdef = self.fixture_library.get(dev.manufacturer, dev.model)
+        if fdef is None:
+            return False
+
+        self._active_popover_device_id = device_id
+        selection = treeview.get_selection()
+        selection.unselect_all()
+        selection.select_path(path)
+
+        pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
+        self.mode_popover.open_for_device(
+            dev, fdef, relative_to=treeview, pointing_to=pointing_rect
+        )
+        return True
+
+    def _open_fixture_popover_at_cell(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> bool:
+        """Open fixture selection popover pointing to the specified cell."""
+        model = treeview.get_model()
+        if model is None:
+            return False
+        treeiter = model.get_iter(path)
+        if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+            return False
+        device_id = int(model.get_value(treeiter, COL_RAW_ID))
+        dev = self.patch.devices.get(device_id)
+        if dev is None:
+            return False
+
+        self._active_popover_device_id = device_id
+        selection = treeview.get_selection()
+        selection.unselect_all()
+        selection.select_path(path)
+
+        pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
+        self.fixture_popover.open_for_device(
+            dev, relative_to=treeview, pointing_to=pointing_rect
         )
         return True
 
@@ -484,13 +589,9 @@ class PatchChannelsTab(Gtk.Box):
     ) -> bool:
         """Handle button press on devices TreeView.
 
-        Opens curve popover when clicking the curve column.
-
-        Args:
-            treeview: The Gtk.TreeView instance.
-            event: The button press event.
+        Opens popovers when clicking Curve, Mode, or Fixture columns on patched rows.
         """
-        if event.button != 1 or self.curve_column is None:
+        if event.button != 1:
             return False
 
         path_info = treeview.get_path_at_pos(int(event.x), int(event.y))
@@ -498,23 +599,448 @@ class PatchChannelsTab(Gtk.Box):
             return False
 
         path, col, _cell_x, _cell_y = path_info
-        if path is not None and col is not None and col == self.curve_column:
-            model = treeview.get_model()
-            if model is not None:
-                treeiter = model.get_iter(path)
-                if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
-                    return False
+        if path is None or col is None:
+            return False
+
+        model = treeview.get_model()
+        if model is not None:
+            treeiter = model.get_iter(path)
+            if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+                return False
+
+        if col == self.curve_column:
             return self._open_curve_popover_at_cell(treeview, path, col)
+        if col == self.mode_column:
+            return self._open_mode_popover_at_cell(treeview, path, col)
+        if col == self.type_column:
+            return self._open_fixture_popover_at_cell(treeview, path, col)
         return False
 
     def _on_curve_selected(self, curve_id: int) -> None:
-        """Handle curve selection from popover."""
+        """Handle curve selection from popover (single or multi-selection)."""
         if self._active_curve_device_id is None:
             return
-        self.app.core.action_registry.execute(
-            "patch.set_device_curve", self._active_curve_device_id, curve_id
+        selected_ids = self.get_selected_device_ids()
+        targets = (
+            selected_ids
+            if len(selected_ids) > 1 and self._active_curve_device_id in selected_ids
+            else [self._active_curve_device_id]
         )
+        for dev_id in targets:
+            self.app.core.action_registry.execute(
+                "patch.set_device_curve", dev_id, curve_id
+            )
         self.refresh()
+
+    def _on_mode_selected(self, mode_name: str) -> None:
+        """Handle mode selection from popover."""
+        dev_id = self._active_popover_device_id
+        if dev_id is None:
+            return
+        dev = self.patch.get_device(dev_id)
+        if dev is None or dev.mode_name == mode_name:
+            return
+        fixture_key = f"{dev.manufacturer}:{dev.model}"
+        self._apply_exchange_fixture(dev_id, fixture_key, mode_name)
+
+    def _on_fixture_selected(self, fixture_key: str) -> None:
+        """Handle fixture selection from popover."""
+        dev_id = self._active_popover_device_id
+        if dev_id is None:
+            return
+        self._apply_exchange_fixture(dev_id, fixture_key, None)
+
+    def _on_fixture_advanced_selected(self) -> None:
+        """Open FixtureExchangeDialog for the active popover device."""
+        dev_id = self._active_popover_device_id
+        if dev_id is None:
+            return
+        dialog = FixtureExchangeDialog(
+            parent=self.window,
+            patch=self.patch,
+            library=self.fixture_library,
+            device_id=dev_id,
+        )
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            vals = dialog.get_values()
+            try:
+                self.exchange_device_fixture(
+                    device_id=vals["device_id"],
+                    new_fixture_key=vals["fixture_key"],
+                    new_mode_name=vals["mode_name"],
+                    universe=vals["universe"],
+                    address=vals["address"],
+                    force=vals["force"],
+                )
+                warnings = getattr(self.patch, "last_exchange_warnings", [])
+                if warnings:
+                    self._show_clamping_warning_dialog(warnings)
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+        dialog.destroy()
+
+    def _is_device_address_editable(self, device_id: int) -> bool:
+        """Return True if the device's address can be edited inline."""
+        dev = self.patch.get_device(device_id)
+        if dev is None:
+            return False
+        if dev.fixture_type == FixtureType.DIMMER and len(dev.channels) > 1:
+            univs = {ch.universe for ch in dev.channels}
+            if len(univs) > 1:
+                return False
+            addrs = sorted(ch.address for ch in dev.channels)
+            if addrs != list(range(addrs[0], addrs[0] + len(addrs))):
+                return False
+        return True
+
+    def _is_cell_editable(
+        self, model: Gtk.TreeModel, treeiter: Gtk.TreeIter, col_idx: int
+    ) -> bool:
+        """Determine if the specified cell is inline-editable."""
+        is_patched = bool(model.get_value(treeiter, COL_IS_PATCHED))
+        if col_idx == COL_NAME:
+            return is_patched
+        if col_idx == COL_UNIVERSE:
+            if not is_patched:
+                return False
+            return self._is_device_address_editable(
+                int(model.get_value(treeiter, COL_RAW_ID))
+            )
+        if col_idx == COL_ADDRESS:
+            if is_patched:
+                return self._is_device_address_editable(
+                    int(model.get_value(treeiter, COL_RAW_ID))
+                )
+            return self.scope_mode == "all" and self.sort_mode == "logical"
+        if col_idx == COL_ID:
+            return (
+                not is_patched
+                and self.scope_mode == "all"
+                and self.sort_mode == "physical"
+            )
+        return False
+
+    def _cell_data_func(
+        self,
+        _column: Gtk.TreeViewColumn,
+        cell: Gtk.CellRenderer,
+        model: Gtk.TreeModel,
+        treeiter: Gtk.TreeIter,
+        col_idx: int,
+    ) -> None:
+        """Set per-row editable property on CellRendererText."""
+        cell.set_property("editable", self._is_cell_editable(model, treeiter, col_idx))
+
+    def _editable_column_order(self) -> list[int]:
+        """Return inline-editable column indices in current visual order."""
+        order = (
+            _PHYSICAL_COL_ORDER if self.sort_mode == "physical" else _LOGICAL_COL_ORDER
+        )
+        return [c for c in order if c in (COL_ID, COL_NAME, COL_UNIVERSE, COL_ADDRESS)]
+
+    def _start_editing_cell(self, row_idx: int, col_idx: int) -> bool:
+        """Start inline editing at *row_idx* and *col_idx*."""
+        if not 0 <= row_idx < len(self.devices_store):
+            return False
+        col = self.tree_columns.get(col_idx)
+        if col is None:
+            return False
+        path = Gtk.TreePath.new_from_indices([row_idx])
+        self.devices_treeview.set_cursor(path, col, True)
+        return False
+
+    def _on_cell_editing_started(
+        self,
+        _renderer: Gtk.CellRendererText,
+        editable: Gtk.CellEditable,
+        path_str: str,
+        col_idx: int,
+    ) -> None:
+        """Handle Tab / Shift+Tab navigation during inline cell editing."""
+        if not isinstance(editable, Gtk.Widget):
+            return
+        editable.grab_focus()
+        editable.connect(
+            "key-press-event", self._on_cell_entry_key_press, path_str, col_idx
+        )
+
+    def _on_cell_entry_key_press(
+        self,
+        editable: Gtk.Widget,
+        event: Gdk.EventKey,
+        path_str: str,
+        col_idx: int,
+    ) -> bool:
+        """Commit and move to next/previous editable column on Tab / Shift+Tab."""
+        if event.keyval not in (Gdk.KEY_Tab, Gdk.KEY_ISO_Left_Tab):
+            return False
+
+        row_idx = int(path_str)
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        editable_cols = [
+            c
+            for c in self._editable_column_order()
+            if self._is_cell_editable(self.devices_store, treeiter, c)
+        ]
+        if col_idx not in editable_cols:
+            return False
+
+        pos = editable_cols.index(col_idx)
+        step = -1 if event.keyval == Gdk.KEY_ISO_Left_Tab else 1
+        next_pos = (pos + step) % len(editable_cols)
+        next_col = editable_cols[next_pos]
+
+        if isinstance(editable, Gtk.Entry):
+            editable.activate()
+        GLib.idle_add(self._start_editing_cell, row_idx, next_col)
+        return True
+
+    def _on_treeview_key_press(
+        self, _treeview: Gtk.TreeView, event: Gdk.EventKey
+    ) -> bool:
+        """Handle F2 (edit cell) and Delete (unpatch selected) in TreeView."""
+        if event.keyval == Gdk.KEY_F2:
+            path, focus_col = self.devices_treeview.get_cursor()
+            if path is None:
+                return False
+            treeiter = self.devices_store.get_iter(path)
+            col_idx = next(
+                (idx for idx, c in self.tree_columns.items() if c == focus_col),
+                COL_NAME,
+            )
+            if col_idx == COL_CURVE and self.curve_column is not None:
+                return self._open_curve_popover_at_cell(
+                    self.devices_treeview, path, self.curve_column
+                )
+            if col_idx == COL_MODE and self.mode_column is not None:
+                return self._open_mode_popover_at_cell(
+                    self.devices_treeview, path, self.mode_column
+                )
+            if col_idx == COL_TYPE and self.type_column is not None:
+                return self._open_fixture_popover_at_cell(
+                    self.devices_treeview, path, self.type_column
+                )
+            if not self._is_cell_editable(self.devices_store, treeiter, col_idx):
+                if self._is_cell_editable(self.devices_store, treeiter, COL_NAME):
+                    col_idx = COL_NAME
+                elif self._is_cell_editable(self.devices_store, treeiter, COL_ADDRESS):
+                    col_idx = COL_ADDRESS
+                elif self._is_cell_editable(self.devices_store, treeiter, COL_ID):
+                    col_idx = COL_ID
+                else:
+                    return False
+            target_col = self.tree_columns.get(col_idx)
+            if target_col is not None:
+                self.devices_treeview.set_cursor(path, target_col, True)
+                return True
+            return False
+
+        if event.keyval in (Gdk.KEY_Delete, Gdk.KEY_KP_Delete):
+            ids = self.get_selected_device_ids()
+            if ids:
+                self._remove_device_ids(ids)
+                return True
+        return False
+
+    def _confirm_collision(self, message: str) -> bool:
+        """Prompt confirmation to overwrite colliding DMX addresses."""
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            destroy_with_parent=True,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text=message,
+        )
+        dialog.set_title(_("Address Collision"))
+        response = dialog.run()
+        dialog.destroy()
+        return response == Gtk.ResponseType.OK
+
+    def _apply_move_address(self, device_id: int, universe: int, address: int) -> None:
+        """Execute patch.move_device_address with collision confirmation."""
+        try:
+            self.app.core.action_registry.execute(
+                "patch.move_device_address", device_id, universe, address, force=False
+            )
+            self.refresh()
+        except PatchCollisionError as err:
+            if self._confirm_collision(
+                f"{err}\n\n{_('Overwrite colliding DMX address(es)?')}"
+            ):
+                self.app.core.action_registry.execute(
+                    "patch.move_device_address",
+                    device_id,
+                    universe,
+                    address,
+                    force=True,
+                )
+                self.refresh()
+        except ValueError:
+            pass
+
+    def _apply_exchange_fixture(
+        self,
+        device_id: int,
+        fixture_key: str,
+        mode_name: Optional[str],
+    ) -> None:
+        """Execute patch.exchange_fixture with collision confirmation and warnings."""
+        try:
+            self.exchange_device_fixture(
+                device_id=device_id,
+                new_fixture_key=fixture_key,
+                new_mode_name=mode_name,
+                force=False,
+            )
+        except PatchCollisionError as err:
+            if not self._confirm_collision(
+                f"{err}\n\n{_('Overwrite colliding DMX address(es)?')}"
+            ):
+                return
+            self.exchange_device_fixture(
+                device_id=device_id,
+                new_fixture_key=fixture_key,
+                new_mode_name=mode_name,
+                force=True,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            return
+
+        warnings = getattr(self.patch, "last_exchange_warnings", [])
+        if warnings:
+            self._show_clamping_warning_dialog(warnings)
+
+    def _patch_vacant_dimmer(self, device_id: int, universe: int, address: int) -> None:
+        """Patch an 8-bit Dimmer on the fly from a vacant row."""
+        if device_id < 1 or device_id > MAX_CHANNELS:
+            return
+        if address < 1 or address > 512:
+            return
+        if self.patch.universes and universe not in self.patch.universes:
+            return
+        dim_def = create_dimmer_definition(fine=False)
+        try:
+            self.app.core.action_registry.execute(
+                "patch.device",
+                device_id,
+                dim_def,
+                universe,
+                address,
+                force=False,
+            )
+            self.refresh()
+        except PatchCollisionError as err:
+            if self._confirm_collision(
+                f"{err}\n\n{_('Overwrite colliding DMX address(es)?')}"
+            ):
+                self.app.core.action_registry.execute(
+                    "patch.device",
+                    device_id,
+                    dim_def,
+                    universe,
+                    address,
+                    force=True,
+                )
+                self.refresh()
+
+    @staticmethod
+    def _parse_universe_address(
+        text: str, default_universe: int
+    ) -> Optional[tuple[int, int]]:
+        """Parse '101' or '2/101' or '2.101' into (universe, address)."""
+        cleaned = text.strip()
+        if not cleaned:
+            return None
+        match = re.match(r"^(\d+)\s*[/.]\s*(\d+)$", cleaned)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+        if cleaned.isdigit():
+            return default_universe, int(cleaned)
+        return None
+
+    def _on_label_edited(
+        self, _renderer: Gtk.CellRendererText, path_str: str, new_text: str
+    ) -> None:
+        """Handle inline label editing with incremental multi-selection naming."""
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        if not bool(self.devices_store.get_value(treeiter, COL_IS_PATCHED)):
+            return
+        device_id = int(self.devices_store.get_value(treeiter, COL_RAW_ID))
+        cleaned = new_text.strip()
+        if not cleaned:
+            return
+
+        selected_ids = self.get_selected_device_ids()
+        if len(selected_ids) > 1 and device_id in selected_ids:
+            num_match = re.match(r"^(.*?)(\d+)$", cleaned)
+            for idx, dev_id in enumerate(selected_ids):
+                if num_match:
+                    prefix, digits = num_match.group(1), num_match.group(2)
+                    label = f"{prefix}{int(digits) + idx:0{len(digits)}d}"
+                else:
+                    label = cleaned
+                self.app.core.action_registry.execute(
+                    "patch.set_device_label", dev_id, label
+                )
+        else:
+            self.app.core.action_registry.execute(
+                "patch.set_device_label", device_id, cleaned
+            )
+        self.refresh()
+
+    def _on_universe_edited(
+        self, _renderer: Gtk.CellRendererText, path_str: str, new_text: str
+    ) -> None:
+        """Handle inline universe editing."""
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        if not bool(self.devices_store.get_value(treeiter, COL_IS_PATCHED)):
+            return
+        cleaned = new_text.strip()
+        if not cleaned.isdigit():
+            return
+        device_id = int(self.devices_store.get_value(treeiter, COL_RAW_ID))
+        address = int(self.devices_store.get_value(treeiter, COL_RAW_ADDR))
+        self._apply_move_address(device_id, int(cleaned), address)
+
+    def _on_address_edited(
+        self, _renderer: Gtk.CellRendererText, path_str: str, new_text: str
+    ) -> None:
+        """Handle inline address editing (or on-the-fly dimmer patch on vacant row)."""
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        is_patched = bool(self.devices_store.get_value(treeiter, COL_IS_PATCHED))
+        raw_id = int(self.devices_store.get_value(treeiter, COL_RAW_ID))
+        raw_univ = int(self.devices_store.get_value(treeiter, COL_RAW_UNIV))
+        default_univ = (
+            raw_univ
+            if raw_univ > 0
+            else (self.patch.universes[0] if self.patch.universes else 1)
+        )
+
+        parsed = self._parse_universe_address(new_text, default_univ)
+        if parsed is None:
+            return
+        univ, addr = parsed
+        if is_patched:
+            self._apply_move_address(raw_id, univ, addr)
+        elif raw_id > 0:
+            self._patch_vacant_dimmer(raw_id, univ, addr)
+
+    def _on_channel_edited(
+        self, _renderer: Gtk.CellRendererText, path_str: str, new_text: str
+    ) -> None:
+        """Handle inline channel ID editing on vacant physical address rows."""
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        if bool(self.devices_store.get_value(treeiter, COL_IS_PATCHED)):
+            return
+        cleaned = new_text.strip()
+        if not cleaned.isdigit():
+            return
+        device_id = int(cleaned)
+        univ = int(self.devices_store.get_value(treeiter, COL_RAW_UNIV))
+        addr = int(self.devices_store.get_value(treeiter, COL_RAW_ADDR))
+        self._patch_vacant_dimmer(device_id, univ, addr)
 
     def _reorder_columns_for_mode(self, mode: str) -> None:
         """Reorder TreeView columns visually according to sort mode."""
@@ -570,24 +1096,34 @@ class PatchChannelsTab(Gtk.Box):
 
     def _on_selection_changed(self, selection: Gtk.TreeSelection) -> None:
         """Update button sensitivity depending on whether selection is patched."""
-        model, treeiter = selection.get_selected()
-        if model is None or treeiter is None:
+        model, paths = selection.get_selected_rows()
+        if model is None or not paths:
             self.remove_device_btn.set_sensitive(True)
             self.exchange_btn.set_sensitive(True)
             return
-        is_patched = bool(model.get_value(treeiter, COL_IS_PATCHED))
-        self.remove_device_btn.set_sensitive(is_patched)
-        self.exchange_btn.set_sensitive(is_patched)
+        patched_count = sum(
+            1 for p in paths if bool(model.get_value(model.get_iter(p), COL_IS_PATCHED))
+        )
+        self.remove_device_btn.set_sensitive(patched_count > 0)
+        self.exchange_btn.set_sensitive(patched_count == 1)
+
+    def get_selected_device_ids(self) -> list[int]:
+        """Return list of currently selected patched device IDs in the TreeView."""
+        selection = self.devices_treeview.get_selection()
+        model, paths = selection.get_selected_rows()
+        if model is None or not paths:
+            return []
+        ids: list[int] = []
+        for path in paths:
+            treeiter = model.get_iter(path)
+            if bool(model.get_value(treeiter, COL_IS_PATCHED)):
+                ids.append(int(model.get_value(treeiter, COL_RAW_ID)))
+        return ids
 
     def get_selected_device_id(self) -> Optional[int]:
         """Return currently selected device_id in the devices TreeView, or None."""
-        selection = self.devices_treeview.get_selection()
-        model, treeiter = selection.get_selected()
-        if treeiter is not None and model is not None:
-            if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
-                return None
-            return int(model.get_value(treeiter, COL_RAW_ID))
-        return None
+        ids = self.get_selected_device_ids()
+        return ids[0] if ids else None
 
     # -------------------------------------------------------------------------
     # Device Patch Operations (Programmatic & Interactive)
@@ -685,9 +1221,10 @@ class PatchChannelsTab(Gtk.Box):
     ) -> tuple[int, Optional[int], Optional[int]]:
         """Determine default device_id, universe and address from selection."""
         selection = self.devices_treeview.get_selection()
-        model, treeiter = selection.get_selected()
-        if model is None or treeiter is None:
+        model, paths = selection.get_selected_rows()
+        if model is None or not paths:
             return self._get_first_unpatched_channel_id(), None, None
+        treeiter = model.get_iter(paths[0])
 
         raw_id = int(model.get_value(treeiter, COL_RAW_ID))
         raw_univ = int(model.get_value(treeiter, COL_RAW_UNIV))
@@ -738,10 +1275,18 @@ class PatchChannelsTab(Gtk.Box):
                 pass
         dialog.destroy()
 
+    def _remove_device_ids(self, ids: list[int]) -> None:
+        """Unpatch one or multiple selected devices."""
+        if len(ids) == 1:
+            self.remove_patched_device(ids[0])
+        elif len(ids) > 1:
+            self.app.core.action_registry.execute("patch.unpatch_batch", device_ids=ids)
+            self.refresh()
+
     def _on_remove_device_clicked(self, _button: Gtk.Button) -> None:
-        dev_id = self.get_selected_device_id()
-        if dev_id is not None:
-            self.remove_patched_device(dev_id)
+        ids = self.get_selected_device_ids()
+        if ids:
+            self._remove_device_ids(ids)
 
     def _on_exchange_clicked(self, _button: Gtk.Button) -> None:
         dev_id = self.get_selected_device_id()

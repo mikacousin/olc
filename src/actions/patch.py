@@ -19,6 +19,7 @@ import typing
 from olc.core.action import Action
 from olc.devices.device import FixtureType, LightingDevice
 from olc.devices.fixture import FixtureDefinition
+from olc.show.patch import PatchCollisionError
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -653,14 +654,163 @@ class PatchUnpatchBatchAction(Action):
         self.app.emit("patch.changed")
 
 
+class PatchSetDeviceLabelAction(Action):
+    """Action to set the user label of a patched lighting device."""
+
+    name = "patch.set_device_label"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.label: str = ""
+        self.old_label: str = ""
+
+    def configure(self, device_id: int, label: str) -> None:
+        """Configure the action with the device ID and new label."""
+        self.device_id = device_id
+        self.label = label
+
+    def _apply_label(self, label: str) -> None:
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        dev.label = label
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def execute(self) -> None:
+        """Execute the label update and save previous label for undo."""
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        self.old_label = dev.label
+        self._apply_label(self.label)
+
+    def undo(self) -> None:
+        """Restore the previous device label."""
+        self._apply_label(self.old_label)
+
+    def redo(self) -> None:
+        """Re-apply the new device label."""
+        self._apply_label(self.label)
+
+
+class PatchMoveDeviceAddressAction(Action):
+    """Action to move a patched lighting device to a new universe/address."""
+
+    name = "patch.move_device_address"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.universe: int = 1
+        self.address: int = 1
+        self.force: bool = False
+        self._old_device_dict: typing.Optional[dict[str, typing.Any]] = None
+        self._overwritten_devices: dict[int, dict[str, typing.Any]] = {}
+
+    def configure(
+        self,
+        device_id: int,
+        universe: int,
+        address: int,
+        force: bool = False,
+    ) -> None:
+        """Configure the action with target device ID, universe, and address."""
+        self.device_id = device_id
+        self.universe = universe
+        self.address = address
+        self.force = force
+
+    def execute(self) -> None:
+        """Move the device to the target universe and address."""
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        if self.address < 1 or self.address > 512:
+            raise ValueError(
+                f"DMX address must be between 1 and 512, got {self.address}"
+            )
+        if patch.universes and self.universe not in patch.universes:
+            raise ValueError(f"Universe {self.universe} is not configured.")
+
+        footprint = dev.channel_count()
+        if footprint > 0 and self.address + footprint - 1 > 512:
+            raise ValueError(
+                f"Device footprint ({footprint}) exceeds DMX 512 "
+                f"from address {self.address}."
+            )
+
+        self._old_device_dict = dev.to_dict()
+        self._overwritten_devices = {}
+
+        collisions = (
+            patch.check_collision(
+                self.universe,
+                self.address,
+                footprint,
+                ignore_device_id=self.device_id,
+            )
+            if footprint > 0
+            else []
+        )
+        if collisions:
+            if not self.force:
+                c = collisions[0]
+                raise PatchCollisionError(
+                    universe=c[0],
+                    address=c[1],
+                    colliding_device_id=c[2],
+                    new_device_id=self.device_id,
+                )
+            for c_univ, c_addr, occ_id in collisions:
+                if occ_id not in self._overwritten_devices:
+                    occ_dev = patch.get_device(occ_id)
+                    if occ_dev is not None:
+                        self._overwritten_devices[occ_id] = occ_dev.to_dict()
+                patch.unpatch_address(c_univ, c_addr)
+
+        moved = LightingDevice.from_dict(self._old_device_dict)
+        for idx, ch in enumerate(moved.channels):
+            ch.universe = self.universe
+            ch.address = self.address + idx
+
+        patch.unpatch_device(self.device_id)
+        patch.restore_device(moved)
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        """Restore the moved device and any overwritten devices."""
+        patch = self.app.lightshow.patch
+        patch.unpatch_device(self.device_id)
+        if self._old_device_dict is not None:
+            patch.restore_device(LightingDevice.from_dict(self._old_device_dict))
+        for occ_dict in self._overwritten_devices.values():
+            patch.restore_device(LightingDevice.from_dict(occ_dict))
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        """Re-apply the address move."""
+        self.execute()
+
+
 __all__ = [
     "PatchAddOutputAction",
     "PatchAddOutputsAction",
     "PatchClearAction",
     "PatchDeviceAction",
     "PatchExchangeFixtureAction",
+    "PatchMoveDeviceAddressAction",
     "PatchSet1on1Action",
     "PatchSetDeviceCurveAction",
+    "PatchSetDeviceLabelAction",
     "PatchSetOutputCurveAction",
     "PatchUnpatchBatchAction",
     "PatchUnpatchDeviceAction",

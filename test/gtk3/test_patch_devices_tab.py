@@ -22,7 +22,7 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gdk, Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
@@ -412,3 +412,142 @@ def test_patch_channels_curve_popover_interaction(
     # Check that treeview refreshed
     updated_curve_name = patch_tab.devices_store[0][COL_CURVE]
     assert updated_curve_name != row_curve
+
+
+@pytest.mark.gui
+def test_patch_table_inline_editing_popovers_and_multiselect(
+    app_gui: Application,
+) -> None:
+    """Test inline editing, popovers, vacant dimmer patch, and multiselect."""
+    from olc.gtk3.patch_channels import (
+        COL_ADDRESS,
+        COL_ID,
+        COL_NAME,
+        COL_UNIVERSE,
+        PatchChannelsTab,
+    )
+
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+
+    app_gui.core.action_registry.execute("patch.clear")
+    patch_tab.patch.add_universe(2)
+    patch_tab.add_patched_device(
+        device_id=1,
+        fixture_key="Generic:LED RGBW",
+        universe=1,
+        address=10,
+        label="Wash A",
+    )
+    patch_tab.add_patched_device(
+        device_id=2,
+        fixture_key="Generic:LED RGBW",
+        universe=1,
+        address=20,
+        label="Wash B",
+    )
+    patch_tab.set_scope_mode("patched")
+    patch_tab.set_sort_mode("logical")
+    process_events()
+
+    # 1. Inline label edit on single row
+    patch_tab._on_label_edited(patch_tab.cell_renderers[COL_NAME], "0", "Front Wash")
+    process_events()
+    dev1 = patch_tab.patch.get_device(1)
+    assert dev1 is not None and dev1.label == "Front Wash"
+
+    # 2. Inline U/A address edit
+    patch_tab._on_address_edited(patch_tab.cell_renderers[COL_ADDRESS], "0", "2/101")
+    process_events()
+    assert patch_tab.patch.get_address_occupant(2, 101) == 1
+    assert patch_tab.patch.get_address_occupant(1, 10) is None
+
+    # 3. Inline universe edit
+    patch_tab._on_universe_edited(patch_tab.cell_renderers[COL_UNIVERSE], "0", "1")
+    process_events()
+    assert patch_tab.patch.get_address_occupant(1, 101) == 1
+
+    # 4. Mode popover selection
+    assert patch_tab.mode_column is not None
+    opened_mode = patch_tab._open_mode_popover_at_cell(
+        patch_tab.devices_treeview,
+        Gtk.TreePath.new_from_string("0"),
+        patch_tab.mode_column,
+    )
+    assert opened_mode is True
+    assert patch_tab._active_popover_device_id == 1
+    fdef1 = patch_tab.fixture_library.get(dev1.manufacturer, dev1.model)
+    assert fdef1 is not None
+    modes = fdef1.mode_names()
+    if len(modes) > 1:
+        other_mode = next(m for m in modes if m != dev1.mode_name)
+        patch_tab._on_mode_selected(other_mode)
+        process_events()
+        dev1_after = patch_tab.patch.get_device(1)
+        assert dev1_after is not None and dev1_after.mode_name == other_mode
+    patch_tab.mode_popover.popdown()
+
+    # 5. Fixture popover selection
+    assert patch_tab.type_column is not None
+    opened_fix = patch_tab._open_fixture_popover_at_cell(
+        patch_tab.devices_treeview,
+        Gtk.TreePath.new_from_string("1"),
+        patch_tab.type_column,
+    )
+    assert opened_fix is True
+    patch_tab._on_fixture_selected("Generic:Dimmer")
+    process_events()
+    dev2_after = patch_tab.patch.get_device(2)
+    assert dev2_after is not None and dev2_after.fixture_name == "Dimmer"
+    patch_tab.fixture_popover.popdown()
+
+    # 6. Multi-selection incremental label edit
+    sel = patch_tab.devices_treeview.get_selection()
+    sel.select_all()
+    process_events()
+    assert patch_tab.get_selected_device_ids() == [1, 2]
+    patch_tab._on_label_edited(patch_tab.cell_renderers[COL_NAME], "0", "Spot 10")
+    process_events()
+    d1 = patch_tab.patch.get_device(1)
+    d2 = patch_tab.patch.get_device(2)
+    assert d1 is not None and d1.label == "Spot 10"
+    assert d2 is not None and d2.label == "Spot 11"
+
+    # 7. Vacant row dimmer patch on the fly in Show All
+    patch_tab.set_scope_mode("all")
+    process_events()
+    # Channel 3 is at index 2 (logical order)
+    patch_tab._on_address_edited(patch_tab.cell_renderers[COL_ADDRESS], "2", "1/300")
+    process_events()
+    assert patch_tab.patch.get_address_occupant(1, 300) == 3
+
+    # 8. Delete key unpatches selected devices
+    patch_tab.set_scope_mode("patched")
+    process_events()
+    sel.unselect_all()
+    sel.select_path(Gtk.TreePath.new_from_string("2"))  # device 3
+    key_ev = Gdk.EventKey()
+    key_ev.type = Gdk.EventType.KEY_PRESS
+    key_ev.keyval = Gdk.KEY_Delete
+    handled = patch_tab._on_treeview_key_press(patch_tab.devices_treeview, key_ev)
+    assert handled is True
+    assert patch_tab.patch.get_device(3) is None
+
+    # 9. Channel edit on vacant physical row
+    patch_tab.set_scope_mode("all")
+    patch_tab.set_sort_mode("physical")
+    process_events()
+    # Find row for universe 1, address 305
+    target_row = next(
+        idx
+        for idx in range(len(patch_tab.devices_store))
+        if patch_tab.devices_store[idx][COL_UNIVERSE] == "1"
+        and patch_tab.devices_store[idx][COL_ADDRESS] == "305"
+    )
+    patch_tab._on_channel_edited(patch_tab.cell_renderers[COL_ID], str(target_row), "4")
+    process_events()
+    assert patch_tab.patch.get_address_occupant(1, 305) == 4
