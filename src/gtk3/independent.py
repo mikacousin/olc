@@ -130,10 +130,8 @@ class IndependentsTab(Gtk.Paned):
         """
         self.liststore[path][2] = text
         number = self.liststore[path][0]
-        if self.app is not None and hasattr(self.app.core, "action_registry"):
+        if self.app is not None:
             self.app.core.action_registry.execute("independent.rename", number, text)
-        else:
-            self.lightshow.independents.independents[number - 1].text = text
 
     def type_edited(self, _widget: Gtk.Widget, path: str, text: str) -> None:
         """Independent type edited

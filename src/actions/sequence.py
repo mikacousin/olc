@@ -488,6 +488,7 @@ class StepUpdateChannelTimeAction(Action):
         self.channel: int = 0
         self.delay: float | None = None
         self.time: float | None = None
+        self.keep_zero: bool = False
         self.old_state_existed: bool = False
         self.old_delay: float = 0.0
         self.old_time: float = 0.0
@@ -500,6 +501,7 @@ class StepUpdateChannelTimeAction(Action):
         channel: int,
         delay: float | None = None,
         time: float | None = None,
+        keep_zero: bool = False,
     ) -> None:
         """Configure the individual channel time update for the step."""
         self.sequence_index = sequence_index
@@ -507,6 +509,7 @@ class StepUpdateChannelTimeAction(Action):
         self.channel = channel
         self.delay = delay
         self.time = time
+        self.keep_zero = keep_zero
 
     def execute(self) -> None:
         lightshow = self.app.lightshow
@@ -537,7 +540,7 @@ class StepUpdateChannelTimeAction(Action):
             else (self.old_time if self.old_state_existed else 0.0)
         )
 
-        if new_delay == 0.0 and new_time == 0.0:
+        if new_delay == 0.0 and new_time == 0.0 and not self.keep_zero:
             if self.channel in step.channel_time:
                 del step.channel_time[self.channel]
         else:

@@ -19,7 +19,6 @@ import typing
 from gi.repository import Gdk, Gtk
 
 from olc.gtk3.widgets.channels_view import ChannelsView
-from olc.show.channel_time import ChannelTime
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -152,10 +151,6 @@ class ChanneltimeTab(Gtk.Paned):
                 ct_nb = len(self.step.channel_time)
                 sequences_tab.liststore2[path][11] = "" if ct_nb == 0 else str(ct_nb)
 
-    def _update_total_time(self) -> None:
-        """Recalculate total time for the step"""
-        self.step.update_total_time()
-
     def _update_main_playback(self) -> None:
         """Redraw Main Playback metrics if necessary"""
         if self.sequence == self.lightshow.main_playback:
@@ -275,9 +270,16 @@ class ChanneltimeTab(Gtk.Paned):
             if child is not None:
                 channelwidget = typing.cast("ChannelWidget", child)
                 channel = int(channelwidget.channel)
-                # If not already exist
                 if channel not in self.step.channel_time:
-                    self.step.channel_time[channel] = ChannelTime(0.0, 0.0)
+                    self.app.core.action_registry.execute(
+                        "step.update_channel_time",
+                        self.sequence.index,
+                        int(self.position),
+                        channel,
+                        delay=0.0,
+                        time=0.0,
+                        keep_zero=True,
+                    )
                     self.repopulate_liststore()
                     # select the newly added row at the end of liststore
                     path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])

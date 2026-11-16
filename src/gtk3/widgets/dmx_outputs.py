@@ -148,11 +148,8 @@ class DMXOutputWidget(Gtk.DrawingArea):
             rounded_rectangle(cr, area, 10)
         if self.universe in self.tab.patch.universes:
             index = self.tab.patch.universes.index(self.universe)
-            if (
-                index < len(self.backend.dmx.frame)
-                and self.backend.dmx.frame[index][self.output - 1]
-            ):
-                level = self.backend.dmx.frame[index][self.output - 1]
+            level = self.app.core.get_dmx_frame_level(index, self.output - 1)
+            if level:
                 cr.set_source_rgba(
                     0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
                 )
@@ -290,14 +287,10 @@ class DMXOutputWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         is_parked = self._is_parked()
-        if (
-            self.backend is not None
-            and getattr(self.backend, "dmx", None) is not None
-            and self.universe in self.tab.patch.universes
-        ):
+        if self.universe in self.tab.patch.universes:
             index = self.tab.patch.universes.index(self.universe)
-            if index < len(self.backend.dmx.frame):
-                level = int(self.backend.dmx.frame[index][self.output - 1])
+            level = self.app.core.get_dmx_frame_level(index, self.output - 1)
+            if level is not None:
                 if level > 0 or is_parked:
                     if is_parked:
                         cr.set_source_rgb(1.0, 0.7, 0.0)

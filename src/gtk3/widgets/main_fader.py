@@ -54,8 +54,7 @@ class MainFaderWidget(Gtk.Widget):
             cr: Cairo context
         """
         if self.backend:
-            is_blackout = bool(getattr(self.backend.dmx, "blackout", False))
-            mf_val = float(getattr(self.backend.dmx.main_fader, "value", 1.0))
+            is_blackout, mf_val = self.backend.get_main_fader_state()
             if is_blackout or mf_val != 1:
                 # Draw rounded box
                 cr.set_source_rgb(0.7, 0.2, 0.2)

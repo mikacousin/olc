@@ -804,6 +804,7 @@ class CommandExecutor:
         if cue is None:
             return CommandResult(False, f"Cue {cue_num} does not exist")
 
+        new_channels = dict(cue.channels)
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels.get("user", [])
@@ -811,24 +812,41 @@ class CommandExecutor:
             for ch in range(1, limit + 1):
                 lvl = float(user_levels[ch - 1])
                 if lvl > 0.0:
-                    cue.channels[ch] = lvl
-                elif ch in cue.channels:
-                    cue.channels[ch] = 0.0
+                    new_channels[ch] = lvl
+                elif ch in new_channels:
+                    new_channels[ch] = 0.0
 
+        new_device_values: dict[int, dict[str, float]] = {}
         patch = getattr(lightshow, "patch", None)
         if patch is not None:
             for dev_id, dev in patch.devices.items():
                 vals = self._get_device_active_values(dev)
                 dev_int = float(getattr(dev, "intensity", 0.0))
-                if dev_id in cue.channels and cue.channels[dev_id] > 0.0:
-                    dev_int = max(dev_int, float(cue.channels[dev_id]))
+                if dev_id in new_channels and new_channels[dev_id] > 0.0:
+                    dev_int = max(dev_int, float(new_channels[dev_id]))
                 if dev_int > 0.0:
                     vals["intensity"] = dev_int
                 if vals:
-                    cue.device_values.setdefault(dev_id, {}).update(vals)
+                    new_device_values[dev_id] = vals
 
-        lightshow.main_playback.update_channels()
-        lightshow.set_modified()
+        registry = self._get_registry()
+        if registry is not None and "cue.update" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(
+                "cue.update",
+                cue.number,
+                cue.sequence,
+                new_channels,
+                device_values=new_device_values,
+            )
+        else:
+            cue.channels = new_channels
+            for dev_id, vals in new_device_values.items():
+                cue.device_values.setdefault(dev_id, {}).update(vals)
+            lightshow.main_playback.update_channels()
+            lightshow.set_modified()
+            self.app.emit("cue.updated", 1, cue_num)
 
         # If updating current active cue, release manual override on updated channels
         main_pb = lightshow.main_playback
@@ -840,7 +858,6 @@ class CommandExecutor:
         if current_cue_num is not None and current_cue_num == cue_num:
             self._release_manual_overrides(cue.channels)
 
-        self.app.emit("cue.updated", 1, cue_num)
         return CommandResult(True, f"Updated Cue {cue_num}")
 
     def _execute_goto_cue(self, node: GotoCueCommandNode) -> CommandResult:

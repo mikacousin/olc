@@ -731,8 +731,13 @@ class PlaybackStopAction(Action):
     can_undo = False
 
     def execute(self) -> None:
-        """Stop the main playback if present."""
+        """Stop the main playback and any running chasers."""
         main_playback = self.app.lightshow.main_playback
         if main_playback:
             main_playback.stop()
-            self.app.emit("playback.stopped")
+        for chaser in self.app.lightshow.chasers:
+            if chaser.run and chaser.thread:
+                chaser.run = False
+                chaser.thread.stop()
+                chaser.thread.join()
+        self.app.emit("playback.stopped")

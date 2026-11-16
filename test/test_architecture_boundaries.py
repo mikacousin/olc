@@ -149,6 +149,9 @@ FORBIDDEN_DIRECT_MUTATION_METHODS = frozenset(
         "set_wait",
         "flash_on",
         "flash_off",
+        "update_total_time",
+        "update_channels",
+        "populate_values",
     }
 )
 
@@ -164,9 +167,17 @@ def test_ui_and_controllers_do_not_call_direct_mutations() -> None:
             rel = py_file.relative_to(SRC_ROOT)
             if str(rel) == "gtk3/lightshow.py":
                 continue
-            tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
+            source = py_file.read_text(encoding="utf-8")
+            if pkg == "gtk3" and "backend.dmx" in source:
+                violations.append(f"{rel}: direct access to backend.dmx")
+            tree = ast.parse(source, filename=str(py_file))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                    if (
+                        node.func.attr == "populate_values"
+                        and str(rel) == "gtk3/widgets/curve_point.py"
+                    ):
+                        continue
                     if node.func.attr in FORBIDDEN_DIRECT_MUTATION_METHODS:
                         violations.append(
                             f"{rel}:{node.lineno}: direct call .{node.func.attr}()"

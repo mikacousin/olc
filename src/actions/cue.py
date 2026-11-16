@@ -45,9 +45,15 @@ class CueUpdateAction(Action):
         self.sequence: int = 0
         self.new_channels: dict[int, int | float] = {}
         self.old_channels: dict[int, int | float] = {}
+        self.new_device_values: dict[int, dict[str, float]] | None = None
+        self.old_device_values: dict[int, dict[str, float]] = {}
 
     def configure(
-        self, number: float, sequence: int, channels: Mapping[int, int | float]
+        self,
+        number: float,
+        sequence: int,
+        channels: Mapping[int, int | float],
+        device_values: dict[int, dict[str, float]] | None = None,
     ) -> None:
         """Configure the action.
 
@@ -55,10 +61,14 @@ class CueUpdateAction(Action):
             number: Cue number (float, e.g. 1.0, 1.5).
             sequence: Sequence number (0 = preset).
             channels: New channel levels to apply.
+            device_values: Optional per-device parameter overrides to merge.
         """
         self.number = number
         self.sequence = sequence
         self.new_channels = dict(channels)
+        self.new_device_values = (
+            copy.deepcopy(device_values) if device_values is not None else None
+        )
 
     def execute(self) -> None:
         """Execute the action, updating the cue's channel levels."""
@@ -66,7 +76,11 @@ class CueUpdateAction(Action):
         if cue is None:
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
         self.old_channels = copy.deepcopy(dict(cue.channels))
+        self.old_device_values = copy.deepcopy(dict(cue.device_values))
         cue.channels = self.new_channels
+        if self.new_device_values is not None:
+            for dev_id, vals in self.new_device_values.items():
+                cue.device_values.setdefault(dev_id, {}).update(vals)
         self.app.lightshow.main_playback.update_channels()
         self.app.lightshow.set_modified()
         self.app.lightshow.cues.cue_editor.clear(self.number, self.sequence)
@@ -77,7 +91,8 @@ class CueUpdateAction(Action):
         cue = self.app.lightshow.cues.get(self.number, self.sequence)
         if cue is None:
             return
-        cue.channels = self.old_channels
+        cue.channels = copy.deepcopy(self.old_channels)
+        cue.device_values = copy.deepcopy(self.old_device_values)
         self.app.lightshow.main_playback.update_channels()
         self.app.lightshow.set_modified()
         self.app.emit("cue.updated", self.sequence, self.number)

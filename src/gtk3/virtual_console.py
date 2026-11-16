@@ -105,9 +105,6 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Initial blackout display state
         initial_blackout = bool(getattr(self.app.core, "blackout_active", False))
-        backend = getattr(self.app.core, "backend", None)
-        if backend and hasattr(backend, "dmx"):
-            initial_blackout = bool(getattr(backend.dmx, "blackout", initial_blackout))
         self.update_blackout_display(initial_blackout)
 
         # Zone 1: Numeric Pad & Target Keys (4x5)

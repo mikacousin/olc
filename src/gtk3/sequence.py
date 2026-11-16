@@ -338,15 +338,6 @@ class SequenceTab(Gtk.Grid):
                 step = int(step_str)
                 self.window.app.channeltime(sequence, step)
 
-    def update_total_time(self, sequence: Sequence, step_number: int) -> None:
-        """Update Step total time
-
-        Args:
-            sequence: Modified sequence
-            step_number: Step number
-        """
-        sequence.steps[step_number].update_total_time()
-
     def wait_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:

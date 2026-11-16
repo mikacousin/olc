@@ -339,3 +339,12 @@ class CoreApplication(EventDispatcher):
         if 0 <= universe_idx < len(frame) and 0 <= offset < len(frame[universe_idx]):
             return int(frame[universe_idx][offset])
         return None
+
+    def get_user_channel_level(self, channel_idx: int) -> float:
+        """Return the manual user level for 0-based *channel_idx* (-1.0 if unset)."""
+        if self.backend is None:
+            return -1.0
+        user_levels = self.backend.dmx.levels.get("user")
+        if user_levels is not None and 0 <= channel_idx < len(user_levels):
+            return float(user_levels[channel_idx])
+        return -1.0

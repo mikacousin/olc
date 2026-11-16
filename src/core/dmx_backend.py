@@ -166,3 +166,9 @@ class DMXBackend:
                     "was disconnected ({error})."
                 ).format(universe=universe, port=port, error=error),
             )
+
+    def get_main_fader_state(self) -> tuple[bool, float]:
+        """Return (is_blackout, main_fader_value) for UI display."""
+        is_blackout = bool(getattr(self.dmx, "blackout", False))
+        mf_val = float(getattr(self.dmx.main_fader, "value", 1.0))
+        return (is_blackout, mf_val)

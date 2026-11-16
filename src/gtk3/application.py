@@ -792,11 +792,6 @@ class Application(Gtk.Application):
             if response == 1:
                 self._save(None, None)
         self.core.action_registry.execute("playback.stop")
-        for chaser in self.core.lightshow.chasers:
-            if chaser.run and chaser.thread:
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
         self.core.stop()
         self.quit()
         return False
