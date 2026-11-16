@@ -722,3 +722,17 @@ class PlaybackSneakAction(Action):
         sneak_ctrl = getattr(self.app, "sneak_controller", None)
         if sneak_ctrl is not None:
             sneak_ctrl.sneak_channels(None, self.duration)
+
+
+class PlaybackStopAction(Action):
+    """Action to stop the main playback sequence."""
+
+    name = "playback.stop"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Stop the main playback if present."""
+        main_playback = self.app.lightshow.main_playback
+        if main_playback:
+            main_playback.stop()
+            self.app.emit("playback.stopped")

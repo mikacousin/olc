@@ -129,7 +129,7 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
         return False
 
     def _on_user_output_changed(self, universe: int, output: int, _level: int) -> bool:

@@ -316,3 +316,26 @@ class CoreApplication(EventDispatcher):
         final_zoom = self.zoom_level
         self.zoom_level = self._zoom_start_level
         self.action_registry.execute("gui.zoom", final_zoom)
+
+    def get_channel_composite_level(
+        self, channel_idx: int
+    ) -> tuple[float, dict[str, float]]:
+        """Return (level, color_level) for 0-based *channel_idx* from DMX backend."""
+        if self.backend is None:
+            return (0.0, {})
+        return self.backend.dmx.get_composite_level(channel_idx)
+
+    def get_main_fader_value(self) -> float:
+        """Return the current Main Fader value [0.0..1.0]."""
+        if self.backend is None:
+            return 1.0
+        return float(self.backend.dmx.main_fader.value)
+
+    def get_dmx_frame_level(self, universe_idx: int, offset: int) -> int | None:
+        """Return DMX frame value for *universe_idx* and 0-based *offset*."""
+        if self.backend is None:
+            return None
+        frame = self.backend.dmx.frame
+        if 0 <= universe_idx < len(frame) and 0 <= offset < len(frame[universe_idx]):
+            return int(frame[universe_idx][offset])
+        return None

@@ -84,7 +84,7 @@ class PlaybackRoutesMixin:
         cmd_str = self.app.commandline.get_string().strip()
         if cmd_str and (not args or (len(args) == 1 and args[0] in (1, 1.0, True))):
             target: object = cmd_str
-            self.app.commandline.set_string("")
+            self._execute_action("commandline.clear")
         elif not args or (len(args) == 1 and not parse_osc_bool(args[0])):
             return
         else:

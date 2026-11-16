@@ -572,3 +572,103 @@ class StepUpdateChannelTimeAction(Action):
             step.update_total_time()
             lightshow.set_modified()
             self.app.emit("step.updated", self.sequence_index, self.step_index)
+
+
+class SequenceSetTrackingModeAction(Action):
+    """Action to set Tracking (True) or Cue-Only (False) mode on a sequence."""
+
+    name = "sequence.set_tracking_mode"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.enabled: bool = False
+        self.old_enabled: bool = False
+
+    def configure(self, sequence_index: float, enabled: bool) -> None:
+        """Configure the tracking mode change."""
+        self.sequence_index = float(sequence_index)
+        self.enabled = bool(enabled)
+
+    def _apply(self, enabled: bool) -> None:
+        lightshow = self.app.lightshow
+        sequence = (
+            lightshow.main_playback
+            if self.sequence_index == 1.0
+            else lightshow.get_chaser(self.sequence_index)
+        )
+        if sequence is None:
+            return
+        sequence.tracking_mode = enabled
+        if self.sequence_index == 1.0:
+            lightshow.main_playback.tracking_mode = enabled
+        lightshow.set_modified()
+        self.app.emit("sequence.changed", self.sequence_index)
+
+    def execute(self) -> None:
+        lightshow = self.app.lightshow
+        sequence = (
+            lightshow.main_playback
+            if self.sequence_index == 1.0
+            else lightshow.get_chaser(self.sequence_index)
+        )
+        if sequence is not None:
+            self.old_enabled = bool(getattr(sequence, "tracking_mode", False))
+        self._apply(self.enabled)
+
+    def undo(self) -> None:
+        self._apply(self.old_enabled)
+
+    def redo(self) -> None:
+        self._apply(self.enabled)
+
+
+class SequenceSetMibEnabledAction(Action):
+    """Action to enable or disable Move In Black (MIB) on a sequence."""
+
+    name = "sequence.set_mib_enabled"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.enabled: bool = False
+        self.old_enabled: bool = False
+
+    def configure(self, sequence_index: float, enabled: bool) -> None:
+        """Configure the MIB mode change."""
+        self.sequence_index = float(sequence_index)
+        self.enabled = bool(enabled)
+
+    def _apply(self, enabled: bool) -> None:
+        lightshow = self.app.lightshow
+        sequence = (
+            lightshow.main_playback
+            if self.sequence_index == 1.0
+            else lightshow.get_chaser(self.sequence_index)
+        )
+        if sequence is None:
+            return
+        sequence.mib_enabled = enabled
+        if self.sequence_index == 1.0:
+            lightshow.main_playback.mib_enabled = enabled
+        lightshow.set_modified()
+        self.app.emit("sequence.changed", self.sequence_index)
+
+    def execute(self) -> None:
+        lightshow = self.app.lightshow
+        sequence = (
+            lightshow.main_playback
+            if self.sequence_index == 1.0
+            else lightshow.get_chaser(self.sequence_index)
+        )
+        if sequence is not None:
+            self.old_enabled = bool(getattr(sequence, "mib_enabled", False))
+        self._apply(self.enabled)
+
+    def undo(self) -> None:
+        self._apply(self.old_enabled)
+
+    def redo(self) -> None:
+        self._apply(self.enabled)

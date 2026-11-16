@@ -754,20 +754,31 @@ class CommandExecutor:
             if s and s.cue:
                 current_cue_num = s.cue.number
         if current_cue_num is not None and current_cue_num == node.cue_id:
-            backend = getattr(self.app, "backend", None)
-            if backend and getattr(backend, "dmx", None):
-                user_levels = backend.dmx.levels.get("user")
-                if user_levels is not None:
-                    released = []
-                    for ch in cue.channels:
-                        if 1 <= ch <= len(user_levels):
-                            user_levels[ch - 1] = -1.0
-                            released.append(ch)
-                    backend.dmx.set_levels()
-                    if released:
-                        self.app.emit("channels.updated", released)
+            self._release_manual_overrides(cue.channels)
 
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
+
+    def _release_manual_overrides(self, channels: typing.Iterable[int]) -> None:
+        """Release manual user overrides for *channels* via ActionRegistry."""
+        registry = self._get_registry()
+        if registry is not None and "channel.set_level" in getattr(
+            registry, "_action_classes", {}
+        ):
+            for ch in channels:
+                registry.execute("channel.set_level", ch, -1.0)
+            return
+        backend = getattr(self.app, "backend", None)
+        if backend and getattr(backend, "dmx", None):
+            user_levels = backend.dmx.levels.get("user")
+            if user_levels is not None:
+                released = []
+                for ch in channels:
+                    if 1 <= ch <= len(user_levels):
+                        user_levels[ch - 1] = -1.0
+                        released.append(ch)
+                backend.dmx.set_levels()
+                if released:
+                    self.app.emit("channels.updated", released)
 
     def _execute_update_cue(  # pylint: disable=too-many-locals,too-many-branches
         self, node: UpdateCueCommandNode
@@ -827,18 +838,7 @@ class CommandExecutor:
             if s and s.cue:
                 current_cue_num = s.cue.number
         if current_cue_num is not None and current_cue_num == cue_num:
-            backend = getattr(self.app, "backend", None)
-            if backend and getattr(backend, "dmx", None):
-                user_levels = backend.dmx.levels.get("user")
-                if user_levels is not None:
-                    released = []
-                    for ch in cue.channels:
-                        if 1 <= ch <= len(user_levels):
-                            user_levels[ch - 1] = -1.0
-                            released.append(ch)
-                    backend.dmx.set_levels()
-                    if released:
-                        self.app.emit("channels.updated", released)
+            self._release_manual_overrides(cue.channels)
 
         self.app.emit("cue.updated", 1, cue_num)
         return CommandResult(True, f"Updated Cue {cue_num}")
@@ -869,8 +869,14 @@ class CommandExecutor:
         if cue is None:
             return CommandResult(False, f"Cue {node.cue_id} not found")
 
-        cue.is_block = is_block
-        lightshow.set_modified()
+        registry = self._get_registry()
+        if registry is not None and "cue.set_block" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("cue.set_block", node.cue_id, is_block)
+        else:
+            cue.is_block = is_block
+            lightshow.set_modified()
         action_name = "Blocked" if is_block else "Unblocked"
         return CommandResult(True, f"{action_name} Cue {node.cue_id}")
 

@@ -109,8 +109,9 @@ class SequenceTab(Gtk.Grid):
     def set_tracking_mode(self, enabled: bool) -> None:
         """Set Tracking mode (True) or Cue-Only mode (False) on active sequence."""
         seq = self.get_selected_sequence() or self.lightshow.main_playback
-        seq.tracking_mode = enabled
-        self.lightshow.main_playback.tracking_mode = enabled
+        self.window.app.core.action_registry.execute(
+            "sequence.set_tracking_mode", seq.index, enabled
+        )
         if self.tracking_mode_btn.get_active() != enabled:
             self.tracking_mode_btn.set_active(enabled)
         self.tracking_mode_btn.set_label(
@@ -132,8 +133,9 @@ class SequenceTab(Gtk.Grid):
     def set_mib_enabled(self, enabled: bool) -> None:
         """Enable or disable Move In Black (MIB) on active sequence."""
         seq = self.get_selected_sequence() or self.lightshow.main_playback
-        seq.mib_enabled = enabled
-        self.lightshow.main_playback.mib_enabled = enabled
+        self.window.app.core.action_registry.execute(
+            "sequence.set_mib_enabled", seq.index, enabled
+        )
         if self.mib_btn.get_active() != enabled:
             self.mib_btn.set_active(enabled)
         self.mib_btn.set_label("MIB: ON" if enabled else "MIB: OFF")
@@ -646,7 +648,9 @@ class SequenceTab(Gtk.Grid):
         self.window.app.core.action_registry.execute(
             "sequence.insert_step", sequence.index, step, mem, channels
         )
-        self.lightshow.cues.cue_editor.clear(mem, int(sequence.index))
+        self.window.app.core.action_registry.execute(
+            "cue.clear_editor", mem, int(sequence.index)
+        )
 
     def _update_cue(self, sequence: Sequence, mem: float) -> None:
         """Update existing cue inside the sequence"""
@@ -746,8 +750,6 @@ class SequenceTab(Gtk.Grid):
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
         self.treeview2.set_cursor(path, None, False)
-        # Tag filename as modified
-        self.lightshow.set_modified()
 
     def update_sequence_display(self, step: int) -> None:
         """Update Sequence display

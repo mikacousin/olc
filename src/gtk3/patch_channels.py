@@ -609,29 +609,32 @@ class PatchChannelsTab(Gtk.Box):
         if fdef is None:
             raise KeyError(f"Fixture profile '{fixture_key}' not found in library")
 
-        dev = self.patch.patch_device(
-            device_id=device_id,
-            fixture_def=fdef,
-            universe=universe,
-            address=address,
-            mode_name=mode_name,
-            label=label,
+        self.app.core.action_registry.execute(
+            "patch.device",
+            device_id,
+            fdef,
+            universe,
+            address,
+            mode_name,
+            label,
             force=force,
         )
         if curve_id > 0:
-            dev.set_curve_id(curve_id)
-        self.lightshow.set_modified()
+            self.app.core.action_registry.execute(
+                "patch.set_device_curve", device_id, curve_id
+            )
+        dev = self.patch.get_device(device_id)
+        if dev is None:
+            raise RuntimeError(f"Device {device_id} could not be patched")
         self.refresh()
-        self.app.core.emit("patch.changed")
         return dev
 
     def remove_patched_device(self, device_id: int) -> bool:
         """Unpatch a device by ID and refresh the table."""
-        removed = self.patch.unpatch_device(device_id)
-        if removed is not None:
-            self.lightshow.set_modified()
+        existed = self.patch.get_device(device_id) is not None
+        if existed:
+            self.app.core.action_registry.execute("patch.unpatch_device", device_id)
             self.refresh()
-            self.app.core.emit("patch.changed")
             return True
         self.refresh()
         return False
@@ -646,21 +649,19 @@ class PatchChannelsTab(Gtk.Box):
         force: bool = False,
     ) -> LightingDevice:
         """Replace the fixture definition for an existing device (Fixture Exchange)."""
-        fdef = self.fixture_library.get_by_key(new_fixture_key)
-        if fdef is None:
-            raise KeyError(f"Fixture profile '{new_fixture_key}' not found in library")
-
-        dev = self.patch.exchange_fixture(
-            device_id=device_id,
-            new_fixture_def=fdef,
+        self.app.core.action_registry.execute(
+            "patch.exchange_fixture",
+            device_id,
+            new_fixture_key,
             new_mode_name=new_mode_name,
             universe=universe,
             address=address,
             force=force,
         )
-        self.lightshow.set_modified()
+        dev = self.patch.get_device(device_id)
+        if dev is None:
+            raise RuntimeError(f"Device {device_id} not found after fixture exchange")
         self.refresh()
-        self.app.core.emit("patch.changed")
         return dev
 
     # -------------------------------------------------------------------------

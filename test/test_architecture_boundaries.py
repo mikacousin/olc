@@ -131,3 +131,47 @@ def test_low_level_packages_do_not_import_high_level_layers() -> None:
     assert not violations, (
         "Forbidden high-level imports in dmx_engine/devices:\n" + "\n".join(violations)
     )
+
+
+FORBIDDEN_DIRECT_MUTATION_METHODS = frozenset(
+    {
+        "set_modified",
+        "patch_device",
+        "unpatch_device",
+        "exchange_fixture",
+        "insert_step",
+        "set_time",
+        "set_time_in",
+        "set_time_out",
+        "set_delay",
+        "set_delay_in",
+        "set_delay_out",
+        "set_wait",
+        "flash_on",
+        "flash_off",
+    }
+)
+
+
+def test_ui_and_controllers_do_not_call_direct_mutations() -> None:
+    """UI and controllers must route state mutations through ActionRegistry."""
+    violations: list[str] = []
+    for pkg in ("gtk3", "controllers"):
+        pkg_dir = SRC_ROOT / pkg
+        if not pkg_dir.is_dir():
+            continue
+        for py_file in sorted(pkg_dir.rglob("*.py")):
+            rel = py_file.relative_to(SRC_ROOT)
+            if str(rel) == "gtk3/lightshow.py":
+                continue
+            tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                    if node.func.attr in FORBIDDEN_DIRECT_MUTATION_METHODS:
+                        violations.append(
+                            f"{rel}:{node.lineno}: direct call .{node.func.attr}()"
+                        )
+    assert not violations, (
+        "Forbidden direct domain mutations in gtk3/controllers:\n"
+        + "\n".join(violations)
+    )

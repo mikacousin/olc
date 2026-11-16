@@ -896,195 +896,64 @@ class Window(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
-    def _keypress_t(self) -> None:
-        """Change Time In and Time Out of next step"""
+    def _update_next_step_times(self, *fields: str) -> None:
+        """Apply commandline time to the given fields on the next playback step."""
         keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
         position = self.app.core.lightshow.main_playback.position
-
         time = string_to_time(keystring)
         string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_time(time)
-        self.playback.cues_liststore1[position + 3][5] = string
-        self.playback.cues_liststore1[position + 3][7] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.time_in = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].time_in
-        self.playback.sequential.time_out = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].time_out
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
+
+        kwargs: dict[str, float] = {field: time for field in fields}
+        self.app.core.action_registry.execute(
+            "step.update_times", 1.0, position + 1, **kwargs
         )
+
+        col_map = {
+            "wait": 3,
+            "delay_out": 4,
+            "time_out": 5,
+            "delay_in": 6,
+            "time_in": 7,
+        }
+        next_step = self.app.core.lightshow.main_playback.steps[position + 1]
+        for field in fields:
+            self.playback.cues_liststore1[position + 3][col_map[field]] = string
+            setattr(self.playback.sequential, field, getattr(next_step, field))
+        self.playback.step_filter1.refilter()
+        self.playback.sequential.total_time = next_step.total_time
         self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
         self.app.core.action_registry.execute("commandline.clear")
+
+    def _keypress_t(self) -> None:
+        """Change Time In and Time Out of next step"""
+        self._update_next_step_times("time_in", "time_out")
 
     def _keypress_i(self) -> None:
         """Change Time In of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_time_in(time)
-        self.playback.cues_liststore1[position + 3][7] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.time_in = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].time_in
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("time_in")
 
     def _keypress_o(self) -> None:
         """Change Time Out of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_time_out(time)
-        self.playback.cues_liststore1[position + 3][5] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.time_out = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].time_out
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("time_out")
 
     def _keypress_x(self) -> None:
         """Change Wait Time of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_wait(time)
-        self.playback.cues_liststore1[position + 3][3] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.wait = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].wait
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("wait")
 
     def _keypress_d(self) -> None:
         """Change Delay In and Out of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_delay(time)
-        self.playback.cues_liststore1[position + 3][4] = string
-        self.playback.cues_liststore1[position + 3][6] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_in = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].delay_in
-        self.playback.sequential.delay_out = (
-            self.app.core.lightshow.main_playback.steps[position + 1].delay_out
-        )
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("delay_in", "delay_out")
 
     def _keypress_k(self) -> None:
         """Change Delay In of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_delay_in(time)
-        self.playback.cues_liststore1[position + 3][6] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_in = self.app.core.lightshow.main_playback.steps[
-            position + 1
-        ].delay_in
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("delay_in")
 
     def _keypress_l(self) -> None:
         """Change Delay Out of next step"""
-        keystring = self.app.core.commandline.get_string()
-        if keystring == "":
-            return
-
-        position = self.app.core.lightshow.main_playback.position
-
-        time = string_to_time(keystring)
-        string = time_to_string(time)
-        self.app.core.lightshow.main_playback.steps[position + 1].set_delay_out(time)
-        self.playback.cues_liststore1[position + 3][4] = string
-        self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_out = (
-            self.app.core.lightshow.main_playback.steps[position + 1].delay_out
-        )
-        self.playback.sequential.total_time = (
-            self.app.core.lightshow.main_playback.steps[position + 1].total_time
-        )
-        self.playback.grid.queue_draw()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
-
-        self.app.core.action_registry.execute("commandline.clear")
+        self._update_next_step_times("delay_out")
 
 
 class Dialog(Gtk.Dialog):

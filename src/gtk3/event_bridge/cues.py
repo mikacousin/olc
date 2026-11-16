@@ -110,8 +110,8 @@ class CueBridgeHandler(BaseEventBridgeHandler):
                             selected_cue.sequence == sequence
                             and selected_cue.number == number
                         ):
-                            memories_tab.lightshow.cues.cue_editor.clear(
-                                number, sequence
+                            self.app.core.action_registry.execute(
+                                "cue.clear_editor", number, sequence
                             )
                 memories_tab.refresh()
             if self.app.tabs.tabs.get("sequences") is not None:

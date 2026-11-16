@@ -524,3 +524,69 @@ class CueSelectAction(Action):
     def redo(self) -> None:
         self.app.selected_cue = self.cue_id
         self.app.emit("cue.selected_changed", self.cue_id)
+
+
+class CueClearEditorAction(Action):
+    """Action to clear temporary edits in the cue editor for a cue."""
+
+    name = "cue.clear_editor"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.number: float = 0.0
+        self.sequence: int = 1
+
+    def configure(self, number: float, sequence: int = 1) -> None:
+        """Configure the cue number and sequence index to clear."""
+        self.number = float(number)
+        self.sequence = int(sequence)
+
+    def execute(self) -> None:
+        self.app.lightshow.cues.cue_editor.clear(self.number, self.sequence)
+        self.app.emit("cue.editor_cleared", self.number, self.sequence)
+
+
+class CueSetBlockAction(Action):
+    """Action to set or clear the block flag on a cue."""
+
+    name = "cue.set_block"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.number: float = 0.0
+        self.is_block: bool = True
+        self.old_is_block: bool = False
+
+    def configure(self, number: float, is_block: bool) -> None:
+        """Configure the cue number and block state."""
+        self.number = float(number)
+        self.is_block = bool(is_block)
+
+    def _get_cue(self) -> Cue | None:
+        cues = self.app.lightshow.cues
+        return cues.get(self.number, 1) or cues.get(self.number, 0)
+
+    def execute(self) -> None:
+        cue = self._get_cue()
+        if cue is None:
+            raise ValueError(f"Cue {self.number} not found")
+        self.old_is_block = bool(getattr(cue, "is_block", False))
+        cue.is_block = self.is_block
+        self.app.lightshow.set_modified()
+        self.app.emit("cue.updated", 1, self.number)
+
+    def undo(self) -> None:
+        cue = self._get_cue()
+        if cue is not None:
+            cue.is_block = self.old_is_block
+            self.app.lightshow.set_modified()
+            self.app.emit("cue.updated", 1, self.number)
+
+    def redo(self) -> None:
+        cue = self._get_cue()
+        if cue is not None:
+            cue.is_block = self.is_block
+            self.app.lightshow.set_modified()
+            self.app.emit("cue.updated", 1, self.number)

@@ -19,7 +19,6 @@ from json import dumps as json_dumps
 
 from olc.controllers.osc.parser import parse_osc_bool, parse_osc_normalized
 from olc.controllers.osc.transport import make_method
-from olc.define import MAX_FADER_PAGE
 
 if typing.TYPE_CHECKING:
     from olc.controllers.osc import Osc
@@ -65,13 +64,7 @@ class FadersRoutesMixin:
             return
         fader_bank = self.app.lightshow.fader_bank
         target_page = fader_bank.active_page + 1
-        if self.app is not None and hasattr(self.app, "action_registry"):
-            self.app.action_registry.execute("fader.set_page", target_page)
-        else:
-            if target_page > MAX_FADER_PAGE:
-                target_page = 1
-            fader_bank.active_page = target_page
-            self.app.emit("fader.page_changed", target_page)
+        self._execute_action("fader.set_page", target_page)
 
     @make_method("/olc/fader/page-")
     def _fader_page_minus(self, _address: str, args: list) -> None:
@@ -79,29 +72,17 @@ class FadersRoutesMixin:
             return
         fader_bank = self.app.lightshow.fader_bank
         target_page = fader_bank.active_page - 1
-        if self.app is not None and hasattr(self.app, "action_registry"):
-            self.app.action_registry.execute("fader.set_page", target_page)
-        else:
-            if target_page < 1:
-                target_page = MAX_FADER_PAGE
-            fader_bank.active_page = target_page
-            self.app.emit("fader.page_changed", target_page)
+        self._execute_action("fader.set_page", target_page)
 
     @make_method("/olc/fader/1/*/level")
     def _fader_level(self, address: str, args: list) -> None:
         try:
             fader_index = int(address.split("/")[4])
             level = parse_osc_normalized(args[0]) if args else 0.0
-
             fader_bank = self.app.lightshow.fader_bank
-            if self.app is not None and hasattr(self.app, "action_registry"):
-                self.app.action_registry.execute(
-                    "fader.set_level", fader_bank.active_page, fader_index, level
-                )
-            else:
-                fader = fader_bank.get_fader(fader_index)
-                fader.set_level(level)
-                self.app.emit("fader.level_changed", fader_index, level)
+            self._execute_action(
+                "fader.set_level", fader_bank.active_page, fader_index, level
+            )
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_level: {err}")
 
@@ -111,17 +92,9 @@ class FadersRoutesMixin:
             pressed = parse_osc_bool(args[0]) if args else True
             fader_index = int(address.split("/")[4])
             fader_bank = self.app.lightshow.fader_bank
-            if self.app is not None and hasattr(self.app, "action_registry"):
-                self.app.action_registry.execute(
-                    "fader.flash", fader_bank.active_page, fader_index, pressed
-                )
-            else:
-                fader = fader_bank.get_fader(fader_index)
-                if pressed:
-                    fader.flash_on()
-                else:
-                    fader.flash_off()
-                self.app.emit("fader.flash_changed", fader_index, pressed)
+            self._execute_action(
+                "fader.flash", fader_bank.active_page, fader_index, pressed
+            )
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_flash: {err}")
 

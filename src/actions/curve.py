@@ -311,3 +311,48 @@ class CurveSetLimitAction(Action):
                 curve.populate_values()
                 self.app.lightshow.set_modified()
                 self.app.emit("curve.changed", self.curve_nb)
+
+
+class CurveRenameAction(Action):
+    """Action to rename a curve."""
+
+    name = "curve.rename"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.curve_nb: typing.Optional[int] = None
+        self.new_name: str = ""
+        self.old_name: str = ""
+
+    def configure(self, curve_nb: int, new_name: str) -> None:
+        """Configure the action with the curve number and new name."""
+        self.curve_nb = curve_nb
+        self.new_name = new_name
+
+    def execute(self) -> None:
+        if self.curve_nb is None:
+            raise ValueError("curve_nb must be set via configure() before execute().")
+        curve = self.app.lightshow.curves.get_curve(self.curve_nb)
+        if curve is None:
+            raise ValueError(f"Curve {self.curve_nb} does not exist.")
+        self.old_name = curve.name
+        curve.name = self.new_name
+        self.app.lightshow.set_modified()
+        self.app.emit("curve.changed", self.curve_nb)
+
+    def undo(self) -> None:
+        if self.curve_nb is not None:
+            curve = self.app.lightshow.curves.get_curve(self.curve_nb)
+            if curve is not None:
+                curve.name = self.old_name
+                self.app.lightshow.set_modified()
+                self.app.emit("curve.changed", self.curve_nb)
+
+    def redo(self) -> None:
+        if self.curve_nb is not None:
+            curve = self.app.lightshow.curves.get_curve(self.curve_nb)
+            if curve is not None:
+                curve.name = self.new_name
+                self.app.lightshow.set_modified()
+                self.app.emit("curve.changed", self.curve_nb)

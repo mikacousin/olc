@@ -63,10 +63,11 @@ class LiveView(Gtk.Notebook):
         if self.app.core.backend is None:
             return
         channel_idx = channel - 1
-        level, color_level = self.app.core.backend.dmx.get_composite_level(channel_idx)
+        level, color_level = self.app.core.get_channel_composite_level(channel_idx)
 
         # Apply Main Fader for visual display
-        level = level * self.app.core.backend.dmx.main_fader.value
+        main_fader_val = self.app.core.get_main_fader_value()
+        level = level * main_fader_val
         if next_level is None:
             main_pb = getattr(self.app.core.lightshow, "main_playback", None)
             if main_pb is not None and hasattr(main_pb, "get_next_channel_level"):
@@ -76,7 +77,7 @@ class LiveView(Gtk.Notebook):
                 next_level = main_pb.get_next_channel_level(channel, seq_lvl)
             else:
                 next_level = 0
-        next_level = round(next_level * self.app.core.backend.dmx.main_fader.value)
+        next_level = round(next_level * main_fader_val)
 
         widget.color_level = color_level
         widget.level = level
@@ -242,8 +243,7 @@ class LiveChannelsView(ChannelsView):
                     univ = ch.universe
                     if univ in patch_universes:
                         index = patch_universes.index(univ)
-                        if index < len(self.app.core.backend.dmx.frame):
-                            level = self.app.core.backend.dmx.frame[index][out - 1]
+                        level = self.app.core.get_dmx_frame_level(index, out - 1)
             if level is not None:
                 if direction == Gdk.ScrollDirection.UP:
                     new_level = min(level + step, 255)

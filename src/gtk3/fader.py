@@ -175,13 +175,10 @@ class FaderEdit(Gtk.Box):
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
         app = self.lightshow.app
-        if app is not None and hasattr(app, "action_registry"):
+        if app is not None:
             app.action_registry.execute(
                 "fader.assign", self.page, self.index, fader_type
             )
-        else:
-            self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
-            self.refresh()
 
     def _on_contents_changed(
         self,
@@ -200,15 +197,10 @@ class FaderEdit(Gtk.Box):
             # Max label size: 30 characters
             self.contents_button.set_label(f"{widget.get_label():<.30}")
         app = self.lightshow.app
-        if app is not None and hasattr(app, "action_registry"):
+        if app is not None:
             app.action_registry.execute(
                 "fader.assign", self.page, self.index, fader_type, contents
             )
-        else:
-            self.lightshow.fader_bank.set_fader(
-                self.page, self.index, fader_type, contents
-            )
-            self.refresh()
 
     def refresh(self) -> None:
         """Refresh this fader widget representation in place."""

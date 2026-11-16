@@ -19,7 +19,6 @@ from json import loads as json_loads
 
 from olc.controllers.osc.parser import parse_osc_bool, parse_osc_normalized
 from olc.controllers.osc.transport import make_method
-from olc.core.selection import SelectAddAction, SelectRemoveAction
 
 if typing.TYPE_CHECKING:
     from olc.controllers.osc import Osc
@@ -146,6 +145,14 @@ class ChannelsRoutesMixin:
             "channels", "/olc/channels/dump", dump_json, sender_addr=sender_addr
         )
 
+    def _toggle_channel_selection(self, ch: int) -> None:
+        selected = list(getattr(self.app, "selected_channels", []))
+        if ch in selected:
+            new_selected = [c for c in selected if c != ch]
+        else:
+            new_selected = [*selected, ch]
+        self._execute_action("channel.select_channels", new_selected)
+
     @make_method("/olc/cell/*/touch")
     def _cell_touch(self, address: str, args: list) -> None:
         """Touch interaction on a grid cell (toggles selection)."""
@@ -160,11 +167,7 @@ class ChannelsRoutesMixin:
 
         ch = self.channels_grid.get_channel_for_cell(cell_idx)
         if ch is not None:
-            selected = getattr(self.app, "selected_channels", [])
-            if ch in selected:
-                self.app.live_selection.execute_action(SelectRemoveAction, ch)
-            else:
-                self.app.live_selection.execute_action(SelectAddAction, ch)
+            self._toggle_channel_selection(ch)
 
     @make_method("/olc/cell/*/level")
     def _cell_level(self, address: str, args: list) -> None:
@@ -194,11 +197,7 @@ class ChannelsRoutesMixin:
         except (IndexError, ValueError):
             return
 
-        selected = getattr(self.app, "selected_channels", [])
-        if ch in selected:
-            self.app.live_selection.execute_action(SelectRemoveAction, ch)
-        else:
-            self.app.live_selection.execute_action(SelectAddAction, ch)
+        self._toggle_channel_selection(ch)
 
     @make_method("/olc/channel/*/level")
     def _channel_level(self, address: str, args: list) -> None:

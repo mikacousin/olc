@@ -259,11 +259,8 @@ class MidiControlChanges:
                 break
         return inde, val
 
-    def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
+    def _update_inde(self, independent: int, _inde: Independent, val: int) -> None:
         level_float = val / 255.0
-        if self.app is not None and hasattr(self.app, "action_registry"):
-            self.app.action_registry.execute(
-                "independent.set_level", independent, level_float
-            )
-        else:
-            inde.set_level(val)
+        self.app.action_registry.execute(
+            "independent.set_level", independent, level_float
+        )

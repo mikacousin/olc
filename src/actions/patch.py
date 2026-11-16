@@ -345,6 +345,7 @@ class PatchDeviceAction(Action):
         self.address: int = 1
         self.mode_name: typing.Optional[str] = None
         self.label: str = ""
+        self.force: bool = False
         self.old_device_dict: typing.Optional[dict[str, typing.Any]] = None
 
     def configure(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -355,6 +356,7 @@ class PatchDeviceAction(Action):
         address: int,
         mode_name: typing.Optional[str] = None,
         label: str = "",
+        force: bool = False,
     ) -> None:
         """Configure the action with fixture patching parameters."""
         self.device_id = device_id
@@ -363,6 +365,7 @@ class PatchDeviceAction(Action):
         self.address = address
         self.mode_name = mode_name
         self.label = label
+        self.force = force
 
     def execute(self) -> None:
         patch = self.app.lightshow.patch
@@ -377,6 +380,7 @@ class PatchDeviceAction(Action):
                 address=self.address,
                 mode_name=self.mode_name,
                 label=self.label,
+                force=self.force,
             )
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
@@ -433,10 +437,78 @@ class PatchUnpatchDeviceAction(Action):
         self.app.emit("patch.changed")
 
 
+class PatchExchangeFixtureAction(Action):
+    """Action to exchange the fixture definition of an already patched device."""
+
+    name = "patch.exchange_fixture"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.new_fixture_key: str = ""
+        self.new_mode_name: typing.Optional[str] = None
+        self.universe: typing.Optional[int] = None
+        self.address: typing.Optional[int] = None
+        self.force: bool = False
+        self.old_device_dict: typing.Optional[dict[str, typing.Any]] = None
+
+    def configure(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        self,
+        device_id: int,
+        new_fixture_key: str,
+        new_mode_name: typing.Optional[str] = None,
+        universe: typing.Optional[int] = None,
+        address: typing.Optional[int] = None,
+        force: bool = False,
+    ) -> None:
+        """Configure the fixture exchange action."""
+        self.device_id = device_id
+        self.new_fixture_key = new_fixture_key
+        self.new_mode_name = new_mode_name
+        self.universe = universe
+        self.address = address
+        self.force = force
+
+    def execute(self) -> None:
+        lightshow = self.app.lightshow
+        patch = lightshow.patch
+        fdef = lightshow.fixture_library.get_by_key(self.new_fixture_key)
+        if fdef is None:
+            raise KeyError(
+                f"Fixture profile '{self.new_fixture_key}' not found in library"
+            )
+        old_dev = patch.get_device(self.device_id)
+        self.old_device_dict = old_dev.to_dict() if old_dev is not None else None
+        patch.exchange_fixture(
+            device_id=self.device_id,
+            new_fixture_def=fdef,
+            new_mode_name=self.new_mode_name,
+            universe=self.universe,
+            address=self.address,
+            force=self.force,
+        )
+        lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        patch = self.app.lightshow.patch
+        patch.unpatch_device(self.device_id)
+        if self.old_device_dict is not None:
+            restored = LightingDevice.from_dict(self.old_device_dict)
+            patch.restore_device(restored)
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        self.execute()
+
+
 __all__ = [
     "PatchAddOutputAction",
     "PatchClearAction",
     "PatchDeviceAction",
+    "PatchExchangeFixtureAction",
     "PatchSet1on1Action",
     "PatchSetDeviceCurveAction",
     "PatchSetOutputCurveAction",

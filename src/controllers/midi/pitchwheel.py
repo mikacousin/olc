@@ -93,10 +93,6 @@ class MidiPitchWheel:
         val = (msg.pitch + 8192) / 16383
         fader_bank = self.app.lightshow.fader_bank
         number = index + 1
-        if self.app is not None and hasattr(self.app, "action_registry"):
-            self.app.action_registry.execute(
-                "fader.set_level", fader_bank.active_page, number, val
-            )
-        else:
-            fader = fader_bank.get_fader(number)
-            fader.set_level(val)
+        self.app.action_registry.execute(
+            "fader.set_level", fader_bank.active_page, number, val
+        )

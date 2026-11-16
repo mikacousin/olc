@@ -336,7 +336,6 @@ class CurveEdition(Gtk.Box):
         self.lightshow.app.action_registry.execute("curve.delete", curve_nb)
         tab.refresh()
         tab.select_curve(0)
-        self.lightshow.set_modified()
 
     def _update_limit_spin_config(self) -> None:
         """Update limit spinbutton range and digits based on active unit mode."""
@@ -522,12 +521,13 @@ class CurveButton(CurveWidget):
             widget: Entry used
         """
         text = widget.get_text()
-        if self.curve is not None:
-            self.curve.name = text
+        if self.curve is not None and self.lightshow.app is not None:
             tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
+            self.lightshow.app.action_registry.execute(
+                "curve.rename", self.curve_nb, text
+            )
             tab.curve_edition.header.set_title(get_curve_display_name(self.curve))
             self.popover.popdown()
-            self.lightshow.set_modified()
 
     def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""

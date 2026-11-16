@@ -214,8 +214,6 @@ class CurvePointWidget(Gtk.DrawingArea):
                     self.curve.points[self.number] = (x_curve, y_curve)
                     fixed.move(widget, x, y)
             self.curve.populate_values()
-            if self.lightshow:
-                self.lightshow.set_modified()
             dmx_outputs_tab = typing.cast(
                 "DMXOutputsTab", self.tabs.tabs["dmx_outputs"]
             )
@@ -381,8 +379,6 @@ class LimitPointWidget(Gtk.DrawingArea):
             edit_curve.queue_draw()
             if hasattr(tab.curve_edition, "sampled_monitor"):
                 tab.curve_edition.sampled_monitor.queue_draw()
-            if self.lightshow:
-                self.lightshow.set_modified()
             dmx_outputs_tab = typing.cast(
                 "DMXOutputsTab", self.tabs.tabs["dmx_outputs"]
             )

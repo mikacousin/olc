@@ -46,11 +46,13 @@ from olc.actions.commandline import (
     CommandLineSetAction,
 )
 from olc.actions.cue import (
+    CueClearEditorAction,
     CueCopyAction,
     CueDeleteAction,
     CueInsertAction,
     CueRenameAction,
     CueSelectAction,
+    CueSetBlockAction,
     CueSetChannelLevelAction,
     CueSetTempChannelsAction,
     CueUpdateAction,
@@ -58,6 +60,7 @@ from olc.actions.cue import (
 from olc.actions.curve import (
     CurveDeleteAction,
     CurveNewAction,
+    CurveRenameAction,
     CurveSetLimitAction,
     CurveUpdatePointsAction,
 )
@@ -146,6 +149,7 @@ from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
     PatchDeviceAction,
+    PatchExchangeFixtureAction,
     PatchSet1on1Action,
     PatchSetDeviceCurveAction,
     PatchSetOutputCurveAction,
@@ -160,6 +164,7 @@ from olc.actions.playback import (
     PlaybackManualXFadeAction,
     PlaybackRecordCueAction,
     PlaybackSneakAction,
+    PlaybackStopAction,
     PlaybackUpdateActiveStepAction,
     SequenceMinusAction,
     SequencePlusAction,
@@ -169,6 +174,8 @@ from olc.actions.sequence import (
     SequenceDeleteStepAction,
     SequenceInsertStepAction,
     SequenceNewAction,
+    SequenceSetMibEnabledAction,
+    SequenceSetTrackingModeAction,
     StepUpdateChannelTimeAction,
     StepUpdateTextAction,
     StepUpdateTimesAction,
@@ -323,6 +330,13 @@ def register_all_actions(registry: ActionRegistry) -> None:
         ShowSaveAction,
         ShowExportAsciiAction,
         ShowImportAction,
+        CueClearEditorAction,
+        CueSetBlockAction,
+        CurveRenameAction,
+        PatchExchangeFixtureAction,
+        PlaybackStopAction,
+        SequenceSetMibEnabledAction,
+        SequenceSetTrackingModeAction,
     ]
 
     for action_class in actions_to_register:

@@ -326,11 +326,7 @@ class Midi:
         if self.ports.ports:
             self.enqueue(msg)
 
-        if (
-            self.app is not None
-            and hasattr(self.app, "action_registry")
-            and self.learning
-        ):
+        if self.app is not None and self.learning:
             if msg.type == "note_on":
                 self.app.action_registry.execute(
                     "midi.assign_mapping",
@@ -339,8 +335,7 @@ class Midi:
                     msg.channel,
                     msg.note,
                 )
-                return
-            if msg.type == "control_change":
+            elif msg.type == "control_change":
                 self.app.action_registry.execute(
                     "midi.assign_mapping",
                     "control_change",
@@ -348,8 +343,7 @@ class Midi:
                     msg.channel,
                     msg.control,
                 )
-                return
-            if msg.type == "pitchwheel":
+            elif msg.type == "pitchwheel":
                 self.app.action_registry.execute(
                     "midi.assign_mapping",
                     "pitchwheel",
@@ -357,17 +351,6 @@ class Midi:
                     msg.channel,
                     msg.pitch,
                 )
-                return
-
-        if msg.type == "note_on":
-            self.messages.notes.learn(msg, self.learning)
-        elif msg.type == "control_change":
-            self.messages.control_change.learn(msg, self.learning)
-            self.messages.notes.learn_cc(msg, self.learning)
-        elif msg.type == "pitchwheel":
-            self.messages.pitchwheel.learn(msg, self.learning)
-        # Tag filename as modified
-        self.lightshow.set_modified()
 
     def reset_messages(self) -> None:
         """Remove all MIDI messages"""
