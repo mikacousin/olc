@@ -90,6 +90,12 @@ class ChannelParkAction(Action):
         self.channels = [channels] if isinstance(channels, int) else list(channels)
         self.level = level
 
+    def get_history_details(self) -> str:
+        """Return parked channels summary."""
+        if len(self.channels) == 1:
+            return f"Ch {self.channels[0]}"
+        return f"{len(self.channels)} channels"
+
     def execute(self) -> None:
         """Execute channel park."""
         park_mgr = self.app.lightshow.park
@@ -198,6 +204,13 @@ class AddressParkAction(Action):
         else:
             self.addresses = list(addresses)
         self.level = level
+
+    def get_history_details(self) -> str:
+        """Return parked DMX addresses summary."""
+        if len(self.addresses) == 1:
+            u, o = self.addresses[0]
+            return f"{u}/{o}"
+        return f"{len(self.addresses)} addresses"
 
     def execute(self) -> None:
         """Execute address park."""

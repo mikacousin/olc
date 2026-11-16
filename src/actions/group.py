@@ -53,6 +53,10 @@ class NewGroupAction(Action):
         """
         self.group_nb = group_nb
 
+    def get_history_details(self) -> str:
+        """Return group number."""
+        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
+
     def execute(self) -> None:
         """Execute the action, creating a new group."""
         lightshow = self.app.lightshow
@@ -119,6 +123,10 @@ class DeleteGroupAction(Action):
             group_nb: The index number of the group to delete.
         """
         self.group_nb = group_nb
+
+    def get_history_details(self) -> str:
+        """Return group number."""
+        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
 
     def execute(self) -> None:
         """Execute the action, deleting the specified group."""
@@ -193,6 +201,10 @@ class GroupUpdateChannelsAction(Action):
         self.group_nb = group_nb
         self.new_channels = dict(channels)
 
+    def get_history_details(self) -> str:
+        """Return group number."""
+        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
+
     def execute(self) -> None:
         """Execute the action, replacing group channels."""
         lightshow = self.app.lightshow
@@ -247,6 +259,10 @@ class GroupRenameAction(Action):
         self.group_nb = group_nb
         self.new_name = name
 
+    def get_history_details(self) -> str:
+        """Return group number and new name."""
+        return f'Group {self.group_nb:g} → "{self.new_name}"'
+
     def execute(self) -> None:
         """Execute the action, renaming the group."""
         lightshow = self.app.lightshow
@@ -292,6 +308,10 @@ class GroupSelectAction(Action):
         """
         self.group_nb = group_nb
 
+    def get_history_details(self) -> str:
+        """Return group number."""
+        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
+
     def execute(self) -> None:
         self.old_group_nb = self.app.selected_group
         self.app.selected_group = self.group_nb
@@ -332,6 +352,10 @@ class GroupSetTempChannelsAction(Action):
         """
         self.group_nb = group_nb
         self.new_levels = dict(channels)
+
+    def get_history_details(self) -> str:
+        """Return group number."""
+        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
 
     def execute(self) -> None:
         """Execute the action, storing temp levels."""

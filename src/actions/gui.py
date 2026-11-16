@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from olc.core.action import Action
 
@@ -26,6 +27,7 @@ class ZoomAction(Action):
     """Action to change GUI zoom level with undo/redo support."""
 
     name = "gui.zoom"
+    history_label = _("Change zoom")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -64,6 +66,7 @@ class TabOpenAction(Action):
     """Action to open or activate a GUI tab with undo/redo support."""
 
     name = "gui.tab_open"
+    history_label = _("Open tab")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -82,6 +85,10 @@ class TabOpenAction(Action):
         """
         self.tab_name = tab_name
         self.notebook_id = notebook_id
+
+    def get_history_details(self) -> str:
+        """Return opened tab name."""
+        return self.tab_name.replace("_", " ").title()
 
     def execute(self) -> None:
         """Execute the action, opening the tab if closed or activating it."""
@@ -134,6 +141,7 @@ class TabCloseAction(Action):
     """Action to close a GUI tab with undo/redo support."""
 
     name = "gui.tab_close"
+    history_label = _("Close tab")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -153,6 +161,10 @@ class TabCloseAction(Action):
         if tab_name in ("playback", "channels"):
             raise ValueError("Default tabs cannot be closed.")
         self.tab_name = tab_name
+
+    def get_history_details(self) -> str:
+        """Return closed tab name."""
+        return self.tab_name.replace("_", " ").title()
 
     def execute(self) -> None:
         """Execute the action, removing the tab and selecting a new active tab."""
@@ -227,6 +239,7 @@ class TabMoveAction(Action):
     """Action to reorder or move a tab between notebooks with undo/redo."""
 
     name = "gui.tab_move"
+    history_label = _("Move tab")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -254,6 +267,10 @@ class TabMoveAction(Action):
         self.from_nb = from_nb
         self.to_nb = to_nb
         self.new_index = new_index
+
+    def get_history_details(self) -> str:
+        """Return moved tab name."""
+        return self.tab_name.replace("_", " ").title()
 
     def execute(self) -> None:
         """Execute the action, moving the tab from source to target notebook."""
@@ -402,6 +419,7 @@ class SetThemeAction(Action):
     """Action to set dark or light application theme."""
 
     name = "gui.set_theme"
+    history_label = _("Change theme")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -441,6 +459,7 @@ class SetPercentDisplayAction(Action):
     """Action to toggle or set percentage channel level display."""
 
     name = "gui.set_percent_display"
+    history_label = _("Toggle percent display")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -489,6 +508,7 @@ class SetDefaultTimeAction(Action):
     """Action to set default cue transfer time."""
 
     name = "gui.set_default_time"
+    history_label = _("Set default fade time")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:

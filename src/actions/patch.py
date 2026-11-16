@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from olc.core.action import Action
 from olc.devices.device import FixtureType, LightingDevice
@@ -29,6 +30,7 @@ class PatchAddOutputAction(Action):
     """Action to associate a DMX output with a channel."""
 
     name = "patch.add_output"
+    history_label = _("Patch DMX output")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -99,6 +101,7 @@ class PatchAddOutputsAction(Action):
     """Action to atomically associate multiple DMX outputs with channels."""
 
     name = "patch.add_outputs"
+    history_label = _("Patch DMX outputs")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -171,6 +174,7 @@ class PatchUnpatchOutputAction(Action):
     """Action to unpatch a DMX output."""
 
     name = "patch.unpatch_output"
+    history_label = _("Unpatch DMX output")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -225,6 +229,7 @@ class PatchClearAction(Action):
     """Action to clear the entire DMX patch."""
 
     name = "patch.clear"
+    history_label = _("Clear all patch")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -265,6 +270,7 @@ class PatchSet1on1Action(Action):
     """Action to set default 1:1 patch."""
 
     name = "patch.set_1on1"
+    history_label = _("Set 1:1 patch")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -305,6 +311,7 @@ class PatchSetOutputCurveAction(Action):
     """Action to set the transfer curve of a patched DMX output."""
 
     name = "patch.set_output_curve"
+    history_label = _("Set output curve")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -358,6 +365,7 @@ class PatchSetDeviceCurveAction(Action):
     """Action to set the transfer curve of a lighting device."""
 
     name = "patch.set_device_curve"
+    history_label = _("Set device curve")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -403,11 +411,16 @@ class PatchSetDeviceCurveAction(Action):
         """Redo the action, re-applying the configured curve."""
         self._apply_curve(self.curve)
 
+    def get_history_details(self) -> str:
+        """Return device and target curve details."""
+        return f"Ch {self.device_id} → Curve #{self.curve}"
+
 
 class PatchDeviceAction(Action):
     """Action to patch a lighting device."""
 
     name = "patch.device"
+    history_label = _("Patch device")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -470,11 +483,19 @@ class PatchDeviceAction(Action):
     def redo(self) -> None:
         self.execute()
 
+    def get_history_details(self) -> str:
+        """Return patched channel, model, and DMX address."""
+        model = self.fixture_def.model if self.fixture_def is not None else ""
+        if model:
+            return f"Ch {self.device_id} ({model}) → {self.universe}/{self.address}"
+        return f"Ch {self.device_id} → {self.universe}/{self.address}"
+
 
 class PatchUnpatchDeviceAction(Action):
     """Action to unpatch a lighting device."""
 
     name = "patch.unpatch_device"
+    history_label = _("Unpatch device")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -514,6 +535,7 @@ class PatchExchangeFixtureAction(Action):
     """Action to exchange the fixture definition of an already patched device."""
 
     name = "patch.exchange_fixture"
+    history_label = _("Exchange fixture")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -576,11 +598,17 @@ class PatchExchangeFixtureAction(Action):
     def redo(self) -> None:
         self.execute()
 
+    def get_history_details(self) -> str:
+        """Return exchanged channel, fixture key, and mode."""
+        mode_part = f" ({self.new_mode_name})" if self.new_mode_name else ""
+        return f"Ch {self.device_id} → {self.new_fixture_key}{mode_part}"
+
 
 class PatchUnpatchBatchAction(Action):
     """Action to atomically unpatch multiple devices or DMX addresses."""
 
     name = "patch.unpatch_batch"
+    history_label = _("Unpatch selection")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -658,6 +686,7 @@ class PatchSetDeviceLabelAction(Action):
     """Action to set the user label of a patched lighting device."""
 
     name = "patch.set_device_label"
+    history_label = _("Rename patched device")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -697,11 +726,16 @@ class PatchSetDeviceLabelAction(Action):
         """Re-apply the new device label."""
         self._apply_label(self.label)
 
+    def get_history_details(self) -> str:
+        """Return renamed channel and new label."""
+        return f'Ch {self.device_id} → "{self.label}"'
+
 
 class PatchMoveDeviceAddressAction(Action):
     """Action to move a patched lighting device to a new universe/address."""
 
     name = "patch.move_device_address"
+    history_label = _("Move DMX address")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -799,6 +833,10 @@ class PatchMoveDeviceAddressAction(Action):
     def redo(self) -> None:
         """Re-apply the address move."""
         self.execute()
+
+    def get_history_details(self) -> str:
+        """Return moved channel and target DMX address."""
+        return f"Ch {self.device_id} → {self.universe}/{self.address}"
 
 
 __all__ = [

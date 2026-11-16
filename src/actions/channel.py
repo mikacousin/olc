@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from olc.core.action import Action
 from olc.define import MAX_CHANNELS, is_int, is_non_nul_int
@@ -99,6 +100,7 @@ class SetChannelLevelAction(BaseChannelLevelAction):
     """
 
     name = "channel.set_level"
+    history_label = _("Set channel level")
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the Action.
@@ -175,6 +177,13 @@ class SetChannelLevelAction(BaseChannelLevelAction):
     def __repr__(self) -> str:
         return f"<SetChannelLevelAction channel={self.channel} level={self.level}>"
 
+    def get_history_details(self) -> str:
+        """Return user-friendly channel and percentage level."""
+        if float(self.level) < 0.0:
+            return f"Ch {self.channel} → {_('Released')}"
+        pct = int(round(float(self.level) * 100))
+        return f"Ch {self.channel} @ {pct}%"
+
 
 class BaseChannelSelectionAction(Action):
     """Base class for channel selection actions in ActionRegistry."""
@@ -225,6 +234,7 @@ class SelectChannelsAction(BaseChannelSelectionAction):
     """Action to set the channel selection explicitly to a given list."""
 
     name = "channel.select_channels"
+    history_label = _("Select channels")
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
@@ -449,6 +459,7 @@ class SetLevelFromCmdAction(BaseSelectedChannelsLevelAction):
     """Action to set the level of all selected channels from the commandline."""
 
     name = "channel.set_level_from_cmd"
+    history_label = _("Set level")
 
     def execute(self) -> None:
         cmd_string = self.app.commandline.get_string()
@@ -475,6 +486,7 @@ class SetLevelFullAction(BaseSelectedChannelsLevelAction):
     """Action to set the level of all selected channels to 100%."""
 
     name = "channel.set_level_full"
+    history_label = _("Set channels at Full")
 
     def execute(self) -> None:
         if not self._capture_old_levels():
@@ -516,6 +528,7 @@ class LevelPlusAction(BaseRelativeLevelAction):
     """Action to increase the level of all selected channels."""
 
     name = "channel.level_plus"
+    history_label = _("Increase level (+%)")
 
     def execute(self) -> None:
         step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
@@ -529,6 +542,7 @@ class LevelMinusAction(BaseRelativeLevelAction):
     """Action to decrease the level of all selected channels."""
 
     name = "channel.level_minus"
+    history_label = _("Decrease level (-%)")
 
     def execute(self) -> None:
         step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
@@ -545,6 +559,7 @@ class SetMultiChannelsLevelAction(BaseChannelLevelAction):
     """
 
     name = "channel.set_multi_levels"
+    history_label = _("Set channels level")
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the Action.
@@ -577,6 +592,24 @@ class SetMultiChannelsLevelAction(BaseChannelLevelAction):
                     )
         self.new_levels = dict(self.levels)
         self._apply_levels(self.new_levels)
+
+    def get_history_details(self) -> str:
+        """Return summary of modified channels and target level."""
+        if not self.levels:
+            return ""
+        vals = set(self.levels.values())
+        count = len(self.levels)
+        if count == 1:
+            ch, lvl = next(iter(self.levels.items()))
+            if lvl < 0.0:
+                return f"Ch {ch} → {_('Released')}"
+            return f"Ch {ch} @ {int(round(lvl * 100))}%"
+        if len(vals) == 1:
+            lvl = next(iter(vals))
+            if lvl < 0.0:
+                return f"{count} {_('channels')} → {_('Released')}"
+            return f"{count} {_('channels')} @ {int(round(lvl * 100))}%"
+        return f"{count} {_('channels')}"
 
 
 class ChannelWheelAdjustAction(BaseRelativeLevelAction):

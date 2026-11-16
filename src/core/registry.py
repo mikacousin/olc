@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import contextlib
 import typing
 
 if typing.TYPE_CHECKING:
@@ -35,6 +36,17 @@ class ActionRegistry:
         self._action_classes: dict[str, typing.Type[Action]] = {}
         self._actions: dict[str, Action] = {}
         self._bindings: dict[str, list[TriggerBinding]] = {}
+        self._active_command_line: str = ""
+
+    @contextlib.contextmanager
+    def command_context(self, raw_cmd: str) -> typing.Generator[None, None, None]:
+        """Temporarily tag executed actions with the originating command-line text."""
+        prev = self._active_command_line
+        self._active_command_line = raw_cmd.strip()
+        try:
+            yield
+        finally:
+            self._active_command_line = prev
 
     def register(self, action_class: typing.Type[Action]) -> None:
         """Register an action class by instantiating it and storing it.
@@ -75,6 +87,8 @@ class ActionRegistry:
 
         action_class = self._action_classes[name]
         action = action_class(self.app)
+        if self._active_command_line:
+            action.command_line = self._active_command_line
         configure = getattr(action, "configure", None)
         if callable(configure):
             configure(*args, **kwargs)

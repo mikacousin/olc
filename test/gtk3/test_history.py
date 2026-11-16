@@ -48,7 +48,8 @@ def test_history_tab_behavior(app_gui: Application) -> None:
     assert isinstance(history_tab, HistoryTab)
     # The action of opening the tab itself is in the undo stack
     assert len(history_tab.liststore) == 1
-    assert history_tab.liststore[0][1] == "gui.tab_open"
+    assert history_tab.liststore[0][1] == "Open tab"
+    assert history_tab.liststore[0][2] == "History"
 
     # Buttons should reflect the 1 active action
     assert history_tab.btn_undo.get_sensitive()
@@ -67,20 +68,20 @@ def test_history_tab_behavior(app_gui: Application) -> None:
 
     # Verify history tab liststore is updated (3 rows)
     assert len(history_tab.liststore) == 3
-    # Row 0: gui.tab_open (active)
+    # Row 0: Open tab (active)
     # Row 1: channel 1 action (active)
     # Row 2: channel 2 action (active)
     assert history_tab.liststore[0][0] == "✔"
-    assert history_tab.liststore[0][1] == "gui.tab_open"
+    assert history_tab.liststore[0][1] == "Open tab"
 
     assert history_tab.liststore[1][0] == "✔"
-    assert history_tab.liststore[1][1] == "channel.set_level"
-    assert "channel: 1" in history_tab.liststore[1][2]
+    assert history_tab.liststore[1][1] == "Set channel level"
+    assert history_tab.liststore[1][2] == "Ch 1 @ 80%"
     assert history_tab.liststore[1][3] is True
 
     assert history_tab.liststore[2][0] == "✔"
-    assert history_tab.liststore[2][1] == "channel.set_level"
-    assert "channel: 2" in history_tab.liststore[2][2]
+    assert history_tab.liststore[2][1] == "Set channel level"
+    assert history_tab.liststore[2][2] == "Ch 2 @ 40%"
     assert history_tab.liststore[2][3] is True
 
     # Buttons should be active/sensitive
@@ -134,3 +135,13 @@ def test_history_tab_behavior(app_gui: Application) -> None:
     assert len(app_gui.core.history.undo_stack) == 0
     assert len(app_gui.core.history.redo_stack) == 0
     assert len(history_tab.liststore) == 0
+
+    # 7. Command-line execution displays the typed command in Action column
+    app_gui.core.commandline.set_string("1 AT 65")
+    app_gui.core.commandline.execute()
+    process_events()
+    assert len(history_tab.liststore) == 2
+    assert history_tab.liststore[0][1] == "1 AT 65"
+    assert history_tab.liststore[0][2] == "Select channels"
+    assert history_tab.liststore[1][1] == "1 AT 65"
+    assert history_tab.liststore[1][2] == "Set channels level — Ch 1 @ 65%"

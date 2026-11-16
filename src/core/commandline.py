@@ -186,7 +186,8 @@ class CoreCommandLine:
 
         try:
             node = self.parser.parse(raw_cmd)
-            result = self.executor.execute(node)
+            with self.app.action_registry.command_context(raw_cmd):
+                result = self.executor.execute(node)
 
             if result.success:
                 # Clear buffer on successful execution

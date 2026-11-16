@@ -120,20 +120,27 @@ class HistoryTab(Gtk.Box):
 
         # Populate undo stack (active actions)
         for action in undo_stack:
-            details = self._format_action_details(action)
-            self.liststore.append(["✔", action.name, details, True])
+            label, details = self._format_action_row(action)
+            self.liststore.append(["✔", label, details, True])
 
         # Populate redo stack (undone actions)
         for action in reversed(redo_stack):
-            details = self._format_action_details(action)
-            self.liststore.append(["", action.name, details, False])
+            label, details = self._format_action_row(action)
+            self.liststore.append(["", label, details, False])
+
+    def _format_action_row(self, action: Action) -> tuple[str, str]:
+        """Return (label, details) formatted for non-coder Undo History display."""
+        label = action.get_history_label()
+        details = self._format_action_details(action)
+        if action.command_line:
+            summary = f"{label} — {details}" if details else label
+            return action.command_line, summary
+        return label, details
 
     def _format_action_details(self, action: Action) -> str:
-        """Format the feedback state metadata of an action."""
+        """Format user-friendly details for an action."""
         try:
-            fb = action.get_feedback_state()
-            if fb:
-                return ", ".join(f"{k}: {v}" for k, v in fb.items())
+            return action.get_history_details()
         except Exception:  # pylint: disable=broad-exception-caught
             pass
         return ""
