@@ -494,7 +494,7 @@
               <object class="GtkShortcutsShortcut" id="syntax_p">
                 <property name="visible">1</property>
                 <property name="accelerator">P</property>
-                <property name="title" translatable="yes" context="shortcut window">PATCH</property>
+                <property name="title" translatable="yes" context="shortcut window">PATCH / UNPATCH</property>
               </object>
             </child>
             <child>
