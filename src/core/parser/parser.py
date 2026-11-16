@@ -48,6 +48,7 @@ from olc.core.parser.ast_nodes import (
     SelectOnlyCommandNode,
     SneakCommandNode,
     UnblockCueCommandNode,
+    UnpatchCommandNode,
     UpdateCueCommandNode,
 )
 from olc.core.parser.lexer import CommandLexer, LexerError
@@ -238,6 +239,8 @@ class CommandParser:
 
         if tok.type == TokenType.ADDRESS:
             addrs = self._parse_address_selection()
+            if self.match(TokenType.UNPATCH):
+                return UnpatchCommandNode(selection=None, addresses=addrs)
             if self.match(TokenType.UNPARK):
                 return AddressUnparkCommandNode(addresses=addrs)
             if self.match(TokenType.PARK):
@@ -305,6 +308,12 @@ class CommandParser:
             self.expect(TokenType.AT, "Expected AT after PATCH")
             addrs = self._parse_address_selection(require_address_kw=False)
             return PatchCommandNode(selection=selection, addresses=addrs)
+
+        if self.match(TokenType.UNPATCH):
+            addrs = None
+            if self.match(TokenType.AT):
+                addrs = self._parse_address_selection(require_address_kw=False)
+            return UnpatchCommandNode(selection=selection, addresses=addrs)
 
         if self.match(TokenType.UNPARK):
             return ChannelUnparkCommandNode(selection=selection)
@@ -1111,8 +1120,10 @@ class CommandParser:
                     return [TokenType.NUMBER]
                 return []
 
-        if any(t.type == TokenType.PATCH for t in active_tokens):
+        if any(t.type in (TokenType.PATCH, TokenType.UNPATCH) for t in active_tokens):
             if last.type == TokenType.PATCH:
+                return [TokenType.AT]
+            if last.type == TokenType.UNPATCH:
                 return [TokenType.AT]
             if last.type == TokenType.AT:
                 return [TokenType.NUMBER, TokenType.ADDRESS]
@@ -1142,6 +1153,7 @@ class CommandParser:
                 TokenType.EVEN,
                 TokenType.AT,
                 TokenType.PATCH,
+                TokenType.UNPATCH,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,
@@ -1159,6 +1171,7 @@ class CommandParser:
             return [
                 TokenType.AT,
                 TokenType.PATCH,
+                TokenType.UNPATCH,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,

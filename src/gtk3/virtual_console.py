@@ -19,6 +19,7 @@ import typing
 
 from gi.repository import Gdk, GLib, Gtk
 
+from olc.core.commandline import toggle_patch_keyword, trailing_patch_keyword
 from olc.core.parser.tokens import TokenType
 from olc.gtk3.widgets.button import ButtonWidget
 from olc.gtk3.widgets.controller import ControllerWidget
@@ -693,7 +694,23 @@ class VirtualConsoleWindow(Gtk.Window):
         )
         set_sens("undo", can_undo)
         set_sens("redo", can_redo)
-        set_sens("patch", TokenType.PATCH in expected)
+        patch_btn = getattr(self, "patch", None)
+        trailing_patch = trailing_patch_keyword(cmd_text)
+        if trailing_patch == "PATCH":
+            if patch_btn is not None:
+                patch_btn.label = "Unpatch"
+            set_sens("patch", True)
+        elif trailing_patch == "UNPATCH":
+            if patch_btn is not None:
+                patch_btn.label = "Patch"
+            set_sens("patch", True)
+        else:
+            if patch_btn is not None:
+                patch_btn.label = "Patch"
+            set_sens(
+                "patch",
+                TokenType.PATCH in expected or TokenType.UNPATCH in expected,
+            )
 
         # Zone 3: Tools & Moving Lights
         set_sens("home", TokenType.HOME in expected or is_empty)
@@ -904,15 +921,11 @@ class VirtualConsoleWindow(Gtk.Window):
             )
 
     def _on_patch(self, _widget: Gtk.Widget) -> None:
-        """Patch button"""
+        """Patch / Unpatch toggle button"""
         if self.is_learning_midi:
             self._select_midi_learn_target("patch")
         else:
-            curr = self.app.core.commandline.get_string()
-            prefix = " " if (curr and not curr.endswith(" ")) else ""
-            self.app.core.action_registry.execute(
-                "commandline.append_char", f"{prefix}PATCH "
-            )
+            toggle_patch_keyword(self.app.core)
 
     def _on_park_changed(self, count: int) -> None:
         """Handle park state changed event."""

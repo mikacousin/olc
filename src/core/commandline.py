@@ -27,6 +27,30 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
 
 
+def trailing_patch_keyword(text: str) -> str | None:
+    """Return 'PATCH' or 'UNPATCH' if *text* ends with that isolated keyword."""
+    upper_words = text.rstrip().upper().split()
+    if upper_words and upper_words[-1] in ("PATCH", "UNPATCH"):
+        return upper_words[-1]
+    return None
+
+
+def toggle_patch_keyword(core: CoreApplication) -> None:
+    """Toggle trailing PATCH <-> UNPATCH keyword, or append PATCH."""
+    curr = core.commandline.get_string()
+    stripped = curr.rstrip()
+    trailing = trailing_patch_keyword(curr)
+    if trailing == "PATCH":
+        prefix = stripped[:-5]
+        core.action_registry.execute("commandline.set", f"{prefix}UNPATCH ")
+    elif trailing == "UNPATCH":
+        prefix = stripped[:-7]
+        core.action_registry.execute("commandline.set", f"{prefix}PATCH ")
+    else:
+        spacing = " " if (curr and not curr.endswith(" ")) else ""
+        core.action_registry.execute("commandline.append_char", f"{spacing}PATCH ")
+
+
 class CoreCommandLine:
     """Logical command line state helper, decoupled from the GUI."""
 

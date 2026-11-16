@@ -93,16 +93,25 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert vc.dot.shortcut_text == "."
     assert vc.backspace.shortcut_text == "⌫"
 
-    # Patch button sensitivity & click behavior
+    # Patch button sensitivity, toggle PATCH <-> UNPATCH & dynamic label
     app_gui.core.action_registry.execute("commandline.clear")
     process_events()
     assert vc.patch.get_sensitive() is False
+    assert vc.patch.label == "Patch"
     app_gui.core.action_registry.execute("commandline.append_char", "1")
     process_events()
     assert vc.patch.get_sensitive() is True
+    assert vc.patch.label == "Patch"
     vc.patch.emit("clicked")
     process_events()
     assert app_gui.core.commandline.get_string() == "1 PATCH "
+    assert vc.patch.get_sensitive() is True
+    assert vc.patch.label == "Unpatch"
+    vc.patch.emit("clicked")
+    process_events()
+    assert app_gui.core.commandline.get_string() == "1 UNPATCH "
+    assert vc.patch.get_sensitive() is True
+    assert vc.patch.label == "Patch"
     app_gui.core.action_registry.execute("commandline.clear")
 
     # Arrows

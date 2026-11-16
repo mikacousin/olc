@@ -48,6 +48,7 @@ from olc.core.parser.ast_nodes import (
     SelectOnlyCommandNode,
     SneakCommandNode,
     UnblockCueCommandNode,
+    UnpatchCommandNode,
     UpdateCueCommandNode,
 )
 from olc.define import MAX_CHANNELS
@@ -157,6 +158,9 @@ class CommandExecutor:
 
         if isinstance(node, PatchCommandNode):
             return self._execute_patch(node)
+
+        if isinstance(node, UnpatchCommandNode):
+            return self._execute_unpatch(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -1190,4 +1194,71 @@ class CommandExecutor:
             True,
             f"Patched {len(assignments)} address(es)",
             affected_channels=unique_channels,
+        )
+
+    def _apply_unpatch_batch(
+        self,
+        *,
+        device_ids: list[int] | None = None,
+        addresses: list[tuple[int, int]] | None = None,
+    ) -> None:
+        registry = self._get_registry()
+        if registry is not None and "patch.unpatch_batch" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(
+                "patch.unpatch_batch",
+                device_ids=device_ids,
+                addresses=addresses,
+            )
+        else:
+            patch = self.app.lightshow.patch
+            for dev_id in device_ids or []:
+                patch.unpatch_device(dev_id)
+            for univ, out in addresses or []:
+                patch.unpatch_address(univ, out)
+            self.app.lightshow.set_modified()
+            self.app.emit("patch.changed")
+
+    def _execute_unpatch(self, node: UnpatchCommandNode) -> CommandResult:
+        patch = self.app.lightshow.patch
+
+        if node.selection is None and node.addresses is not None:
+            addresses = self.resolve_address_selection(node.addresses)
+            if not addresses:
+                return CommandResult(False, "No addresses specified to unpatch")
+            self._apply_unpatch_batch(addresses=addresses)
+            return CommandResult(True, f"Unpatched {len(addresses)} address(es)")
+
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected to unpatch")
+
+        if node.addresses is None:
+            patched_ids = [ch for ch in channels if patch.get_device(ch) is not None]
+            if not patched_ids:
+                return CommandResult(False, "Selected channels are not patched")
+            self._apply_unpatch_batch(device_ids=patched_ids)
+            return CommandResult(
+                True,
+                f"Unpatched {len(patched_ids)} channel(s)",
+                affected_channels=patched_ids,
+            )
+
+        target_channels = set(channels)
+        addresses = self.resolve_address_selection(node.addresses)
+        filtered = [
+            (u, o)
+            for u, o in addresses
+            if patch.get_address_occupant(u, o) in target_channels
+        ]
+        if not filtered:
+            return CommandResult(
+                False, "No matching patched addresses found on selected channels"
+            )
+        self._apply_unpatch_batch(addresses=filtered)
+        return CommandResult(
+            True,
+            f"Unpatched {len(filtered)} address(es)",
+            affected_channels=sorted(target_channels),
         )

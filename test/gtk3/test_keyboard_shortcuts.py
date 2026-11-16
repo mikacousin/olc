@@ -235,8 +235,18 @@ def test_modifier_shortcuts_ctrl_f_ctrl_a_ctrl_up_down_alt_up_down(
     fader_accels = app_gui.get_accels_for_action("app.faders")
     assert any(a in fader_accels for a in ("<Shift><Control>f", "<Primary><Shift>f"))
 
-    # 6. Verify P appends PATCH and Alt+Shift+P appends POSITION to commandline
+    # 6. Verify P toggles PATCH <-> UNPATCH and Alt+Shift+P appends POSITION
     app_gui.core.action_registry.execute("commandline.clear")
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_p, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert app_gui.core.commandline.get_string() == "PATCH "
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_p, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert app_gui.core.commandline.get_string() == "UNPATCH "
     assert (
         win._on_key_controller_pressed(controller, Gdk.KEY_p, 0, Gdk.ModifierType(0))
         is True

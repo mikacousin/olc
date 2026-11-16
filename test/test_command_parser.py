@@ -572,3 +572,21 @@ def test_parser_patch_command() -> None:
     assert len(p2.addresses.exclusions) == 1
     assert isinstance(p2.addresses.exclusions[0], AddressNumberNode)
     assert p2.addresses.exclusions[0].output == 12
+
+    # 3. Unpatch variants
+    from olc.core.parser.ast_nodes import UnpatchCommandNode
+
+    u1 = parser.parse("1 THRU 4 UNPATCH")
+    assert isinstance(u1, UnpatchCommandNode)
+    assert u1.selection is not None
+    assert u1.addresses is None
+
+    u2 = parser.parse("1 UNPATCH AT 10 THRU 12")
+    assert isinstance(u2, UnpatchCommandNode)
+    assert u2.selection is not None
+    assert u2.addresses is not None
+
+    u3 = parser.parse("ADDRESS 10 THRU 15 UNPATCH")
+    assert isinstance(u3, UnpatchCommandNode)
+    assert u3.selection is None
+    assert u3.addresses is not None

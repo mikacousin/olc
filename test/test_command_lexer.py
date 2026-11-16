@@ -120,3 +120,11 @@ def test_lexer_patch_keyword() -> None:
         TokenType.NUMBER,
         TokenType.EOF,
     ]
+    unpatch_tokens = lexer.tokenize("1 THRU 4 UNPATCH")
+    assert [t.type for t in unpatch_tokens] == [
+        TokenType.NUMBER,
+        TokenType.THRU,
+        TokenType.NUMBER,
+        TokenType.UNPATCH,
+        TokenType.EOF,
+    ]

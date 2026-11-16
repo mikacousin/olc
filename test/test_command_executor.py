@@ -726,3 +726,49 @@ def test_executor_patch_command_and_atomic_undo_redo() -> None:
     res_non_dim = exec2.execute(parser.parse("50 PATCH AT 200"))
     assert res_non_dim.success is False
     assert "non-dimmer" in res_non_dim.message
+
+
+def test_executor_unpatch_command_and_atomic_undo_redo() -> None:
+    """Verify UNPATCH variants and single-step atomic Undo/Redo."""
+    app = CoreApplication(MagicMock())
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # Patch channel 1 to 10..13 and channel 2 to 20..21
+    executor.execute(parser.parse("1 PATCH AT 10 THRU 13"))
+    executor.execute(parser.parse("2 PATCH AT 20 THRU 21"))
+
+    # 1. Unpatch specific addresses on channel 1: 1 UNPATCH AT 11 THRU 12
+    res1 = executor.execute(parser.parse("1 UNPATCH AT 11 THRU 12"))
+    assert res1.success is True
+    assert patch.get_address_occupant(1, 10) == 1
+    assert patch.get_address_occupant(1, 11) is None
+    assert patch.get_address_occupant(1, 12) is None
+    assert patch.get_address_occupant(1, 13) == 1
+
+    # Single Undo restores both 11 and 12
+    app.action_registry.execute("edit.undo")
+    assert patch.get_address_occupant(1, 11) == 1
+    assert patch.get_address_occupant(1, 12) == 1
+
+    # 2. Unpatch full channels: 1 THRU 2 UNPATCH
+    res2 = executor.execute(parser.parse("1 THRU 2 UNPATCH"))
+    assert res2.success is True
+    assert patch.get_device(1) is None
+    assert patch.get_device(2) is None
+
+    # Single Undo restores both channels and all their addresses
+    app.action_registry.execute("edit.undo")
+    assert patch.get_address_occupant(1, 10) == 1
+    assert patch.get_address_occupant(1, 13) == 1
+    assert patch.get_address_occupant(1, 20) == 2
+    assert patch.get_address_occupant(1, 21) == 2
+
+    # 3. Unpatch by address: ADDRESS 20 THRU 21 UNPATCH
+    res3 = executor.execute(parser.parse("ADDRESS 20 THRU 21 UNPATCH"))
+    assert res3.success is True
+    assert patch.get_address_occupant(1, 20) is None
+    assert patch.get_address_occupant(1, 21) is None

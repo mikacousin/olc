@@ -62,6 +62,7 @@ KEYWORDS: dict[str, TokenType] = {
     "PARK": TokenType.PARK,
     "UNPARK": TokenType.UNPARK,
     "PATCH": TokenType.PATCH,
+    "UNPATCH": TokenType.UNPATCH,
     # ML Attributes & Families
     "HOME": TokenType.HOME,
     "LOCATE": TokenType.LOCATE,

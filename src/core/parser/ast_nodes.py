@@ -229,6 +229,14 @@ class PatchCommandNode(CommandNode):
     addresses: AddressSelectionNode
 
 
+@dataclasses.dataclass
+class UnpatchCommandNode(CommandNode):
+    """Command to unpatch channels or DMX addresses."""
+
+    selection: SelectionNode | None = None
+    addresses: AddressSelectionNode | None = None
+
+
 # --- Park Command Nodes ---
 
 

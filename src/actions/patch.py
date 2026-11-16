@@ -576,14 +576,93 @@ class PatchExchangeFixtureAction(Action):
         self.execute()
 
 
+class PatchUnpatchBatchAction(Action):
+    """Action to atomically unpatch multiple devices or DMX addresses."""
+
+    name = "patch.unpatch_batch"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_ids: list[int] = []
+        self.addresses: list[tuple[int, int]] = []
+        self._saved_devices: dict[int, dict[str, typing.Any]] = {}
+        self._saved_outputs: list[tuple[int, int, int, int]] = []
+
+    def configure(
+        self,
+        device_ids: list[int] | None = None,
+        addresses: list[tuple[int, int]] | None = None,
+    ) -> None:
+        """Configure device IDs and/or (universe, output) addresses to unpatch."""
+        self.device_ids = list(device_ids) if device_ids is not None else []
+        self.addresses = list(addresses) if addresses is not None else []
+
+    def execute(self) -> None:
+        """Unpatch all configured devices/addresses as one atomic undoable step."""
+        patch = self.app.lightshow.patch
+        self._saved_devices = {}
+        self._saved_outputs = []
+
+        for dev_id in self.device_ids:
+            dev = patch.get_device(dev_id)
+            if dev is not None and dev_id not in self._saved_devices:
+                self._saved_devices[dev_id] = dev.to_dict()
+                patch.unpatch_device(dev_id)
+
+        for univ, output in self.addresses:
+            info = patch.get_output_info(univ, output)
+            if info is not None:
+                old_ch, old_curve = info
+                old_dev = patch.get_device(old_ch)
+                if (
+                    old_dev is not None
+                    and old_dev.fixture_type != FixtureType.DIMMER
+                    and old_ch not in self._saved_devices
+                ):
+                    self._saved_devices[old_ch] = old_dev.to_dict()
+                else:
+                    self._saved_outputs.append((univ, output, old_ch, old_curve))
+                patch.unpatch_address(univ, output)
+
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        """Restore all unpatched devices and addresses."""
+        patch = self.app.lightshow.patch
+        for univ, output, old_ch, old_curve in reversed(self._saved_outputs):
+            if old_ch not in self._saved_devices:
+                patch.add_output(old_ch, output, univ, old_curve)
+
+        for dev_id, dev_dict in self._saved_devices.items():
+            patch.unpatch_device(dev_id)
+            patch.restore_device(LightingDevice.from_dict(dev_dict))
+
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        """Re-apply the batch unpatch."""
+        patch = self.app.lightshow.patch
+        for dev_id in self.device_ids:
+            patch.unpatch_device(dev_id)
+        for univ, output in self.addresses:
+            patch.unpatch_address(univ, output)
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+
 __all__ = [
     "PatchAddOutputAction",
+    "PatchAddOutputsAction",
     "PatchClearAction",
     "PatchDeviceAction",
     "PatchExchangeFixtureAction",
     "PatchSet1on1Action",
     "PatchSetDeviceCurveAction",
     "PatchSetOutputCurveAction",
+    "PatchUnpatchBatchAction",
     "PatchUnpatchDeviceAction",
     "PatchUnpatchOutputAction",
 ]

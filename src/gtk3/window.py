@@ -19,6 +19,7 @@ import typing
 
 from gi.repository import Gdk, Gio, GLib, Gtk
 
+from olc.core.commandline import toggle_patch_keyword
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.commandline import CommandLineWidget
@@ -540,7 +541,6 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
                 (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
-                (Gdk.KEY_p, Gdk.KEY_P): ("PATCH", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
@@ -766,6 +766,9 @@ class Window(Gtk.ApplicationWindow):
 
         # Single-key console hotkeys when no modifiers are active
         if modifiers == 0:
+            if keyval in (Gdk.KEY_p, Gdk.KEY_P):
+                toggle_patch_keyword(self.app.core)
+                return True
             direct_hotkeys = {
                 (Gdk.KEY_c, Gdk.KEY_C): ("CHANNEL", True),
                 (Gdk.KEY_q, Gdk.KEY_Q): ("CUE", True),
@@ -782,7 +785,6 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
                 (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
-                (Gdk.KEY_p, Gdk.KEY_P): ("PATCH", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
