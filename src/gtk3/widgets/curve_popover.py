@@ -24,7 +24,7 @@ from gi.repository import Gdk, Gtk
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 class CurvePreviewButton(CurveWidget):

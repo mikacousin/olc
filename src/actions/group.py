@@ -19,7 +19,7 @@ import typing
 from collections.abc import Mapping
 
 from olc.core.action import Action
-from olc.group import Group
+from olc.show.group import Group
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

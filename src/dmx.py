@@ -20,19 +20,19 @@ from typing import Optional
 
 import numpy as np
 
-from olc.core.park import ParkManager
 from olc.core.tracking import (
     TrackingDisplayState,
     classify_channel_tracking_state,
     get_tracking_color,
 )
 from olc.define import MAX_CHANNELS
-from olc.main_fader import MainFader
-from olc.patch import PatchManager
+from olc.show.main_fader import MainFader
+from olc.show.park import ParkManager
+from olc.show.patch import PatchManager
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends import DMXBackend
-    from olc.core.lightshow import LightShow
+    from olc.core.dmx_backend import DMXBackend
+    from olc.show.lightshow import LightShow
 
 
 class DmxLevels(dict):

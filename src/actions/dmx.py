@@ -22,9 +22,9 @@ import typing
 import numpy as np
 
 from olc.core.action import Action
-from olc.core.universe_config import Protocol, UniverseConfig
 from olc.define import DEFAULT_UNIVERSES
 from olc.dmx import Dmx
+from olc.dmx_engine.universe_config import Protocol, UniverseConfig
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

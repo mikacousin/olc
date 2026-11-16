@@ -21,7 +21,7 @@ import typing
 from collections.abc import Mapping
 
 from olc.core.action import Action
-from olc.independent import IndependentType
+from olc.show.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

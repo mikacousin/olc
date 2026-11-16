@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 from gi.repository import Gio
 
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
 from olc.files.file_type import FileType
 from olc.files.import_file import ImportFile
 from olc.files.olc.writer import OlcWriter
@@ -107,7 +107,7 @@ def test_universes_serialization_deserialization() -> None:
 def test_universes_serialization_deserialization_without_engine() -> None:
     """Verify OLC universe persistence works when app or engine is None."""
     # pylint: disable=protected-access
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
     source = LightShow(app=None)
     source.universe_map[1].set_protocols({Protocol.ARTNET})

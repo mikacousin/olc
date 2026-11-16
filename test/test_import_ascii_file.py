@@ -7,9 +7,9 @@ gi.require_version("Gtk", "3.0")
 from charset_normalizer import from_bytes  # noqa: E402
 from gi.repository import Gio  # noqa: E402
 
-from olc.core.lightshow import LightShow  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
+from olc.show.lightshow import LightShow  # noqa: E402
 
 FILE_PATH = "test/sample.asc"
 gfile = Gio.File.new_for_path(FILE_PATH)
@@ -20,7 +20,7 @@ def test_import(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mock_app = MagicMock()
     monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.core.lightshow.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
 
     lightshow = LightShow()
     imported = ImportFile(lightshow, gfile, FileType.ASCII)

@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import GLib
-
 from olc.core.action import Action
 
 if typing.TYPE_CHECKING:
@@ -68,11 +66,8 @@ class OscToggleAction(Action):
 
     def _apply_toggle(self, enable: bool) -> None:
         settings = getattr(self.app, "settings", None)
-        if settings is not None:
-            if hasattr(settings, "set_value"):
-                settings.set_value("osc", GLib.Variant("b", enable))
-            elif hasattr(settings, "set_boolean"):
-                settings.set_boolean("osc", enable)
+        if settings is not None and hasattr(settings, "set_boolean"):
+            settings.set_boolean("osc", enable)
 
         osc = getattr(self.app, "osc", None)
         if enable:
@@ -181,21 +176,13 @@ class OscSetConfigAction(Action):
         if settings is None:
             return
 
-        if hasattr(settings, "set_value"):
-            if host:
-                settings.set_value("osc-host", GLib.Variant("s", host))
+        if hasattr(settings, "set_string") and host:
+            settings.set_string("osc-host", host)
+        if hasattr(settings, "set_int"):
             if client_port > 0:
-                settings.set_value("osc-client-port", GLib.Variant("i", client_port))
+                settings.set_int("osc-client-port", client_port)
             if server_port > 0:
-                settings.set_value("osc-server-port", GLib.Variant("i", server_port))
-        else:
-            if hasattr(settings, "set_string") and host:
-                settings.set_string("osc-host", host)
-            if hasattr(settings, "set_int"):
-                if client_port > 0:
-                    settings.set_int("osc-client-port", client_port)
-                if server_port > 0:
-                    settings.set_int("osc-server-port", server_port)
+                settings.set_int("osc-server-port", server_port)
 
     def _update_osc(self, host: str, client_port: int, server_port: int) -> None:
         osc = getattr(self.app, "osc", None)
@@ -295,9 +282,7 @@ class OscToggleStaticClientAction(Action):
         settings = getattr(self.app, "settings", None)
         if settings is not None:
             try:
-                if hasattr(settings, "set_value"):
-                    settings.set_value("osc-static-client", GLib.Variant("b", enable))
-                elif hasattr(settings, "set_boolean"):
+                if hasattr(settings, "set_boolean"):
                     settings.set_boolean("osc-static-client", enable)
             except Exception:  # pylint: disable=broad-exception-caught
                 pass

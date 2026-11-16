@@ -28,10 +28,10 @@ from typing import Any, Optional
 import numpy as np
 
 from olc.define import MAX_CHANNELS
-from olc.step import get_parameter_family
+from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
-    from olc.patch import PatchManager
+    from olc.show.patch import PatchManager
 
 HTP_PARAMETERS: frozenset[str] = frozenset({"intensity"})
 

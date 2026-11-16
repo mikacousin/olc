@@ -16,8 +16,6 @@
 
 import unicodedata
 
-from gi.repository import Gio
-
 DEFAULT_UNIVERSES = [1, 2, 3, 4]
 UNIVERSES = list(DEFAULT_UNIVERSES)
 NB_UNIVERSES = len(UNIVERSES)
@@ -26,8 +24,6 @@ MAX_CHANNELS = 1024
 
 MAX_FADER_PAGE = 10
 MAX_FADER_PER_PAGE = 10
-
-App = Gio.Application.get_default  # pylint: disable=invalid-name
 
 # Send DMX every DMX_INTERVAL (milliseconds)
 DMX_INTERVAL = 25

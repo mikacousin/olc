@@ -6,8 +6,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
-from olc.core.park import ParkManager
 from olc.dmx import Dmx
+from olc.show.park import ParkManager
 
 
 def test_park_manager_channels() -> None:

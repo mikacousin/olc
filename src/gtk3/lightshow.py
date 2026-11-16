@@ -14,22 +14,21 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import pathlib
 import typing
 
-from gi.repository import GLib, Gtk
+from gi.repository import Gio, GLib, Gtk
 
-from olc.core.lightshow import LightShow
+from olc.show.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-
     from olc.core.app import CoreApplication
 
 
 class GtkLightShow(LightShow):
     """Subclass of LightShow adding Gtk/Gio file-handling support."""
 
-    file: Gio.File | None
+    file: Gio.File | pathlib.Path | str | None
     recent_manager: Gtk.RecentManager
 
     def __init__(self, app: CoreApplication | None = None) -> None:
@@ -37,10 +36,18 @@ class GtkLightShow(LightShow):
         self.file = None
         self.recent_manager = Gtk.RecentManager.get_default()
 
-    def add_recent_file(self) -> None:
+    def _file_as_gio(self) -> Gio.File | None:
         if not self.file:
+            return None
+        if isinstance(self.file, (pathlib.Path, str)):
+            return Gio.File.new_for_path(str(self.file))
+        return self.file
+
+    def add_recent_file(self) -> None:
+        gio_file = self._file_as_gio()
+        if not gio_file:
             return
-        uri = self.file.get_uri()
+        uri = gio_file.get_uri()
         if uri:
             try:
                 self.recent_manager.remove_item(uri)
@@ -50,13 +57,15 @@ class GtkLightShow(LightShow):
             self.recent_manager.add_item(uri)
 
     def set_modified(self) -> None:
-        if self.file:
-            self.basename = self.file.get_basename() or ""
-            self.file_path = self.file.get_path()
+        gio_file = self._file_as_gio()
+        if gio_file:
+            self.basename = gio_file.get_basename() or ""
+            self.file_path = gio_file.get_path()
         super().set_modified()
 
     def set_not_modified(self) -> None:
-        if self.file:
-            self.basename = self.file.get_basename() or ""
-            self.file_path = self.file.get_path()
+        gio_file = self._file_as_gio()
+        if gio_file:
+            self.basename = gio_file.get_basename() or ""
+            self.file_path = gio_file.get_path()
         super().set_not_modified()

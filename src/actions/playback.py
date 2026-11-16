@@ -18,11 +18,11 @@ import copy
 import typing
 
 from olc.core.action import Action
-from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.dmx import Dmx
-from olc.sequence import get_cue
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.sequence import get_cue
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

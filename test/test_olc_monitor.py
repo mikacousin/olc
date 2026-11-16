@@ -26,8 +26,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from textual.color import Color
 
-from olc.core.engine import CoreEngine
-from olc.core.universe_config import UniverseMap
+from olc.dmx_engine.engine import CoreEngine
+from olc.dmx_engine.universe_config import UniverseMap
 
 # pylint: disable=redefined-outer-name
 

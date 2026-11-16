@@ -20,16 +20,16 @@ import typing
 
 from gi.repository import Gio, Gtk
 
-from olc.core.lightshow import default_workspace
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.history import HistoryTab
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import ChannelsView
+from olc.show.lightshow import default_workspace
 
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
-    from olc.settings import SettingsTab
+    from olc.gtk3.settings import SettingsTab
 
 
 # pylint: disable=too-few-public-methods

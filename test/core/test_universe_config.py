@@ -1,6 +1,6 @@
 import pytest
 
-from olc.core.universe_config import (
+from olc.dmx_engine.universe_config import (
     ArtNetSettings,
     Protocol,
     SacnSettings,

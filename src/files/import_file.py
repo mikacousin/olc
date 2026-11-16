@@ -14,33 +14,25 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import pathlib
 import typing
 
-import gi
-
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
-
-from olc.core.lightshow import default_workspace  # noqa: E402
-from olc.core.universe_config import Protocol  # noqa: E402
-from olc.cue import Cue  # noqa: E402
-from olc.files.ascii.parser import AsciiParser  # noqa: E402
-from olc.files.file_type import FileType  # noqa: E402
-from olc.files.import_dialog import Action, DialogData  # noqa: E402
-from olc.files.olc.parser import OlcParser  # noqa: E402
-from olc.files.parsed_data import ParsedData  # noqa: E402
-from olc.independent import Independents  # noqa: E402
-from olc.step import Step  # noqa: E402
+from olc.dmx_engine.universe_config import Protocol
+from olc.files.ascii.parser import AsciiParser
+from olc.files.file_type import FileType
+from olc.files.import_types import Action
+from olc.files.olc.parser import OlcParser
+from olc.files.parsed_data import ParsedData
+from olc.show.cue import Cue
+from olc.show.independent import Independents
+from olc.show.lightshow import default_workspace
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-
     import olc.files.import_file
-    from olc.core.backends.midi import Midi
-    from olc.core.lightshow import LightShow
-    from olc.core.universe_config import UniverseMap
-    from olc.gtk3.tabs_manager import Tabs
-    from olc.gtk3.window import Window
+    from olc.controllers.midi import Midi
+    from olc.dmx_engine.universe_config import UniverseMap
+    from olc.show.lightshow import LightShow
 
 
 def _import_single_universe(u: int, val: dict, universe_map: UniverseMap) -> None:
@@ -78,27 +70,28 @@ def _import_single_universe(u: int, val: dict, universe_map: UniverseMap) -> Non
 class ImportFile:
     """Import file"""
 
-    file: Gio.File
+    file: pathlib.Path | str | typing.Any
     file_type: FileType
     data: ParsedData
     actions: dict
     parser: AsciiParser | OlcParser
-    window: Window | None
+    window: typing.Any | None
     midi: Midi | None
-    settings: Gio.Settings | None
-    tabs: Tabs | None
+    settings: typing.Any | None
+    tabs: typing.Any | None
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         lightshow: LightShow,
-        file: Gio.File,
+        file: pathlib.Path | str | typing.Any,  # noqa: ANN401
         file_type: FileType,
-        window: Window | None = None,
+        window: typing.Any | None = None,  # noqa: ANN401
         midi: Midi | None = None,
-        settings: Gio.Settings | None = None,
-        tabs: Tabs | None = None,
+        settings: typing.Any | None = None,  # noqa: ANN401
+        tabs: typing.Any | None = None,  # noqa: ANN401
         importation: bool = False,
+        on_select_data: typing.Callable[[], None] | None = None,
     ) -> None:
         self.lightshow = lightshow
         self.file = file
@@ -107,6 +100,7 @@ class ImportFile:
         self.midi = midi
         self.settings = settings
         self.tabs = tabs
+        self.on_select_data = on_select_data
         self.data = ParsedData(self.lightshow, self.midi)
         self.actions = {
             "curves": Action.REPLACE,
@@ -158,14 +152,12 @@ class ImportFile:
         self.lightshow.set_not_modified()
 
     def select_data(self) -> None:
-        """Select data to import"""
-        if self.window:
-            dialog = DialogData(self.window, self.data.data, self.actions)
-            response = dialog.run()
-            dialog.destroy()
-            if response == Gtk.ResponseType.OK:
-                self._do_import()
-                self.lightshow.set_modified()
+        """Select data to import via UI callback if provided."""
+        if self.on_select_data is not None:
+            self.on_select_data()
+        else:
+            self._do_import()
+            self.lightshow.set_modified()
 
     def do_import(self) -> None:
         """Execute the import process."""

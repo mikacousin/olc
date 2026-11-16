@@ -32,10 +32,10 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends import DMXBackend
-    from olc.core.lightshow import LightShow
+    from olc.core.dmx_backend import DMXBackend
     from olc.gtk3.application import Application
     from olc.gtk3.dmx_outputs import DMXOutputsTab
+    from olc.show.lightshow import LightShow
 
 
 class DMXOutputWidget(Gtk.DrawingArea):

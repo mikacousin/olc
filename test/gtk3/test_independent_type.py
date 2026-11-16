@@ -23,7 +23,7 @@ import pytest
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.widgets.knob import KnobWidget
 from olc.gtk3.widgets.toggle import ToggleWidget
-from olc.independent import IndependentType
+from olc.show.independent import IndependentType
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 

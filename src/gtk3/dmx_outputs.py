@@ -24,11 +24,11 @@ from olc.gtk3.widgets.dmx_outputs import DMXOutputWidget
 
 if typing.TYPE_CHECKING:
     import olc.gtk3.dmx_outputs
-    from olc.core.backends import DMXBackend
-    from olc.core.lightshow import LightShow
+    from olc.core.dmx_backend import DMXBackend
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
-    from olc.patch import PatchManager
+    from olc.show.lightshow import LightShow
+    from olc.show.patch import PatchManager
 
 
 class DMXOutputsTab(Gtk.Box):

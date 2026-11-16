@@ -24,12 +24,12 @@ from typing import Any
 import serial.tools.list_ports
 from gi.repository import GObject, Gtk
 
-from olc.core.backends.enttec import resolve_port
-from olc.core.universe_config import Protocol
 from olc.define import DEFAULT_UNIVERSES
+from olc.dmx_engine.enttec import resolve_port
+from olc.dmx_engine.universe_config import Protocol
 
 if typing.TYPE_CHECKING:
-    from olc.core.universe_config import UniverseMap
+    from olc.dmx_engine.universe_config import UniverseMap
     from olc.gtk3.application import Application
 
 

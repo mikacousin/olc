@@ -14,12 +14,22 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import gzip
+import pathlib
 import typing
 
-from gi.repository import Gio
-
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
+
+
+def _resolve_path(file: pathlib.Path | str | typing.Any) -> pathlib.Path:  # noqa: ANN401
+    if isinstance(file, (pathlib.Path, str)):
+        return pathlib.Path(file)
+    if hasattr(file, "get_path"):
+        path = file.get_path()
+        if path:
+            return pathlib.Path(path)
+    raise TypeError(f"Unsupported file target: {file!r}")
 
 
 class WriteFile:
@@ -28,12 +38,15 @@ class WriteFile:
     This class must be sub-classed and export implemented
     """
 
-    file: Gio.File
+    file: pathlib.Path | str | typing.Any
     compressed: bool
-    stream: Gio.FileOutputStream | Gio.ConverterOutputStream | None
+    stream: typing.IO[bytes] | gzip.GzipFile | None
 
     def __init__(
-        self, file: Gio.File, lightshow: LightShow, compressed: bool = False
+        self,
+        file: pathlib.Path | str | typing.Any,  # noqa: ANN401
+        lightshow: LightShow,
+        compressed: bool = False,
     ) -> None:
         self.file = file
         self.compressed = compressed
@@ -42,15 +55,16 @@ class WriteFile:
 
     def write(self) -> None:
         """Write file"""
-        output_stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
+        path = _resolve_path(self.file)
         if self.compressed:
-            converter = Gio.ZlibCompressor.new(Gio.ZlibCompressorFormat.GZIP, -1)
-            self.stream = Gio.ConverterOutputStream.new(output_stream, converter)
+            with gzip.open(path, "wb") as stream:
+                self.stream = stream
+                self.export()
         else:
-            self.stream = output_stream
-        # Write data
-        self.export()
-        self.stream.close()
+            with open(path, "wb") as stream:
+                self.stream = stream
+                self.export()
+        self.stream = None
         self.lightshow.set_not_modified()
         self.lightshow.add_recent_file()
 

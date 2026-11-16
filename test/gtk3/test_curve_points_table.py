@@ -20,10 +20,10 @@ import cairo
 import pytest
 from gi.repository import Gtk
 
-from olc.curve import SegmentsCurve
 from olc.gtk3.application import Application
 from olc.gtk3.curve import CurvesTab
 from olc.gtk3.widgets.curve_units import CurveUnitMode
+from olc.show.curve import SegmentsCurve
 from test.gtk3.conftest import process_events
 
 pytestmark = pytest.mark.gui

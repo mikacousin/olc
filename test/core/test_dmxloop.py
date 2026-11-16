@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from olc.core.dmxloop import DMXLoop
+from olc.dmx_engine.dmxloop import DMXLoop
 
 
 class TestDMXLoop:

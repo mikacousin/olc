@@ -17,11 +17,11 @@ from __future__ import annotations
 import copy
 import typing
 
-from olc.channel_time import ChannelTime
 from olc.core.action import Action
-from olc.cue import Cue
-from olc.sequence import Sequence
-from olc.step import Step
+from olc.show.channel_time import ChannelTime
+from olc.show.cue import Cue
+from olc.show.sequence import Sequence
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

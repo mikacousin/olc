@@ -20,7 +20,6 @@ from typing import Optional
 
 from gi.repository import Gtk
 
-from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 from olc.gtk3.widgets.curve_point import CurvePointWidget, LimitPointWidget
@@ -28,13 +27,14 @@ from olc.gtk3.widgets.curve_points_table import CurvePointsTable
 from olc.gtk3.widgets.curve_sampled_monitor import CurveSampledMonitor
 from olc.gtk3.widgets.curve_units import CurveUnitMode
 from olc.gtk3.widgets.edit_curve import EditCurveWidget
+from olc.show.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
-    from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

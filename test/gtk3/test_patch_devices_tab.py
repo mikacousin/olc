@@ -41,7 +41,7 @@ from olc.gtk3.patch_channels import (  # noqa: E402
     COL_UNIVERSE,
     PatchChannelsTab,
 )
-from olc.patch import PatchCollisionError  # noqa: E402
+from olc.show.patch import PatchCollisionError  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 

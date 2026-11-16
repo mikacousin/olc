@@ -18,16 +18,16 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
-from olc.core.app import CoreApplication
-from olc.core.backends.osc import Osc
-from olc.core.backends.osc.delegate import OSCDelegate
-from olc.core.backends.osc.transport import (
+from olc.controllers.osc import Osc
+from olc.controllers.osc.delegate import OSCDelegate
+from olc.controllers.osc.transport import (
     CoreOSCServer,
     OSCSubscriptionManager,
     build_message,
     make_method,
     parse_message,
 )
+from olc.core.app import CoreApplication
 
 
 class TestOSCCodec:

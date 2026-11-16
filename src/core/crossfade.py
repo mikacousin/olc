@@ -19,10 +19,14 @@ import typing
 import numpy as np
 
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, ResolvedState, TrackingEngine
-from olc.sequence import _capture_device_states, _interpolate_device_states, get_cue
+from olc.show.sequence import (
+    _capture_device_states,
+    _interpolate_device_states,
+    get_cue,
+)
 
 if typing.TYPE_CHECKING:
-    from olc.step import Step
+    from olc.show.step import Step
 
 
 class Scale:

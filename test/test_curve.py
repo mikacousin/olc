@@ -6,7 +6,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from olc.curve import (
+from olc.files.parsed_data import ParsedData
+from olc.gtk3.widgets.curve import get_curve_display_name
+from olc.show.curve import (
     Curves,
     InterpolateCurve,
     LimitCurve,
@@ -14,8 +16,6 @@ from olc.curve import (
     SegmentsCurve,
     SquareRootCurve,
 )
-from olc.files.parsed_data import ParsedData
-from olc.gtk3.widgets.curve import get_curve_display_name
 
 
 def test_get_level() -> None:

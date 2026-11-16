@@ -26,14 +26,14 @@ import pytest
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
+from olc.controllers.osc import Osc  # noqa: E402
+from olc.controllers.osc.delegate import OSCDelegate  # noqa: E402
+from olc.controllers.osc.transport import CoreOSCServer  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
-from olc.core.backends.osc import Osc  # noqa: E402
-from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
-from olc.core.backends.osc.transport import CoreOSCServer  # noqa: E402
-from olc.core.engine import CoreEngine  # noqa: E402
-from olc.core.universe_config import UniverseMap  # noqa: E402
+from olc.dmx_engine.engine import CoreEngine  # noqa: E402
+from olc.dmx_engine.universe_config import UniverseMap  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
-from olc.settings import SettingsTab  # noqa: E402
+from olc.gtk3.settings import SettingsTab  # noqa: E402
 
 
 def test_osc_toggle_enable_and_disable() -> None:
@@ -332,7 +332,7 @@ def test_osc_start_stop_reentrant_lock(monkeypatch: pytest.MonkeyPatch) -> None:
         return MagicMock()
 
     monkeypatch.setattr("asyncio.run_coroutine_threadsafe", mock_run_coroutine)
-    monkeypatch.setattr("olc.core.backends.osc.MDNSAdvertiser", MagicMock())
+    monkeypatch.setattr("olc.controllers.osc.MDNSAdvertiser", MagicMock())
 
     app = CoreApplication(MagicMock())
     osc = Osc(app)
@@ -982,8 +982,8 @@ def test_settings_tab_update_osc_static_client_toggle() -> None:
 
 def test_osc_playback_subscribe_and_telemetry() -> None:
     """Test subscribing to 'playback' receives initial telemetry and dump."""
-    from olc.cue import Cue
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)
@@ -1022,9 +1022,9 @@ def test_osc_playback_subscribe_and_telemetry() -> None:
 
 def test_osc_playback_goto_cue_and_progress() -> None:
     """Test /olc/playback/goto_cue route and transition progress publishing."""
-    from olc.cue import Cue
-    from olc.sequence import get_cue
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.sequence import get_cue
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)
@@ -1072,8 +1072,8 @@ def test_osc_playback_dump_and_cue_dump() -> None:
     """Test /olc/playback/dump and /olc/cue/dump routes returning JSON."""
     import json
 
-    from olc.cue import Cue
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)
@@ -1140,8 +1140,8 @@ def test_osc_mainfader_and_blackout_routes() -> None:
 
 def test_osc_playback_state_queries() -> None:
     """Test /olc/playback/active/cue, /next/cue, and /state direct queries."""
-    from olc.cue import Cue
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)

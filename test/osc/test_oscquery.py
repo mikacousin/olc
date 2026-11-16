@@ -20,7 +20,7 @@ import asyncio
 import json
 import socket
 
-from olc.core.backends.osc.oscquery import (
+from olc.controllers.osc.oscquery import (
     ACCESS_CONTAINER,
     ACCESS_READ_ONLY,
     ACCESS_READ_WRITE,

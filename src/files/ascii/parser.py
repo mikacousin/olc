@@ -18,10 +18,10 @@ import re
 import typing
 from enum import Enum, auto
 
-from olc.curve import LimitCurve
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
-from olc.fader import FaderType
 from olc.files.read import ReadFile
+from olc.show.curve import LimitCurve
+from olc.show.fader import FaderType
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile

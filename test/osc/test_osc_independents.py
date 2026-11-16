@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+from olc.controllers.osc.delegate import OSCDelegate
 from olc.core.app import CoreApplication
-from olc.core.backends.osc.delegate import OSCDelegate
 
 
 def test_osc_independent_level_control_and_feedback() -> None:

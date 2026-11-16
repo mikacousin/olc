@@ -23,7 +23,6 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 
-from olc.cue import Cue  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.sequence import (  # noqa: E402
     TRACKING_COLORS,
@@ -32,8 +31,9 @@ from olc.gtk3.sequence import (  # noqa: E402
     classify_channel_tracking_state,
     get_tracking_color,
 )
-from olc.sequence import Sequence  # noqa: E402
-from olc.step import Step  # noqa: E402
+from olc.show.cue import Cue  # noqa: E402
+from olc.show.sequence import Sequence  # noqa: E402
+from olc.show.step import Step  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 

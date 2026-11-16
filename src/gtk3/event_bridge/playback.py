@@ -28,7 +28,7 @@ from .base import BaseEventBridgeHandler
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
     from olc.gtk3.sequence import SequenceTab
-    from olc.sequence import Sequence
+    from olc.show.sequence import Sequence
 
 
 def update_ui(subtitle: str, app: Application | None = None) -> None:

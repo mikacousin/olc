@@ -23,8 +23,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.cue import Cue
-from olc.curve import LimitCurve
 from olc.devices.builtin import create_rgbw_definition
 from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
 from olc.devices.device import (
@@ -40,8 +38,10 @@ from olc.devices.fixture import (
     FixtureDefinition,
 )
 from olc.files.parsed_data import Action, ParsedData
-from olc.sequence import Sequence
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.curve import LimitCurve
+from olc.show.sequence import Sequence
+from olc.show.step import Step
 
 
 def _create_custom_gdtf_fixture_def() -> FixtureDefinition:

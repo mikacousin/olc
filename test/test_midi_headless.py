@@ -23,8 +23,8 @@ import mido
 import numpy as np
 import pytest
 
+from olc.controllers.midi import Midi
 from olc.core.app import CoreApplication
-from olc.core.backends.midi import Midi
 from olc.define import MAX_CHANNELS
 
 
@@ -80,7 +80,7 @@ def test_midi_package_has_no_gtk_dependency() -> None:
     """The MIDI backend must not import GTK/GLib/Gdk/Gio nor olc.gtk3."""
     import pathlib
 
-    import olc.core.backends.midi as midi_pkg
+    import olc.controllers.midi as midi_pkg
 
     package_dir = pathlib.Path(midi_pkg.__file__).parent
     for path in package_dir.glob("*.py"):

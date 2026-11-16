@@ -24,7 +24,7 @@ from olc.define import MAX_CHANNELS
 
 if TYPE_CHECKING:
     from olc.devices.fixture import FixtureDefinition, FixtureLibrary
-    from olc.patch import PatchManager
+    from olc.show.patch import PatchManager
 
 
 # pylint: disable=too-many-instance-attributes

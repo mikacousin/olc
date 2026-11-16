@@ -25,7 +25,7 @@ from olc.core.parser.parser import CommandParser
 from olc.core.parser.tokens import TokenType
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 @dataclasses.dataclass(frozen=True)

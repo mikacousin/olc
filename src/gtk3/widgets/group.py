@@ -27,9 +27,9 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 class GroupWidget(Gtk.Widget):

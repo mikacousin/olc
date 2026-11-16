@@ -22,7 +22,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.curve import LimitCurve, LinearCurve, SquareRootCurve
 from olc.devices.builtin import (
     create_dimmer_definition,
     create_moving_head_definition,
@@ -36,6 +35,7 @@ from olc.devices.device import (
     get_default_merge_mode,
 )
 from olc.dmx import Dmx
+from olc.show.curve import LimitCurve, LinearCurve, SquareRootCurve
 
 
 def test_merge_mode_defaults_and_properties() -> None:

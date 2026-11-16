@@ -49,13 +49,13 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
-from olc.cue import Cue
 from olc.define import MAX_CHANNELS
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 @dataclasses.dataclass

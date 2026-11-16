@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from olc.core.backends.osc.parser import (
+from olc.controllers.osc.parser import (
     parse_osc_bool,
     parse_osc_level_dmx,
     parse_osc_normalized,

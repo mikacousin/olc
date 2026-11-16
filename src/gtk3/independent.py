@@ -21,18 +21,18 @@ from gi.repository import Gdk, Gtk
 
 from olc.define import MAX_CHANNELS
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
-from olc.independent import IndependentType
+from olc.show.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     import olc.gtk3.independent
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

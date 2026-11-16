@@ -20,10 +20,10 @@ from unittest.mock import MagicMock, patch
 
 import mido
 
-from olc.core.backends.midi.ports import MidiIO
+from olc.controllers.midi.ports import MidiIO
 
 
-@patch("olc.core.backends.midi.ports.mido.open_ioport")
+@patch("olc.controllers.midi.ports.mido.open_ioport")
 def test_midi_io_receive_callback_learning(_mock_open_ioport: MagicMock) -> None:
     """Test that receive_callback triggers learning.
 
@@ -49,7 +49,7 @@ def test_midi_io_receive_callback_learning(_mock_open_ioport: MagicMock) -> None
     mock_midi.messages.control_change.scan.assert_not_called()
 
 
-@patch("olc.core.backends.midi.ports.mido.open_ioport")
+@patch("olc.controllers.midi.ports.mido.open_ioport")
 def test_midi_io_receive_callback_normal(_mock_open_ioport: MagicMock) -> None:
     """Test that receive_callback scans actions and does not learn if learning is
     inactive."""

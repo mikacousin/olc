@@ -36,9 +36,9 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.independent import IndependentsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
     from olc.gtk3.sequence import SequenceTab
+    from olc.gtk3.settings import SettingsTab
     from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.window import Window
-    from olc.settings import SettingsTab
 
     TabWidget = (
         ChanneltimeTab

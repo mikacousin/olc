@@ -21,8 +21,8 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from olc.core.app import CoreApplication
-from olc.cue import CueEditor
 from olc.define import MAX_CHANNELS
+from olc.show.cue import CueEditor
 
 
 def test_cue_editor_initialization() -> None:

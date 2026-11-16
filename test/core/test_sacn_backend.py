@@ -24,17 +24,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from olc.core.backends.sacn import SacnManager
-from olc.core.backends.sacn.merge import MergeMode, SacnMerger
-from olc.core.backends.sacn.network import SacnNetwork, SacnProtocol
-from olc.core.backends.sacn.protocol import (
+from olc.dmx_engine.engine import CoreEngine
+from olc.dmx_engine.sacn import SacnManager
+from olc.dmx_engine.sacn.merge import MergeMode, SacnMerger
+from olc.dmx_engine.sacn.network import SacnNetwork, SacnProtocol
+from olc.dmx_engine.sacn.protocol import (
     SacnDecodeError,
     SacnDiscoveryPacket,
     SacnPacket,
     SacnSyncPacket,
 )
-from olc.core.engine import CoreEngine
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
 
 
 @contextlib.contextmanager
@@ -390,11 +390,9 @@ class TestSacnNetwork:
 
         async def run_test() -> None:
             with (
+                patch("olc.dmx_engine.sacn.network.socket.socket") as mock_sock_class,
                 patch(
-                    "olc.core.backends.sacn.network.socket.socket"
-                ) as mock_sock_class,
-                patch(
-                    "olc.core.backends.sacn.network.get_local_ips",
+                    "olc.dmx_engine.sacn.network.get_local_ips",
                     return_value=["0.0.0.0", "127.0.0.1"],
                 ),
             ):
@@ -437,7 +435,7 @@ class TestSacnNetwork:
         # Scenario 1: Only loopback and 0.0.0.0 (e.g. offline)
         #                                                  -> should fallback to 0.0.0.0
         with patch(
-            "olc.core.backends.sacn.network.get_local_ips",
+            "olc.dmx_engine.sacn.network.get_local_ips",
             return_value=["0.0.0.0", "127.0.0.1"],
         ):
             ips = net._get_join_ips()
@@ -446,7 +444,7 @@ class TestSacnNetwork:
         # Scenario 2: Physical interface present
         #                                       -> should return only physical interface
         with patch(
-            "olc.core.backends.sacn.network.get_local_ips",
+            "olc.dmx_engine.sacn.network.get_local_ips",
             return_value=["0.0.0.0", "127.0.0.1", "192.168.1.10"],
         ):
             ips = net._get_join_ips()
@@ -455,7 +453,7 @@ class TestSacnNetwork:
         # Scenario 3: Multiple physical interfaces present
         #                                       -> should return all physical interfaces
         with patch(
-            "olc.core.backends.sacn.network.get_local_ips",
+            "olc.dmx_engine.sacn.network.get_local_ips",
             return_value=["0.0.0.0", "127.0.0.1", "192.168.1.10", "10.0.0.5"],
         ):
             ips = net._get_join_ips()
@@ -525,7 +523,7 @@ class TestSacnManager:
         umap.enable_protocol(1, Protocol.SACN)
 
         with background_loop() as loop:
-            with patch("olc.core.backends.sacn.SacnNetwork"):
+            with patch("olc.dmx_engine.sacn.SacnNetwork"):
                 manager = SacnManager(umap, loop=loop)
 
                 with patch("socket.socket") as mock_socket_class:
@@ -571,7 +569,7 @@ class TestSacnManager:
         umap.enable_protocol(1, Protocol.SACN)
 
         with background_loop() as loop:
-            with patch("olc.core.backends.sacn.SacnNetwork"):
+            with patch("olc.dmx_engine.sacn.SacnNetwork"):
                 manager = SacnManager(umap, loop=loop)
 
                 with patch("socket.socket") as mock_socket_class:
@@ -615,7 +613,7 @@ class TestSacnManager:
             umap.enable_protocol(i, Protocol.SACN)
 
         with background_loop() as loop:
-            with patch("olc.core.backends.sacn.SacnNetwork"):
+            with patch("olc.dmx_engine.sacn.SacnNetwork"):
                 manager = SacnManager(umap, loop=loop)
 
                 with patch("socket.socket") as mock_socket_class:
@@ -654,7 +652,7 @@ class TestSacnManager:
         # Configure synchronization universe 2000 for universe 1
         umap[1].sacn.sync_address = 2000
 
-        with patch("olc.core.backends.sacn.SacnNetwork"):
+        with patch("olc.dmx_engine.sacn.SacnNetwork"):
             manager = SacnManager(umap)
 
             # Mock on_dmx_received callback
@@ -692,7 +690,7 @@ class TestSacnManager:
         umap.enable_protocol(1, Protocol.SACN)
         umap[1].sacn.sync_address = 2000
 
-        with patch("olc.core.backends.sacn.SacnNetwork"):
+        with patch("olc.dmx_engine.sacn.SacnNetwork"):
             manager = SacnManager(umap)
 
             callback_mock = MagicMock()
@@ -726,7 +724,7 @@ class TestSacnManager:
         umap.enable_protocol(1, Protocol.SACN)
         umap[1].sacn.sync_address = 2000
 
-        with patch("olc.core.backends.sacn.SacnNetwork"):
+        with patch("olc.dmx_engine.sacn.SacnNetwork"):
             # CoreEngine initializes its own SacnManager if Protocol.SACN is in map
             engine = CoreEngine(umap)
 
@@ -751,7 +749,7 @@ class TestSacnManager:
         umap = UniverseMap(3)
         umap.enable_protocol(1, Protocol.SACN)
 
-        with patch("olc.core.backends.sacn.SacnNetwork"):
+        with patch("olc.dmx_engine.sacn.SacnNetwork"):
             manager = SacnManager(umap)
 
             # Create a mock discovery packet

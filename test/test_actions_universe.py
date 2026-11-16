@@ -21,9 +21,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
 from olc.gtk3.event_bridge import GuiEventBridge
-from olc.settings import SettingsTab
+from olc.gtk3.settings import SettingsTab
 
 
 def _create_app_with_universe_map() -> tuple[CoreApplication, MagicMock]:

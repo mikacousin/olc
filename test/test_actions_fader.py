@@ -19,10 +19,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
-from olc.cue import Cue
-from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
-from olc.group import Group
-from olc.sequence import Sequence
+from olc.show.cue import Cue
+from olc.show.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.group import Group
+from olc.show.sequence import Sequence
 
 
 def test_fader_assign_group() -> None:

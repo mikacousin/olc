@@ -23,7 +23,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.cue import Cue, Cues
+from olc.show.cue import Cue, Cues
 
 
 def test_cue_insert_update_set_level() -> None:

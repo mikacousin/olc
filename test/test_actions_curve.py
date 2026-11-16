@@ -20,7 +20,7 @@ import typing
 from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
-from olc.curve import LimitCurve, SegmentsCurve
+from olc.show.curve import LimitCurve, SegmentsCurve
 
 
 def test_curve_actions_and_undo_redo() -> None:

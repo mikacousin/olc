@@ -22,9 +22,9 @@ import numpy as np
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.core.universe_config import UniverseMap
 from olc.define import UNIVERSES
-from olc.patch import PatchManager
+from olc.dmx_engine.universe_config import UniverseMap
+from olc.show.patch import PatchManager
 
 
 def test_universe_blackout_action_and_undo_redo() -> None:

@@ -27,7 +27,7 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends import DMXBackend
+    from olc.core.dmx_backend import DMXBackend
 
 
 class MainFaderWidget(Gtk.Widget):

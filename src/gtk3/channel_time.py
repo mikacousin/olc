@@ -18,20 +18,20 @@ import typing
 
 from gi.repository import Gdk, Gtk
 
-from olc.channel_time import ChannelTime
 from olc.gtk3.widgets.channels_view import ChannelsView
+from olc.show.channel_time import ChannelTime
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
-    from olc.sequence import Sequence
+    from olc.show.lightshow import LightShow
+    from olc.show.sequence import Sequence
 
 
 # pylint: disable=too-many-instance-attributes

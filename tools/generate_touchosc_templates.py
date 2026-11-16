@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.core.backends.osc.touchosc import generate_all_templates  # noqa: E402
+from src.controllers.osc.touchosc import generate_all_templates  # noqa: E402
 
 
 def main() -> int:

@@ -23,11 +23,11 @@ import numpy as np
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.core.universe_config import Protocol, UniverseMap
-from olc.cue import Cue
 from olc.define import MAX_CHANNELS
-from olc.fader import FaderType
-from olc.group import Group
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
+from olc.show.cue import Cue
+from olc.show.fader import FaderType
+from olc.show.group import Group
 
 
 def _create_headless_app() -> tuple[CoreApplication, MagicMock]:

@@ -1,0 +1,269 @@
+# -*- coding: utf-8 -*-
+# Open Lighting Console
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+
+import mido
+
+if typing.TYPE_CHECKING:
+    from olc.controllers.midi import Midi
+    from olc.core.app import CoreApplication
+    from olc.show.independent import Independent
+
+
+class MidiControlChanges:
+    """MIDI control change messages from controllers"""
+
+    control_change: dict[str, list[int]]
+
+    def __init__(self, midi: Midi, app: CoreApplication) -> None:
+        self.midi = midi
+        self.app = app
+        self.app_delegate = app
+        # Default MIDI control change values : "action": Channel, CC
+        self.control_change = {
+            "wheel": [0, 60],
+            "inde_1": [0, 16],
+            "inde_2": [0, 17],
+            "inde_3": [0, 18],
+            "inde_4": [0, 19],
+            "inde_5": [0, 20],
+            "inde_6": [0, 21],
+            "inde_7": [0, -1],
+            "inde_8": [0, -1],
+            "inde_9": [0, -1],
+            "inde_led_1": [0, 48],
+            "inde_led_2": [0, 49],
+            "inde_led_3": [0, 50],
+            "inde_led_4": [0, 51],
+            "inde_led_5": [0, 52],
+            "inde_led_6": [0, 53],
+            "crossfade_out": [0, 8],
+            "crossfade_in": [0, 9],
+        }
+        for i in range(1, 101):
+            self.control_change[f"fader_{i}"] = [0, -1]
+
+    def _get_strv(self, key: str) -> list[str]:
+        """Read a list-of-strings preference from the application settings.
+
+        Args:
+            key: Settings key
+
+        Returns:
+            Stored list, or empty list if unavailable
+        """
+        settings = getattr(self.app, "settings", None)
+        if settings is None or not hasattr(settings, "get_strv"):
+            return []
+        return list(settings.get_strv(key))
+
+    def reset(self) -> None:
+        """Remove all MIDI control change"""
+        for action in self.control_change:
+            self.control_change[action] = [0, -1]
+
+    def scan(self, port: str, msg: mido.Message) -> None:
+        """Scan MIDI control changes
+
+        Args:
+            port: MIDI port name
+            msg: MIDI message
+        """
+        for key, value in list(self.control_change.items()):
+            if msg.channel == value[0] and msg.control == value[1]:
+                if key[:6] == "fader_":
+                    # We need to pass fader number to faders function
+                    self._function_fader(msg, int(key[6:]))
+                elif key[:5] == "inde_":
+                    self._function_inde(port, msg, int(key[5:]))
+                elif key[:13] == "crossfade_out":
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_out)
+                elif key[:12] == "crossfade_in":
+                    self.midi.xfade.moved(msg, self.midi.xfade.fader_in)
+                elif func := getattr(self, f"_function_{key}", None):
+                    func(port, msg)
+
+    def send(self, midi_name: str, value: int) -> None:
+        """Send MIDI control change message
+
+        Args:
+            midi_name: action string
+            value: value to send
+        """
+        if midi_name not in self.control_change:
+            return
+        channel, control = self.control_change[midi_name]
+        if control != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=channel,
+                control=control,
+                value=value,
+                time=0,
+            )
+            self.midi.enqueue(msg)
+
+    def learn(self, msg: mido.Message, learning: str) -> None:
+        """Learn new MIDI Control Change control
+
+        Args:
+            msg: MIDI message
+            learning: action to update
+        """
+        if self.control_change.get(learning):
+            # Find if values are already used
+            for key, value in list(self.control_change.items()):
+                if value[0] == msg.channel and value[1] == msg.control:
+                    # Delete it
+                    self.control_change.update({key: [0, -1]})
+            # Learn new values
+            self.control_change.update({learning: [msg.channel, msg.control]})
+
+    def __get_step(self, msg: mido.Message, port: str) -> tuple[int, int]:
+        """Return direction and step value
+
+        Args:
+            msg: MIDI message
+            port: MIDI port name
+
+        Returns:
+            step: Step value
+            direction: Up or Down
+        """
+        step = 0
+        direction = 0
+        relative1 = self._get_strv("relative1")
+        relative2 = self._get_strv("relative2")
+        makies = self._get_strv("makie")
+        absolutes = self._get_strv("absolute")
+        if port in relative1:
+            if msg.value > 64:
+                direction = -1
+                step = -(msg.value - 128)
+            elif msg.value < 65:
+                direction = 1
+                step = msg.value
+        elif port in relative2:
+            if msg.value > 64:
+                direction = 1
+                step = msg.value - 64
+            elif msg.value < 64:
+                direction = -1
+                step = 64 - msg.value
+        elif port in makies:
+            if msg.value > 64:
+                direction = -1
+                step = msg.value - 64
+            elif msg.value < 65:
+                direction = 1
+                step = msg.value
+        elif port in absolutes:
+            # Can't use absolute mode for wheel
+            direction = 1
+            step = 0
+        return step, direction
+
+    def _function_wheel(self, port: str, msg: mido.Message) -> None:
+        """Wheel for channels level
+
+        Args:
+            port: MIDI port name
+            msg: MIDI message
+        """
+        step, direction = self.__get_step(msg, port)
+        dir_val = 1 if direction >= 0 else -1
+        self.app.action_registry.execute("channel.wheel_adjust", step, dir_val)
+
+    def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
+        """Faders
+
+        Args:
+            msg: MIDI message
+            fader_index: Fader number
+        """
+        val = msg.value / 127
+        midi_fader = self.midi.faders.faders[fader_index - 1]
+        fader_bank = self.app.lightshow.fader_bank
+        fader = fader_bank.get_fader(fader_index)
+        if not midi_fader.is_valid(val, fader.level):
+            return
+        self.app.action_registry.execute(
+            "fader.set_level", fader_bank.active_page, fader_index, val
+        )
+
+    def _function_inde(self, port: str, msg: mido.Message, independent: int) -> None:
+        """Change independent knob level
+
+        Args:
+            port: MIDI port name
+            msg: MIDI message
+            independent: Independent number
+        """
+        relative1 = self._get_strv("relative1")
+        relative2 = self._get_strv("relative2")
+        makies = self._get_strv("makie")
+        absolutes = self._get_strv("absolute")
+        if port in absolutes:
+            # Absolute mode (value: 0-127)
+            inde, _ = self._new_inde_value(independent, 0)
+            if inde is None:
+                return
+            val = round((msg.value / 127) * 255)
+            fader = self.midi.faders.inde_faders[independent - 1]
+            if not fader.is_valid(val, round(inde.level * 255)):
+                return
+            self._update_inde(independent, inde, val)
+        else:
+            if port in relative1:
+                # Relative1 mode (value: 1-64 positive, 127-65 negative)
+                step = msg.value - 128 if msg.value > 64 else msg.value
+            elif port in relative2:
+                # Relative2 mode (value: 65-127 positive, 63-0 negative)
+                step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
+            elif port in makies:
+                # Mackie mode (value: 0-64 positive, 65-127 negative)
+                step = -(msg.value - 64) if msg.value > 64 else msg.value
+            else:
+                return
+
+            inde, val = self._new_inde_value(independent, step)
+            if inde is None:
+                return
+            self._update_inde(independent, inde, val)
+
+    def _new_inde_value(
+        self, independent: int, step: int
+    ) -> tuple[Independent | None, int]:
+        inde = None
+        for inde in self.app.lightshow.independents.independents:
+            if inde.number == independent:
+                val = round(inde.level * 255) + step
+                if val < 0:
+                    val = 0
+                elif val > 255:
+                    val = 255
+                break
+        return inde, val
+
+    def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
+        level_float = val / 255.0
+        if self.app is not None and hasattr(self.app, "action_registry"):
+            self.app.action_registry.execute(
+                "independent.set_level", independent, level_float
+            )
+        else:
+            inde.set_level(val)

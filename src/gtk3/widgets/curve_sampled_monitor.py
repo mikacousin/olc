@@ -29,7 +29,7 @@ from olc.gtk3.widgets.common import (
 from olc.gtk3.widgets.curve_units import CurveUnitMode, format_curve_value
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 MONITOR_HEIGHT = 54
 

@@ -14,24 +14,27 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import pathlib
 import typing
 from collections.abc import Mapping
 
-from olc.curve import LimitCurve
 from olc.define import UNIVERSES, strip_accents
-from olc.fader import FaderType
 from olc.files.write import WriteFile
+from olc.show.curve import LimitCurve
+from olc.show.fader import FaderType
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 class AsciiWriter(WriteFile):
     """Write ASCII Light Cue file"""
 
-    def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
+    def __init__(
+        self,
+        file: pathlib.Path | str | typing.Any,  # noqa: ANN401
+        lightshow: LightShow,
+    ) -> None:
         super().__init__(file, lightshow)
 
         self.lightshow = lightshow

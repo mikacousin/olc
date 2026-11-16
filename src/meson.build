@@ -18,22 +18,8 @@ configure_file(
 )
 
 olc_sources = [
-  'channel_time.py',
-  'cue.py',
-  'curve.py',
   'define.py',
   'dmx.py',
-  'editor.py',
-  'fader.py',
-  'fader_bank.py',
-  'group.py',
-  'independent.py',
-  'main_fader.py',
-  'patch.py',
-  'sequence.py',
-  'sequence_threads.py',
-  'settings.py',
-  'step.py',
   'timer.py',
 ]
 
@@ -49,7 +35,17 @@ install_subdir(
 )
 
 install_subdir(
+  'controllers',
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
   'core',
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
+  'dmx_engine',
   install_dir: join_paths(python_dir, 'olc')
 )
 
@@ -65,5 +61,10 @@ install_subdir(
 
 install_subdir(
   'devices',
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
+  'show',
   install_dir: join_paths(python_dir, 'olc')
 )

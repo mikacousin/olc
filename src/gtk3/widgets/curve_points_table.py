@@ -21,15 +21,15 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 
-from olc.curve import PointsCurve
 from olc.gtk3.widgets.curve_units import (
     CurveUnitMode,
     format_curve_value,
     parse_curve_value,
 )
+from olc.show.curve import PointsCurve
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 class CurvePointsTable(Gtk.Box):

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from olc.core.backends.osc.mdns import (
+from olc.controllers.osc.mdns import (
     MDNSAdvertiser,
     _build_response_packet,
     _encode_dns_name,
@@ -68,7 +68,7 @@ def test_mdns_advertiser_lifecycle_native_fallback() -> None:
     mock_responder.start.return_value = True
 
     with patch(
-        "olc.core.backends.osc.mdns._NativeMDNSResponder", return_value=mock_responder
+        "olc.controllers.osc.mdns._NativeMDNSResponder", return_value=mock_responder
     ):
         started = advertiser.start("OLC Test", 9005)
         assert started is True

@@ -22,9 +22,9 @@ import numpy as np
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.cue import Cue
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.step import Step
 
 
 def test_playback_actions_with_missing_playback() -> None:

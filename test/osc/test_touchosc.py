@@ -20,7 +20,7 @@ import os
 import xml.etree.ElementTree as ET
 import zlib
 
-from olc.core.backends.osc.touchosc import (
+from olc.controllers.osc.touchosc import (
     COLOR_ACCENT_PURPLE,
     COLOR_CYAN_ACCENT,
     COLOR_GREEN_GO,
@@ -260,8 +260,8 @@ def test_osc_delegate_momentary_release_and_touchosc_routes() -> None:
     """Test OSCDelegate ignores 0 release on keys and supports TouchOSC routes."""
     from unittest.mock import MagicMock
 
+    from olc.controllers.osc.delegate import OSCDelegate
     from olc.core.app import CoreApplication
-    from olc.core.backends.osc.delegate import OSCDelegate
 
     settings = MagicMock()
     app = CoreApplication(settings)

@@ -273,7 +273,7 @@ def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
 
 def test_limit_curve_point_and_spin_sync(app_gui: Application) -> None:
     """Verify LimitCurve interactive point, spinbutton, and width consistency."""
-    from olc.curve import LimitCurve
+    from olc.show.curve import LimitCurve
 
     app_gui.activate_action("curves", None)
     process_events()

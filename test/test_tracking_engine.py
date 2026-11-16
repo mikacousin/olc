@@ -21,12 +21,12 @@ import numpy as np
 import pytest
 
 from olc.core.tracking import TrackingEngine
-from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
-from olc.patch import PatchCollisionError, PatchManager
-from olc.sequence import Sequence, ThreadGo
-from olc.step import Step, get_parameter_family
+from olc.show.cue import Cue
+from olc.show.patch import PatchCollisionError, PatchManager
+from olc.show.sequence import Sequence, ThreadGo
+from olc.show.step import Step, get_parameter_family
 
 
 def create_mock_sequence() -> Sequence:

@@ -1,6 +1,6 @@
 import numpy as np
 
-from olc.core.universe_data import NUM_CHANNELS, DMXUniverse
+from olc.dmx_engine.universe_data import NUM_CHANNELS, DMXUniverse
 
 
 class TestDMXUniverse:

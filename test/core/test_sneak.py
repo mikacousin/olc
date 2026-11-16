@@ -26,9 +26,9 @@ from olc.actions import register_all_actions
 from olc.core.app import CoreApplication
 from olc.core.parser.executor import CommandExecutor
 from olc.core.parser.parser import CommandParser
-from olc.cue import Cue
 from olc.dmx import Dmx
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.step import Step
 
 
 def _create_test_app(sneak_time: float = 5.0) -> tuple[CoreApplication, Dmx]:

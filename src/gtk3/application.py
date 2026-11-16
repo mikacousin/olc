@@ -29,13 +29,13 @@ from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
-from olc.files.import_dialog import DialogData  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.curve import CurvesTab  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
+from olc.gtk3.dialogs.import_dialog import DialogData  # noqa: E402
 from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
@@ -46,15 +46,26 @@ from olc.gtk3.independent import IndependentsTab  # noqa: E402
 from olc.gtk3.lightshow import GtkLightShow  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402
+from olc.gtk3.settings import SettingsTab  # noqa: E402
 from olc.gtk3.tabs_manager import Tabs  # noqa: E402
 from olc.gtk3.track_channels import TrackChannelsTab  # noqa: E402
 from olc.gtk3.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.gtk3.window import Window  # noqa: E402
-from olc.sequence import Sequence  # noqa: E402
-from olc.settings import SettingsTab  # noqa: E402
+from olc.show.sequence import Sequence  # noqa: E402
 
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class _GLibScheduler:
+    """GLib main-loop timer scheduler adapter for Core subsystems."""
+
+    def timeout_add(self, interval_ms: int, callback: typing.Callable[[], bool]) -> int:
+        return GLib.timeout_add(interval_ms, callback)
+
+    def source_remove(self, handle: typing.Any) -> None:  # noqa: ANN401
+        if isinstance(handle, int):
+            GLib.source_remove(handle)
+
+
 class Application(Gtk.Application):
     """Application Class"""
 
@@ -116,6 +127,7 @@ class Application(Gtk.Application):
         app_type = typing.cast("olc.gtk3.application.Application", self)
         lightshow = GtkLightShow()
         self.core = CoreApplication(self.settings, lightshow=lightshow)
+        self.core.sneak_controller._scheduler = _GLibScheduler()
 
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)

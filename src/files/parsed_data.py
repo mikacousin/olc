@@ -16,22 +16,22 @@ from __future__ import annotations
 
 import typing
 
-from olc.channel_time import ChannelTime
-from olc.core.backends.midi import Midi
-from olc.cue import Cue
-from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.controllers.midi import Midi
 from olc.define import MAX_FADER_PER_PAGE
 from olc.devices.device import LightingDevice
 from olc.devices.fixture import FixtureDefinition
-from olc.fader import FaderType
-from olc.files.import_dialog import Action
-from olc.group import Group
-from olc.independent import IndependentType
-from olc.sequence import Sequence
-from olc.step import Step
+from olc.files.import_types import Action
+from olc.show.channel_time import ChannelTime
+from olc.show.cue import Cue
+from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.show.fader import FaderType
+from olc.show.group import Group
+from olc.show.independent import IndependentType
+from olc.show.sequence import Sequence
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 class ParsedData:

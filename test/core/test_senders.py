@@ -3,7 +3,7 @@ import struct
 import sys
 from unittest.mock import MagicMock, patch
 
-from olc.core.senders import (
+from olc.dmx_engine.senders import (
     ARTNET_PORT,
     SACN_PORT,
     ArtNetSender,
@@ -12,7 +12,7 @@ from olc.core.senders import (
     _build_sacn_buffers,
     _sacn_multicast_ip,
 )
-from olc.core.universe_data import DMXUniverse
+from olc.dmx_engine.universe_data import DMXUniverse
 
 
 class TestArtNetHeader:
@@ -57,7 +57,7 @@ class TestArtNetSender:
             univ[0] = 100
 
             # Patch _HAS_SENDMSG to force the fallback path
-            with patch("olc.core.senders._HAS_SENDMSG", False):
+            with patch("olc.dmx_engine.senders._HAS_SENDMSG", False):
                 sender.send(univ)
 
             mock_sock.sendto.assert_called_once()
@@ -68,7 +68,7 @@ class TestArtNetSender:
     def test_sequence_increments(self) -> None:
         """Sequence counter must increment on each send call."""
         with patch("socket.socket"):
-            with patch("olc.core.senders._HAS_SENDMSG", False):
+            with patch("olc.dmx_engine.senders._HAS_SENDMSG", False):
                 sender = ArtNetSender(ip="127.0.0.1")
                 univ = DMXUniverse()
                 sender._sock = MagicMock()  # pylint: disable=protected-access
@@ -84,7 +84,7 @@ class TestArtNetSender:
             sender._sock = MagicMock()  # pylint: disable=protected-access
             sender._sequence = 255  # pylint: disable=protected-access
 
-            with patch("olc.core.senders._HAS_SENDMSG", False):
+            with patch("olc.dmx_engine.senders._HAS_SENDMSG", False):
                 sender.send(DMXUniverse())
 
             assert sender._sequence == 0  # pylint: disable=protected-access
@@ -141,7 +141,7 @@ class TestSACNSender:  # pylint: disable=too-few-public-methods
             sender = SACNSender(universe=1, multicast=False, ip="127.0.0.1")
             univ = DMXUniverse()
 
-            with patch("olc.core.senders._HAS_SENDMSG", False):
+            with patch("olc.dmx_engine.senders._HAS_SENDMSG", False):
                 sender.send(univ)
 
             mock_sock.sendto.assert_called_once()
@@ -150,17 +150,8 @@ class TestSACNSender:  # pylint: disable=too-few-public-methods
 
     def test_send_multicast_multiple_interfaces(self) -> None:
         """send() must transmit data on all physical interfaces via IP_MULTICAST_IF."""
-        with (
-            patch("olc.core.senders.get_local_ips") as mock_get_ips_1,
-            patch("core.senders.get_local_ips", create=True) as mock_get_ips_2,
-        ):
+        with patch("olc.dmx_engine.senders.get_local_ips") as mock_get_ips_1:
             mock_get_ips_1.return_value = [
-                "0.0.0.0",
-                "127.0.0.1",
-                "192.168.1.50",
-                "10.0.0.5",
-            ]
-            mock_get_ips_2.return_value = [
                 "0.0.0.0",
                 "127.0.0.1",
                 "192.168.1.50",
@@ -175,7 +166,7 @@ class TestSACNSender:  # pylint: disable=too-few-public-methods
                 assert len(sender._socks) == 2
 
                 univ = DMXUniverse()
-                with patch("olc.core.senders._HAS_SENDMSG", False):
+                with patch("olc.dmx_engine.senders._HAS_SENDMSG", False):
                     sender.send(univ)
 
                 for mock_sock in mock_socks:
@@ -200,7 +191,7 @@ if sys.platform != "win32":
                 sender._sock = mock_sock  # pylint: disable=protected-access
                 univ = DMXUniverse()
 
-                with patch("olc.core.senders._HAS_SENDMSG", True):
+                with patch("olc.dmx_engine.senders._HAS_SENDMSG", True):
                     sender.send(univ)
 
                 mock_sock.sendmsg.assert_called_once()

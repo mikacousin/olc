@@ -14,29 +14,28 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import pathlib
 import typing
-
-from gi.repository import Gio
 
 from olc.files.ascii.writer import AsciiWriter
 from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends.midi import Midi
-    from olc.core.lightshow import LightShow
+    from olc.controllers.midi import Midi
+    from olc.show.lightshow import LightShow
 
 
 class ExportFile:
     """Export file"""
 
-    file: Gio.File
+    file: pathlib.Path | str | typing.Any
     file_type: FileType
     writer: AsciiWriter | OlcWriter
 
     def __init__(
         self,
-        file: Gio.File,
+        file: pathlib.Path | str | typing.Any,  # noqa: ANN401
         file_type: FileType,
         lightshow: LightShow,
         midi: Midi | None = None,

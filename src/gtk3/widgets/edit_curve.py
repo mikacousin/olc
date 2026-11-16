@@ -19,18 +19,18 @@ import typing
 import cairo
 from gi.repository import Gdk, Gtk, Pango
 
-from olc.curve import InterpolateCurve, SegmentsCurve
 from olc.gtk3.widgets.common import (
     TextAnchor,
     draw_cached_numeric_text,
     register_system_font_listener,
 )
+from olc.show.curve import InterpolateCurve, SegmentsCurve
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.tabs_manager import Tabs
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

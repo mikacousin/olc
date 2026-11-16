@@ -17,11 +17,11 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
+from olc.show.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.curve import Curve
+    from olc.show.curve import Curve
 
 
 class CurveNewAction(Action):

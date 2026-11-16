@@ -31,12 +31,12 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.devices.device import LightingDevice
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channels_view import ChannelsView
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

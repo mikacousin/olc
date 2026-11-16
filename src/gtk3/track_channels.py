@@ -30,11 +30,11 @@ if typing.TYPE_CHECKING:
 
     import olc.gtk3.track_channels
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

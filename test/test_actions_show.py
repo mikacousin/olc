@@ -22,9 +22,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.cue import Cue
-from olc.fader import FaderType
-from olc.group import Group
+from olc.show.cue import Cue
+from olc.show.fader import FaderType
+from olc.show.group import Group
 
 
 def test_show_new_resets_show_state() -> None:

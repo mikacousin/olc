@@ -592,7 +592,7 @@ def test_cue_treeview_cell_editing_space(
     cues_tab = win.tabs_manager.tabs["memories"]
     assert isinstance(cues_tab, CuesEditionTab)
     if len(app_gui.core.lightshow.cues) == 0:
-        from olc.cue import Cue
+        from olc.show.cue import Cue
 
         app_gui.core.lightshow.cues.append(Cue(0, 1.0, text="Test Cue"))
         cues_tab.refresh()

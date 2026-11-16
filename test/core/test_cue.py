@@ -17,8 +17,8 @@
 import numpy as np
 import pytest
 
-from olc.cue import Cue
 from olc.files.parsed_data import ParsedData
+from olc.show.cue import Cue
 
 
 def test_cue_channels_initialization() -> None:

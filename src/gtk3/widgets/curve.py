@@ -19,14 +19,14 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 
-from olc.curve import LimitCurve
 from olc.gtk3.widgets.common import rounded_rectangle_fill
+from olc.show.curve import LimitCurve
 
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.core.lightshow import LightShow
-    from olc.curve import Curve
+    from olc.show.curve import Curve
+    from olc.show.lightshow import LightShow
 
 
 def get_curve_display_name(curve: Curve | None) -> str:

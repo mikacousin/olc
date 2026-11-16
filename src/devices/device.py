@@ -37,7 +37,7 @@ from .channel import (
 from .color import CIEXYZ, CIExyY, ColorMatcher, FixtureColorProfile, MatchResult, sRGB
 
 if TYPE_CHECKING:
-    from olc.curve import Curve
+    from olc.show.curve import Curve
 
 
 class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-public-methods

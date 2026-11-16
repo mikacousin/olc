@@ -23,13 +23,13 @@ import numpy as np
 import pytest
 
 from olc.core.crossfade import CrossFade
-from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
 from olc.dmx import Dmx
-from olc.patch import PatchManager
-from olc.sequence import Sequence, ThreadGo
-from olc.step import Step
+from olc.show.cue import Cue
+from olc.show.patch import PatchManager
+from olc.show.sequence import Sequence, ThreadGo
+from olc.show.step import Step
 
 
 class _MockDMX:

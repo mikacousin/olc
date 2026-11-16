@@ -20,7 +20,7 @@ import typing
 
 from olc.core.action import Action
 from olc.define import MAX_FADER_PAGE
-from olc.fader import FaderType
+from olc.show.fader import FaderType
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

@@ -28,16 +28,16 @@ from olc.core.tracking import (
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.seq_channels_view import SeqChannelsView
-from olc.sequence import Sequence
+from olc.show.sequence import Sequence
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 __all__ = [
     "TRACKING_COLORS",

@@ -28,7 +28,7 @@ from olc.gtk3.widgets.go import GoWidget
 from olc.gtk3.widgets.knob import KnobWidget
 from olc.gtk3.widgets.pause import PauseWidget
 from olc.gtk3.widgets.toggle import ToggleWidget
-from olc.independent import IndependentType
+from olc.show.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from olc.core.commandline import CoreCommandLine

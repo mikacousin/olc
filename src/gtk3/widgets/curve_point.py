@@ -23,11 +23,11 @@ from gi.repository import Gdk, GObject, Gtk
 if typing.TYPE_CHECKING:
     import cairo
 
-    from olc.core.lightshow import LightShow
-    from olc.curve import LimitCurve, PointsCurve
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.tabs_manager import Tabs
+    from olc.show.curve import LimitCurve, PointsCurve
+    from olc.show.lightshow import LightShow
 
 
 @dataclass

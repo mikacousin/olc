@@ -23,7 +23,7 @@ from .base import BaseEventBridgeHandler
 if typing.TYPE_CHECKING:
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
-    from olc.settings import SettingsTab
+    from olc.gtk3.settings import SettingsTab
 
 
 # pylint: disable=too-few-public-methods

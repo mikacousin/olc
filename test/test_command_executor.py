@@ -292,10 +292,10 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
     import numpy as np
     import pytest
 
-    from olc.cue import Cue
     from olc.devices.builtin import create_moving_head_definition
-    from olc.sequence import _capture_device_states, _interpolate_device_states
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.sequence import _capture_device_states, _interpolate_device_states
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)

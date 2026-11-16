@@ -22,11 +22,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from olc.core.backends.artnet import ArtNetManager
-from olc.core.backends.artnet.artnet import Discovery, Listeners, Sender
-from olc.core.backends.artnet.merge import ArtDmxMerger, MergeMode
-from olc.core.backends.artnet.network import Network
-from olc.core.backends.artnet.protocol import (
+from olc.dmx_engine.artnet import ArtNetManager
+from olc.dmx_engine.artnet.artnet import Discovery, Listeners, Sender
+from olc.dmx_engine.artnet.merge import ArtDmxMerger, MergeMode
+from olc.dmx_engine.artnet.network import Network
+from olc.dmx_engine.artnet.protocol import (
     ArtDmx,
     ArtNetDecodeError,
     ArtPoll,
@@ -35,7 +35,7 @@ from olc.core.backends.artnet.protocol import (
     PriorityCodes,
     StyleCodes,
 )
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
 
 
 class TestArtNetProtocol:
@@ -329,7 +329,7 @@ class TestArtNetNetwork:
         net = Network(artnet_mock)
 
         async def run_test() -> None:
-            with patch("olc.core.backends.artnet.network.socket") as mock_sock_class:
+            with patch("olc.dmx_engine.artnet.network.socket") as mock_sock_class:
                 mock_sock = MagicMock()
                 mock_sock_class.return_value = mock_sock
 
@@ -366,7 +366,7 @@ class TestArtNetNetwork:
     def test_network_packet_dispatch(self) -> None:
         """Verify DatagramProtocol correctly forwards packet buffers."""
         artnet_mock = MagicMock()
-        from olc.core.backends.artnet.network import ArtNetProtocol
+        from olc.dmx_engine.artnet.network import ArtNetProtocol
 
         protocol = ArtNetProtocol(artnet_mock)
         data = b"dummy_packet"
@@ -374,7 +374,7 @@ class TestArtNetNetwork:
 
         protocol.datagram_received(data, addr)
         # Protocol should forward payload and source IP with standard Art-Net port
-        from olc.core.backends.artnet.protocol import PORT
+        from olc.dmx_engine.artnet.protocol import PORT
 
         artnet_mock.read_packet.assert_called_once_with(data, ("192.168.1.1", PORT))
 
@@ -419,7 +419,7 @@ class TestArtNetManager:
         umap.enable_protocol(1, Protocol.ARTNET)
         umap[1].artnet.sync_active = True
 
-        from olc.core.engine import CoreEngine
+        from olc.dmx_engine.engine import CoreEngine
 
         engine = CoreEngine(umap)
 
@@ -451,7 +451,7 @@ class TestArtNetManager:
         umap.enable_protocol(1, Protocol.ARTNET)
         umap[1].artnet.sync_active = True
 
-        from olc.core.engine import CoreEngine
+        from olc.dmx_engine.engine import CoreEngine
 
         engine = CoreEngine(umap)
 
@@ -571,7 +571,7 @@ class TestArtNetManager:
     def test_core_app_get_artnet_devices_and_event(self) -> None:
         """Verify CoreApplication.get_artnet_devices and artnet.devices_changed."""
         from olc.core.app import CoreApplication
-        from olc.core.backends import DMXBackend
+        from olc.core.dmx_backend import DMXBackend
 
         core_app = CoreApplication(MagicMock())
         assert core_app.get_artnet_devices() == []

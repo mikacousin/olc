@@ -31,15 +31,15 @@ from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
-    from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
+    from olc.core.dmx_backend import DMXBackend
     from olc.devices.device import LightingDevice
     from olc.devices.fixture import FixtureLibrary
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
-    from olc.patch import PatchManager
+    from olc.show.lightshow import LightShow
+    from olc.show.patch import PatchManager
 
 # Column indices for the devices ListStore
 COL_ID = 0

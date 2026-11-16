@@ -19,19 +19,19 @@ import typing
 from gi.repository import Gdk, GLib, Gtk
 
 from olc.define import MAX_CHANNELS, is_int, is_non_nul_float
-from olc.group import Group
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.gtk3.widgets.group import GroupWidget
+from olc.show.group import Group
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 
 class GroupChannelsView(ChannelsView):

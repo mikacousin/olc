@@ -18,22 +18,22 @@ import threading
 import typing
 
 from olc.actions import register_all_actions
-from olc.core.backends import DMXBackend
 from olc.core.binding import MidiBinding, OscBinding
 from olc.core.commandline import CoreCommandLine
 from olc.core.crossfade import CrossFade
+from olc.core.dmx_backend import DMXBackend
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
-from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
 from olc.core.sneak import SneakController
 from olc.core.tabs import CoreTabs
+from olc.show.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
-    from olc.core.backends.midi import Midi
-    from olc.core.backends.osc import Osc
-    from olc.core.engine import CoreEngine
+    from olc.controllers.midi import Midi
+    from olc.controllers.osc import Osc
+    from olc.dmx_engine.engine import CoreEngine
 
 
 # pylint: disable=too-many-instance-attributes
@@ -189,7 +189,7 @@ class CoreApplication(EventDispatcher):
             return self.engine
 
         # pylint: disable=import-outside-toplevel
-        from olc.core.engine import CoreEngine
+        from olc.dmx_engine.engine import CoreEngine
 
         self.engine = CoreEngine(
             self.lightshow.universe_map,
@@ -219,7 +219,7 @@ class CoreApplication(EventDispatcher):
             return self.midi
 
         # pylint: disable=import-outside-toplevel
-        from olc.core.backends.midi import Midi
+        from olc.controllers.midi import Midi
 
         self.midi = Midi(typing.cast(typing.Any, self), on_ports_changed)
         for name, note in [
@@ -245,7 +245,7 @@ class CoreApplication(EventDispatcher):
             return self.osc
 
         # pylint: disable=import-outside-toplevel
-        from olc.core.backends.osc import Osc
+        from olc.controllers.osc import Osc
 
         self.osc = Osc(typing.cast(typing.Any, self))
         for name in (

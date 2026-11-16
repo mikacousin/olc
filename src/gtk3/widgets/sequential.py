@@ -28,7 +28,7 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

@@ -21,29 +21,27 @@ import os
 import pathlib
 import typing
 
-from gi.repository import Gio
-
 from olc.core.action import Action
-from olc.core.lightshow import default_workspace
-from olc.core.universe_config import default_universe_map
-from olc.cue import Cue
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.devices.builtin import populate_builtin_library
 from olc.devices.device import LightingDevice
 from olc.devices.fixture import FixtureDefinition
-from olc.fader import FaderType
+from olc.dmx_engine.universe_config import default_universe_map
 from olc.files.export_file import ExportFile
 from olc.files.file_type import FileType
-from olc.files.import_dialog import Action as ImportAction
 from olc.files.import_file import ImportFile
-from olc.group import Group
-from olc.independent import Independents
-from olc.sequence import Sequence
-from olc.step import Step
+from olc.files.import_types import Action as ImportAction
+from olc.show.cue import Cue
+from olc.show.fader import FaderType
+from olc.show.group import Group
+from olc.show.independent import Independents
+from olc.show.lightshow import default_workspace
+from olc.show.sequence import Sequence
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.core.lightshow import LightShow
+    from olc.show.lightshow import LightShow
 
 
 class ShowNewAction(Action):
@@ -201,15 +199,15 @@ class ShowOpenAction(Action):
         ext = "".join([s for s in pathlib.Path(path).suffixes if " " not in s]).lower()
         file_type = FileType.ASCII if ext == ".asc" else FileType.OLC
 
-        gio_file = Gio.File.new_for_path(path)
+        file_path_obj = pathlib.Path(path)
         lightshow = self.app.lightshow
-        lightshow.file = gio_file
+        lightshow.file = file_path_obj
         lightshow.file_path = path
         lightshow.basename = os.path.basename(path)
 
         imported = ImportFile(
             lightshow,
-            gio_file,
+            file_path_obj,
             file_type,
             midi=getattr(self.app, "midi", None),
             settings=getattr(self.app, "settings", None),
@@ -258,9 +256,9 @@ class ShowSaveAction(Action):
             raise ValueError("No file path specified for show.save")
 
         path = os.path.abspath(target_path)
-        gio_file = Gio.File.new_for_path(path)
+        file_path_obj = pathlib.Path(path)
         lightshow = self.app.lightshow
-        lightshow.file = gio_file
+        lightshow.file = file_path_obj
         lightshow.file_path = path
         lightshow.basename = os.path.basename(path)
 
@@ -268,7 +266,7 @@ class ShowSaveAction(Action):
         self.app.emit("show.before_save")
 
         exported = ExportFile(
-            gio_file,
+            file_path_obj,
             FileType.OLC,
             lightshow,
             midi=getattr(self.app, "midi", None),
@@ -304,9 +302,8 @@ class ShowExportAsciiAction(Action):
             raise ValueError("No file path specified for show.export_ascii")
 
         path = os.path.abspath(self.file_path)
-        gio_file = Gio.File.new_for_path(path)
         exported = ExportFile(
-            gio_file,
+            pathlib.Path(path),
             FileType.ASCII,
             self.app.lightshow,
         )
@@ -484,12 +481,12 @@ class ShowImportAction(Action):
         ext = "".join([s for s in pathlib.Path(path).suffixes if " " not in s]).lower()
         file_type = FileType.ASCII if ext == ".asc" else FileType.OLC
 
-        gio_file = Gio.File.new_for_path(path)
+        file_path_obj = pathlib.Path(path)
         lightshow = self.app.lightshow
 
         imported = ImportFile(
             lightshow,
-            gio_file,
+            file_path_obj,
             file_type,
             midi=getattr(self.app, "midi", None),
             settings=getattr(self.app, "settings", None),

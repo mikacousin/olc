@@ -2,8 +2,8 @@ import time
 
 import numpy as np
 
-from olc.core.mergers import HTPMerger, LTPMerger
-from olc.core.universe_data import NUM_CHANNELS
+from olc.dmx_engine.mergers import HTPMerger, LTPMerger
+from olc.dmx_engine.universe_data import NUM_CHANNELS
 
 
 class TestHTPMerger:

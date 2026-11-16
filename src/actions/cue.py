@@ -19,7 +19,7 @@ import typing
 from collections.abc import Mapping
 
 from olc.core.action import Action
-from olc.cue import Cue
+from olc.show.cue import Cue
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

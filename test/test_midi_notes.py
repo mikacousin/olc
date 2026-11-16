@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import mido
 
-from olc.core.backends.midi.notes import MidiNotes
+from olc.controllers.midi.notes import MidiNotes
 from olc.files.olc.writer import OlcWriter
 from olc.files.parsed_data import ParsedData
 

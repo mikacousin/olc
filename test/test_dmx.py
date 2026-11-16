@@ -17,12 +17,12 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-import olc.core.lightshow  # noqa: F401  # Pre-import to resolve circular import cycle
+import olc.show.lightshow  # noqa: F401  # Pre-import to resolve circular import cycle
 from olc.core.app import CoreApplication
-from olc.core.backends import DMXBackend
-from olc.core.universe_config import Protocol
+from olc.core.dmx_backend import DMXBackend
 from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.dmx import Dmx
+from olc.dmx_engine.universe_config import Protocol
 
 
 def test_dmx_send_emits_outputs_changed() -> None:
@@ -178,9 +178,9 @@ def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
         TRACKING_COLORS,
         TrackingDisplayState,
     )
-    from olc.cue import Cue  # pylint: disable=import-outside-toplevel
-    from olc.sequence import Sequence  # pylint: disable=import-outside-toplevel
-    from olc.step import Step  # pylint: disable=import-outside-toplevel
+    from olc.show.cue import Cue  # pylint: disable=import-outside-toplevel
+    from olc.show.sequence import Sequence  # pylint: disable=import-outside-toplevel
+    from olc.show.step import Step  # pylint: disable=import-outside-toplevel
 
     lightshow = MagicMock()
     lightshow.patch.universes = [1]

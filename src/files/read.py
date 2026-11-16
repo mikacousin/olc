@@ -15,16 +15,30 @@
 from __future__ import annotations
 
 import gzip
+import logging
+import pathlib
+import threading
 import typing
-from gettext import gettext as _
 
 from charset_normalizer import from_bytes
-from gi.repository import GLib, Gtk
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-
     from olc.files.import_file import ImportFile
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _read_file_bytes(file: pathlib.Path | str | typing.Any) -> bytes:  # noqa: ANN401
+    if isinstance(file, (pathlib.Path, str)):
+        return pathlib.Path(file).read_bytes()
+    if hasattr(file, "get_path"):
+        path = file.get_path()
+        if path:
+            return pathlib.Path(path).read_bytes()
+    if hasattr(file, "load_contents"):
+        _success, data, _etag = file.load_contents(None)
+        return bytes(data)
+    raise TypeError(f"Unsupported file source: {file!r}")
 
 
 class ReadFile:
@@ -33,7 +47,7 @@ class ReadFile:
     This class must be sub-classed and parse implemented
     """
 
-    window: Gtk.Window | None
+    window: object | None
     imported: ImportFile
     compressed: bool
     contents: str
@@ -41,14 +55,16 @@ class ReadFile:
     def __init__(
         self,
         imported: ImportFile,
-        window: Gtk.Window | None = None,
+        window: object | None = None,
         compressed: bool = False,
         importation: bool = False,
+        on_error: typing.Callable[[str], None] | None = None,
     ) -> None:
         self.imported = imported
         self.window = window
         self.compressed = compressed
         self.importation = importation
+        self.on_error = on_error
         self.contents = ""
 
     def _process_data(self, data: bytes, auto_import: bool = True) -> None:
@@ -68,19 +84,13 @@ class ReadFile:
         else:
             self.imported.load_all()
 
-    def _load_cb(
-        self, file: Gio.File, result: Gio.AsyncResult, user_data: object = None
-    ) -> None:
-        try:
-            _success, data, _etag = file.load_contents_finish(result)
-        except GLib.GError as error:
-            self._error_dialog(str(error))
-            return
-        self._process_data(data)
-
     def read(self) -> None:
-        """Read all file"""
-        self.imported.file.load_contents_async(None, self._load_cb, None)
+        """Read all file asynchronously."""
+
+        def _worker() -> None:
+            self.read_sync(auto_import=True)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def read_sync(self, auto_import: bool = True) -> None:
         """Read all file synchronously.
@@ -90,8 +100,8 @@ class ReadFile:
                 If False, only parse and clean data.
         """
         try:
-            _success, data, _etag = self.imported.file.load_contents(None)
-        except GLib.GError as error:
+            data = _read_file_bytes(self.imported.file)
+        except OSError as error:
             self._error_dialog(str(error))
             return
         self._process_data(data, auto_import=auto_import)
@@ -105,14 +115,7 @@ class ReadFile:
         raise NotImplementedError
 
     def _error_dialog(self, message: str) -> None:
-        if self.window is None:
-            return
-        dialog = Gtk.MessageDialog(
-            transient_for=self.window,
-            message_type=Gtk.MessageType.ERROR,
-            buttons=Gtk.ButtonsType.OK,
-            text=message,
-        )
-        dialog.set_title(_("Error"))
-        dialog.run()
-        dialog.destroy()
+        if self.on_error is not None:
+            self.on_error(message)
+        else:
+            LOGGER.error("%s", message)

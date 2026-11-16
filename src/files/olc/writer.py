@@ -15,18 +15,17 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import typing
 
-from olc.core.backends.midi import Midi
-from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.fader import FaderType
+from olc.controllers.midi import Midi
 from olc.files.write import WriteFile
+from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.show.fader import FaderType
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-
-    from olc.core.lightshow import LightShow
-    from olc.sequence import Sequence
+    from olc.show.lightshow import LightShow
+    from olc.show.sequence import Sequence
 
 
 class OlcWriter(WriteFile):
@@ -36,7 +35,10 @@ class OlcWriter(WriteFile):
     midi: Midi | None
 
     def __init__(
-        self, file: Gio.File, lightshow: LightShow, midi: Midi | None = None
+        self,
+        file: pathlib.Path | str | typing.Any,  # noqa: ANN401
+        lightshow: LightShow,
+        midi: Midi | None = None,
     ) -> None:
         super().__init__(file, lightshow, compressed=True)
         self.lightshow = lightshow

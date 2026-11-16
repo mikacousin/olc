@@ -102,8 +102,8 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app = app_gui_instance
 
     # 1. Clear any logical data and stop background playback transitions
-    from olc.cue import Cue  # noqa: E402
-    from olc.step import Step  # noqa: E402
+    from olc.show.cue import Cue  # noqa: E402
+    from olc.show.step import Step  # noqa: E402
 
     main_pb = app.core.lightshow.main_playback
     main_pb.stop()
@@ -142,7 +142,7 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     process_events()
 
     # 3. Reset lightshow workspace
-    from olc.core.lightshow import default_workspace  # noqa: E402
+    from olc.show.lightshow import default_workspace  # noqa: E402
 
     app.core.lightshow.workspace = default_workspace()
 

@@ -25,7 +25,7 @@ from gi.repository import Gtk
 
 from olc.core.app import CoreApplication
 from olc.gtk3.event_bridge import GuiEventBridge
-from olc.settings import SettingsTab
+from olc.gtk3.settings import SettingsTab
 
 
 def test_midi_port_toggle_action_and_undo_redo() -> None:

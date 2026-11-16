@@ -26,7 +26,7 @@ from olc.devices.builtin import (
     create_moving_head_definition,
 )
 from olc.dmx import Dmx
-from olc.patch import PatchCollisionError, PatchManager
+from olc.show.patch import PatchCollisionError, PatchManager
 
 
 def test_patch_manager_initialization() -> None:
@@ -301,15 +301,15 @@ def test_patch_clear_and_set_1on1_undo_preserves_multi_param_devices() -> None:
 # pylint: disable=too-many-locals
 def test_fixture_exchange_clamping_warning() -> None:
     """Test detection of clamped cue parameters when exchanging fixture profiles."""
-    from olc.cue import Cue
     from olc.devices.device import ChannelType, FixtureType
     from olc.devices.fixture import (
         ChannelDefinition,
         DmxModeDefinition,
         FixtureDefinition,
     )
-    from olc.patch import FixtureExchangeWarning
-    from olc.step import Step
+    from olc.show.cue import Cue
+    from olc.show.patch import FixtureExchangeWarning
+    from olc.show.step import Step
 
     settings = MagicMock()
     app = CoreApplication(settings)

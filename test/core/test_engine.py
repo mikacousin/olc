@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 # pylint: disable=protected-access
-from olc.core.engine import CoreEngine
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.dmx_engine.engine import CoreEngine
+from olc.dmx_engine.universe_config import Protocol, UniverseMap
 
 
 def _make_engine(num_universes: int = 4, hz: float = 100.0) -> CoreEngine:

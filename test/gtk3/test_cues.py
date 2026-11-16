@@ -24,9 +24,9 @@ import pytest
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
-from olc.cue import Cue  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
+from olc.show.cue import Cue  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 

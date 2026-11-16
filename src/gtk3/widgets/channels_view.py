@@ -35,10 +35,10 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
-    from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
+    from olc.show.lightshow import LightShow
 
 VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
 

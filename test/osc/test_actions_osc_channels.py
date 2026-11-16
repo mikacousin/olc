@@ -22,9 +22,9 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from olc.controllers.osc.channels_grid import ChannelsGridManager
+from olc.controllers.osc.delegate import OSCDelegate
 from olc.core.app import CoreApplication
-from olc.core.backends.osc.channels_grid import ChannelsGridManager
-from olc.core.backends.osc.delegate import OSCDelegate
 from olc.define import MAX_CHANNELS
 from olc.devices.channel import ChannelType
 

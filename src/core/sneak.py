@@ -20,7 +20,7 @@ import time
 import typing
 from dataclasses import dataclass
 
-from gi.repository import GLib
+from olc.core.scheduler import ThreadingScheduler, TimerScheduler
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -51,11 +51,16 @@ class IndependentSneakFade:
 class SneakController:
     """Manages timed gradual release (Sneak) of manual overrides and independents."""
 
-    def __init__(self, app: CoreApplication) -> None:
+    def __init__(
+        self, app: CoreApplication, scheduler: TimerScheduler | None = None
+    ) -> None:
         self.app = app
+        self._scheduler: TimerScheduler = (
+            scheduler if scheduler is not None else ThreadingScheduler()
+        )
         self._channel_fades: dict[int, ChannelSneakFade] = {}
         self._inde_fades: dict[int, IndependentSneakFade] = {}
-        self._timer_id: int | None = None
+        self._timer_id: typing.Any = None
 
     def get_default_sneak_time(self) -> float:
         """Return default sneak time from settings or 5.0 seconds."""
@@ -228,12 +233,12 @@ class SneakController:
 
     def _ensure_timer(self) -> None:
         if self._timer_id is None:
-            self._timer_id = GLib.timeout_add(20, self._on_tick)
+            self._timer_id = self._scheduler.timeout_add(20, self._on_tick)
 
     def _check_timer(self) -> None:
         if not self._channel_fades and not self._inde_fades:
             if self._timer_id is not None:
-                GLib.source_remove(self._timer_id)
+                self._scheduler.source_remove(self._timer_id)
                 self._timer_id = None
 
     def _on_tick(self) -> bool:

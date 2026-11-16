@@ -20,19 +20,19 @@ import typing
 
 from gi.repository import Gtk
 
-from olc.curve import LimitCurve, PointsCurve
-from olc.fader import FaderType
 from olc.gtk3.fader import FaderTab
 from olc.gtk3.widgets.curve import get_curve_display_name
-from olc.independent import IndependentType
+from olc.show.curve import LimitCurve, PointsCurve
+from olc.show.fader import FaderType
+from olc.show.independent import IndependentType
 
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
-    from olc.group import Group
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.widgets.group import GroupWidget
+    from olc.show.group import Group
 
 
 # pylint: disable=too-few-public-methods
