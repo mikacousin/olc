@@ -147,6 +147,7 @@ from olc.actions.park import (
 )
 from olc.actions.patch import (
     PatchAddOutputAction,
+    PatchAddOutputsAction,
     PatchClearAction,
     PatchDeviceAction,
     PatchExchangeFixtureAction,
@@ -238,6 +239,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PatchUnpatchOutputAction,
         PatchDeviceAction,
         PatchUnpatchDeviceAction,
+        PatchAddOutputsAction,
         PatchClearAction,
         PatchSet1on1Action,
         PatchSetDeviceCurveAction,

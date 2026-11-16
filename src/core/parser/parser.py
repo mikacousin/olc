@@ -40,6 +40,7 @@ from olc.core.parser.ast_nodes import (
     IntensityCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
+    PatchCommandNode,
     RecordCueCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -299,6 +300,11 @@ class CommandParser:
 
         if self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
+
+        if self.match(TokenType.PATCH):
+            self.expect(TokenType.AT, "Expected AT after PATCH")
+            addrs = self._parse_address_selection(require_address_kw=False)
+            return PatchCommandNode(selection=selection, addresses=addrs)
 
         if self.match(TokenType.UNPARK):
             return ChannelUnparkCommandNode(selection=selection)
@@ -644,11 +650,16 @@ class CommandParser:
 
         return AddressNumberNode(universe=universe, output=output)
 
-    def _parse_address_selection(self) -> AddressSelectionNode:
+    def _parse_address_selection(
+        self, *, require_address_kw: bool = True
+    ) -> AddressSelectionNode:
         items: list[AddressItemNode] = []
         exclusions: list[AddressItemNode] = []
 
-        self.expect(TokenType.ADDRESS, "Expected ADDRESS")
+        if require_address_kw:
+            self.expect(TokenType.ADDRESS, "Expected ADDRESS")
+        else:
+            self.match(TokenType.ADDRESS)
         items.append(self._parse_address_item())
 
         while True:
@@ -1100,6 +1111,17 @@ class CommandParser:
                     return [TokenType.NUMBER]
                 return []
 
+        if any(t.type == TokenType.PATCH for t in active_tokens):
+            if last.type == TokenType.PATCH:
+                return [TokenType.AT]
+            if last.type == TokenType.AT:
+                return [TokenType.NUMBER, TokenType.ADDRESS]
+            if last.type == TokenType.NUMBER:
+                res = [TokenType.THRU, TokenType.PLUS, TokenType.MINUS, TokenType.SLASH]
+                if not text.endswith(" "):
+                    res.append(TokenType.NUMBER)
+                return res
+
         # If we have already seen AT or an attribute token,
         # we are in the value/action phase
         if any(
@@ -1119,6 +1141,7 @@ class CommandParser:
                 TokenType.ODD,
                 TokenType.EVEN,
                 TokenType.AT,
+                TokenType.PATCH,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,
@@ -1135,6 +1158,7 @@ class CommandParser:
         if last.type in (TokenType.ODD, TokenType.EVEN):
             return [
                 TokenType.AT,
+                TokenType.PATCH,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,

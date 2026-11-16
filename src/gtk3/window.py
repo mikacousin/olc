@@ -20,6 +20,7 @@ import typing
 from gi.repository import Gdk, Gio, GLib, Gtk
 
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
+from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.commandline import CommandLineWidget
 from olc.gtk3.widgets.main_fader import MainFaderWidget
 from olc.gtk3.window_channels import LiveView
@@ -126,6 +127,18 @@ class Window(Gtk.ApplicationWindow):
         self.playback.connect("switch-page", self._on_switch_page, "playback")
 
         self.set_icon_name("olc")
+        self.app.core.subscribe(
+            "commandline.confirm_required", self._on_commandline_confirm_required
+        )
+
+    def _on_commandline_confirm_required(
+        self, message: str, on_confirm: typing.Callable[[], None]
+    ) -> None:
+        dialog = ConfirmationDialog(message, typing.cast("typing.Any", self))
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            on_confirm()
 
     def get_active_tab(self) -> Gtk.Paned | None:
         """Get active tab
@@ -455,6 +468,12 @@ class Window(Gtk.ApplicationWindow):
                 cv.update()
                 return True
 
+        # Alt + Shift shortcuts
+        elif modifiers == int(Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.SHIFT_MASK):
+            if keyval in (Gdk.KEY_p, Gdk.KEY_P):
+                self._append_console_keyword("POSITION", trailing_space=True)
+                return True
+
         # Alt-only shortcuts
         elif modifiers == int(Gdk.ModifierType.MOD1_MASK):
             if keyval in (Gdk.KEY_p, Gdk.KEY_P):
@@ -521,7 +540,7 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
                 (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
-                (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
+                (Gdk.KEY_p, Gdk.KEY_P): ("PATCH", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),
@@ -763,7 +782,7 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_d, Gdk.KEY_D): ("DELETE", True),
                 (Gdk.KEY_b, Gdk.KEY_B): ("BLOCK", True),
                 (Gdk.KEY_s, Gdk.KEY_S): ("SEQ", True),
-                (Gdk.KEY_p, Gdk.KEY_P): ("POSITION", True),
+                (Gdk.KEY_p, Gdk.KEY_P): ("PATCH", True),
                 (Gdk.KEY_e, Gdk.KEY_E): ("EVEN", True),
                 (Gdk.KEY_j, Gdk.KEY_J): ("ODD", True),
                 (Gdk.KEY_m, Gdk.KEY_M): ("ALL", True),

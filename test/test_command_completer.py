@@ -164,3 +164,12 @@ def test_completer_reset_cycle_on_different_input() -> None:
     completer.reset_cycle()
     res2 = completer.complete("1 AT")
     assert res2.new_text == "1 AT FULL "
+
+
+def test_completer_patch_keyword() -> None:
+    parser = CommandParser()
+    completer = CommandCompleter(parser)
+
+    res = completer.complete("1 PA")
+    assert res.has_completed is True
+    assert "PATCH" in res.candidates

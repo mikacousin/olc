@@ -40,6 +40,7 @@ from olc.core.parser.ast_nodes import (
     IntensityCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
+    PatchCommandNode,
     RecordCueCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -50,6 +51,7 @@ from olc.core.parser.ast_nodes import (
     UpdateCueCommandNode,
 )
 from olc.define import MAX_CHANNELS
+from olc.devices.device import FixtureType
 from olc.show.cue import Cue
 from olc.show.step import Step
 
@@ -152,6 +154,9 @@ class CommandExecutor:
 
         if isinstance(node, ParkUnparkAllCommandNode):
             return self._execute_park_unpark_all(node)
+
+        if isinstance(node, PatchCommandNode):
+            return self._execute_patch(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -1085,3 +1090,104 @@ class CommandExecutor:
             self.app.lightshow.park.unpark_all()
 
         return CommandResult(True, "All channels and addresses unparked")
+
+    def _apply_patch_assignments(
+        self, assignments: list[tuple[int, int, int, int]]
+    ) -> None:
+        registry = self._get_registry()
+        if registry is not None and "patch.add_outputs" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("patch.add_outputs", assignments)
+        else:
+            patch = self.app.lightshow.patch
+            for ch, out, univ, curve in assignments:
+                if patch.get_address_occupant(univ, out) is not None:
+                    patch.unpatch_address(univ, out)
+                patch.add_output(ch, out, univ, curve)
+            self.app.lightshow.set_modified()
+            self.app.emit("patch.changed")
+
+    def _execute_patch(  # pylint: disable=too-many-locals,too-many-branches
+        self, node: PatchCommandNode, *, force: bool = False
+    ) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels selected to patch")
+
+        addresses = self.resolve_address_selection(node.addresses)
+        if not addresses:
+            return CommandResult(False, "No addresses specified to patch")
+
+        for univ, out in addresses:
+            if univ < 1 or not 1 <= out <= 512:
+                return CommandResult(False, f"Invalid DMX address: {univ}/{out}")
+
+        assignments: list[tuple[int, int, int, int]] = []
+        if len(channels) == 1:
+            ch = channels[0]
+            assignments = [(ch, out, univ, 0) for univ, out in addresses]
+        elif len(addresses) == len(channels):
+            assignments = [
+                (ch, out, univ, 0)
+                for ch, (univ, out) in zip(channels, addresses, strict=True)
+            ]
+        elif len(addresses) == 1:
+            start_univ, start_out = addresses[0]
+            for idx, ch in enumerate(channels):
+                abs_offset = (start_out - 1) + idx
+                u = start_univ + (abs_offset // 512)
+                o = (abs_offset % 512) + 1
+                assignments.append((ch, o, u, 0))
+        else:
+            return CommandResult(
+                False,
+                f"Cannot map {len(channels)} channels to {len(addresses)} addresses",
+            )
+
+        patch = self.app.lightshow.patch
+        for ch, _out, _univ, _curve in assignments:
+            dev = patch.get_device(ch)
+            if dev is not None and dev.fixture_type != FixtureType.DIMMER:
+                return CommandResult(
+                    False,
+                    f"Channel {ch} is patched to non-dimmer ({dev.fixture_name})",
+                )
+
+        collisions: list[str] = []
+        for ch, out, univ, _curve in assignments:
+            occ = patch.get_address_occupant(univ, out)
+            if occ is not None and occ != ch:
+                occ_dev = patch.get_device(occ)
+                occ_name = occ_dev.fixture_name if occ_dev is not None else "Dimmer"
+                collisions.append(f"{univ}/{out} (Channel {occ} - {occ_name})")
+
+        if collisions and not force:
+            confirm_msg = (
+                "The following DMX address(es) are already patched:\n"
+                + "\n".join(f"• {c}" for c in collisions)
+                + "\n\nOverwrite existing patch?"
+            )
+            confirmed = False
+
+            def _on_confirm() -> None:
+                nonlocal confirmed
+                confirmed = True
+                self._apply_patch_assignments(assignments)
+
+            self.app.emit("commandline.confirm_required", confirm_msg, _on_confirm)
+            if not confirmed:
+                return CommandResult(
+                    False,
+                    "Address already patched (confirmation required): "
+                    + ", ".join(collisions),
+                )
+        else:
+            self._apply_patch_assignments(assignments)
+
+        unique_channels = sorted({ch for ch, _, _, _ in assignments})
+        return CommandResult(
+            True,
+            f"Patched {len(assignments)} address(es)",
+            affected_channels=unique_channels,
+        )

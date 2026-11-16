@@ -654,3 +654,75 @@ def test_commandline_selection_and_intensity_undo_redo() -> None:
         assert app.backend.dmx.levels["user"][ch - 1] == 0.3
     assert len(app.history.undo_stack) == 2
     assert len(app.history.redo_stack) == 0
+
+
+def test_executor_patch_command_and_atomic_undo_redo() -> None:
+    """Verify PATCH command with THRU/+/-, atomic Undo/Redo, and collisions."""
+    from olc.devices.builtin import create_rgb_definition
+
+    app = CoreApplication(MagicMock())
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # 1. Single channel patched to multiple non-consecutive addresses
+    res = executor.execute(parser.parse("1 PATCH AT 10 THRU 13 + 2/5 - 11"))
+    assert res.success is True
+    for univ, addr in ((1, 10), (1, 12), (1, 13), (2, 5)):
+        assert patch.get_address_occupant(univ, addr) == 1
+    assert patch.get_address_occupant(1, 11) is None
+
+    # Single Undo reverts the ENTIRE command
+    assert len(app.history.undo_stack) == 1
+    app.action_registry.execute("edit.undo")
+    for univ, addr in ((1, 10), (1, 12), (1, 13), (2, 5)):
+        assert patch.get_address_occupant(univ, addr) is None
+
+    # Single Redo restores the ENTIRE command
+    app.action_registry.execute("edit.redo")
+    for univ, addr in ((1, 10), (1, 12), (1, 13), (2, 5)):
+        assert patch.get_address_occupant(univ, addr) == 1
+
+    # 2. Collision triggers confirmation request and refuses without confirmation
+    confirm_calls: list[str] = []
+    app.subscribe(
+        "commandline.confirm_required",
+        lambda msg, _cb: confirm_calls.append(msg),
+    )
+    res_coll = executor.execute(parser.parse("2 PATCH AT 10"))
+    assert res_coll.success is False
+    assert len(confirm_calls) == 1
+    assert "1/10" in confirm_calls[0]
+    assert patch.get_address_occupant(1, 10) == 1  # unchanged
+
+    # 3. Confirmation callback overwrites and is undoable in one step
+    callbacks: list[object] = []
+    app2 = CoreApplication(MagicMock())
+    app2.lightshow.patch.patch_empty()
+    exec2 = CommandExecutor(app2)
+    exec2.execute(parser.parse("1 PATCH AT 10 THRU 11"))
+    app2.subscribe(
+        "commandline.confirm_required",
+        lambda _msg, cb: callbacks.append(cb),
+    )
+    res_need_confirm = exec2.execute(parser.parse("2 PATCH AT 10 THRU 11"))
+    assert res_need_confirm.success is False
+    assert len(callbacks) == 1
+    cb_fn = callbacks[0]
+    assert callable(cb_fn)
+    cb_fn()
+    assert app2.lightshow.patch.get_address_occupant(1, 10) == 2
+    assert app2.lightshow.patch.get_address_occupant(1, 11) == 2
+
+    # Undo restores channel 1 on both 10 and 11
+    app2.action_registry.execute("edit.undo")
+    assert app2.lightshow.patch.get_address_occupant(1, 10) == 1
+    assert app2.lightshow.patch.get_address_occupant(1, 11) == 1
+
+    # 4. Reject patching onto non-dimmer fixture channel
+    app2.lightshow.patch.patch_device(50, create_rgb_definition(), 1, 100)
+    res_non_dim = exec2.execute(parser.parse("50 PATCH AT 200"))
+    assert res_non_dim.success is False
+    assert "non-dimmer" in res_non_dim.message

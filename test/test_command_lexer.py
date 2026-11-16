@@ -102,3 +102,21 @@ def test_lexer_invalid_character_raises() -> None:
     with pytest.raises(LexerError) as exc_info:
         lexer.tokenize("1 THRU 10 $ 5")
     assert "Unexpected character '$'" in str(exc_info.value)
+
+
+def test_lexer_patch_keyword() -> None:
+    lexer = CommandLexer()
+    tokens = lexer.tokenize("1 PATCH AT 10 THRU 15 + 20 - 12")
+    assert [t.type for t in tokens] == [
+        TokenType.NUMBER,
+        TokenType.PATCH,
+        TokenType.AT,
+        TokenType.NUMBER,
+        TokenType.THRU,
+        TokenType.NUMBER,
+        TokenType.PLUS,
+        TokenType.NUMBER,
+        TokenType.MINUS,
+        TokenType.NUMBER,
+        TokenType.EOF,
+    ]

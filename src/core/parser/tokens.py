@@ -81,6 +81,7 @@ class TokenType(Enum):
     INDEPENDENT = auto()
     PARK = auto()
     UNPARK = auto()
+    PATCH = auto()
 
     # Identifiers (unrecognized words / custom labels)
     IDENT = auto()

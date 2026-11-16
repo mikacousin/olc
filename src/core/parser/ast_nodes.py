@@ -221,6 +221,14 @@ class SneakCommandNode(CommandNode):
     duration: float | None = None
 
 
+@dataclasses.dataclass
+class PatchCommandNode(CommandNode):
+    """Command to patch dimmer outputs to channels (e.g. 1 PATCH AT 10 THRU 15)."""
+
+    selection: SelectionNode
+    addresses: AddressSelectionNode
+
+
 # --- Park Command Nodes ---
 
 

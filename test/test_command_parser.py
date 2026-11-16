@@ -540,3 +540,35 @@ def test_parser_relative_selection() -> None:
     assert cmd7.selection.is_relative is True
     assert cmd7.selection.filter_mode == "odd"
     assert cmd7.duration == 2.0
+
+
+def test_parser_patch_command() -> None:
+    from olc.core.parser.ast_nodes import (
+        AddressNumberNode,
+        AddressRangeNode,
+        PatchCommandNode,
+    )
+
+    parser = CommandParser()
+
+    # 1. Single address: 1 PATCH AT 10
+    p1 = parser.parse("1 PATCH AT 10")
+    assert isinstance(p1, PatchCommandNode)
+    assert len(p1.addresses.items) == 1
+    assert isinstance(p1.addresses.items[0], AddressNumberNode)
+    assert p1.addresses.items[0].universe == 1
+    assert p1.addresses.items[0].output == 10
+
+    # 2. Range with THRU, +, - and universe/address: 1 PATCH AT 10 THRU 15 + 2/5 - 12
+    p2 = parser.parse("1 PATCH AT 10 THRU 15 + 2/5 - 12")
+    assert isinstance(p2, PatchCommandNode)
+    assert len(p2.addresses.items) == 2
+    assert isinstance(p2.addresses.items[0], AddressRangeNode)
+    assert p2.addresses.items[0].start == 10
+    assert p2.addresses.items[0].end == 15
+    assert isinstance(p2.addresses.items[1], AddressNumberNode)
+    assert p2.addresses.items[1].universe == 2
+    assert p2.addresses.items[1].output == 5
+    assert len(p2.addresses.exclusions) == 1
+    assert isinstance(p2.addresses.exclusions[0], AddressNumberNode)
+    assert p2.addresses.exclusions[0].output == 12

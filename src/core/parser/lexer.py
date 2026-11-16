@@ -61,6 +61,7 @@ KEYWORDS: dict[str, TokenType] = {
     "IND": TokenType.INDEPENDENT,
     "PARK": TokenType.PARK,
     "UNPARK": TokenType.UNPARK,
+    "PATCH": TokenType.PATCH,
     # ML Attributes & Families
     "HOME": TokenType.HOME,
     "LOCATE": TokenType.LOCATE,

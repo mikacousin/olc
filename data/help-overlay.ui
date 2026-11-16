@@ -494,7 +494,7 @@
               <object class="GtkShortcutsShortcut" id="syntax_p">
                 <property name="visible">1</property>
                 <property name="accelerator">P</property>
-                <property name="title" translatable="yes" context="shortcut window">POSITION</property>
+                <property name="title" translatable="yes" context="shortcut window">PATCH</property>
               </object>
             </child>
             <child>
@@ -584,6 +584,13 @@
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;alt&gt;P</property>
                 <property name="title" translatable="yes" context="shortcut window">UNPARK</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_shift_syntax_p">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;alt&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">POSITION</property>
               </object>
             </child>
             <child>

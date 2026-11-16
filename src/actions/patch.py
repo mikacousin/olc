@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.devices.device import LightingDevice
+from olc.devices.device import FixtureType, LightingDevice
 from olc.devices.fixture import FixtureDefinition
 
 if typing.TYPE_CHECKING:
@@ -89,6 +89,78 @@ class PatchAddOutputAction(Action):
         if self.old_channel is not None:
             patch.unpatch_address(self.univ, self.output)
         patch.add_output(self.channel, self.output, self.univ, self.curve)
+
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+
+class PatchAddOutputsAction(Action):
+    """Action to atomically associate multiple DMX outputs with channels."""
+
+    name = "patch.add_outputs"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.assignments: list[tuple[int, int, int, int]] = []
+        self._previous_outputs: list[tuple[int, int, int | None, int]] = []
+        self._previous_non_dimmers: dict[int, dict[str, typing.Any]] = {}
+
+    def configure(self, assignments: list[tuple[int, int, int, int]]) -> None:
+        """Configure with a list of (channel, output, universe, curve) tuples."""
+        self.assignments = list(assignments)
+
+    def execute(self) -> None:
+        """Execute all output assignments as one atomic undoable step."""
+        patch = self.app.lightshow.patch
+        self._previous_outputs = []
+        self._previous_non_dimmers = {}
+
+        for _ch, output, univ, _curve in self.assignments:
+            info = patch.get_output_info(univ, output)
+            if info is not None:
+                old_ch, old_curve = info
+                self._previous_outputs.append((univ, output, old_ch, old_curve))
+                old_dev = patch.get_device(old_ch)
+                if (
+                    old_dev is not None
+                    and old_dev.fixture_type != FixtureType.DIMMER
+                    and old_ch not in self._previous_non_dimmers
+                ):
+                    self._previous_non_dimmers[old_ch] = old_dev.to_dict()
+            else:
+                self._previous_outputs.append((univ, output, None, 0))
+
+        for ch, output, univ, curve in self.assignments:
+            if patch.get_address_occupant(univ, output) is not None:
+                patch.unpatch_address(univ, output)
+            patch.add_output(ch, output, univ, curve)
+
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        """Restore all affected DMX addresses to their previous state."""
+        patch = self.app.lightshow.patch
+        for univ, output, old_ch, old_curve in reversed(self._previous_outputs):
+            patch.unpatch_address(univ, output)
+            if old_ch is not None and old_ch not in self._previous_non_dimmers:
+                patch.add_output(old_ch, output, univ, old_curve)
+
+        for dev_id, dev_dict in self._previous_non_dimmers.items():
+            patch.unpatch_device(dev_id)
+            patch.restore_device(LightingDevice.from_dict(dev_dict))
+
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        """Re-apply all output assignments."""
+        patch = self.app.lightshow.patch
+        for ch, output, univ, curve in self.assignments:
+            if patch.get_address_occupant(univ, output) is not None:
+                patch.unpatch_address(univ, output)
+            patch.add_output(ch, output, univ, curve)
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
