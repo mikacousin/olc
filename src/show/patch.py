@@ -412,9 +412,13 @@ class PatchManager:
 
         is_simple_dimmer = (
             device.fixture_type == FixtureType.DIMMER
-            and len(device.channels) == 1
-            and not device.channels[0].fine
-            and not device.channels[0].ultra_fine
+            and bool(device.channels)
+            and all(
+                ch.channel_type == ChannelType.INTENSITY
+                and not ch.fine
+                and not ch.ultra_fine
+                for ch in device.channels
+            )
         )
 
         for ch in device.channels:

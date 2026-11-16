@@ -570,3 +570,37 @@ def test_action_patch_set_device_curve() -> None:
     # Test error when device does not exist
     with pytest.raises(ValueError, match="Device 999 is not patched"):
         app.action_registry.execute("patch.set_device_curve", 999, 1)
+
+
+def test_multi_address_dimmer_remains_simple_dimmer() -> None:
+    """Multi-address 8-bit dimmers must keep is_simple_dimmer=True after re-register."""
+    from olc.devices.builtin import create_dimmer_definition
+    from olc.devices.device import LightingDevice
+
+    pm = PatchManager(universes=[1])
+    pm.add_output(channel=5, output=10, univ=1)
+    pm.add_output(channel=5, output=11, univ=1)
+
+    dev = pm.get_device(5)
+    assert dev is not None
+    assert len(dev.channels) == 2
+
+    # Simulate save/reload via restore_device -> _register_device_in_grid
+    restored_pm = PatchManager(universes=[1])
+    restored_pm.restore_device(LightingDevice.from_dict(dev.to_dict()))
+    for addr in (10, 11):
+        info = restored_pm.get_address_parameter_info(1, addr)
+        assert info is not None
+        assert info.device_id == 5
+        assert info.is_simple_dimmer is True
+        assert info.short_name == ""
+
+    # 16-bit dimmer must still display DIM / DIM F (is_simple_dimmer=False)
+    dim16_def = create_dimmer_definition(fine=True)
+    pm.patch_device(device_id=6, fixture_def=dim16_def, universe=1, address=20)
+    info_coarse = pm.get_address_parameter_info(1, 20)
+    info_fine = pm.get_address_parameter_info(1, 21)
+    assert info_coarse is not None and info_coarse.is_simple_dimmer is False
+    assert info_coarse.short_name == "DIM"
+    assert info_fine is not None and info_fine.is_simple_dimmer is False
+    assert info_fine.short_name == "DIM_F"
