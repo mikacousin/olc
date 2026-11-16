@@ -40,8 +40,7 @@ class DmxLevels(dict):
 
     def __setitem__(self, key: str, value: object) -> None:
         if isinstance(value, list):
-            dtype = np.int16 if key == "user" else np.uint8
-            super().__setitem__(key, np.array(value, dtype=dtype))
+            super().__setitem__(key, np.array(value, dtype=np.float64))
         else:
             super().__setitem__(key, value)
 
@@ -66,18 +65,18 @@ class Dmx:
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
         self.blackout = False
-        # Dimmers levels (floating-point for silky-smooth 16/24-bit crossfades)
+        # Normalized channel levels [0.0..1.0] (user uses -1.0 as unset sentinel)
         self.levels = DmxLevels(
             {
                 "sequence": np.zeros(MAX_CHANNELS, dtype=np.float64),
-                "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
+                "user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64),
                 "faders": np.zeros(MAX_CHANNELS, dtype=np.float64),
             }
         )
         # DMX values
         self.frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
-        self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint16)
         self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
         self.external_dmx = {}
         # To test outputs
@@ -116,8 +115,8 @@ class Dmx:
                 self.frame.pop(index)
                 self._old_frame.pop(index)
 
-    def get_composite_level(self, channel_idx: int) -> tuple[int, dict[str, float]]:
-        """Get the composite level and state color for a channel (0-indexed).
+    def get_composite_level(self, channel_idx: int) -> tuple[float, dict[str, float]]:
+        """Get the normalized composite level [0.0..1.0] and state color for a channel.
 
         Args:
             channel_idx: Channel index (0 to MAX_CHANNELS - 1)
@@ -131,28 +130,28 @@ class Dmx:
         ):
             parked_val = park_mgr.get_channel_park_level(channel_idx + 1)
             if parked_val is not None:
-                return int(parked_val), {"red": 1.0, "green": 0.7, "blue": 0.0}
+                return float(parked_val), {"red": 1.0, "green": 0.7, "blue": 0.0}
 
         main_pb = self.lightshow.main_playback
         state, _ = classify_channel_tracking_state(
             main_pb, getattr(main_pb, "position", 0), channel_idx + 1
         )
         color_level = get_tracking_color(state)
-        level = self.levels["sequence"][channel_idx]
-        if self.levels["user"][channel_idx] != -1:
-            level = self.levels["user"][channel_idx]
+        level = float(self.levels["sequence"][channel_idx])
+        if self.levels["user"][channel_idx] >= 0.0:
+            level = float(self.levels["user"][channel_idx])
             color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         else:
             if self.levels["faders"][channel_idx] > level:
-                level = self.levels["faders"][channel_idx]
+                level = float(self.levels["faders"][channel_idx])
                 color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
             if self.lightshow.independents.dmx[channel_idx] > level:
-                level = self.lightshow.independents.dmx[channel_idx]
+                level = float(self.lightshow.independents.dmx[channel_idx])
                 color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
-        return int(level), color_level
+        return level, color_level
 
     def get_all_composite_levels(self) -> np.ndarray:
-        """Get composite levels for all channels simultaneously by block.
+        """Get normalized composite levels [0.0..1.0] for all channels simultaneously.
 
         Returns:
             Array of composite levels.
@@ -160,7 +159,7 @@ class Dmx:
         composite = self.levels["sequence"].copy()
         composite = np.maximum(composite, self.levels["faders"])
         composite = np.maximum(composite, self.lightshow.independents.dmx)
-        user_mask = self.levels["user"] != -1
+        user_mask = self.levels["user"] >= 0.0
         composite[user_mask] = self.levels["user"][user_mask]
         park_mgr = getattr(self.lightshow, "park", None)
         if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
@@ -186,17 +185,17 @@ class Dmx:
                 if isinstance(park_mgr, ParkManager) and park_mgr.is_channel_parked(
                     dev_id
                 ):
-                    parked_val = park_mgr.get_channel_park_level(dev_id) or 0
-                    target_norm = float(parked_val) / 255.0
+                    parked_val = park_mgr.get_channel_park_level(dev_id) or 0.0
+                    target_norm = float(parked_val)
                     dev._target_intensity = target_norm
                     dev.set_intensity(target_norm)
                     continue
-                user_val = self.levels["user"][dev_id - 1]
-                comp_val = composite[dev_id - 1]
-                if user_val != -1:
-                    target_norm = float(user_val) / 255.0
-                elif comp_val > 0:
-                    target_norm = float(comp_val) / 255.0
+                user_val = float(self.levels["user"][dev_id - 1])
+                comp_val = float(composite[dev_id - 1])
+                if user_val >= 0.0:
+                    target_norm = user_val
+                elif comp_val > 0.0:
+                    target_norm = comp_val
                 else:
                     curr_int = (
                         dev._target_intensity
@@ -242,35 +241,38 @@ class Dmx:
                     if curve:
                         curve_mask = self.patch.map_dst_curves == curve_numb
                         try:
-                            norm_in = out_levels[curve_mask] / 255.0
-                            out_levels[curve_mask] = (
-                                curve.evaluate_normalized(norm_in) * 255.0
+                            out_levels[curve_mask] = curve.evaluate_normalized(
+                                out_levels[curve_mask]
                             )
                         except NotImplementedError:
-                            out_levels[curve_mask] = curve.values_array[
-                                out_levels[curve_mask].astype(np.uint8)
-                            ]
+                            out_levels[curve_mask] = (
+                                curve.values_array[
+                                    np.round(
+                                        np.clip(out_levels[curve_mask], 0.0, 1.0)
+                                        * 255.0
+                                    ).astype(np.uint8)
+                                ]
+                                / 255.0
+                            )
 
-            # Scale by Main Fader and Blackout (unless channel is parked)
+            # Scale by Main Fader and Blackout (unless parked), then quantize to 8-bit
             intensity_mult = self.effective_intensity_mult
             park_mgr = getattr(self.lightshow, "park", None)
+            scaled = out_levels * intensity_mult
             if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
                 parked_indices = np.array(
                     [ch - 1 for ch in park_mgr.parked_channels], dtype=int
                 )
                 is_parked_slot = np.isin(self.patch.map_src_channels, parked_indices)
-                scaled = np.round(out_levels * intensity_mult)
-                scaled[is_parked_slot] = np.round(out_levels[is_parked_slot])
-                out_levels = scaled.astype(np.uint8)
-            else:
-                out_levels = np.round(out_levels * intensity_mult).astype(np.uint8)
+                scaled[is_parked_slot] = out_levels[is_parked_slot]
+            out_levels_u8 = np.round(np.clip(scaled, 0.0, 1.0) * 255.0).astype(np.uint8)
 
             # Distribute levels to self.frame using advanced indexing
             map_dst_univ = self.patch.map_dst_universes
             map_dst_out = self.patch.map_dst_outputs
             for index in range(len(self.patch.universes)):
                 if len(map_dst_univ) != len(map_dst_out) or len(map_dst_univ) != len(
-                    out_levels
+                    out_levels_u8
                 ):
                     break
                 univ_mask = map_dst_univ == index
@@ -278,10 +280,10 @@ class Dmx:
                     dst = map_dst_out[univ_mask]
                     if self.patch.universes[index] in self.external_dmx:
                         self.frame[index][dst] = np.maximum(
-                            self.frame[index][dst], out_levels[univ_mask]
+                            self.frame[index][dst], out_levels_u8[univ_mask]
                         )
                     else:
-                        self.frame[index][dst] = out_levels[univ_mask]
+                        self.frame[index][dst] = out_levels_u8[univ_mask]
 
             # Distribute multi-parameter device channels (Pan, Tilt, Color, Gobo...)
             if (
@@ -363,11 +365,13 @@ class Dmx:
                 for ch, lvl in park_mgr.parked_channels.items():
                     if 1 <= ch <= len(scaled):
                         scaled[ch - 1] = lvl
-            current_display_levels = np.round(scaled).astype(np.uint8)
+            current_display_levels = np.round(
+                np.clip(scaled, 0.0, 1.0) * 65535.0
+            ).astype(np.uint16)
 
             user_levels = self.levels.get("user")
             if user_levels is not None:
-                user_mask = user_levels != -1
+                user_mask = user_levels >= 0.0
             else:
                 user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
             user_changed = user_mask != self._old_user_mask
@@ -502,10 +506,10 @@ class Dmx:
 
     def reset_levels(self, *, reset_main_fader: bool = True) -> None:
         """Reset sequence/manual/fader levels and optionally main fader to 1.0."""
-        self.levels["sequence"].fill(0)
-        self.levels["user"].fill(-1)
+        self.levels["sequence"].fill(0.0)
+        self.levels["user"].fill(-1.0)
         if "faders" in self.levels:
-            self.levels["faders"].fill(0)
+            self.levels["faders"].fill(0.0)
         if reset_main_fader:
             self.main_fader.set_level(1.0)
         self.set_levels()

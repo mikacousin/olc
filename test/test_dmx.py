@@ -257,7 +257,7 @@ def test_dmx_set_levels_pushes_synchronously_without_timer_thread() -> None:
 
     try:
         assert not hasattr(app.backend.dmx, "thread")
-        app.backend.dmx.levels["user"][0] = 180
+        app.backend.dmx.levels["user"][0] = 180.0 / 255.0
         app.backend.dmx.set_levels()
 
         assert app.engine.universe(1)[0] == 180
@@ -288,8 +288,8 @@ def test_dmx_in_htp_merge_and_non_overwrite_on_set_levels() -> None:
 
     try:
         dmx = app.backend.dmx
-        dmx.levels["user"][0] = 100
-        dmx.levels["user"][1] = 200
+        dmx.levels["user"][0] = 100.0 / 255.0
+        dmx.levels["user"][1] = 200.0 / 255.0
         dmx.set_levels()
 
         # Receive Art-Net frame on universe 1: ch1=220 (>100), ch2=120 (<200), ch3=90
@@ -317,3 +317,27 @@ def test_dmx_in_htp_merge_and_non_overwrite_on_set_levels() -> None:
         assert list(app.engine.universe(1).array[:3]) == [50, 200, 0]
     finally:
         app.engine.stop()
+
+
+def test_sub_8bit_precision_cli_to_16bit_dimmer() -> None:
+    """Verify 0.1% CLI input preserves sub-8-bit precision on a 16-bit dimmer."""
+    from olc.core.parser.executor import CommandExecutor
+    from olc.core.parser.parser import CommandParser
+
+    app = CoreApplication(MagicMock())
+    patch = app.lightshow.patch
+    patch.patch_empty()
+    dev = patch.patch_dimmer(channel=1, universe=1, address=1, fine=True)
+    assert dev.has_16bit_dimmer
+
+    app.backend = DMXBackend(app.lightshow)
+    dmx = app.backend.dmx
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    res = executor.execute(parser.parse("1 AT 0.1"))
+    assert res.success
+    assert dmx.levels["user"][0] == 0.001
+    # 0.001 * 65535 = 65.535 -> round = 66 -> coarse=0, fine=66
+    assert dmx.frame[0][0] == 0
+    assert dmx.frame[0][1] == 66

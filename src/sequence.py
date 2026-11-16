@@ -206,7 +206,7 @@ class Sequence:
             self._add_cue_channels(step.cue)
         if self.app is not None and self.backend is not None:
             for channel, level in enumerate(self.backend.dmx.levels["user"]):
-                if level != -1:
+                if level >= 0.0:
                     self.channels.add(channel + 1)
         if self.patch is not None:
             for dev_id, dev in getattr(self.patch, "devices", {}).items():
@@ -358,19 +358,19 @@ class Sequence:
         self._cached_next_levels = (cache_key, levels)
         return levels
 
-    def get_next_channel_level(self, channel: int, level: int) -> int:
+    def get_next_channel_level(self, channel: int, level: float) -> float:
         """Get channel level in next cue
 
         Args:
             channel: channel number (1 - MAX_CHANNELS)
-            level: level in active cue (0 - 255)
+            level: normalized level in active cue (0.0 - 1.0)
 
         Returns:
-            level in next cue (0 - 255)
+            normalized level in next cue (0.0 - 1.0)
         """
         levels = self.get_all_next_channel_levels()
         if levels is not None and 1 <= channel <= len(levels):
-            return levels[channel - 1]
+            return float(levels[channel - 1])
         return level
 
     def sequence_plus(self) -> None:

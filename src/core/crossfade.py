@@ -92,7 +92,7 @@ class CrossFade:
         main_pb = self.app.lightshow.main_playback
         if self._start_channels is None:
             resolved_curr = self._resolve_step(main_pb.position)
-            self._start_channels = resolved_curr.channels.astype(np.int32)
+            self._start_channels = resolved_curr.channels.astype(np.float64)
         if self._start_device_states is None:
             self._start_device_states = _capture_device_states(main_pb.patch)
 
@@ -109,7 +109,7 @@ class CrossFade:
         if getattr(main_pb.thread, "old_device_states", None):
             self._start_device_states = dict(main_pb.thread.old_device_states)
         if getattr(main_pb.thread, "old_channels_levels", None) is not None:
-            self._start_channels = main_pb.thread.old_channels_levels.astype(np.int32)
+            self._start_channels = main_pb.thread.old_channels_levels.astype(np.float64)
 
         main_pb.thread.stop()
         main_pb.thread.join(timeout=1.0)
@@ -262,7 +262,7 @@ class CrossFade:
             current_lvls = sequence_levels.astype(np.float64)
 
             # Keep non-transitioning channels at their resolved baseline
-            stable_mask = (next_levels == old_levels) & (user_levels == -1)
+            stable_mask = (next_levels == old_levels) & (user_levels < 0.0)
             current_lvls[stable_mask] = old_levels[stable_mask]
 
             if scale == self.scale_a:
@@ -270,7 +270,7 @@ class CrossFade:
                     position, step, old_levels, next_levels
                 )
                 decay_mask = (next_levels < old_levels) | (
-                    (user_levels != -1) & (next_levels < user_levels)
+                    (user_levels >= 0.0) & (next_levels < user_levels)
                 )
                 current_lvls[decay_mask] = lvls_a[decay_mask]
             elif scale == self.scale_b:
@@ -278,11 +278,11 @@ class CrossFade:
                     position, step, old_levels, next_levels
                 )
                 attack_mask = (next_levels > old_levels) | (
-                    (user_levels != -1) & (next_levels > user_levels)
+                    (user_levels >= 0.0) & (next_levels > user_levels)
                 )
                 current_lvls[attack_mask] = lvls_b[attack_mask]
 
-            sequence_levels[:] = np.clip(current_lvls, 0.0, 255.0)
+            sequence_levels[:] = np.clip(current_lvls, 0.0, 1.0)
             self._update_devices_crossfade(step, resolved_next, old_levels, total_time)
             self.app.backend.dmx.set_levels()
 
@@ -448,7 +448,7 @@ class CrossFade:
             diff = (next_levels - old_levels) * factor
             lvls = old_levels - np.abs(diff)
             # User overrides
-            user_mask = (user_levels != -1) & (next_levels < user_levels)
+            user_mask = (user_levels >= 0.0) & (next_levels < user_levels)
             if np.any(user_mask):
                 val = user_levels - np.abs((next_levels - user_levels) * factor)
                 lvls[user_mask] = val[user_mask]
@@ -509,7 +509,7 @@ class CrossFade:
             diff = (next_levels - old_levels) * factor
             lvls = old_levels + diff
             # User overrides
-            user_mask = (user_levels != -1) & (next_levels > user_levels)
+            user_mask = (user_levels >= 0.0) & (next_levels > user_levels)
             if np.any(user_mask):
                 val = user_levels + (next_levels - user_levels) * factor
                 lvls[user_mask] = val[user_mask]

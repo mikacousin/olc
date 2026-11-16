@@ -387,11 +387,11 @@ def test_inspector_intensity_syncs_with_live_view(app_gui: Application) -> None:
     process_events()
 
     assert app_gui.core.backend is not None
-    assert int(app_gui.core.backend.dmx.levels["user"][0]) == 255
+    assert float(app_gui.core.backend.dmx.levels["user"][0]) == 1.0
     assert app_gui.window is not None
     ch_widget = app_gui.window.live_view.channels_view.get_channel_widget(1)
     assert ch_widget is not None
-    assert ch_widget.level == 255
+    assert ch_widget.level == 1.0
 
     inspector.on_close_icon(inspector)
     process_events()

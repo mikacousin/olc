@@ -126,14 +126,14 @@ def test_manual_crossfade_preserves_tracked_channels_and_separates_scales() -> N
     # Step 0: Cue 0
     seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
-    # Step 1 (Cue 1): Ch 1 @ 200 (tracks), Ch 2 @ 200 (decays), Ch 3 @ 0 (attacks)
+    # Step 1 (Cue 1): Ch 1 @ 0.8 (tracks), Ch 2 @ 0.8 (decays), Ch 3 @ 0 (attacks)
     cue1 = Cue(1, 1.0)
-    cue1.channels = {1: 200, 2: 200}
+    cue1.channels = {1: 0.8, 2: 0.8}
     seq.add_step(Step(sequence=1, cue=cue1, time_in=2.0, time_out=2.0))
 
-    # Step 2 (Cue 2): Ch 1 tracked @ 200, Ch 2 @ 100 (decay), Ch 3 @ 100 (attack)
+    # Step 2 (Cue 2): Ch 1 tracked @ 0.8, Ch 2 @ 0.4 (decay), Ch 3 @ 0.4 (attack)
     cue2 = Cue(1, 2.0)
-    cue2.channels = {2: 100, 3: 100}
+    cue2.channels = {2: 0.4, 3: 0.4}
     seq.add_step(Step(sequence=1, cue=cue2, time_in=2.0, time_out=2.0))
 
     # Sentinel last step
@@ -141,41 +141,41 @@ def test_manual_crossfade_preserves_tracked_channels_and_separates_scales() -> N
 
     seq.load_step(1)
     dmx_seq = app.backend.dmx.levels["sequence"]
-    assert dmx_seq[0] == 200
-    assert dmx_seq[1] == 200
-    assert dmx_seq[2] == 0
+    assert dmx_seq[0] == pytest.approx(0.8)
+    assert dmx_seq[1] == pytest.approx(0.8)
+    assert dmx_seq[2] == 0.0
 
-    # Move scale_a (Out/Decays) to 50% (~128/255)
+    # Move scale_a (Out/Decays) to 50% (0.5)
     xfade.manual = True
-    xfade.scale_a.set_value(128)
+    xfade.scale_a.set_value(0.5)
     xfade.scale_moved(xfade.scale_a)
 
-    # Ch 1 (tracked) must remain 200!
-    assert dmx_seq[0] == 200
-    # Ch 2 (decay 200 -> 100) is around ~150
-    assert 148 <= int(dmx_seq[1]) <= 152
-    # Ch 3 (attack 0 -> 100) must still be 0 because scale_b has not moved
-    assert dmx_seq[2] == 0
+    # Ch 1 (tracked) must remain 0.8!
+    assert dmx_seq[0] == pytest.approx(0.8)
+    # Ch 2 (decay 0.8 -> 0.4) is ~0.6
+    assert 0.58 <= float(dmx_seq[1]) <= 0.62
+    # Ch 3 (attack 0 -> 0.4) must still be 0.0 because scale_b has not moved
+    assert dmx_seq[2] == 0.0
 
-    # Now move scale_b (In/Attacks) to 50% (~128/255)
-    xfade.scale_b.set_value(128)
+    # Now move scale_b (In/Attacks) to 50% (0.5)
+    xfade.scale_b.set_value(0.5)
     xfade.scale_moved(xfade.scale_b)
 
-    # Ch 1 still 200, Ch 2 (decay) still ~150, Ch 3 (attack) ~50
-    assert dmx_seq[0] == 200
-    assert 148 <= int(dmx_seq[1]) <= 152
-    assert 48 <= int(dmx_seq[2]) <= 52
+    # Ch 1 still 0.8, Ch 2 (decay) still ~0.6, Ch 3 (attack) ~0.2
+    assert dmx_seq[0] == pytest.approx(0.8)
+    assert 0.58 <= float(dmx_seq[1]) <= 0.62
+    assert 0.18 <= float(dmx_seq[2]) <= 0.22
 
-    # Bring both sliders to 255 -> at_full()
-    xfade.scale_a.set_value(255)
+    # Bring both sliders to 1.0 -> at_full()
+    xfade.scale_a.set_value(1.0)
     xfade.scale_moved(xfade.scale_a)
-    xfade.scale_b.set_value(255)
+    xfade.scale_b.set_value(1.0)
     xfade.scale_moved(xfade.scale_b)
 
     assert seq.position == 2
-    assert dmx_seq[0] == 200  # Tracked channel preserved at full
-    assert dmx_seq[1] == 100
-    assert dmx_seq[2] == 100
+    assert dmx_seq[0] == pytest.approx(0.8)  # Tracked channel preserved at full
+    assert dmx_seq[1] == pytest.approx(0.4)
+    assert dmx_seq[2] == pytest.approx(0.4)
 
 
 def test_manual_crossfade_interpolates_devices_and_ifcb_times() -> None:
@@ -259,29 +259,29 @@ def test_manual_crossfade_cue_only_mode_and_return_to_zero() -> None:
     seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
     cue1 = Cue(1, 1.0)
-    cue1.channels = {1: 200}
+    cue1.channels = {1: 0.8}
     seq.add_step(Step(sequence=1, cue=cue1, time_in=2.0, time_out=2.0))
 
     cue2 = Cue(1, 2.0)
-    cue2.channels = {2: 100}
+    cue2.channels = {2: 0.4}
     seq.add_step(Step(sequence=1, cue=cue2, time_in=2.0, time_out=2.0))
     seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
     seq.load_step(1)
     dmx_seq = app.backend.dmx.levels["sequence"]
-    assert dmx_seq[0] == 200
+    assert dmx_seq[0] == pytest.approx(0.8)
 
-    # Move scale_a to 50%: in Cue-Only mode, Ch 1 decays from 200 toward 0 (~100)
+    # Move scale_a to 50%: in Cue-Only mode, Ch 1 decays from 0.8 toward 0 (~0.4)
     xfade.manual = True
-    xfade.scale_a.set_value(128)
+    xfade.scale_a.set_value(0.5)
     xfade.scale_moved(xfade.scale_a)
-    assert 98 <= int(dmx_seq[0]) <= 102
+    assert 0.38 <= float(dmx_seq[0]) <= 0.42
     assert seq.on_go is True
 
-    # Return scale_a to 0 -> cancels crossfade and restores baseline 200
-    xfade.scale_a.set_value(0)
+    # Return scale_a to 0 -> cancels crossfade and restores baseline 0.8
+    xfade.scale_a.set_value(0.0)
     xfade.scale_moved(xfade.scale_a)
-    assert int(dmx_seq[0]) == 200
+    assert float(dmx_seq[0]) == pytest.approx(0.8)
     assert seq.on_go is False
     assert xfade.manual is False
 
@@ -413,14 +413,14 @@ def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: d
     # Step 0: Cue 0 (Channels at 0)
     seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
 
-    # Step 1 (Cue 1): Ch 1 @ 0
+    # Step 1 (Cue 1): Ch 1 @ 0.0
     cue1 = Cue(1, 1.0)
-    cue1.channels = {1: 0}
+    cue1.channels = {1: 0.0}
     seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
 
-    # Step 2 (Cue 2): Ch 1 @ 100
+    # Step 2 (Cue 2): Ch 1 @ 100/255
     cue2 = Cue(1, 2.0)
-    cue2.channels = {1: 100}
+    cue2.channels = {1: 100.0 / 255.0}
     step2 = Step(sequence=1, cue=cue2, time_in=1.0, time_out=1.0)
     seq.add_step(step2)
 
@@ -430,14 +430,14 @@ def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: d
     # 1. Manual crossfade test
     seq.load_step(1)
     xfade.manual = True
-    # Set manual slider to 12.3% of 255
-    xfade.scale_b.set_value(255.0 * 0.123)
+    # Set manual slider to 12.3% (0.123)
+    xfade.scale_b.set_value(0.123)
     xfade.scale_moved(xfade.scale_b)
 
-    # Level in sequence must be continuous float: 100 * 0.123 = 12.3
+    # Level in sequence must be continuous float: (100/255) * 0.123
     seq_level = real_dmx.levels["sequence"][0]
     assert isinstance(seq_level, (float, np.floating))
-    assert seq_level == pytest.approx(12.3, abs=1e-5)
+    assert seq_level == pytest.approx((100.0 / 255.0) * 0.123, abs=1e-5)
 
     # Output DMX frame must compute fine byte from float:
     # 12.3 / 255.0 * 65535 = 3161.4 -> coarse=12, fine=89
@@ -458,7 +458,7 @@ def test_crossfade_16bit_dimmer_continuous_interpolation() -> None:  # pylint: d
     real_dmx.set_levels()
 
     seq_level_go = real_dmx.levels["sequence"][0]
-    assert seq_level_go == pytest.approx(12.3, abs=1e-5)
+    assert seq_level_go == pytest.approx((100.0 / 255.0) * 0.123, abs=1e-5)
     u1_go = real_dmx.frame[0]
     val_16_go = (int(u1_go[0]) << 8) | int(u1_go[1])
     assert val_16_go == 3161

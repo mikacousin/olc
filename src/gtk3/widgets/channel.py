@@ -323,11 +323,11 @@ class ChannelWidget(Gtk.DrawingArea):
                 self.color_level.get("blue", 0.0),
             )
         # Don't show level 0
-        if self.level != 0 or self.next_level != 0:
+        if self.level > 0.0 or self.next_level > 0.0:
             if percent_level:
-                txt = "F" if self.level == 255 else str(round((self.level / 256) * 100))
+                txt = "F" if self.level >= 1.0 else str(round(self.level * 100.0))
             else:
-                txt = str(self.level)
+                txt = str(round(self.level * 255.0))
             draw_cached_numeric_text(
                 cr,
                 6 * self.scale,
@@ -344,7 +344,7 @@ class ChannelWidget(Gtk.DrawingArea):
             allocation.width - 9,
             self.width - 4,
             6 * self.scale,
-            -((50 / 255) * self.scale) * self.level,
+            -(50.0 * self.scale) * self.level,
         )
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
@@ -409,12 +409,12 @@ class ChannelWidget(Gtk.DrawingArea):
     ) -> None:
         """Draw text for next level"""
         if percent_level:
-            if self.next_level == 255:
+            if self.next_level >= 1.0:
                 txt = "F"
             else:
-                txt = str(int(round((self.next_level / 255) * 100)))
+                txt = str(int(round(self.next_level * 100.0)))
         else:
-            txt = str(self.next_level)
+            txt = str(round(self.next_level * 255.0))
         draw_cached_numeric_text(
             cr,
             x,

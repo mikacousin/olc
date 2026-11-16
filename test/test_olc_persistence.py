@@ -508,13 +508,14 @@ def test_merge_olc_updates_existing_step_timings() -> None:
     app = CoreApplication(settings)
 
     # Initial step with default timings (time_in=5.0, time_out=5.0, no IFCB overrides)
-    c1 = Cue(0, 1.0, channels={1: 100}, text="Initial Label")
+    c1 = Cue(0, 1.0, channels={1: 0.4}, text="Initial Label")
     step1 = Step(1, cue=c1, time_in=5.0, time_out=5.0, text="Old Step Label")
     app.lightshow.cues.add(c1)
     app.lightshow.main_playback.insert_step(1, step1)
 
     # Parsed data payload simulating a merged .olc file with updated timings
     merged_payload = {
+        "normalized_levels": True,
         "sequences": {
             1: {
                 "label": "Main",
@@ -542,13 +543,13 @@ def test_merge_olc_updates_existing_step_timings() -> None:
                 "cues": {
                     1.0: {
                         "label": "Updated Cue Label",
-                        "channels": {1: 200},
+                        "channels": {1: 0.8},
                         "device_values": {},
                         "is_block": True,
                     }
                 },
             }
-        }
+        },
     }
 
     parsed = ParsedData(app.lightshow)
@@ -562,7 +563,7 @@ def test_merge_olc_updates_existing_step_timings() -> None:
 
     # Verify cue updates
     assert step.cue is not None
-    assert step.cue.channels[1] == 200
+    assert step.cue.channels[1] == 0.8
     assert step.cue.text == "Updated Cue Label"
     assert step.cue.is_block is True
 

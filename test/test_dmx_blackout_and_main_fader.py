@@ -54,7 +54,7 @@ def test_main_fader_scales_intensities_only_and_preserves_ltp() -> None:
     from olc.devices import ChannelType
 
     # Set initial levels
-    dmx.levels["sequence"][0] = 200.0  # Channel 1 intensity = 200
+    dmx.levels["sequence"][0] = 200.0 / 255.0  # Channel 1 intensity = 200/255
     dev.set_intensity_8bit(255)  # Device Dimmer = 255 (HTP)
     dev.set_pan_16bit(0x4567)  # Pan (LTP)
     dev.set_tilt_16bit(0x89AB)  # Tilt (LTP)
@@ -137,7 +137,7 @@ def test_scenic_blackout_preserves_ltp_and_survives_dmx_recalc() -> None:
 
     from olc.devices import ChannelType
 
-    dmx.levels["sequence"][0] = 240.0
+    dmx.levels["sequence"][0] = 240.0 / 255.0
     dev.set_intensity_8bit(200)  # HTP = 200
     dev.set_pan_16bit(0x6000)  # LTP
     dev.set_tilt_16bit(0x3000)  # LTP

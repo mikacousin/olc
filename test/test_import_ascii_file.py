@@ -42,8 +42,8 @@ def test_import(monkeypatch: pytest.MonkeyPatch) -> None:
     assert imported.data.data["sequences"][1]["steps"][4]["cue"] == 4.0
     assert imported.data.data["sequences"][1]["cues"][2.0]["label"] == "Entrée Public"
     assert imported.data.data["sequences"][1]["cues"][1.0]["channels"] == {
-        7: 255,
-        20: 255,
-        31: 255,
+        7: 1.0,
+        20: 1.0,
+        31: 1.0,
     }
     assert imported.data.data["sequences"][2]["label"] == "Chaser 1"

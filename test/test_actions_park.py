@@ -12,10 +12,10 @@ def test_channel_park_and_unpark_actions() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # 1. Park channel 5 at 80% (approx 204)
-    app.action_registry.execute("channel.park", 5, 204)
+    # 1. Park channel 5 at 80% (0.8)
+    app.action_registry.execute("channel.park", 5, 0.8)
     assert app.lightshow.park.is_channel_parked(5)
-    assert app.lightshow.park.get_channel_park_level(5) == 204
+    assert app.lightshow.park.get_channel_park_level(5) == 0.8
     assert app.lightshow.park.total_parked_count() == 1
 
     # Undo
@@ -26,7 +26,7 @@ def test_channel_park_and_unpark_actions() -> None:
     # Redo
     app.history.redo()
     assert app.lightshow.park.is_channel_parked(5)
-    assert app.lightshow.park.get_channel_park_level(5) == 204
+    assert app.lightshow.park.get_channel_park_level(5) == 0.8
 
     # 2. Unpark channel 5
     app.action_registry.execute("channel.unpark", 5)
@@ -36,7 +36,7 @@ def test_channel_park_and_unpark_actions() -> None:
     # Undo unpark
     app.history.undo()
     assert app.lightshow.park.is_channel_parked(5)
-    assert app.lightshow.park.get_channel_park_level(5) == 204
+    assert app.lightshow.park.get_channel_park_level(5) == 0.8
 
 
 def test_address_park_and_unpark_actions() -> None:
@@ -64,7 +64,7 @@ def test_park_unpark_all_action() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.action_registry.execute("channel.park", [1, 2, 3], 100)
+    app.action_registry.execute("channel.park", [1, 2, 3], 0.4)
     app.action_registry.execute("address.park", [(1, 10), (2, 20)], 200)
     assert app.lightshow.park.total_parked_count() == 5
 
@@ -74,7 +74,7 @@ def test_park_unpark_all_action() -> None:
     # Undo unpark all
     app.history.undo()
     assert app.lightshow.park.total_parked_count() == 5
-    assert app.lightshow.park.get_channel_park_level(1) == 100
+    assert app.lightshow.park.get_channel_park_level(1) == 0.4
     assert app.lightshow.park.get_address_park_level(2, 20) == 200
 
     # Redo

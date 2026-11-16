@@ -771,7 +771,7 @@ class DeviceLocateAction(Action):
         self.new_states = {}
         self.old_intensities = {}
         self.new_intensities = {}
-        self.old_user_levels = {}
+        self.old_user_levels: dict[int, float] = {}
 
         backend = getattr(self.app, "backend", None)
         dmx = getattr(backend, "dmx", None) if backend is not None else None
@@ -789,9 +789,9 @@ class DeviceLocateAction(Action):
             self.new_intensities[ch] = dev.intensity
 
             if user_levels is not None and 1 <= ch <= len(user_levels):
-                self.old_user_levels[ch] = int(user_levels[ch - 1])
-                user_levels[ch - 1] = 255
-                self.app.emit("channel.level_changed", ch, 255)
+                self.old_user_levels[ch] = float(user_levels[ch - 1])
+                user_levels[ch - 1] = 1.0
+                self.app.emit("channel.level_changed", ch, 1.0)
 
         if not self.new_states:
             self.can_undo = False
@@ -848,8 +848,8 @@ class DeviceLocateAction(Action):
                 if ch in self.new_intensities:
                     dev.set_intensity(self.new_intensities[ch])
             if user_levels is not None and 1 <= ch <= len(user_levels):
-                user_levels[ch - 1] = 255
-                self.app.emit("channel.level_changed", ch, 255)
+                user_levels[ch - 1] = 1.0
+                self.app.emit("channel.level_changed", ch, 1.0)
 
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_states.keys()))

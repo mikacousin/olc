@@ -20,6 +20,7 @@ import pathlib
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 from olc.core.app import CoreApplication
 from olc.core.universe_config import Protocol, UniverseMap
@@ -44,7 +45,7 @@ def _create_headless_app() -> tuple[CoreApplication, MagicMock]:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     mock_dmx.levels = {
-        "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
+        "user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64),
         "sequence": np.full(MAX_CHANNELS, 0.0, dtype=np.float64),
         "faders": np.full(MAX_CHANNELS, 0.0, dtype=np.float64),
     }
@@ -77,35 +78,35 @@ def test_headless_commandline_and_channels_workflow() -> None:
     assert app.commandline.get_string() == "5"
 
     # 2. Channel direct level
-    app.action_registry.execute("channel.set_level", 5, 200)
-    assert backend.dmx.levels["user"][4] == 200
+    app.action_registry.execute("channel.set_level", 5, 0.8)
+    assert backend.dmx.levels["user"][4] == 0.8
 
     # 3. Multi-channel levels
-    app.action_registry.execute("channel.set_multi_levels", {1: 150, 2: 150, 3: 150})
-    assert backend.dmx.levels["user"][0] == 150
-    assert backend.dmx.levels["user"][1] == 150
-    assert backend.dmx.levels["user"][2] == 150
+    app.action_registry.execute("channel.set_multi_levels", {1: 0.6, 2: 0.6, 3: 0.6})
+    assert backend.dmx.levels["user"][0] == 0.6
+    assert backend.dmx.levels["user"][1] == 0.6
+    assert backend.dmx.levels["user"][2] == 0.6
 
     # 4. Level adjustments (+, -, wheel) on selected channel
     app.selected_channels = [5]
     app.action_registry.execute("channel.level_plus")
-    assert backend.dmx.levels["user"][4] == 210
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8 + 10.0 / 255.0)
 
     app.action_registry.execute("channel.level_minus")
-    assert backend.dmx.levels["user"][4] == 200
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8)
 
     app.action_registry.execute("channel.wheel_adjust", 1, 1)
-    assert backend.dmx.levels["user"][4] == 201
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8 + 1.0 / 255.0)
 
     # 5. Undo / Redo sequence
     app.history.undo()  # Undo wheel
-    assert backend.dmx.levels["user"][4] == 200
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8)
 
     app.history.undo()  # Undo level_minus
-    assert backend.dmx.levels["user"][4] == 210
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8 + 10.0 / 255.0)
 
     app.history.redo()  # Redo level_minus
-    assert backend.dmx.levels["user"][4] == 200
+    assert backend.dmx.levels["user"][4] == pytest.approx(0.8)
 
 
 def test_headless_cues_and_playback_workflow() -> None:
@@ -113,8 +114,8 @@ def test_headless_cues_and_playback_workflow() -> None:
     app, _ = _create_headless_app()
 
     # Set channel levels
-    app.action_registry.execute("channel.set_level", 1, 255)
-    app.action_registry.execute("channel.set_level", 2, 128)
+    app.action_registry.execute("channel.set_level", 1, 1.0)
+    app.action_registry.execute("channel.set_level", 2, 0.5)
 
     # 1. Record Cue
     app.action_registry.execute("playback.record_cue", 1.0, 1)
@@ -164,12 +165,12 @@ def test_headless_groups_curves_independents_workflow() -> None:
     # 1. Groups workflow
     app.action_registry.execute("group.new", 1.0)
     app.action_registry.execute("group.rename", 1.0, "Front")
-    app.action_registry.execute("group.update_channels", 1.0, {1: 255, 2: 255})
+    app.action_registry.execute("group.update_channels", 1.0, {1: 1.0, 2: 1.0})
 
     group = app.lightshow.groups.get(1.0)
     assert group is not None
     assert group.text == "Front"
-    assert group.channels == {1: 255, 2: 255}
+    assert group.channels == {1: 1.0, 2: 1.0}
 
     app.action_registry.execute("group.rename", 1.0, "Front Stage")
     assert group.text == "Front Stage"
@@ -201,18 +202,18 @@ def test_headless_groups_curves_independents_workflow() -> None:
     app.action_registry.execute("independent.rename", 1, "House")
     assert app.lightshow.independents.independents[0].text == "House"
 
-    app.action_registry.execute("independent.update_channels", 1, {5: 255})
-    assert app.lightshow.independents.independents[0].levels == {5: 255}
+    app.action_registry.execute("independent.update_channels", 1, {5: 1.0})
+    assert app.lightshow.independents.independents[0].levels == {5: 1.0}
 
     app.history.undo()  # Revert channels
-    assert app.lightshow.independents.independents[0].levels != {5: 255}
+    assert app.lightshow.independents.independents[0].levels != {5: 1.0}
 
 
 def test_headless_faders_workflow() -> None:
     """Test Fader assignment, leveling, flashing, and paging without GUI."""
     app, backend = _create_headless_app()
 
-    group = Group(1.0, {1: 200}, "Backlight")
+    group = Group(1.0, {1: 0.8}, "Backlight")
     app.lightshow.groups.add(group)
 
     # 1. Assign group to fader 1 on page 1
@@ -249,8 +250,8 @@ def test_headless_show_lifecycle_workflow(tmp_path: pathlib.Path) -> None:
     app, backend = _create_headless_app()
 
     # Populate show with data
-    app.action_registry.execute("channel.set_level", 1, 255)
-    cue = Cue(1, 1.0, {1: 255})
+    app.action_registry.execute("channel.set_level", 1, 1.0)
+    cue = Cue(1, 1.0, {1: 1.0})
     app.lightshow.cues.add(cue)
 
     save_path = str(tmp_path / "test_show.olc")

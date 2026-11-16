@@ -130,26 +130,26 @@ def test_channel_sneak_to_independent_background() -> None:
     parser = CommandParser()
     executor = CommandExecutor(app)
 
-    # Set up Independent 1 with Channel 1 at level 190
+    # Set up Independent 1 with Channel 1 at level 0.75
     inde = app.lightshow.independents.independents[0]
-    inde.set_levels({1: 190})
+    inde.set_levels({1: 0.75})
     inde.set_level(1.0)
     app.lightshow.independents.update_dmx()
-    assert app.lightshow.independents.dmx[0] == 190
+    assert app.lightshow.independents.dmx[0] == pytest.approx(0.75)
 
-    # User overrides channel 1 to FULL (255)
-    dmx.levels["user"][0] = 255
+    # User overrides channel 1 to FULL (1.0)
+    dmx.levels["user"][0] = 1.0
     comp_lvl, _ = dmx.get_composite_level(0)
-    assert comp_lvl == 255
+    assert comp_lvl == pytest.approx(1.0)
 
     # Sneak channel 1
     res = executor.execute(parser.parse("1 SNEAK TIME 0"))
     assert res.success is True
-    assert dmx.levels["user"][0] == -1
+    assert dmx.levels["user"][0] == -1.0
 
-    # Channel returns to independent level (190)
+    # Channel returns to independent level (0.75)
     comp_lvl_after, _ = dmx.get_composite_level(0)
-    assert comp_lvl_after == 190
+    assert comp_lvl_after == pytest.approx(0.75)
 
 
 def test_channel_sneak_fade_interpolation() -> None:

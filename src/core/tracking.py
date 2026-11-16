@@ -85,11 +85,11 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
     sequence: Any,  # noqa: ANN401
     step_index: int,
     channel: int,
-) -> tuple[TrackingDisplayState, int]:
+) -> tuple[TrackingDisplayState, float]:
     """Classify a channel's tracking state and resolved level at a sequence step.
 
     Returns:
-        Tuple of (TrackingDisplayState, resolved_8bit_level).
+        Tuple of (TrackingDisplayState, resolved_normalized_level).
     """
     steps = getattr(sequence, "steps", None)
     if (
@@ -99,38 +99,32 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
         or step_index >= len(steps)
         or not 1 <= channel <= MAX_CHANNELS
     ):
-        return TrackingDisplayState.INACTIVE, 0
+        return TrackingDisplayState.INACTIVE, 0.0
 
     cue = steps[step_index].cue
     if cue is None:
-        return TrackingDisplayState.INACTIVE, 0
+        return TrackingDisplayState.INACTIVE, 0.0
 
     tracking_mode = getattr(sequence, "tracking_mode", False)
     curr_resolved = TrackingEngine.resolve_step_state(
         sequence, step_index, tracking_mode=tracking_mode
     )
-    curr_level = int(curr_resolved.channels[channel - 1])
-    if curr_level == 0 and channel in curr_resolved.device_values:
+    curr_level = float(curr_resolved.channels[channel - 1])
+    if curr_level == 0.0 and channel in curr_resolved.device_values:
         dev_int = curr_resolved.device_values[channel].get("intensity")
         if isinstance(dev_int, (int, float)):
-            curr_level = round(
-                float(dev_int) * 255.0 if float(dev_int) <= 1.0 else float(dev_int)
-            )
+            curr_level = max(0.0, min(1.0, float(dev_int)))
 
-    prev_level = 0
+    prev_level = 0.0
     if step_index > 1:
         prev_resolved = TrackingEngine.resolve_step_state(
             sequence, step_index - 1, tracking_mode=tracking_mode
         )
-        prev_level = int(prev_resolved.channels[channel - 1])
-        if prev_level == 0 and channel in prev_resolved.device_values:
+        prev_level = float(prev_resolved.channels[channel - 1])
+        if prev_level == 0.0 and channel in prev_resolved.device_values:
             prev_int = prev_resolved.device_values[channel].get("intensity")
             if isinstance(prev_int, (int, float)):
-                prev_level = round(
-                    float(prev_int) * 255.0
-                    if float(prev_int) <= 1.0
-                    else float(prev_int)
-                )
+                prev_level = max(0.0, min(1.0, float(prev_int)))
 
     is_explicit_move = channel in cue.channels or (
         hasattr(cue, "device_values")
@@ -485,7 +479,9 @@ class TrackingEngine:
                     )
 
             conv_level = (
-                int(cue.channels.get(dev_id, 0)) if hasattr(cue, "channels") else 0
+                float(cue.channels.get(dev_id, 0.0))
+                if hasattr(cue, "channels")
+                else 0.0
             )
             dev_intensity = next(
                 (

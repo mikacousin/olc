@@ -34,38 +34,38 @@ def test_undo_redo_actions() -> None:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     # levels structure: sequence, user, faders
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
     # 3. Track events
-    received_events: list[tuple[int, int]] = []
+    received_events: list[tuple[int, float]] = []
     app.subscribe(
         "channel.level_changed", lambda chan, val: received_events.append((chan, val))
     )
 
-    # 4. Execute: Set channel 10 to DMX intensity 200
-    app.action_registry.execute("channel.set_level", 10, 200)
+    # 4. Execute: Set channel 10 to normalized intensity 0.8
+    app.action_registry.execute("channel.set_level", 10, 0.8)
 
     # Assert DMX levels override was updated (0-indexed array)
-    assert app.backend.dmx.levels["user"][9] == 200
-    assert received_events == [(10, 200)]
+    assert app.backend.dmx.levels["user"][9] == 0.8
+    assert received_events == [(10, 0.8)]
 
     # 5. Execute "edit.undo" action via the registry
     mock_dmx.set_levels.reset_mock()
     app.action_registry.execute("edit.undo")
 
-    # Assert DMX levels override was restored to -1
-    assert app.backend.dmx.levels["user"][9] == -1
-    assert received_events == [(10, 200), (10, -1)]
+    # Assert DMX levels override was restored to -1.0
+    assert app.backend.dmx.levels["user"][9] == -1.0
+    assert received_events == [(10, 0.8), (10, -1.0)]
 
     # 6. Execute "edit.redo" action via the registry
     mock_dmx.set_levels.reset_mock()
     app.action_registry.execute("edit.redo")
 
-    # Assert DMX levels override is back to 200
-    assert app.backend.dmx.levels["user"][9] == 200
-    assert received_events == [(10, 200), (10, -1), (10, 200)]
+    # Assert DMX levels override is back to 0.8
+    assert app.backend.dmx.levels["user"][9] == 0.8
+    assert received_events == [(10, 0.8), (10, -1.0), (10, 0.8)]
 
 
 def test_sequential_undo_redo_actions() -> None:
@@ -78,34 +78,34 @@ def test_sequential_undo_redo_actions() -> None:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     # levels structure: sequence, user, faders
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
-    # 3. Execute: Set channel 10 to 200, then channel 11 to 150
-    app.action_registry.execute("channel.set_level", 10, 200)
-    app.action_registry.execute("channel.set_level", 11, 150)
+    # 3. Execute: Set channel 10 to 0.8, then channel 11 to 0.6
+    app.action_registry.execute("channel.set_level", 10, 0.8)
+    app.action_registry.execute("channel.set_level", 11, 0.6)
 
     # Assert DMX levels override are set correctly
-    assert app.backend.dmx.levels["user"][9] == 200
-    assert app.backend.dmx.levels["user"][10] == 150
+    assert app.backend.dmx.levels["user"][9] == 0.8
+    assert app.backend.dmx.levels["user"][10] == 0.6
 
-    # 4. Undo the last action (channel 11 should restore to -1)
+    # 4. Undo the last action (channel 11 should restore to -1.0)
     app.action_registry.execute("edit.undo")
-    assert app.backend.dmx.levels["user"][10] == -1
-    assert app.backend.dmx.levels["user"][9] == 200
+    assert app.backend.dmx.levels["user"][10] == -1.0
+    assert app.backend.dmx.levels["user"][9] == 0.8
 
-    # 5. Undo the first action (channel 10 should restore to -1)
+    # 5. Undo the first action (channel 10 should restore to -1.0)
     app.action_registry.execute("edit.undo")
-    assert app.backend.dmx.levels["user"][9] == -1
-    assert app.backend.dmx.levels["user"][10] == -1
+    assert app.backend.dmx.levels["user"][9] == -1.0
+    assert app.backend.dmx.levels["user"][10] == -1.0
 
-    # 6. Redo the first action (channel 10 back to 200)
+    # 6. Redo the first action (channel 10 back to 0.8)
     app.action_registry.execute("edit.redo")
-    assert app.backend.dmx.levels["user"][9] == 200
-    assert app.backend.dmx.levels["user"][10] == -1
+    assert app.backend.dmx.levels["user"][9] == 0.8
+    assert app.backend.dmx.levels["user"][10] == -1.0
 
-    # 7. Redo the second action (channel 11 back to 150)
+    # 7. Redo the second action (channel 11 back to 0.6)
     app.action_registry.execute("edit.redo")
-    assert app.backend.dmx.levels["user"][9] == 200
-    assert app.backend.dmx.levels["user"][10] == 150
+    assert app.backend.dmx.levels["user"][9] == 0.8
+    assert app.backend.dmx.levels["user"][10] == 0.6

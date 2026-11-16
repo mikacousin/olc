@@ -169,7 +169,7 @@ class TrackChannelsWidget(Gtk.Widget):
         step: int,
         number: float,
         text: str,
-        levels: list[int],
+        levels: list[float],
         tab: TrackChannelsTab,
         settings: Gio.Settings,
         colors: list[dict[str, float]] | None = None,
@@ -344,9 +344,9 @@ class TrackChannelsWidget(Gtk.Widget):
                     level = "M"
                 else:
                     level = (
-                        str(int(round(((lvl / 255) * 100))))
+                        str(int(round(lvl * 100.0)))
                         if self.settings.get_boolean("percent")
-                        else str(lvl)
+                        else str(int(round(lvl * 255.0)))
                     )
 
                 color = (

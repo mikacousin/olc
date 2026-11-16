@@ -61,6 +61,7 @@ class OlcParser(ReadFile):
         self.data["universes"] = contents.get("universes") or {}
         self.data["workspace"] = contents.get("workspace") or {}
         self.data["park"] = contents.get("park") or {}
+        self.data["normalized_levels"] = bool(contents.get("normalized_levels", False))
 
     def _int_float_str(self, key: int | float | str) -> int | float | str:
         if is_int(key):

@@ -23,27 +23,27 @@ class ParkManager:
     """Manages parked channels and physical DMX output addresses."""
 
     def __init__(self) -> None:
-        self.parked_channels: dict[int, int] = {}
+        self.parked_channels: dict[int, float] = {}
         self.parked_addresses: dict[tuple[int, int], int] = {}
 
-    def park_channel(self, channel: int, level: int) -> None:
-        """Park a channel at a given DMX level (0-255).
+    def park_channel(self, channel: int, level: float | int) -> None:
+        """Park a channel at a normalized level [0.0..1.0].
 
         Args:
             channel: 1-based channel number.
-            level: DMX value clamped between 0 and 255.
+            level: Normalized level clamped between 0.0 and 1.0.
         """
-        clamped = max(0, min(255, int(level)))
+        clamped = max(0.0, min(1.0, float(level)))
         self.parked_channels[channel] = clamped
 
-    def unpark_channel(self, channel: int) -> int | None:
+    def unpark_channel(self, channel: int) -> float | None:
         """Unpark a channel.
 
         Args:
             channel: 1-based channel number.
 
         Returns:
-            Previous parked DMX level, or None if channel was not parked.
+            Previous parked normalized level, or None if channel was not parked.
         """
         return self.parked_channels.pop(channel, None)
 
@@ -72,7 +72,7 @@ class ParkManager:
 
     def unpark_all(
         self,
-    ) -> tuple[dict[int, int], dict[tuple[int, int], int]]:
+    ) -> tuple[dict[int, float], dict[tuple[int, int], int]]:
         """Unpark all parked channels and addresses.
 
         Returns:
@@ -88,8 +88,8 @@ class ParkManager:
         """Return True if channel is parked."""
         return channel in self.parked_channels
 
-    def get_channel_park_level(self, channel: int) -> int | None:
-        """Return parked level for channel, or None if not parked."""
+    def get_channel_park_level(self, channel: int) -> float | None:
+        """Return parked normalized level [0.0..1.0] for channel, or None."""
         return self.parked_channels.get(channel)
 
     def is_address_parked(self, universe: int, output: int) -> bool:
@@ -118,14 +118,19 @@ class ParkManager:
             },
         }
 
-    def from_dict(self, data: dict[str, typing.Any]) -> None:
+    def from_dict(
+        self, data: dict[str, typing.Any], *, normalized: bool = True
+    ) -> None:
         """Restore park state from dictionary."""
         self.clear()
         channels = data.get("channels", {})
         if isinstance(channels, dict):
             for k, v in channels.items():
                 try:
-                    self.park_channel(int(k), int(v))
+                    val = float(v)
+                    if not normalized:
+                        val /= 255.0
+                    self.park_channel(int(k), val)
                 except (ValueError, TypeError):
                     pass
         addresses = data.get("addresses", {})

@@ -114,36 +114,37 @@ class Cue:
         return self._channels_array
 
     def set_level(self, channel: int, level: int | float) -> None:
-        """Set level of a channel.
+        """Set normalized level of a channel.
 
         Args :
             channel: channel number (1-MAX_CHANNELS)
-            level: level (0 - 255)
+            level: normalized level (0.0 - 1.0)
         """
         if (
             isinstance(level, (int, float))
-            and 0 <= level <= 255
+            and 0.0 <= level <= 1.0
             and isinstance(channel, int)
             and 0 < channel <= MAX_CHANNELS
         ):
-            self.channels[channel] = level
+            val = float(level)
+            self.channels[channel] = val
             if self._channels_array is not None:
-                self._channels_array[channel - 1] = float(level)
+                self._channels_array[channel - 1] = val
 
-    def get_level(self, channel: int) -> float | int:
-        """Get channel's level (including fallback to device_values intensity).
+    def get_level(self, channel: int) -> float:
+        """Get channel's normalized level (including fallback to device_values).
 
         Args:
             channel: channel number (1-MAX_CHANNELS)
 
         Returns:
-            channel's level (0-255)
+            channel's normalized level (0.0 - 1.0)
         """
-        lvl = self.channels.get(channel, 0)
-        if lvl == 0 and channel in self.device_values:
+        lvl = float(self.channels.get(channel, 0.0))
+        if lvl == 0.0 and channel in self.device_values:
             dev_int = self.device_values[channel].get("intensity")
             if isinstance(dev_int, (int, float)):
-                lvl = max(0.0, min(255.0, float(dev_int) * 255.0))
+                lvl = max(0.0, min(1.0, float(dev_int)))
         return lvl
 
     def get_active_channels_count(self) -> int:
@@ -357,14 +358,16 @@ class CueEditor:
         """
         return self._editor.get_levels((number, sequence))
 
-    def set_level(self, number: float, sequence: int, channel: int, level: int) -> None:
+    def set_level(
+        self, number: float, sequence: int, channel: int, level: float
+    ) -> None:
         """Set a temporary level override for a single channel.
 
         Args:
             number: Cue number.
             sequence: Sequence index.
             channel: Channel number (1-based).
-            level: The temporary DMX level (0-255).
+            level: The temporary normalized level (0.0-1.0).
         """
         self._editor.set_level((number, sequence), channel, level)
 

@@ -1194,7 +1194,7 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
 
     mock_backend = MagicMock()
     mock_backend.dmx = MagicMock()
-    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    mock_backend.dmx.levels = {"user": [-1.0] * 1024, "sequence": [0.0] * 1024}
     mock_backend.dmx.blackout = False
     app.backend = mock_backend
 
@@ -1216,12 +1216,12 @@ def test_osc_normalized_routes_and_polymorphism() -> None:
     delegate._channel_level("/olc/channel/3/level", [0.8])
     action = app.action_registry.get("channel.set_level")
     assert action.get_feedback_state()["normalized_level"] == 0.8
-    assert mock_backend.dmx.levels["user"][2] == round(0.8 * 255.0)
+    assert mock_backend.dmx.levels["user"][2] == 0.8
 
     # 4. Channel level normalized float
     delegate._channel_level("/olc/channel/3/level", [0.5])
     action = app.action_registry.get("channel.set_level")
-    assert action.get_feedback_state()["level"] == round(0.5 * 255.0)
+    assert action.get_feedback_state()["level"] == 0.5
 
     # 5. Blackout bool / string
     delegate._blackout("/olc/blackout", ["true"])
@@ -1241,7 +1241,7 @@ def test_osc_key_enter_and_backspace() -> None:
 
     mock_backend = MagicMock()
     mock_backend.dmx = MagicMock()
-    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    mock_backend.dmx.levels = {"user": [-1.0] * 1024, "sequence": [0.0] * 1024}
     app.backend = mock_backend
 
     delegate = OSCDelegate(app)
@@ -1254,9 +1254,9 @@ def test_osc_key_enter_and_backspace() -> None:
     # 2. Enter route executing command
     app.commandline.set_string("1 at 50")
     delegate._enter("/olc/key/enter", [1])
-    # Channel 1 selected and level 50 applied (or command executed)
+    # Channel 1 selected and level 50% applied
     assert app.commandline.get_string() == ""
-    assert mock_backend.dmx.levels["user"][0] == 128
+    assert mock_backend.dmx.levels["user"][0] == pytest.approx(0.5)
 
 
 def test_osc_keypad_sentence_building() -> None:
@@ -1266,7 +1266,7 @@ def test_osc_keypad_sentence_building() -> None:
 
     mock_backend = MagicMock()
     mock_backend.dmx = MagicMock()
-    mock_backend.dmx.levels = {"user": [-1] * 1024, "sequence": [0] * 1024}
+    mock_backend.dmx.levels = {"user": [-1.0] * 1024, "sequence": [0.0] * 1024}
     app.backend = mock_backend
 
     delegate = OSCDelegate(app)
@@ -1284,7 +1284,7 @@ def test_osc_keypad_sentence_building() -> None:
 
     delegate._enter("/olc/key/enter", [1])
     assert app.commandline.get_string() == ""
-    assert mock_backend.dmx.levels["user"][0] == 128
+    assert mock_backend.dmx.levels["user"][0] == pytest.approx(0.5)
 
     # Test THRU and FULL: "1 THRU 3 AT FULL"
     delegate._1("/olc/key/1", [1])
@@ -1294,9 +1294,9 @@ def test_osc_keypad_sentence_building() -> None:
     delegate._full("/olc/key/full", [1])
     assert app.commandline.get_string() == "1 THRU 3 AT FULL"
     delegate._enter("/olc/key/enter", [1])
-    assert mock_backend.dmx.levels["user"][0] == 255
-    assert mock_backend.dmx.levels["user"][1] == 255
-    assert mock_backend.dmx.levels["user"][2] == 255
+    assert mock_backend.dmx.levels["user"][0] == 1.0
+    assert mock_backend.dmx.levels["user"][1] == 1.0
+    assert mock_backend.dmx.levels["user"][2] == 1.0
 
 
 def test_osc_fader_flash_feedback() -> None:

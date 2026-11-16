@@ -35,43 +35,43 @@ def test_channel_set_level_action_and_undo_redo() -> None:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     # levels structure: sequence, user, faders
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
     # 3. Track events
-    received_events: list[tuple[int, int]] = []
+    received_events: list[tuple[int, float]] = []
     app.subscribe(
         "channel.level_changed", lambda chan, val: received_events.append((chan, val))
     )
 
-    # 4. Execute: Set channel 5 to DMX intensity 128
-    app.action_registry.execute("channel.set_level", 5, 128)
+    # 4. Execute: Set channel 5 to normalized intensity 0.5
+    app.action_registry.execute("channel.set_level", 5, 0.5)
 
     # Assert DMX levels override was updated (0-indexed array)
-    assert app.backend.dmx.levels["user"][4] == 128
+    assert app.backend.dmx.levels["user"][4] == 0.5
     # Assert set_levels update was called
     mock_dmx.set_levels.assert_called_once()
     # Assert event was emitted
-    assert received_events == [(5, 128)]
+    assert received_events == [(5, 0.5)]
 
     # 5. Undo the action
     mock_dmx.set_levels.reset_mock()
     app.history.undo()
 
-    # Assert DMX levels override was restored to -1
-    assert app.backend.dmx.levels["user"][4] == -1
+    # Assert DMX levels override was restored to -1.0
+    assert app.backend.dmx.levels["user"][4] == -1.0
     mock_dmx.set_levels.assert_called_once()
-    assert received_events == [(5, 128), (5, -1)]
+    assert received_events == [(5, 0.5), (5, -1.0)]
 
     # 6. Redo the action
     mock_dmx.set_levels.reset_mock()
     app.history.redo()
 
-    # Assert DMX levels override is back to 128
-    assert app.backend.dmx.levels["user"][4] == 128
+    # Assert DMX levels override is back to 0.5
+    assert app.backend.dmx.levels["user"][4] == 0.5
     mock_dmx.set_levels.assert_called_once()
-    assert received_events == [(5, 128), (5, -1), (5, 128)]
+    assert received_events == [(5, 0.5), (5, -1.0), (5, 0.5)]
 
 
 def test_channel_set_level_action_validation_errors() -> None:
@@ -81,19 +81,23 @@ def test_channel_set_level_action_validation_errors() -> None:
 
     # Channel index < 1 should raise ValueError
     with pytest.raises(ValueError, match="Channel index must be between 1 and"):
-        app.action_registry.execute("channel.set_level", 0, 100)
+        app.action_registry.execute("channel.set_level", 0, 0.5)
 
     # Channel index > MAX_CHANNELS should raise ValueError
     with pytest.raises(ValueError, match="Channel index must be between 1 and"):
-        app.action_registry.execute("channel.set_level", MAX_CHANNELS + 1, 100)
+        app.action_registry.execute("channel.set_level", MAX_CHANNELS + 1, 0.5)
 
-    # DMX Level < -1 should raise ValueError
-    with pytest.raises(ValueError, match="DMX Level must be between -1 and 255"):
-        app.action_registry.execute("channel.set_level", 1, -2)
+    # Normalized Level < -1.0 should raise ValueError
+    with pytest.raises(
+        ValueError, match="Normalized level must be between -1.0 and 1.0"
+    ):
+        app.action_registry.execute("channel.set_level", 1, -1.5)
 
-    # DMX Level > 255 should raise ValueError
-    with pytest.raises(ValueError, match="DMX Level must be between -1 and 255"):
-        app.action_registry.execute("channel.set_level", 1, 256)
+    # Normalized Level > 1.0 should raise ValueError
+    with pytest.raises(
+        ValueError, match="Normalized level must be between -1.0 and 1.0"
+    ):
+        app.action_registry.execute("channel.set_level", 1, 1.5)
 
 
 def test_channel_set_level_action_without_backend() -> None:
@@ -103,7 +107,7 @@ def test_channel_set_level_action_without_backend() -> None:
     app.backend = None
 
     # Should run and emit event without throwing AttributeError
-    app.action_registry.execute("channel.set_level", 10, 100)
+    app.action_registry.execute("channel.set_level", 10, 0.5)
 
     # Try undoing/redoing without backend
     app.history.undo()
@@ -115,17 +119,17 @@ def test_channel_set_level_action_feedback_and_repr() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.action_registry.execute("channel.set_level", 15, 200)
+    app.action_registry.execute("channel.set_level", 15, 0.8)
     action = app.action_registry.get("channel.set_level")
 
     assert action.get_feedback_state() == {
         "channel": 15,
-        "level": 200,
-        "normalized_level": 200 / 255.0,
+        "level": 0.8,
+        "normalized_level": 0.8,
         "active": True,
     }
 
-    assert repr(action) == "<SetChannelLevelAction channel=15 level=200>"
+    assert repr(action) == "<SetChannelLevelAction channel=15 level=0.8>"
 
 
 def test_channel_set_level_normalized_and_16bit_device() -> None:
@@ -135,8 +139,8 @@ def test_channel_set_level_normalized_and_16bit_device() -> None:
 
     mock_backend = MagicMock()
     mock_backend.dmx = MagicMock()
-    user_levels = [-1] * 1024
-    mock_backend.dmx.levels = {"user": user_levels, "sequence": [0] * 1024}
+    user_levels = [-1.0] * 1024
+    mock_backend.dmx.levels = {"user": user_levels, "sequence": [0.0] * 1024}
     app.backend = mock_backend
 
     mock_device = MagicMock()
@@ -147,19 +151,19 @@ def test_channel_set_level_normalized_and_16bit_device() -> None:
     # Execute with normalized float 0.8
     app.action_registry.execute("channel.set_level", 5, 0.8)
     mock_device.set_intensity.assert_called_with(0.8)
-    assert mock_backend.dmx.levels["user"][4] == round(0.8 * 255.0)
+    assert mock_backend.dmx.levels["user"][4] == 0.8
 
     action = app.action_registry.get("channel.set_level")
     assert action.get_feedback_state() == {
         "channel": 5,
-        "level": round(0.8 * 255.0),
+        "level": 0.8,
         "normalized_level": 0.8,
         "active": True,
     }
 
     # Test release with -1.0
     app.action_registry.execute("channel.set_level", 5, -1.0)
-    assert mock_backend.dmx.levels["user"][4] == -1
+    assert mock_backend.dmx.levels["user"][4] == -1.0
     mock_device.set_intensity.assert_called_with(0.0)
 
 
@@ -299,37 +303,37 @@ def test_set_multi_channels_level_action() -> None:
     # 2. Mock Dmx backend
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
     # 3. Track events
-    received_events: list[tuple[int, int]] = []
+    received_events: list[tuple[int, float]] = []
     app.subscribe(
         "channel.level_changed", lambda chan, val: received_events.append((chan, val))
     )
 
-    # 4. Execute: Set channel 3 to 200, and channel 4 to 150
-    app.action_registry.execute("channel.set_multi_levels", {3: 200, 4: 150})
+    # 4. Execute: Set channel 3 to 0.8, and channel 4 to 0.6
+    app.action_registry.execute("channel.set_multi_levels", {3: 0.8, 4: 0.6})
 
     # Assert DMX levels override were updated
-    assert app.backend.dmx.levels["user"][2] == 200
-    assert app.backend.dmx.levels["user"][3] == 150
+    assert app.backend.dmx.levels["user"][2] == 0.8
+    assert app.backend.dmx.levels["user"][3] == 0.6
     # Assert set_levels update was called
     mock_dmx.set_levels.assert_called_once()
     # Assert events were emitted (order is not guaranteed, check set)
-    assert set(received_events) == {(3, 200), (4, 150)}
+    assert set(received_events) == {(3, 0.8), (4, 0.6)}
 
     # 5. Undo the action
     mock_dmx.set_levels.reset_mock()
     received_events.clear()
     app.history.undo()
 
-    # Assert DMX levels override were restored to -1
-    assert app.backend.dmx.levels["user"][2] == -1
-    assert app.backend.dmx.levels["user"][3] == -1
+    # Assert DMX levels override were restored to -1.0
+    assert app.backend.dmx.levels["user"][2] == -1.0
+    assert app.backend.dmx.levels["user"][3] == -1.0
     mock_dmx.set_levels.assert_called_once()
-    assert set(received_events) == {(3, -1), (4, -1)}
+    assert set(received_events) == {(3, -1.0), (4, -1.0)}
 
     # 6. Redo the action
     mock_dmx.set_levels.reset_mock()
@@ -337,10 +341,10 @@ def test_set_multi_channels_level_action() -> None:
     app.history.redo()
 
     # Assert DMX levels override are back to modified values
-    assert app.backend.dmx.levels["user"][2] == 200
-    assert app.backend.dmx.levels["user"][3] == 150
+    assert app.backend.dmx.levels["user"][2] == 0.8
+    assert app.backend.dmx.levels["user"][3] == 0.6
     mock_dmx.set_levels.assert_called_once()
-    assert set(received_events) == {(3, 200), (4, 150)}
+    assert set(received_events) == {(3, 0.8), (4, 0.6)}
 
 
 def test_channel_wheel_adjust_action_and_undo_redo() -> None:
@@ -350,7 +354,7 @@ def test_channel_wheel_adjust_action_and_undo_redo() -> None:
 
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 100, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 100.0 / 255.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -359,28 +363,28 @@ def test_channel_wheel_adjust_action_and_undo_redo() -> None:
 
     # Adjust UP by 25
     app.action_registry.execute("channel.wheel_adjust", 25, 1)
-    assert app.backend.dmx.levels["user"][0] == 125
-    assert app.backend.dmx.levels["user"][1] == 125
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(125.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(125.0 / 255.0)
 
     # Undo
     app.history.undo()
-    assert app.backend.dmx.levels["user"][0] == 100
-    assert app.backend.dmx.levels["user"][1] == 100
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(100.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(100.0 / 255.0)
 
     # Redo
     app.history.redo()
-    assert app.backend.dmx.levels["user"][0] == 125
-    assert app.backend.dmx.levels["user"][1] == 125
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(125.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(125.0 / 255.0)
 
-    # Adjust DOWN with clamping at 0
+    # Adjust DOWN with clamping at 0.0
     app.action_registry.execute("channel.wheel_adjust", 200, -1)
-    assert app.backend.dmx.levels["user"][0] == 0
-    assert app.backend.dmx.levels["user"][1] == 0
+    assert app.backend.dmx.levels["user"][0] == 0.0
+    assert app.backend.dmx.levels["user"][1] == 0.0
 
     # Undo clamping
     app.history.undo()
-    assert app.backend.dmx.levels["user"][0] == 125
-    assert app.backend.dmx.levels["user"][1] == 125
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(125.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(125.0 / 255.0)
 
 
 def test_channel_level_plus_minus_and_undo_redo() -> None:
@@ -392,7 +396,7 @@ def test_channel_level_plus_minus_and_undo_redo() -> None:
 
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 50, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 50.0 / 255.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -400,36 +404,36 @@ def test_channel_level_plus_minus_and_undo_redo() -> None:
 
     # Test level_plus
     app.action_registry.execute("channel.level_plus")
-    assert app.backend.dmx.levels["user"][0] == 60
-    assert app.backend.dmx.levels["user"][1] == 60
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(60.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(60.0 / 255.0)
 
     # Undo level_plus
     app.history.undo()
-    assert app.backend.dmx.levels["user"][0] == 50
-    assert app.backend.dmx.levels["user"][1] == 50
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(50.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(50.0 / 255.0)
 
     # Redo level_plus
     app.history.redo()
-    assert app.backend.dmx.levels["user"][0] == 60
-    assert app.backend.dmx.levels["user"][1] == 60
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(60.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(60.0 / 255.0)
 
     # Test level_minus
     app.action_registry.execute("channel.level_minus")
-    assert app.backend.dmx.levels["user"][0] == 50
-    assert app.backend.dmx.levels["user"][1] == 50
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(50.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(50.0 / 255.0)
 
     # Undo level_minus
     app.history.undo()
-    assert app.backend.dmx.levels["user"][0] == 60
-    assert app.backend.dmx.levels["user"][1] == 60
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(60.0 / 255.0)
+    assert app.backend.dmx.levels["user"][1] == pytest.approx(60.0 / 255.0)
 
     # Test with percent mode enabled
     settings.get_boolean.return_value = True
     app.action_registry.execute("channel.level_plus")
-    assert app.backend.dmx.levels["user"][0] > 60
+    assert app.backend.dmx.levels["user"][0] > 60.0 / 255.0
 
     app.history.undo()
-    assert app.backend.dmx.levels["user"][0] == 60
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(60.0 / 255.0)
 
 
 def test_channel_set_level_full_and_from_cmd() -> None:
@@ -440,7 +444,7 @@ def test_channel_set_level_full_and_from_cmd() -> None:
 
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 20, dtype=np.int16)}
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 20.0 / 255.0, dtype=np.float64)}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -448,41 +452,41 @@ def test_channel_set_level_full_and_from_cmd() -> None:
 
     # Test set_level_full
     app.action_registry.execute("channel.set_level_full")
-    assert app.backend.dmx.levels["user"][2] == 255
-    assert app.backend.dmx.levels["user"][3] == 255
+    assert app.backend.dmx.levels["user"][2] == 1.0
+    assert app.backend.dmx.levels["user"][3] == 1.0
 
     # Undo
     app.history.undo()
-    assert app.backend.dmx.levels["user"][2] == 20
-    assert app.backend.dmx.levels["user"][3] == 20
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(20.0 / 255.0)
+    assert app.backend.dmx.levels["user"][3] == pytest.approx(20.0 / 255.0)
 
     # Redo
     app.history.redo()
-    assert app.backend.dmx.levels["user"][2] == 255
-    assert app.backend.dmx.levels["user"][3] == 255
+    assert app.backend.dmx.levels["user"][2] == 1.0
+    assert app.backend.dmx.levels["user"][3] == 1.0
 
     # Test set_level_from_cmd
     app.commandline.set_string("128")
     app.action_registry.execute("channel.set_level_from_cmd")
-    assert app.backend.dmx.levels["user"][2] == 128
-    assert app.backend.dmx.levels["user"][3] == 128
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(128.0 / 255.0)
+    assert app.backend.dmx.levels["user"][3] == pytest.approx(128.0 / 255.0)
     assert app.commandline.get_string() == ""
 
     # Undo
     app.history.undo()
-    assert app.backend.dmx.levels["user"][2] == 255
-    assert app.backend.dmx.levels["user"][3] == 255
+    assert app.backend.dmx.levels["user"][2] == 1.0
+    assert app.backend.dmx.levels["user"][3] == 1.0
 
     # Redo
     app.history.redo()
-    assert app.backend.dmx.levels["user"][2] == 128
-    assert app.backend.dmx.levels["user"][3] == 128
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(128.0 / 255.0)
+    assert app.backend.dmx.levels["user"][3] == pytest.approx(128.0 / 255.0)
 
     # Test set_level_from_cmd with percent mode
     settings.get_boolean.return_value = True
     app.commandline.set_string("50")
     app.action_registry.execute("channel.set_level_from_cmd")
-    assert app.backend.dmx.levels["user"][2] == int(round((50 / 100) * 255))
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(0.5)
 
 
 def test_channel_level_actions_empty_selection() -> None:

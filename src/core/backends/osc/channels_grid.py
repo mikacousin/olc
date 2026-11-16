@@ -121,7 +121,7 @@ class ChannelsGridManager:
         backend = getattr(self.app, "backend", None)
         backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
 
-        raw_level = 0
+        level_norm = 0.0
         color_state = "zero"
 
         if backend_dmx is not None:
@@ -129,21 +129,20 @@ class ChannelsGridManager:
             intensity_mult = float(
                 getattr(backend_dmx, "effective_intensity_mult", 1.0)
             )
-            scaled_level = round(comp_level * intensity_mult)
-            raw_level = scaled_level
+            scaled_level = comp_level * intensity_mult
 
-            if scaled_level == 0:
+            if scaled_level <= 0.0:
                 color_state = "zero"
-            elif backend_dmx.levels["user"][ch - 1] != -1:
+            elif backend_dmx.levels["user"][ch - 1] >= 0.0:
                 color_state = "manual"
-            elif backend_dmx.levels["faders"][ch - 1] > 0:
+            elif backend_dmx.levels["faders"][ch - 1] > 0.0:
                 color_state = "fader"
-            elif self.app.lightshow.independents.dmx[ch - 1] > 0:
+            elif self.app.lightshow.independents.dmx[ch - 1] > 0.0:
                 color_state = "independent"
             else:
                 color_state = "cue"
 
-        level_norm = round(raw_level / 255.0, 3)
+            level_norm = round(max(0.0, min(1.0, scaled_level)), 4)
 
         label = f"Ch {ch}"
         patch = getattr(self.app.lightshow, "patch", None)

@@ -406,21 +406,21 @@ class DeviceInspectorWidget(Gtk.Box):
     def _on_core_channel_level_changed(self, channel_id: int, level: int) -> None:
         self._run_on_main_thread(self._apply_channel_level_update, channel_id, level)
 
-    def _apply_channel_level_update(self, channel_id: int, level: int) -> None:
+    def _apply_channel_level_update(self, channel_id: int, level: float | int) -> None:
         if self._updating_ui or self._syncing_devices:
             return
         matched = [dev for dev in self.selected_devices if dev.fixture_id == channel_id]
         if not matched:
             return
-        eff_lvl = max(0, int(level))
+        eff_lvl = max(0.0, float(level))
         if self.app is not None and hasattr(self.app, "core"):
             backend = getattr(self.app.core, "backend", None)
             dmx = getattr(backend, "dmx", None) if backend is not None else None
             if dmx is not None and 1 <= channel_id <= len(dmx.levels["user"]):
                 comp_lvl, _ = dmx.get_composite_level(channel_id - 1)
-                eff_lvl = int(comp_lvl)
+                eff_lvl = float(comp_lvl)
         for dev in matched:
-            dev.set_intensity(eff_lvl / 255.0)
+            dev.set_intensity(eff_lvl)
         self.refresh_ui()
 
     def _on_core_device_parameters_changed(self, channel_ids: list[int]) -> None:
@@ -457,7 +457,7 @@ class DeviceInspectorWidget(Gtk.Box):
         try:
             if sync_intensity:
                 channels_dict = {
-                    dev.fixture_id: round(dev.intensity * 255)
+                    dev.fixture_id: float(dev.intensity)
                     for dev in devices
                     if self._has_intensity(dev) and dev.fixture_id >= 1
                 }
@@ -506,7 +506,7 @@ class DeviceInspectorWidget(Gtk.Box):
                 dev = patch.devices[ch_id]
                 if dmx is not None and 1 <= ch_id <= len(dmx.levels["user"]):
                     lvl, _ = dmx.get_composite_level(ch_id - 1)
-                    dev.set_intensity(lvl / 255.0)
+                    dev.set_intensity(lvl)
                 devices.append(dev)
         self.set_selected_devices(devices)
 

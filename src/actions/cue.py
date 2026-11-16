@@ -449,10 +449,12 @@ class CueSetTempChannelsAction(Action):
         super().__init__(app)
         self.number: float = 0.0
         self.sequence: int = 0
-        self.new_levels: dict[int, int] = {}
-        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, float] = {}
+        self.old_levels: dict[int, float] = {}
 
-    def configure(self, number: float, sequence: int, channels: dict[int, int]) -> None:
+    def configure(
+        self, number: float, sequence: int, channels: dict[int, float]
+    ) -> None:
         """Configure the action.
 
         Args:
@@ -470,7 +472,7 @@ class CueSetTempChannelsAction(Action):
         levels = cue_editor.get_levels(self.number, self.sequence)
         self.old_levels = {}
         for channel in self.new_levels:
-            self.old_levels[channel] = int(levels[channel - 1])
+            self.old_levels[channel] = float(levels[channel - 1])
 
         for channel, level in self.new_levels.items():
             cue_editor.set_level(self.number, self.sequence, channel, level)

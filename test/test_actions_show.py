@@ -173,7 +173,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     app = CoreApplication(settings)
 
     app.lightshow.cues.add(Cue(1, 2.5))
-    app.lightshow.groups.add(Group(index=1.0, channels={1: 255, 2: 128}))
+    app.lightshow.groups.add(Group(index=1.0, channels={1: 1.0, 2: 0.5}))
     app.action_registry.execute("patch.add_output", 5, 20, 1)
 
     save_path = str(tmp_path / "test_show.olc")
@@ -195,7 +195,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     assert app2.lightshow.modified is False
     group = app2.lightshow.groups.get(1.0)
     assert group is not None
-    assert group.channels == {1: 255, 2: 128}
+    assert group.channels == {1: 1.0, 2: 0.5}
     assert app2.lightshow.patch.get_output_info(1, 20) == (5, 0)
 
 

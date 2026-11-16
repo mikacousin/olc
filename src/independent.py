@@ -105,10 +105,9 @@ class Independent:
         self.update_dmx()
 
     def update_dmx(self) -> None:
-        """Update DMX levels."""
+        """Update normalized DMX levels."""
         for channel, level in self.levels.items():
-            norm_lvl = float(level) / 255.0 if float(level) > 1.0 else float(level)
-            self.dmx[channel - 1] = round(norm_lvl * self.level * 255.0)
+            self.dmx[channel - 1] = max(0.0, min(1.0, float(level) * self.level))
         self.independents.update_dmx()
         if self.app and hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()

@@ -15,7 +15,7 @@ def test_park_show_persistence() -> None:
     app = CoreApplication(settings)
 
     # 1. Park channels and addresses
-    app.action_registry.execute("channel.park", [1, 5], 200)
+    app.action_registry.execute("channel.park", [1, 5], 0.8)
     app.action_registry.execute("address.park", (1, 15), 180)
     assert app.lightshow.park.total_parked_count() == 3
 
@@ -29,8 +29,8 @@ def test_park_show_persistence() -> None:
 
         app2.action_registry.execute("show.open", tmp.name)
         assert app2.lightshow.park.total_parked_count() == 3
-        assert app2.lightshow.park.get_channel_park_level(1) == 200
-        assert app2.lightshow.park.get_channel_park_level(5) == 200
+        assert app2.lightshow.park.get_channel_park_level(1) == 0.8
+        assert app2.lightshow.park.get_channel_park_level(5) == 0.8
         assert app2.lightshow.park.get_address_park_level(1, 15) == 180
 
         # 4. show.new resets park
@@ -47,7 +47,7 @@ def test_osc_delegate_park_endpoints() -> None:
     # Call /olc/channel/7/park with level 0.8
     delegate._channel_park("/olc/channel/7/park", [0.8])
     assert app.lightshow.park.is_channel_parked(7)
-    assert app.lightshow.park.get_channel_park_level(7) == 204
+    assert app.lightshow.park.get_channel_park_level(7) == 0.8
 
     # Call /olc/address/1/20/park with level 0.5
     delegate._address_park("/olc/address/1/20/park", [0.5])

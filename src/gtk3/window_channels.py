@@ -49,13 +49,13 @@ class LiveView(Gtk.Notebook):
         return self.window.app
 
     def update_channel_widget(
-        self, channel: int, next_level: int | None = None
+        self, channel: int, next_level: float | None = None
     ) -> None:
         """Update display of channel widget
 
         Args:
             channel: Index of channel (from 1 to MAX_CHANNELS)
-            next_level: Channel next level (from 0 to 255, or None to auto-query)
+            next_level: Channel next normalized level (0.0-1.0, or None to auto-query)
         """
         widget = self.channels_view.get_channel_widget(channel)
         if not widget:
@@ -66,7 +66,7 @@ class LiveView(Gtk.Notebook):
         level, color_level = self.app.core.backend.dmx.get_composite_level(channel_idx)
 
         # Apply Main Fader for visual display
-        level = round(level * self.app.core.backend.dmx.main_fader.value)
+        level = level * self.app.core.backend.dmx.main_fader.value
         if next_level is None:
             main_pb = getattr(self.app.core.lightshow, "main_playback", None)
             if main_pb is not None and hasattr(main_pb, "get_next_channel_level"):
@@ -133,7 +133,7 @@ class LiveChannelsView(ChannelsView):
         child.set_visible(True)
         return True
 
-    def get_next_level(self, channel: int, channel_widget: Gtk.Widget) -> int:
+    def get_next_level(self, channel: int, channel_widget: Gtk.Widget) -> float:
         """Get Channel next level
 
         Args:
@@ -141,13 +141,13 @@ class LiveChannelsView(ChannelsView):
             channel_widget: Channel widget
 
         Returns:
-            Channel next level (0 - 255)
+            Channel next normalized level (0.0 - 1.0)
         """
         if self._batch_next_levels is not None and 1 <= channel <= len(
             self._batch_next_levels
         ):
-            return self._batch_next_levels[channel - 1]
-        current_level = int(typing.cast(typing.Any, channel_widget).level)
+            return float(self._batch_next_levels[channel - 1])
+        current_level = float(typing.cast(typing.Any, channel_widget).level)
         return self.app.core.lightshow.main_playback.get_next_channel_level(
             channel, current_level
         )

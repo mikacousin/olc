@@ -20,6 +20,7 @@ import json
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 from olc.core.app import CoreApplication
 from olc.core.backends.osc.channels_grid import ChannelsGridManager
@@ -38,15 +39,15 @@ def _setup_app_with_patch() -> tuple[CoreApplication, MagicMock]:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     mock_dmx.levels = {
-        "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
-        "sequence": np.zeros(MAX_CHANNELS, dtype=np.int16),
-        "faders": np.zeros(MAX_CHANNELS, dtype=np.int16),
+        "user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64),
+        "sequence": np.zeros(MAX_CHANNELS, dtype=np.float64),
+        "faders": np.zeros(MAX_CHANNELS, dtype=np.float64),
     }
     mock_dmx.effective_intensity_mult = 1.0
 
-    def mock_get_composite(idx: int) -> tuple[int, dict]:
+    def mock_get_composite(idx: int) -> tuple[float, dict]:
         user_val = mock_dmx.levels["user"][idx]
-        return (int(max(0, user_val)), {})
+        return (float(max(0.0, user_val)), {})
 
     mock_dmx.get_composite_level.side_effect = mock_get_composite
     mock_backend.dmx = mock_dmx
@@ -253,7 +254,7 @@ def test_osc_cell_and_channel_touch_and_level_routes() -> None:
     # 3. Set level via cell 1
     delegate._cell_level("/olc/cell/1/level", [0.8])
     assert app.backend is not None and app.backend.dmx is not None
-    assert app.backend.dmx.levels["user"][0] == round(0.8 * 255)
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(0.8)
 
     # 4. Touch channel 3 directly
     delegate._channel_touch("/olc/channel/3/touch", [1])
@@ -262,7 +263,7 @@ def test_osc_cell_and_channel_touch_and_level_routes() -> None:
     # 5. Set level via channel 3 directly (normalized [0.0..1.0])
     delegate._channel_level("/olc/channel/3/level", [0.6])
     assert app.backend is not None and app.backend.dmx is not None
-    assert app.backend.dmx.levels["user"][2] == round(0.6 * 255)
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(0.6)
 
 
 def test_osc_wheels_and_color_control_routes() -> None:

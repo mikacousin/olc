@@ -15,18 +15,18 @@ def test_park_manager_channels() -> None:
     assert mgr.total_parked_count() == 0
     assert not mgr.is_channel_parked(1)
 
-    mgr.park_channel(1, 200)
-    mgr.park_channel(5, 300)  # Should clamp to 255
-    mgr.park_channel(10, -50)  # Should clamp to 0
+    mgr.park_channel(1, 0.8)
+    mgr.park_channel(5, 1.5)  # Should clamp to 1.0
+    mgr.park_channel(10, -0.2)  # Should clamp to 0.0
 
     assert mgr.is_channel_parked(1)
-    assert mgr.get_channel_park_level(1) == 200
-    assert mgr.get_channel_park_level(5) == 255
-    assert mgr.get_channel_park_level(10) == 0
+    assert mgr.get_channel_park_level(1) == 0.8
+    assert mgr.get_channel_park_level(5) == 1.0
+    assert mgr.get_channel_park_level(10) == 0.0
     assert mgr.total_parked_count() == 3
 
     old_val = mgr.unpark_channel(1)
-    assert old_val == 200
+    assert old_val == 0.8
     assert not mgr.is_channel_parked(1)
     assert mgr.total_parked_count() == 2
 
@@ -49,23 +49,23 @@ def test_park_manager_addresses() -> None:
 
 def test_park_manager_unpark_all_and_dict() -> None:
     mgr = ParkManager()
-    mgr.park_channel(1, 255)
-    mgr.park_channel(2, 100)
+    mgr.park_channel(1, 1.0)
+    mgr.park_channel(2, 0.4)
     mgr.park_address(1, 10, 50)
 
     data = mgr.to_dict()
-    assert data["channels"] == {"1": 255, "2": 100}
+    assert data["channels"] == {"1": 1.0, "2": 0.4}
     assert data["addresses"] == {"1/10": 50}
 
     old_chans, old_addrs = mgr.unpark_all()
-    assert old_chans == {1: 255, 2: 100}
+    assert old_chans == {1: 1.0, 2: 0.4}
     assert old_addrs == {(1, 10): 50}
     assert mgr.total_parked_count() == 0
 
     # Restore from dict
     mgr.from_dict(data)
-    assert mgr.get_channel_park_level(1) == 255
-    assert mgr.get_channel_park_level(2) == 100
+    assert mgr.get_channel_park_level(1) == 1.0
+    assert mgr.get_channel_park_level(2) == 0.4
     assert mgr.get_address_park_level(1, 10) == 50
     assert mgr.total_parked_count() == 3
 
@@ -78,16 +78,16 @@ def test_dmx_composite_with_park() -> None:
 
     # Initial levels
     comp = dmx.get_all_composite_levels()
-    assert comp[0] == 0
+    assert comp[0] == 0.0
 
-    # Park channel 1 at 200
-    ls.park.park_channel(1, 200)
+    # Park channel 1 at 200/255
+    ls.park.park_channel(1, 200.0 / 255.0)
 
     comp = dmx.get_all_composite_levels()
-    assert comp[0] == 200
+    assert comp[0] == 200.0 / 255.0
 
     level, color = dmx.get_composite_level(0)
-    assert level == 200
+    assert level == 200.0 / 255.0
     assert color == {"red": 1.0, "green": 0.7, "blue": 0.0}
 
     # Verify Blackout immunity

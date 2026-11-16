@@ -315,7 +315,8 @@ class ImportFile:
         park_data = self.data.data.get("park")
         if hasattr(self.lightshow, "park"):
             if park_data:
-                self.lightshow.park.from_dict(park_data)
+                is_norm = bool(self.data.data.get("normalized_levels", True))
+                self.lightshow.park.from_dict(park_data, normalized=is_norm)
             else:
                 self.lightshow.park.clear()
             app = self.lightshow.app

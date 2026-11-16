@@ -635,26 +635,26 @@ class CueChannelsView(ChannelsView):
         widget = typing.cast("ChannelWidget", channel_widget)
         cue_level = cue.get_level(channel_num)
         if cue.has_channel_or_device(channel_num) or child.is_selected():
-            if user_channels[channel_index] == -1:
+            if user_channels[channel_index] < 0.0:
                 widget.level = cue_level
                 widget.next_level = cue_level
                 widget.color_level = get_tracking_color(
                     TrackingDisplayState.HARD_VALUE
-                    if cue_level > 0
+                    if cue_level > 0.0
                     else TrackingDisplayState.INACTIVE
                 )
             else:
-                widget.level = int(user_channels[channel_index])
-                widget.next_level = int(user_channels[channel_index])
+                widget.level = float(user_channels[channel_index])
+                widget.next_level = float(user_channels[channel_index])
                 widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
             return True
-        if user_channels[channel_index] == -1:
-            widget.level = 0
-            widget.next_level = 0
+        if user_channels[channel_index] < 0.0:
+            widget.level = 0.0
+            widget.next_level = 0.0
             widget.color_level = get_tracking_color(TrackingDisplayState.INACTIVE)
             return False
-        widget.level = int(user_channels[channel_index])
-        widget.next_level = int(user_channels[channel_index])
+        widget.level = float(user_channels[channel_index])
+        widget.next_level = float(user_channels[channel_index])
         widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         return True
 
@@ -690,25 +690,25 @@ class CueChannelsView(ChannelsView):
         widget = typing.cast("ChannelWidget", channel_widget)
         cue_level = cue.get_level(channel_num)
         if cue.has_channel_or_device(channel_num) or child.is_selected():
-            if user_channels[channel_index] == -1:
+            if user_channels[channel_index] < 0.0:
                 widget.level = cue_level
                 widget.next_level = cue_level
                 widget.color_level = get_tracking_color(
                     TrackingDisplayState.HARD_VALUE
-                    if cue_level > 0
+                    if cue_level > 0.0
                     else TrackingDisplayState.INACTIVE
                 )
             else:
-                widget.level = int(user_channels[channel_index])
-                widget.next_level = int(user_channels[channel_index])
+                widget.level = float(user_channels[channel_index])
+                widget.next_level = float(user_channels[channel_index])
                 widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
             return True
-        if user_channels[channel_index] == -1:
-            widget.level = 0
-            widget.next_level = 0
+        if user_channels[channel_index] < 0.0:
+            widget.level = 0.0
+            widget.next_level = 0.0
             widget.color_level = get_tracking_color(TrackingDisplayState.INACTIVE)
             return True
-        widget.level = int(user_channels[channel_index])
-        widget.next_level = int(user_channels[channel_index])
+        widget.level = float(user_channels[channel_index])
+        widget.next_level = float(user_channels[channel_index])
         widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         return True

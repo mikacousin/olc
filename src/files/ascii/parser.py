@@ -192,7 +192,7 @@ class AsciiParser(ReadFile):
             level = self._get_level(lvl)
             self._add_patch(int(channel), int(dimmer), level)
 
-    def _add_patch(self, channel: int, dimmer: int, level: int) -> None:
+    def _add_patch(self, channel: int, dimmer: int, level: float) -> None:
         """Add patch info to stored data
 
         Args:
@@ -206,13 +206,16 @@ class AsciiParser(ReadFile):
             if channel <= MAX_CHANNELS:
                 address = dimmer - (512 * univ_index)
                 curve_nb = 0
-                if level != 255:
-                    curve_nb = self.lightshow.curves.find_limit_curve(level)
+                if level < 1.0:
+                    limit_dmx = int(round(level * 255.0))
+                    curve_nb = self.lightshow.curves.find_limit_curve(limit_dmx)
                     if not curve_nb:
-                        curve_nb = self.lightshow.curves.add_curve(LimitCurve(level))
+                        curve_nb = self.lightshow.curves.add_curve(
+                            LimitCurve(limit_dmx)
+                        )
                     self.data["curves"][curve_nb] = {
                         "type": "LimitCurve",
-                        "limit": level,
+                        "limit": limit_dmx,
                     }
                 if channel not in self.data["patch"]:
                     self.data["patch"][channel] = [
@@ -402,10 +405,10 @@ class AsciiParser(ReadFile):
                 level = self._get_level(self.args[index + 1])
                 self.data["faders"][self.current["fader"]]["contents"][channel] = level
 
-    def _get_level(self, level: str) -> int:
+    def _get_level(self, level: str) -> float:
         if level[0] == "h":
-            return int(level[1:], 16)
-        return round((int(level) / 100) * 255)
+            return int(level[1:], 16) / 255.0
+        return float(level) / 100.0
 
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:

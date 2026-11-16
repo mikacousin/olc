@@ -106,27 +106,27 @@ def test_cue_continuous_float_channels() -> None:
     cue.channels[2] = 63.25
     assert cue.channels_array[1] == pytest.approx(63.25)
 
-    # set_level with float
-    cue.set_level(3, 204.8)
-    assert cue.channels[3] == pytest.approx(204.8)
-    assert cue.channels_array[2] == pytest.approx(204.8)
+    # set_level with float [0.0..1.0]
+    cue.set_level(3, 0.8)
+    assert cue.channels[3] == pytest.approx(0.8)
+    assert cue.channels_array[2] == pytest.approx(0.8)
 
 
 def test_cue_get_level_fallback_normalized() -> None:
     """Test get_level fallback to normalized device_values intensity."""
     cue = Cue(sequence=1, number=1.0)
 
-    # 1. Normalized intensity [0.0..1.0] -> scaled to 0..255 float
+    # 1. Normalized intensity [0.0..1.0] -> returned directly
     cue.set_device_parameter(1, "intensity", 0.5)
-    assert cue.get_level(1) == pytest.approx(127.5)
+    assert cue.get_level(1) == pytest.approx(0.5)
 
-    # 2. Out-of-range intensity (> 1.0) -> clamped to 255.0
+    # 2. Out-of-range intensity (> 1.0) -> clamped to 1.0
     cue.set_device_parameter(2, "intensity", 1.5)
-    assert cue.get_level(2) == 255.0
+    assert cue.get_level(2) == 1.0
 
     # 3. Explicit channel overrides fallback
-    cue.set_level(1, 100)
-    assert cue.get_level(1) == 100
+    cue.set_level(1, 0.4)
+    assert cue.get_level(1) == pytest.approx(0.4)
 
 
 def test_cue_device_values_serialization_and_metadata_sync() -> None:

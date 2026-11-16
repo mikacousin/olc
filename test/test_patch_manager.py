@@ -238,8 +238,8 @@ def test_engine_vectorized_levels_with_devices() -> None:
     spot.set_pan_16bit(0x1234)
 
     dmx = Dmx(backend=None, lightshow=app.lightshow)
-    # Set dimmer level for ch 1 to 200
-    dmx.levels["sequence"][0] = 200
+    # Set dimmer level for ch 1 to 200/255
+    dmx.levels["sequence"][0] = 200.0 / 255.0
 
     # Call set_levels()
     dmx.set_levels()

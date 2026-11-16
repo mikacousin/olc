@@ -284,7 +284,7 @@ def test_track_channels_tab_tracking_and_device_values(app_gui: Application) -> 
     main_pb.steps.append(
         Step(
             sequence=1,
-            cue=Cue(1, 1.0, {1: 150}, device_values={2: {"intensity": 0.5}}),
+            cue=Cue(1, 1.0, {1: 0.6}, device_values={2: {"intensity": 0.5}}),
         )
     )
     main_pb.steps.append(
@@ -321,15 +321,15 @@ def test_track_channels_tab_tracking_and_device_values(app_gui: Application) -> 
     assert isinstance(step1_widget, TrackChannelsWidget)
     assert isinstance(step2_widget, TrackChannelsWidget)
 
-    # Step 1: Ch 1 = 150 (HARD_VALUE), Ch 2 = 128 from device_values 0.5 (HARD_VALUE)
-    assert step1_widget.levels == [150, 128]
+    # Step 1: Ch 1 = 0.6 (HARD_VALUE), Ch 2 = 0.5 from device_values 0.5 (HARD_VALUE)
+    assert step1_widget.levels == [0.6, 0.5]
     assert step1_widget.colors == [
         TRACKING_COLORS[TrackingDisplayState.HARD_VALUE],
         TRACKING_COLORS[TrackingDisplayState.HARD_VALUE],
     ]
 
-    # Step 2: Ch 1 = 150 (TRACKED_VALUE), Ch 2 = 255 (INTENSITY_UP)
-    assert step2_widget.levels == [150, 255]
+    # Step 2: Ch 1 = 0.6 (TRACKED_VALUE), Ch 2 = 1.0 (INTENSITY_UP)
+    assert step2_widget.levels == [0.6, 1.0]
     assert step2_widget.colors == [
         TRACKING_COLORS[TrackingDisplayState.TRACKED_VALUE],
         TRACKING_COLORS[TrackingDisplayState.INTENSITY_UP],

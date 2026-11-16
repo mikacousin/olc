@@ -354,9 +354,9 @@ def _extract_device_active_values(  # pylint: disable=too-many-branches
 
 def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
     app: CoreApplication,
-) -> dict[int, int]:
-    """Capture current stage DMX levels mapped to show channels."""
-    channels: dict[int, int] = {}
+) -> dict[int, float]:
+    """Capture current stage normalized levels mapped to show channels."""
+    channels: dict[int, float] = {}
     patch = app.lightshow.patch
     independents = getattr(app.lightshow, "independents", None)
     inde_channels = independents.channels if independents is not None else set()
@@ -386,7 +386,7 @@ def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
                     level = app.engine.get_output_level(univ, output)
                 except (KeyError, IndexError, AttributeError):
                     pass
-            channels[channel] = max(channels.get(channel, 0), level)
+            channels[channel] = max(channels.get(channel, 0.0), float(level) / 255.0)
 
     # Also capture multi-parameter devices (including Virtual Dimmer fixtures)
     user_levels = (
@@ -397,19 +397,19 @@ def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
     for dev_id, dev in getattr(patch, "devices", {}).items():
         if dev_id in inde_channels:
             continue
-        dev_lvl = int(round(float(getattr(dev, "intensity", 0.0)) * 255.0))
+        dev_lvl = float(getattr(dev, "intensity", 0.0))
         if 1 <= dev_id <= min(MAX_CHANNELS, len(user_levels)):
-            u_lvl = int(user_levels[dev_id - 1])
-            if u_lvl >= 0:
+            u_lvl = float(user_levels[dev_id - 1])
+            if u_lvl >= 0.0:
                 dev_lvl = max(dev_lvl, u_lvl)
-        channels[dev_id] = max(channels.get(dev_id, 0), dev_lvl)
+        channels[dev_id] = max(channels.get(dev_id, 0.0), dev_lvl)
 
     return channels
 
 
 def capture_live_devices(
     app: CoreApplication,
-    live_channels: dict[int, int] | None = None,
+    live_channels: dict[int, float] | None = None,
 ) -> dict[int, dict[str, typing.Any]]:
     """Capture active multi-parameter device attributes and intensities."""
     device_values: dict[int, dict[str, typing.Any]] = {}
@@ -426,7 +426,7 @@ def capture_live_devices(
         vals = _extract_device_active_values(dev)
         dev_int = float(getattr(dev, "intensity", 0.0))
         if live_channels is not None and dev_id in live_channels:
-            ch_int = live_channels[dev_id] / 255.0
+            ch_int = float(live_channels[dev_id])
             dev_int = max(dev_int, ch_int)
         if dev_int > 0.0:
             vals["intensity"] = dev_int

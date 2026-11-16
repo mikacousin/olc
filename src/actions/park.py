@@ -25,8 +25,13 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
 
 
+def _convert_level_to_norm(level: float | int) -> float:
+    """Clamp normalized level into [0.0..1.0]."""
+    return max(0.0, min(1.0, float(level)))
+
+
 def _convert_level_to_dmx(level: float | int) -> int:
-    """Convert float [0.0..1.0] or int [0..255] or percent float to 0..255."""
+    """Convert float [0.0..1.0] or int [0..255] to 0..255 for physical DMX addresses."""
     if isinstance(level, float) and 0.0 <= level <= 1.0:
         return int(round(level * 255.0))
     return max(0, min(255, int(round(level))))
@@ -68,8 +73,8 @@ class ChannelParkAction(Action):
         super().__init__(app)
         self.channels: list[int] = []
         self.level: float | int | None = None
-        self.old_parked: dict[int, int | None] = {}
-        self.applied_levels: dict[int, int] = {}
+        self.old_parked: dict[int, float | None] = {}
+        self.applied_levels: dict[int, float] = {}
 
     def configure(
         self,
@@ -100,16 +105,16 @@ class ChannelParkAction(Action):
             self.old_parked[ch] = park_mgr.get_channel_park_level(ch)
 
             if self.level is not None:
-                dmx_val = _convert_level_to_dmx(self.level)
+                norm_val = _convert_level_to_norm(self.level)
             elif dmx is not None:
                 curr_level, _ = dmx.get_composite_level(ch - 1)
-                dmx_val = curr_level
+                norm_val = float(curr_level)
             else:
-                dmx_val = 0
+                norm_val = 0.0
 
-            park_mgr.park_channel(ch, dmx_val)
-            self.applied_levels[ch] = dmx_val
-            self.app.emit("park.channel_parked", ch, dmx_val)
+            park_mgr.park_channel(ch, norm_val)
+            self.applied_levels[ch] = norm_val
+            self.app.emit("park.channel_parked", ch, norm_val)
 
         _refresh_dmx(self.app)
         self.app.emit("park.changed", park_mgr.total_parked_count())
@@ -138,7 +143,7 @@ class ChannelUnparkAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.channels: list[int] = []
-        self.old_parked: dict[int, int | None] = {}
+        self.old_parked: dict[int, float | None] = {}
 
     def configure(self, channels: list[int] | int) -> None:
         """Configure channel unpark action."""
@@ -281,7 +286,7 @@ class ParkUnparkAllAction(Action):
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
-        self.old_channels: dict[int, int] = {}
+        self.old_channels: dict[int, float] = {}
         self.old_addresses: dict[tuple[int, int], int] = {}
 
     def configure(self) -> None:

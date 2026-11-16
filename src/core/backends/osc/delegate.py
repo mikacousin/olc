@@ -534,7 +534,7 @@ class OSCDelegate:
             try:
                 comp_lvl, _ = backend_dmx.get_composite_level(last_ch - 1)
                 mult = float(getattr(backend_dmx, "effective_intensity_mult", 1.0))
-                int_norm = round(min(255.0, max(0.0, comp_lvl * mult)) / 255.0, 3)
+                int_norm = round(min(1.0, max(0.0, comp_lvl * mult)), 4)
                 self._emit_osc(
                     "channels",
                     "/olc/selected/intensity",

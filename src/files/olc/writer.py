@@ -42,7 +42,11 @@ class OlcWriter(WriteFile):
         self.lightshow = lightshow
         self.midi = midi
         self.data = {}
-        self.data = {"application": "olc", "version": "0.8.5.beta"}
+        self.data = {
+            "application": "olc",
+            "version": "0.8.5.beta",
+            "normalized_levels": True,
+        }
 
     def export(self) -> None:
         self._curves()

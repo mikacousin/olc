@@ -97,9 +97,9 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _resolve_step_channels(
         self, step: int
-    ) -> tuple[list[int], list[dict[str, float]], list[str]]:
+    ) -> tuple[list[float], list[dict[str, float]], list[str]]:
         """Resolve levels, tracking colors, and states for selected channels at step."""
-        step_levels: list[int] = []
+        step_levels: list[float] = []
         step_colors: list[dict[str, float]] = []
         step_states: list[str] = []
         main_pb = self.lightshow.main_playback

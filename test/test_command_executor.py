@@ -80,24 +80,22 @@ def test_executor_intensity_absolute_and_relative() -> None:
     cmd1 = parser.parse("1 THRU 3 AT 80")
     res1 = executor.execute(cmd1)
     assert res1.success
-    # 80% of 255 = 204
     for ch in [1, 2, 3]:
-        assert app.backend.dmx.levels["user"][ch - 1] == 204
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.8
 
     # AT +10 (relative on active selection)
     cmd2 = parser.parse("AT + 10")
     res2 = executor.execute(cmd2)
     assert res2.success
-    # 90% of 255 = 230
     for ch in [1, 2, 3]:
-        assert app.backend.dmx.levels["user"][ch - 1] == 230
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.9
 
     # AT OUT
     cmd3 = parser.parse("AT OUT")
     res3 = executor.execute(cmd3)
     assert res3.success
     for ch in [1, 2, 3]:
-        assert app.backend.dmx.levels["user"][ch - 1] == 0
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.0
 
 
 def test_executor_record_and_goto_cue() -> None:
@@ -105,7 +103,7 @@ def test_executor_record_and_goto_cue() -> None:
     app = CoreApplication(settings)
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": [0] * 512}
+    mock_dmx.levels = {"user": [0.0] * 512}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -123,8 +121,8 @@ def test_executor_record_and_goto_cue() -> None:
     cue = app.lightshow.cues.get(1.0, 1)
     assert cue is not None
     assert cue.is_block is True
-    assert cue.channels[1] == 255
-    assert cue.channels[2] == 255
+    assert cue.channels[1] == 1.0
+    assert cue.channels[2] == 1.0
 
     step = next(
         (s for s in app.lightshow.main_playback.steps if s.cue and s.cue.number == 1.0),
@@ -150,7 +148,7 @@ def test_executor_all_selection_includes_virtual_dimmer_devices() -> None:
     app = CoreApplication(settings)
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": [0] * 512, "sequence": [0] * 512}
+    mock_dmx.levels = {"user": [-1.0] * 512, "sequence": [0.0] * 512}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -188,7 +186,7 @@ def test_executor_gobo_iris_and_update_cue() -> None:
     app = CoreApplication(settings)
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": [0] * 512, "sequence": [0] * 512}
+    mock_dmx.levels = {"user": [-1.0] * 512, "sequence": [0.0] * 512}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -304,8 +302,8 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     mock_dmx.levels = {
-        "user": np.full(512, -1, dtype=np.int16),
-        "sequence": np.zeros(512, dtype=np.uint8),
+        "user": np.full(512, -1.0, dtype=np.float64),
+        "sequence": np.zeros(512, dtype=np.float64),
     }
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
@@ -321,7 +319,7 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
 
     seq = app.lightshow.main_playback
     seq.tracking_mode = True
-    cue1 = Cue(0, 1.0, channels={1: 200}, device_values={1: {"pan": 0.0, "tilt": 0.0}})
+    cue1 = Cue(0, 1.0, channels={1: 0.8}, device_values={1: {"pan": 0.0, "tilt": 0.0}})
     cue2 = Cue(0, 2.0, channels={}, device_values={1: {"pan": 100.0, "tilt": -50.0}})
     app.lightshow.cues.add(cue1)
     app.lightshow.cues.add(cue2)
@@ -335,8 +333,8 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
 
     seq.sequence_plus()
     assert seq.position == 2
-    # Intensity 200 tracked from cue 1, pan=100 applied from cue 2
-    assert mock_dmx.levels["sequence"][0] == 200
+    # Intensity 0.8 tracked from cue 1, pan=100 applied from cue 2
+    assert mock_dmx.levels["sequence"][0] == 0.8
     assert spot.pan_degrees == pytest.approx(100.0, abs=0.1)
     assert spot.tilt_degrees == pytest.approx(-50.0, abs=0.1)
 
@@ -367,7 +365,7 @@ def test_executor_record_cue_preserves_sentinel_and_sorted_order() -> None:
     app = CoreApplication(settings)
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": [0] * 512, "sequence": [0] * 512}
+    mock_dmx.levels = {"user": [-1.0] * 512, "sequence": [0.0] * 512}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -401,7 +399,7 @@ def test_executor_record_cue_preserves_sentinel_and_sorted_order() -> None:
     assert seq.steps[2].cue is not None and seq.steps[2].cue.number == 0.0
     assert inserted_events == [(1.0, 1)]
     assert seq.steps[1].cue.device_values[1]["intensity"] == pytest.approx(1.0)
-    assert seq.steps[1].cue.channels[1] == 255
+    assert seq.steps[1].cue.channels[1] == 1.0
 
     # Record Cue 2 -> inserted at steps[1] before Cue 5 (moves to steps[2])
     executor.execute(parser.parse("1 AT 50 COLOR BLUE"))
@@ -433,8 +431,8 @@ def test_executor_noun_first_ifcb_and_goto_time_override() -> None:
     app = CoreApplication(MagicMock())
     mock_backend = MagicMock()
     mock_backend.dmx.levels = {
-        "user": np.full(512, -1, dtype=np.int16),
-        "sequence": np.zeros(512, dtype=np.uint8),
+        "user": np.full(512, -1.0, dtype=np.float64),
+        "sequence": np.zeros(512, dtype=np.float64),
     }
     app.backend = mock_backend
 
@@ -476,7 +474,7 @@ def test_executor_noun_first_ifcb_and_goto_time_override() -> None:
     executor.execute(parser.parse("GOTO CUE 1 TIME 0"))
     assert seq.position == 1
     assert not seq.on_go
-    assert int(mock_backend.dmx.levels["sequence"][0]) == 255
+    assert float(mock_backend.dmx.levels["sequence"][0]) == pytest.approx(1.0)
     assert led.intensity == pytest.approx(1.0)
     assert led.color_srgb.to_hex().upper() == "#FF0000"
 
@@ -484,8 +482,8 @@ def test_executor_noun_first_ifcb_and_goto_time_override() -> None:
     executor.execute(parser.parse("CUE 2 GOTO TIME 0"))
     assert seq.position == 2
     assert not seq.on_go
-    assert int(mock_backend.dmx.levels["sequence"][0]) == 128
-    assert led.intensity == pytest.approx(128 / 255.0)
+    assert float(mock_backend.dmx.levels["sequence"][0]) == pytest.approx(0.5)
+    assert led.intensity == pytest.approx(0.5)
     assert led.color_srgb.to_hex().upper() == "#00FF00"
 
 
@@ -578,12 +576,12 @@ def test_executor_relative_selection_with_intensity() -> None:
     executor.execute(parser.parse("1 + 2"))
     assert app.selected_channels == [1, 2]
 
-    # + 4 AT 50 -> selection becomes [1, 2, 4] and all set to 50% (128)
+    # + 4 AT 50 -> selection becomes [1, 2, 4] and all set to 50% (0.5)
     res = executor.execute(parser.parse("+ 4 AT 50"))
     assert res.success is True
     assert app.selected_channels == [1, 2, 4]
     for ch in [1, 2, 4]:
-        assert app.backend.dmx.levels["user"][ch - 1] == 128
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.5
 
 
 def test_commandline_selection_and_intensity_undo_redo() -> None:
@@ -592,7 +590,7 @@ def test_commandline_selection_and_intensity_undo_redo() -> None:
     app = CoreApplication(settings)
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
-    mock_dmx.levels = {"user": [-1] * 512}
+    mock_dmx.levels = {"user": [-1.0] * 512}
     mock_backend.dmx = mock_dmx
     app.backend = mock_backend
 
@@ -622,9 +620,8 @@ def test_commandline_selection_and_intensity_undo_redo() -> None:
     # 4. Press ENTER (execute commandline)
     app.action_registry.execute("commandline.execute")
     assert app.commandline.get_string() == ""
-    # 30% of 255 = 76
     for ch in range(1, 21):
-        assert app.backend.dmx.levels["user"][ch - 1] == 76
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.3
     # Exactly 2 actions in undo stack: select_channels, set_multi_levels
     assert len(app.history.undo_stack) == 2
     assert app.history.undo_stack[-1].name == "channel.set_multi_levels"
@@ -632,7 +629,7 @@ def test_commandline_selection_and_intensity_undo_redo() -> None:
     # 5. First UNDO -> cancels AT 30
     app.action_registry.execute("edit.undo")
     for ch in range(1, 21):
-        assert app.backend.dmx.levels["user"][ch - 1] == -1
+        assert app.backend.dmx.levels["user"][ch - 1] == -1.0
     # Channels 1..20 are still selected
     assert app.selected_channels == list(range(1, 21))
     assert len(app.history.undo_stack) == 1
@@ -654,6 +651,6 @@ def test_commandline_selection_and_intensity_undo_redo() -> None:
     # 8. Second REDO -> restores AT 30 intensity
     app.action_registry.execute("edit.redo")
     for ch in range(1, 21):
-        assert app.backend.dmx.levels["user"][ch - 1] == 76
+        assert app.backend.dmx.levels["user"][ch - 1] == 0.3
     assert len(app.history.undo_stack) == 2
     assert len(app.history.redo_stack) == 0

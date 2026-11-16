@@ -61,9 +61,9 @@ def test_cue_insert_update_set_level() -> None:
 
     # 4. Test cue.update
     updated_events.clear()
-    channels_to_set = {1: 255, 2: 128}
+    channels_to_set = {1: 1.0, 2: 0.5}
     app.action_registry.execute("cue.update", 1.0, 0, channels_to_set)
-    assert app.lightshow.cues[0].channels == {1: 255, 2: 128}
+    assert app.lightshow.cues[0].channels == {1: 1.0, 2: 0.5}
     assert updated_events == [(0, 1.0)]
 
     # Undo cue.update
@@ -72,21 +72,21 @@ def test_cue_insert_update_set_level() -> None:
 
     # Redo cue.update
     app.history.redo()
-    assert app.lightshow.cues[0].channels == {1: 255, 2: 128}
+    assert app.lightshow.cues[0].channels == {1: 1.0, 2: 0.5}
 
     # 5. Test cue.set_channel_level
     updated_events.clear()
-    app.action_registry.execute("cue.set_channel_level", 1.0, 0, 1, 200)
-    assert app.lightshow.cues[0].channels[1] == 200
+    app.action_registry.execute("cue.set_channel_level", 1.0, 0, 1, 0.8)
+    assert app.lightshow.cues[0].channels[1] == 0.8
     assert updated_events == [(0, 1.0)]
 
     # Undo set channel level
     app.history.undo()
-    assert app.lightshow.cues[0].channels[1] == 255
+    assert app.lightshow.cues[0].channels[1] == 1.0
 
     # Redo set channel level
     app.history.redo()
-    assert app.lightshow.cues[0].channels[1] == 200
+    assert app.lightshow.cues[0].channels[1] == 0.8
 
 
 def test_cue_rename_and_copy() -> None:

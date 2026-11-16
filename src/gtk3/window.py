@@ -336,7 +336,7 @@ class Window(Gtk.ApplicationWindow):
             color_level = get_tracking_color(state)
             if dmx is not None and step == main_pb.position:
                 comp_level, comp_color = dmx.get_composite_level(channel - 1)
-                if comp_level > 0 or dmx.levels["user"][channel - 1] != -1:
+                if comp_level > 0.0 or dmx.levels["user"][channel - 1] >= 0.0:
                     level = comp_level
                     color_level = comp_color
             next_level = main_pb.get_next_channel_level(channel, level)

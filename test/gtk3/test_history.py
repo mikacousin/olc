@@ -56,9 +56,9 @@ def test_history_tab_behavior(app_gui: Application) -> None:
     assert history_tab.btn_clear.get_sensitive()
 
     # 3. Perform some actions to populate history
-    app_gui.core.action_registry.execute("channel.set_level", 1, 200)
+    app_gui.core.action_registry.execute("channel.set_level", 1, 0.8)
     process_events()
-    app_gui.core.action_registry.execute("channel.set_level", 2, 100)
+    app_gui.core.action_registry.execute("channel.set_level", 2, 0.4)
     process_events()
 
     # Verify history manager has the actions (tab_open + 2 channel actions)
@@ -116,8 +116,8 @@ def test_history_tab_behavior(app_gui: Application) -> None:
     # Check level of channel 2 is restored/undone to -1 (released), channel 1 is still
     # 200
     assert app_gui.core.backend is not None
-    assert app_gui.core.backend.dmx.levels["user"][1] == -1
-    assert app_gui.core.backend.dmx.levels["user"][0] == 200
+    assert app_gui.core.backend.dmx.levels["user"][1] == -1.0
+    assert app_gui.core.backend.dmx.levels["user"][0] == 0.8
 
     # Jump forward to second channel action (idx=2)
     path = Gtk.TreePath.new_from_string("2")
@@ -126,7 +126,7 @@ def test_history_tab_behavior(app_gui: Application) -> None:
 
     assert len(app_gui.core.history.undo_stack) == 3
     assert len(app_gui.core.history.redo_stack) == 0
-    assert app_gui.core.backend.dmx.levels["user"][1] == 100
+    assert app_gui.core.backend.dmx.levels["user"][1] == 0.4
 
     # 6. Test Clear History
     history_tab.on_clear_clicked(history_tab.btn_clear)

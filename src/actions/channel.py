@@ -36,31 +36,27 @@ class BaseChannelLevelAction(Action):
     def _apply_levels(self, levels_dict: dict[int, int | float]) -> None:
         """Apply a dict of {channel: level} to user DMX levels and emit events.
 
-        Accepts either normalized float [0.0, 1.0] or 8-bit DMX int [0..255],
-        or -1 to release user override.
+        Accepts normalized float [0.0, 1.0], or -1.0 to release user override.
         """
         backend = getattr(self.app, "backend", None)
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         patch = getattr(self.app.lightshow, "patch", None)
 
-        processed_levels: dict[int, tuple[int, float]] = {}
+        processed_levels: dict[int, float] = {}
         for ch, lvl in levels_dict.items():
             if not 1 <= ch <= MAX_CHANNELS:
                 continue
             if lvl < 0:
-                processed_levels[ch] = (-1, -1.0)
-            elif isinstance(lvl, float) and 0.0 <= lvl <= 1.0:
-                processed_levels[ch] = (round(lvl * 255.0), lvl)
+                processed_levels[ch] = -1.0
             else:
-                dmx_val = max(0, min(255, int(round(lvl))))
-                processed_levels[ch] = (dmx_val, dmx_val / 255.0)
+                processed_levels[ch] = max(0.0, min(1.0, float(lvl)))
 
         if dmx is not None:
             sneak_ctrl = getattr(self.app, "sneak_controller", None)
-            for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
+            for ch, norm_lvl in processed_levels.items():
                 if sneak_ctrl is not None:
                     sneak_ctrl.cancel_channel(ch)
-                dmx.levels["user"][ch - 1] = dmx_lvl
+                dmx.levels["user"][ch - 1] = norm_lvl
 
         if patch is not None:
             seq_arr = (
@@ -68,13 +64,13 @@ class BaseChannelLevelAction(Action):
                 if dmx is not None and isinstance(dmx.levels, dict)
                 else None
             )
-            for ch, (_dmx_lvl, norm_lvl) in processed_levels.items():
+            for ch, norm_lvl in processed_levels.items():
                 dev = patch.get_device(ch)
                 if dev is not None and hasattr(dev, "set_intensity"):
                     if norm_lvl >= 0.0:
                         dev.set_intensity(norm_lvl)
                     elif seq_arr is not None and 1 <= ch <= len(seq_arr):
-                        dev.set_intensity(float(seq_arr[ch - 1]) / 255.0)
+                        dev.set_intensity(float(seq_arr[ch - 1]))
                     else:
                         dev.set_intensity(0.0)
 
@@ -82,8 +78,8 @@ class BaseChannelLevelAction(Action):
             self.app.lightshow.main_playback.update_channels()
             dmx.set_levels()
 
-        for ch, (dmx_lvl, _norm_lvl) in processed_levels.items():
-            self.app.emit("channel.level_changed", ch, dmx_lvl)
+        for ch, norm_lvl in processed_levels.items():
+            self.app.emit("channel.level_changed", ch, norm_lvl)
 
     def undo(self) -> None:
         """Undo the channel level changes."""
@@ -144,33 +140,34 @@ class SetChannelLevelAction(BaseChannelLevelAction):
                 f"Channel index must be between 1 and {MAX_CHANNELS}. Got {channel}."
             )
         if isinstance(level, (int, float)):
-            if level < -1:
-                raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
-            if level > 255:
-                raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
+            if level < -1.0:
+                raise ValueError(
+                    f"Normalized level must be between -1.0 and 1.0. Got {level}."
+                )
+            if level > 1.0:
+                raise ValueError(
+                    f"Normalized level must be between -1.0 and 1.0. Got {level}."
+                )
         else:
-            raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
+            raise ValueError(
+                f"Normalized level must be between -1.0 and 1.0. Got {level}."
+            )
 
         backend = getattr(self.app, "backend", None)
         if backend and backend.dmx:
-            self.old_levels[channel] = int(backend.dmx.levels["user"][channel - 1])
+            self.old_levels[channel] = float(backend.dmx.levels["user"][channel - 1])
         else:
-            self.old_levels[channel] = -1
+            self.old_levels[channel] = -1.0
 
-        self.new_levels = {channel: level}
+        self.new_levels = {channel: float(level)}
         self._apply_levels(self.new_levels)
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the channel."""
-        norm_val = (
-            float(self.level)
-            if isinstance(self.level, float) and 0.0 <= self.level <= 1.0
-            else (float(self.level) / 255.0 if self.level >= 0 else -1.0)
-        )
-        dmx_val = round(norm_val * 255.0) if norm_val >= 0.0 else -1
+        norm_val = float(self.level) if self.level >= 0.0 else -1.0
         return {
             "channel": self.channel,
-            "level": dmx_val,
+            "level": norm_val,
             "normalized_level": norm_val,
             "active": norm_val > 0.0,
         }
@@ -397,8 +394,8 @@ class SelectAllChannelsAction(BaseChannelSelectionAction):
         selected = []
         if backend and backend.dmx:
             for ch in range(1, MAX_CHANNELS + 1):
-                level = int(backend.dmx.levels["user"][ch - 1])
-                if level > 0:
+                level = float(backend.dmx.levels["user"][ch - 1])
+                if level > 0.0:
                     selected.append(ch)
 
         last = selected[-1] if selected else None
@@ -441,7 +438,7 @@ class BaseSelectedChannelsLevelAction(BaseChannelLevelAction):
         if backend and backend.dmx:
             for ch in self.channels:
                 if 1 <= ch <= MAX_CHANNELS:
-                    self.old_levels[ch] = int(backend.dmx.levels["user"][ch - 1])
+                    self.old_levels[ch] = float(backend.dmx.levels["user"][ch - 1])
             return True
 
         self.can_undo = False
@@ -458,11 +455,13 @@ class SetLevelFromCmdAction(BaseSelectedChannelsLevelAction):
         if not is_int(cmd_string):
             return
 
-        level = int(cmd_string)
+        raw_level = float(cmd_string)
         percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
         if percent:
-            level = int(round((level / 100) * 255))
-        level = min(max(level, 0), 255)
+            level = raw_level / 100.0
+        else:
+            level = raw_level / 255.0
+        level = min(max(level, 0.0), 1.0)
 
         if not self._capture_old_levels():
             return
@@ -480,7 +479,7 @@ class SetLevelFullAction(BaseSelectedChannelsLevelAction):
     def execute(self) -> None:
         if not self._capture_old_levels():
             return
-        self.new_levels = {ch: 255 for ch in self.channels}
+        self.new_levels = {ch: 1.0 for ch in self.channels}
         self._apply_levels(self.new_levels)
 
 
@@ -496,12 +495,13 @@ class BaseRelativeLevelAction(BaseSelectedChannelsLevelAction):
         direction = 1 if delta >= 0 else -1
 
         for ch, old_lvl in self.old_levels.items():
+            base_lvl = max(0.0, float(old_lvl))
             if use_percent:
-                old_pct = round((old_lvl / 256) * 100)
+                old_pct = round(base_lvl * 100.0)
                 new_pct = old_pct + (step if direction > 0 else -step)
-                new_lvl = min(max(round((new_pct / 100) * 256), 0), 255)
+                new_lvl = min(max(new_pct / 100.0, 0.0), 1.0)
             else:
-                new_lvl = min(max(old_lvl + delta, 0), 255)
+                new_lvl = min(max(base_lvl + (delta / 255.0), 0.0), 1.0)
 
             if new_lvl != old_lvl:
                 self.new_levels[ch] = new_lvl
@@ -553,17 +553,17 @@ class SetMultiChannelsLevelAction(BaseChannelLevelAction):
             app: The core application instance.
         """
         super().__init__(app)
-        self.levels: dict[int, int] = {}
+        self.levels: dict[int, float] = {}
 
-    def configure(self, levels: dict[int, int]) -> None:
+    def configure(self, levels: dict[int, float | int]) -> None:
         """Configure the action with a dictionary mapping channel -> level.
 
         Args:
             levels: A dict of {channel: level} where channel is 1-based
-                    and level is DMX intensity (0 to 255, or -1 to release).
+                    and level is normalized intensity (0.0 to 1.0, or -1.0 to release).
         """
-        self.levels = dict(levels)
-        self.new_levels = dict(levels)
+        self.levels = {ch: float(lvl) for ch, lvl in levels.items()}
+        self.new_levels = dict(self.levels)
 
     def execute(self) -> None:
         """Execute the action, setting user levels on multiple channels."""
@@ -572,7 +572,7 @@ class SetMultiChannelsLevelAction(BaseChannelLevelAction):
         if backend and backend.dmx:
             for channel in self.levels:
                 if 1 <= channel <= MAX_CHANNELS:
-                    self.old_levels[channel] = int(
+                    self.old_levels[channel] = float(
                         backend.dmx.levels["user"][channel - 1]
                     )
         self.new_levels = dict(self.levels)

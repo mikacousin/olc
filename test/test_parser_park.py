@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from olc.core.app import CoreApplication
 from olc.core.parser.ast_nodes import (
     AddressParkCommandNode,
@@ -101,7 +103,7 @@ def test_executor_park_and_unpark() -> None:
     assert app.lightshow.park.is_channel_parked(1)
     assert app.lightshow.park.is_channel_parked(2)
     assert app.lightshow.park.is_channel_parked(3)
-    assert app.lightshow.park.get_channel_park_level(1) == 204  # 80% of 255
+    assert app.lightshow.park.get_channel_park_level(1) == pytest.approx(0.8)
 
     # Execute ADDRESS 1/10 THRU 12 PARK AT FULL
     node = parser.parse("ADDRESS 1/10 THRU 12 PARK AT FULL")

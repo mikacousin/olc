@@ -186,12 +186,27 @@ class ParsedData:
                 curve_nb = out.get("curve", 0)
                 self.lightshow.patch.add_output(channel, output, universe, curve_nb)
 
+    def _normalize_channels_dict(
+        self, channels: dict[typing.Any, typing.Any] | None
+    ) -> dict[int, float]:
+        """Convert channel levels dict to normalized [0.0..1.0] floats."""
+        if not channels:
+            return {}
+        is_norm = bool(self.data.get("normalized_levels", True))
+        return {
+            int(ch): max(
+                0.0,
+                min(1.0, float(lvl) if is_norm else float(lvl) / 255.0),
+            )
+            for ch, lvl in channels.items()
+        }
+
     def import_groups(self) -> None:
         """Import groups data"""
         if not self.data.get("groups"):
             return
         for group_number, values in self.data["groups"].items():
-            channels = values.get("channels")
+            channels = self._normalize_channels_dict(values.get("channels"))
             label = values.get("label")
             group = self.lightshow.groups.get(group_number)
             if group is not None:
@@ -228,7 +243,7 @@ class ParsedData:
     def import_independents(self) -> None:
         """Import independents data"""
         for inde_number, values in self.data["independents"].items():
-            channels = values.get("channels")
+            channels = self._normalize_channels_dict(values.get("channels"))
             label = values.get("label")
             inde_type = IndependentType(values.get("type", "knob"))
             for inde in self.lightshow.independents.independents:
@@ -329,7 +344,7 @@ class ParsedData:
     def import_presets(self) -> None:
         """Import presets data"""
         for preset_number, values in self.data["cues"].items():
-            channels = values.get("channels")
+            channels = self._normalize_channels_dict(values.get("channels"))
             label = values.get("label")
             cue = self.lightshow.cues.get(preset_number, 0)
             if cue is not None:
@@ -367,7 +382,7 @@ class ParsedData:
         for values in seq_data["steps"].values():
             cue_number = values.get("cue")
             cue_dict = seq_data["cues"][cue_number]
-            cue_channels = cue_dict["channels"]
+            cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
             cue = self.lightshow.cues.get(cue_number, 0)
             if cue is not None:
@@ -400,7 +415,7 @@ class ParsedData:
         for values in seq_data["steps"].values():
             cue_number = values.get("cue")
             cue_dict = seq_data["cues"][cue_number]
-            cue_channels = cue_dict["channels"]
+            cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
             existing_idx = next(
                 (
@@ -477,7 +492,7 @@ class ParsedData:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
-            cue_channels = cue_dict["channels"]
+            cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
             chaser_seq = self.lightshow.chasers[index]
             existing_idx = next(
@@ -509,7 +524,7 @@ class ParsedData:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
-            cue_channels = cue_dict["channels"]
+            cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
             for cue in self.lightshow.chasers[index].cues:
                 if cue.number == cue_number:

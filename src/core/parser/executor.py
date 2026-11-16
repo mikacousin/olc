@@ -303,22 +303,22 @@ class CommandExecutor:
             return CommandResult(False, "No channels selected")
 
         backend = getattr(self.app, "backend", None)
-        levels_dict: dict[int, int] = {}
+        levels_dict: dict[int, float] = {}
 
         for ch in channels:
             if node.is_relative:
                 current_raw = (
-                    backend.dmx.levels["user"][ch - 1]
+                    float(backend.dmx.levels["user"][ch - 1])
                     if backend and getattr(backend, "dmx", None)
-                    else 0
+                    else 0.0
                 )
-                current_pct = (current_raw / 255.0) * 100.0
+                current_pct = max(0.0, current_raw) * 100.0
                 new_pct = max(0.0, min(100.0, current_pct + node.level))
-                target_level = int(round((new_pct / 100.0) * 255.0))
+                target_level = new_pct / 100.0
             else:
-                target_level = int(round((node.level / 100.0) * 255.0))
+                target_level = node.level / 100.0
 
-            target_level = max(0, min(255, target_level))
+            target_level = max(0.0, min(1.0, target_level))
             levels_dict[ch] = target_level
 
         if registry is not None and "channel.set_multi_levels" in getattr(
@@ -339,7 +339,7 @@ class CommandExecutor:
                 ):
                     dev = self.app.lightshow.patch.get_device(ch)
                     if dev is not None and hasattr(dev, "set_intensity"):
-                        dev.set_intensity(target_level / 255.0)
+                        dev.set_intensity(target_level)
                 self.app.emit("channel.level_changed", ch, target_level)
 
             if backend and getattr(backend, "dmx", None):
@@ -621,16 +621,16 @@ class CommandExecutor:
 
     def _capture_live_cue_state(
         self, lightshow: LightShow
-    ) -> tuple[dict[int, int], dict[int, dict[str, typing.Any]]]:
+    ) -> tuple[dict[int, float], dict[int, dict[str, typing.Any]]]:
         """Capture current live user channel levels and device values."""
-        channels_dict: dict[int, int] = {}
+        channels_dict: dict[int, float] = {}
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels.get("user", [])
             limit = min(MAX_CHANNELS, len(user_levels))
             for ch in range(1, limit + 1):
-                lvl = int(user_levels[ch - 1])
-                if lvl > 0:
+                lvl = float(user_levels[ch - 1])
+                if lvl > 0.0:
                     channels_dict[ch] = lvl
 
         device_values: dict[int, dict[str, typing.Any]] = {}
@@ -640,9 +640,9 @@ class CommandExecutor:
                 vals = self._get_device_active_values(dev)
                 dev_int = float(getattr(dev, "intensity", 0.0))
                 if dev_id in channels_dict:
-                    dev_int = max(dev_int, channels_dict[dev_id] / 255.0)
+                    dev_int = max(dev_int, channels_dict[dev_id])
                 elif dev_int > 0.0:
-                    channels_dict[dev_id] = int(round(dev_int * 255.0))
+                    channels_dict[dev_id] = dev_int
                 if dev_int > 0.0:
                     vals["intensity"] = dev_int
                 if vals:
@@ -761,7 +761,7 @@ class CommandExecutor:
                     released = []
                     for ch in cue.channels:
                         if 1 <= ch <= len(user_levels):
-                            user_levels[ch - 1] = -1
+                            user_levels[ch - 1] = -1.0
                             released.append(ch)
                     backend.dmx.set_levels()
                     if released:
@@ -798,19 +798,19 @@ class CommandExecutor:
             user_levels = backend.dmx.levels.get("user", [])
             limit = min(MAX_CHANNELS, len(user_levels))
             for ch in range(1, limit + 1):
-                lvl = int(user_levels[ch - 1])
-                if lvl > 0:
+                lvl = float(user_levels[ch - 1])
+                if lvl > 0.0:
                     cue.channels[ch] = lvl
                 elif ch in cue.channels:
-                    cue.channels[ch] = 0
+                    cue.channels[ch] = 0.0
 
         patch = getattr(lightshow, "patch", None)
         if patch is not None:
             for dev_id, dev in patch.devices.items():
                 vals = self._get_device_active_values(dev)
                 dev_int = float(getattr(dev, "intensity", 0.0))
-                if dev_id in cue.channels and cue.channels[dev_id] > 0:
-                    dev_int = max(dev_int, cue.channels[dev_id] / 255.0)
+                if dev_id in cue.channels and cue.channels[dev_id] > 0.0:
+                    dev_int = max(dev_int, float(cue.channels[dev_id]))
                 if dev_int > 0.0:
                     vals["intensity"] = dev_int
                 if vals:
@@ -834,7 +834,7 @@ class CommandExecutor:
                     released = []
                     for ch in cue.channels:
                         if 1 <= ch <= len(user_levels):
-                            user_levels[ch - 1] = -1
+                            user_levels[ch - 1] = -1.0
                             released.append(ch)
                     backend.dmx.set_levels()
                     if released:
@@ -993,15 +993,15 @@ class CommandExecutor:
             return CommandResult(False, "No channels selected to park")
 
         registry = self._get_registry()
-        target_dmx: int | None = None
+        target_norm: float | None = None
         if node.level is not None:
-            target_dmx = max(0, min(255, int(round((node.level / 100.0) * 255.0))))
+            target_norm = max(0.0, min(1.0, node.level / 100.0))
 
         if registry is not None:
-            registry.execute("channel.park", channels, target_dmx)
+            registry.execute("channel.park", channels, target_norm)
         else:
             for ch in channels:
-                self.app.lightshow.park.park_channel(ch, target_dmx or 0)
+                self.app.lightshow.park.park_channel(ch, target_norm or 0.0)
 
         return CommandResult(
             True, f"Parked {len(channels)} channel(s)", affected_channels=channels

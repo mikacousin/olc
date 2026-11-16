@@ -39,8 +39,8 @@ def test_midi_headless_execution() -> None:
     mock_backend = MagicMock()
     mock_dmx = MagicMock()
     mock_dmx.levels = {
-        "user": np.full(MAX_CHANNELS, 50, dtype=np.int16),
-        "sequence": np.full(MAX_CHANNELS, 0, dtype=np.int16),
+        "user": np.full(MAX_CHANNELS, 50.0 / 255.0, dtype=np.float64),
+        "sequence": np.full(MAX_CHANNELS, 0.0, dtype=np.float64),
     }
     mock_backend.dmx = mock_dmx
     core_app.backend = mock_backend
@@ -59,7 +59,7 @@ def test_midi_headless_execution() -> None:
     # relative1 mode for wheel
     settings.get_strv.side_effect = lambda k: ["mock_port"] if k == "relative1" else []
     midi.messages.control_change._function_wheel("mock_port", msg_wheel)
-    assert core_app.backend.dmx.levels["user"][0] == 52
+    assert core_app.backend.dmx.levels["user"][0] == pytest.approx(52.0 / 255.0)
 
     # 3. Test MIDI Fader in headless mode
     fader_bank = core_app.lightshow.fader_bank

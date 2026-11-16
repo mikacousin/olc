@@ -51,7 +51,7 @@ class TempChannelsEditor(typing.Generic[K]):
             An ndarray containing DMX levels (-1 representing no modification).
         """
         if key not in self._temp_overrides:
-            self._temp_overrides[key] = np.full(MAX_CHANNELS, -1, dtype=np.int16)
+            self._temp_overrides[key] = np.full(MAX_CHANNELS, -1.0, dtype=np.float64)
         return self._temp_overrides[key]
 
     def get_levels(self, key: K) -> np.ndarray:
@@ -61,21 +61,21 @@ class TempChannelsEditor(typing.Generic[K]):
             key: Identification key of the edited entity.
 
         Returns:
-            An ndarray containing DMX levels (-1 representing no modification).
+            An ndarray containing normalized levels (-1.0 representing no modification).
         """
         return self._get_levels_internal(key)
 
-    def set_level(self, key: K, channel: int, level: int) -> None:
+    def set_level(self, key: K, channel: int, level: float) -> None:
         """Set a temporary level override for a single channel.
 
         Args:
             key: Identification key of the edited entity.
             channel: Channel number (1-based).
-            level: The temporary DMX level (0-255).
+            level: The temporary normalized level (0.0-1.0, or -1.0).
         """
         if 1 <= channel <= MAX_CHANNELS:
             levels = self._get_levels_internal(key)
-            levels[channel - 1] = level
+            levels[channel - 1] = float(level)
             self._notify_changed(key)
 
     def clear(self, key: K) -> None:
@@ -85,7 +85,7 @@ class TempChannelsEditor(typing.Generic[K]):
             key: Identification key of the edited entity.
         """
         if key in self._temp_overrides:
-            self._temp_overrides[key].fill(-1)
+            self._temp_overrides[key].fill(-1.0)
             self._notify_changed(key)
 
     def has_overrides(self, key: K) -> bool:

@@ -69,28 +69,28 @@ class SneakController:
                 pass
         return 5.0
 
-    def get_channel_background_level(self, channel: int) -> int:
-        """Calculate the underlying target background level for a channel (1-indexed).
+    def get_channel_background_level(self, channel: int) -> float:
+        """Calculate the underlying target background level [0.0..1.0] for a channel.
 
         Takes into account sequential playback, active faders, and independents.
         """
         backend = getattr(self.app, "backend", None)
         if not backend or not getattr(backend, "dmx", None):
-            return 0
+            return 0.0
         idx = channel - 1
-        seq_lvl = 0
+        seq_lvl = 0.0
         if "sequence" in backend.dmx.levels and idx < len(
             backend.dmx.levels["sequence"]
         ):
-            seq_lvl = int(backend.dmx.levels["sequence"][idx])
-        fader_lvl = 0
+            seq_lvl = float(backend.dmx.levels["sequence"][idx])
+        fader_lvl = 0.0
         if "faders" in backend.dmx.levels and idx < len(backend.dmx.levels["faders"]):
-            fader_lvl = int(backend.dmx.levels["faders"][idx])
-        inde_lvl = 0
+            fader_lvl = float(backend.dmx.levels["faders"][idx])
+        inde_lvl = 0.0
         lightshow = getattr(self.app, "lightshow", None)
         if lightshow and getattr(lightshow, "independents", None):
             if idx < len(lightshow.independents.dmx):
-                inde_lvl = int(round(lightshow.independents.dmx[idx]))
+                inde_lvl = float(lightshow.independents.dmx[idx])
         return max(seq_lvl, fader_lvl, inde_lvl)
 
     def cancel_channel(self, channel: int) -> None:
@@ -133,9 +133,9 @@ class SneakController:
         target_channels: list[int] = []
 
         if channels is None:
-            # All channels currently having an override (user != -1)
+            # All channels currently having an override (user >= 0.0)
             for idx, lvl in enumerate(user_levels):
-                if lvl != -1:
+                if lvl >= 0.0:
                     target_channels.append(idx + 1)
         else:
             for ch in channels:
@@ -149,20 +149,20 @@ class SneakController:
         if duration <= 0.0:
             for ch in target_channels:
                 self._channel_fades.pop(ch, None)
-                user_levels[ch - 1] = -1
+                user_levels[ch - 1] = -1.0
             backend.dmx.set_levels()
             self._emit_updated(target_channels)
             return target_channels
 
         for ch in target_channels:
-            current_lvl = int(user_levels[ch - 1])
-            if current_lvl == -1:
+            current_lvl = float(user_levels[ch - 1])
+            if current_lvl < 0.0:
                 current_lvl = self.get_channel_background_level(ch)
             bg_lvl = self.get_channel_background_level(ch)
             self._channel_fades[ch] = ChannelSneakFade(
                 channel=ch,
-                start_level=float(current_lvl),
-                target_level=float(bg_lvl),
+                start_level=current_lvl,
+                target_level=bg_lvl,
                 duration=duration,
                 start_time=now,
             )
@@ -251,15 +251,15 @@ class SneakController:
                 fraction = (
                     min(1.0, elapsed / fade.duration) if fade.duration > 0 else 1.0
                 )
-                curr_val = round(
+                curr_val = (
                     fade.start_level + (fade.target_level - fade.start_level) * fraction
                 )
                 if fraction >= 1.0:
-                    user_levels[ch - 1] = -1
+                    user_levels[ch - 1] = -1.0
                     finished_channels.append(ch)
                     self._channel_fades.pop(ch, None)
                 else:
-                    user_levels[ch - 1] = int(curr_val)
+                    user_levels[ch - 1] = curr_val
 
         finished_indes: list[int] = []
         lightshow = getattr(self.app, "lightshow", None)

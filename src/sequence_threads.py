@@ -313,7 +313,7 @@ class ThreadGo(threading.Thread):
             self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
             user_levels = self.backend.dmx.levels.get("user")
             if user_levels is not None:
-                user_mask = user_levels != -1
+                user_mask = user_levels >= 0.0
                 self.old_channels_levels[user_mask] = user_levels[user_mask]
         else:
             self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
@@ -489,7 +489,7 @@ class ThreadGo(threading.Thread):
             and hasattr(self.backend.dmx, "levels")
             and "sequence" in self.backend.dmx.levels
         ):
-            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 255.0)
+            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
             self.backend.dmx.set_levels()
 
     def _compute_device_factors_go(  # pylint: disable=too-many-locals, too-many-branches
@@ -730,7 +730,7 @@ class ThreadGoBack(threading.Thread):
             self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
             user_levels = self.backend.dmx.levels.get("user")
             if user_levels is not None:
-                user_mask = user_levels != -1
+                user_mask = user_levels >= 0.0
                 self.old_channels_levels[user_mask] = user_levels[user_mask]
         else:
             self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
@@ -889,5 +889,5 @@ class ThreadGoBack(threading.Thread):
                 factor,
             )
 
-        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 255.0)
+        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
         self.backend.dmx.set_levels()

@@ -327,7 +327,7 @@ class FaderSequence(Fader):
         # If it was running and fader > 0
         elif self.level and chaser.run is True:
             # Update max level
-            chaser.thread.level_scale = round(self.level * 255)
+            chaser.thread.level_scale = self.level
         # If it was running and fader go to 0
         elif self.level == 0 and chaser.run is True:
             # Stop chaser
@@ -424,17 +424,15 @@ class ThreadChaser(threading.Thread):
                 chaser.position = 1
             # If level increases, use time in
             if next_level > old_level and i < delay_in:
-                level = int(((next_level - old_level + 1) / delay_in) * i) + old_level
+                level = ((next_level - old_level) / delay_in) * i + old_level
             # If level decreases, use time out
             elif next_level < old_level and i < delay_out:
-                level = old_level - abs(
-                    int(((next_level - old_level - 1) / delay_out) * i)
-                )
+                level = old_level - abs(((next_level - old_level) / delay_out) * i)
             # Else, level is already good
             else:
                 level = next_level
             # Apply fader level
-            level = round(level * self.fader.level)
+            level = level * self.fader.level
             # Update fader level
             self.fader.dmx[channel - 1] = level
         self.fader.fader_bank.update_levels()

@@ -135,20 +135,20 @@ class ShowResetUserLevelsAction(Action):
         self.old_levels: dict[int, int] = {}
 
     def execute(self) -> None:
-        """Reset all manual user channel overrides to -1."""
-        self.old_levels = {}
+        """Reset all manual user channel overrides to -1.0."""
+        self.old_levels: dict[int, float] = {}
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels["user"]
             for idx, lvl in enumerate(user_levels):
-                if lvl != -1:
-                    self.old_levels[idx + 1] = int(lvl)
-            user_levels.fill(-1)
+                if lvl >= 0.0:
+                    self.old_levels[idx + 1] = float(lvl)
+            user_levels.fill(-1.0)
             self.app.lightshow.main_playback.update_channels()
             backend.dmx.set_levels()
 
         for ch in self.old_levels:
-            self.app.emit("channel.level_changed", ch, -1)
+            self.app.emit("channel.level_changed", ch, -1.0)
         self.app.emit("show.user_levels_reset")
 
     def undo(self) -> None:
