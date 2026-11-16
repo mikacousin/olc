@@ -551,3 +551,76 @@ def test_patch_table_inline_editing_popovers_and_multiselect(
     patch_tab._on_channel_edited(patch_tab.cell_renderers[COL_ID], str(target_row), "4")
     process_events()
     assert patch_tab.patch.get_address_occupant(1, 305) == 4
+
+
+@pytest.mark.gui
+def test_fixture_popover_arrow_navigation_keeps_popover_open(
+    app_gui: Application,
+) -> None:
+    """Test Down/Up arrows in FixtureSelectionPopover scroll list without closing it."""
+    from olc.gtk3.patch_channels import PatchChannelsTab
+
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+
+    app_gui.core.action_registry.execute("patch.clear")
+    patch_tab.add_patched_device(
+        device_id=1,
+        fixture_key="Generic:Dimmer",
+        universe=1,
+        address=1,
+        label="Ch 1",
+    )
+    patch_tab.add_patched_device(
+        device_id=2,
+        fixture_key="Generic:Dimmer",
+        universe=1,
+        address=2,
+        label="Ch 2",
+    )
+    patch_tab.set_scope_mode("patched")
+    patch_tab.select_row_index(0)
+    process_events()
+
+    assert patch_tab.type_column is not None
+    opened = patch_tab._open_fixture_popover_at_cell(
+        patch_tab.devices_treeview,
+        Gtk.TreePath.new_from_string("0"),
+        patch_tab.type_column,
+    )
+    assert opened is True
+    process_events()
+
+    pop = patch_tab.fixture_popover
+    assert pop.get_visible() is True
+    first_row = pop._listbox.get_selected_row()
+    assert first_row is not None and first_row.get_index() == 0
+
+    down_ev = Gdk.EventKey()
+    down_ev.type = Gdk.EventType.KEY_PRESS
+    down_ev.keyval = Gdk.KEY_Down
+
+    # Press Down multiple times from search entry: selection advances, device stays 1
+    assert pop._on_search_key_press(pop._search_entry, down_ev) is True
+    assert pop._on_search_key_press(pop._search_entry, down_ev) is True
+    process_events()
+    selected_after = pop._listbox.get_selected_row()
+    assert selected_after is not None and selected_after.get_index() == 2
+    assert pop.get_visible() is True
+    assert patch_tab.get_selected_device_id() == 1
+
+    # Also verify Window's key controller does not intercept Down when focus in Popover
+    assert app_gui.window is not None
+    selected_after.grab_focus()
+    process_events()
+    handled = app_gui.window._on_key_controller_pressed(
+        app_gui.window.key_controller, Gdk.KEY_Down, 0, Gdk.ModifierType(0)
+    )
+    assert handled is False
+    assert patch_tab.get_selected_device_id() == 1
+
+    pop.popdown()

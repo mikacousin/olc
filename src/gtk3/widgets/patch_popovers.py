@@ -121,6 +121,7 @@ class FixtureSelectionPopover(Gtk.Popover):
         self._search_entry.set_placeholder_text(_("Search fixture..."))
         self._search_entry.connect("search-changed", self._on_search_changed)
         self._search_entry.connect("activate", self._on_search_activate)
+        self._search_entry.connect("key-press-event", self._on_search_key_press)
         box.pack_start(self._search_entry, False, False, 0)
 
         scroll = Gtk.ScrolledWindow()
@@ -184,6 +185,30 @@ class FixtureSelectionPopover(Gtk.Popover):
         row = self._listbox.get_selected_row()
         if row is not None:
             self._on_row_activated(self._listbox, row)
+
+    def _on_search_key_press(
+        self, _entry: Gtk.SearchEntry, event: Gdk.EventKey
+    ) -> bool:
+        if event.keyval not in (Gdk.KEY_Down, Gdk.KEY_Up):
+            return False
+        rows = self._listbox.get_children()
+        if not rows:
+            return True
+        selected = self._listbox.get_selected_row()
+        curr_idx = selected.get_index() if selected is not None else -1
+        step = 1 if event.keyval == Gdk.KEY_Down else -1
+        next_idx = max(0, min(len(rows) - 1, curr_idx + step))
+        target_row = self._listbox.get_row_at_index(next_idx)
+        if target_row is not None:
+            self._listbox.select_row(target_row)
+            adj = self._listbox.get_adjustment()
+            if adj is not None:
+                alloc = target_row.get_allocation()
+                if alloc.y < adj.get_value():
+                    adj.set_value(alloc.y)
+                elif alloc.y + alloc.height > adj.get_value() + adj.get_page_size():
+                    adj.set_value(alloc.y + alloc.height - adj.get_page_size())
+        return True
 
     def _on_row_activated(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
         fixture_key = self._row_keys.get(row)

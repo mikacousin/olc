@@ -702,6 +702,10 @@ class Window(Gtk.ApplicationWindow):
         if self.is_text_editing_active():
             return False
 
+        focused = self.get_focus()
+        if focused is not None and focused.get_ancestor(Gtk.Popover) is not None:
+            return False
+
         if bool(
             modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
         ):
