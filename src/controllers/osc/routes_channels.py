@@ -262,6 +262,36 @@ class ChannelsRoutesMixin:
         """Unpark all parked channels and addresses."""
         self._execute_action("park.unpark_all")
 
+    @make_method("/olc/channels/sneak")
+    def _channels_sneak(self, _address: str, args: list) -> None:
+        """Sneak selected channels (or all manual channels) with optional duration."""
+        if not self._is_momentary_press(args):
+            return
+        duration: float | None = None
+        if len(args) >= 2:
+            try:
+                duration = float(args[1])
+            except (TypeError, ValueError):
+                duration = None
+        self._execute_action("channel.sneak", None, duration, True)
+
+    @make_method("/olc/channel/*/sneak")
+    def _channel_sneak(self, address: str, args: list) -> None:
+        """Sneak a specific channel with optional duration."""
+        if not self._is_momentary_press(args):
+            return
+        try:
+            ch = int(address.split("/")[3])
+        except (IndexError, ValueError):
+            return
+        duration: float | None = None
+        if len(args) >= 2:
+            try:
+                duration = float(args[1])
+            except (TypeError, ValueError):
+                duration = None
+        self._execute_action("channel.sneak", [ch], duration)
+
     @make_method("/olc/universe/*/set_channels")
     def _universe_set_channels(self, address: str, args: list) -> None:
         """Set DMX universe channel levels via JSON payload or channel/value pairs."""

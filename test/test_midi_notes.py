@@ -160,3 +160,19 @@ def test_midi_notes_send_cc_prioritized() -> None:
     assert sent_msg.channel == 1
     assert sent_msg.control == 50
     assert sent_msg.value == 127
+
+
+def test_midi_notes_channel_sneak_dispatch() -> None:
+    """Test that MIDI channel.sneak triggers channel.sneak action."""
+    import mido
+
+    midi = MagicMock()
+    app = MagicMock()
+    notes = MidiNotes(midi, app)
+
+    assert "channel.sneak" in notes.notes
+    assert "channel.sneak" in notes.cc_notes
+
+    msg = mido.Message("note_on", channel=0, note=12, velocity=127)
+    notes._dispatch("channel.sneak", msg)
+    app.action_registry.execute.assert_called_once_with("channel.sneak")

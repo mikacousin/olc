@@ -637,18 +637,26 @@ class ChannelSneakAction(Action):
         super().__init__(app)
         self.channels: list[int] | None = None
         self.duration: float | None = None
+        self.use_selection: bool = True
 
     def configure(
         self,
         channels: list[int] | None = None,
         duration: float | None = None,
+        use_selection: bool = True,
     ) -> None:
-        """Configure channels to sneak and optional fade duration."""
+        """Configure channels to sneak, optional fade duration, and selection use."""
         self.channels = channels
         self.duration = duration
+        self.use_selection = use_selection
 
     def execute(self) -> None:
-        """Execute sneak on configured channels."""
+        """Execute sneak on configured channels (or active selection if enabled)."""
         sneak_ctrl = getattr(self.app, "sneak_controller", None)
         if sneak_ctrl is not None:
-            sneak_ctrl.sneak_channels(self.channels, self.duration)
+            channels = self.channels
+            if channels is None and self.use_selection:
+                selected = getattr(self.app, "selected_channels", None)
+                if selected:
+                    channels = list(selected)
+            sneak_ctrl.sneak_channels(channels, self.duration)

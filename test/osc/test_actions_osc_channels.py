@@ -418,3 +418,27 @@ def test_osc_additional_parameters_routes() -> None:
 
     delegate._device_param_generic("/olc/device/2/param/zoom", [0.45])
     assert abs((spot.get_parameter_normalized(ChannelType.ZOOM) or 0.0) - 0.45) < 0.01
+
+
+def test_osc_sneak_routes() -> None:
+    """Test /olc/key/sneak, /olc/channels/sneak, and /olc/channel/*/sneak."""
+    app, _mock_osc = _setup_app_with_patch()
+    delegate = OSCDelegate(app)
+
+    # 1. Keypad SNEAK appends keyword to command line
+    app.commandline.set_string("1")
+    delegate._sneak_key("/olc/key/sneak", [1])
+    assert app.commandline.get_string() == "1 SNEAK "
+
+    # 2. /olc/channels/sneak with selected channels & explicit duration=0.0
+    assert app.backend is not None
+    app.backend.dmx.levels["user"][0] = 0.8
+    app.backend.dmx.levels["user"][1] = 0.6
+    app.selected_channels = [1]
+    delegate._channels_sneak("/olc/channels/sneak", [1, 0.0])
+    assert app.backend.dmx.levels["user"][0] == -1.0
+    assert app.backend.dmx.levels["user"][1] == 0.6
+
+    # 3. /olc/channel/2/sneak targets channel 2 directly
+    delegate._channel_sneak("/olc/channel/2/sneak", [1, 0.0])
+    assert app.backend.dmx.levels["user"][1] == -1.0
