@@ -732,3 +732,49 @@ def test_sequence_treeview_cell_editing_space(
     )
     assert res is False
     assert "playback.go" not in executed_actions
+
+
+@pytest.mark.gui
+def test_address_check_arrows_work_on_all_tabs(app_gui: Application) -> None:
+    """Verify Right/Left/PageUp/PageDown step Address Check on any active tab."""
+    assert app_gui.window is not None
+    win = app_gui.window
+    controller = win.key_controller
+
+    # Open an editing/monitoring tab (not Main Playback)
+    app_gui.activate_action("dmx_outputs", None)
+    process_events()
+    assert win._is_editing_tab_focused() is True
+
+    # Start Address Check
+    app_gui.core.commandline.set_string("ADDRESS 10 AT 50")
+    app_gui.core.commandline.execute()
+    assert app_gui.core.address_check is not None
+    assert app_gui.core.address_check[:2] == (1, 10)
+
+    # Right arrow steps to 1/11 and consumes event (does not switch notebook tab)
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_Right, 0, Gdk.ModifierType(0)
+        )
+        is True
+    )
+    assert app_gui.core.address_check[:2] == (1, 11)
+    assert app_gui.core.commandline.get_string().startswith("ADDRESS 1/11 AT ")
+
+    # Left arrow steps back to 1/10 and consumes event
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_Left, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert app_gui.core.address_check[:2] == (1, 10)
+
+    # BackSpace exits Address Check cleanly
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_BackSpace, 0, Gdk.ModifierType(0)
+        )
+        is True
+    )
+    assert app_gui.core.address_check is None
+    assert app_gui.core.commandline.get_string() == ""

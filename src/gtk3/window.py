@@ -588,6 +588,14 @@ class Window(Gtk.ApplicationWindow):
         ):
             return None
 
+        if modifiers == 0 and self.app.core.address_check is not None:
+            if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
+                self.app.core.step_address_check(-1)
+                return True
+            if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
+                self.app.core.step_address_check(1)
+                return True
+
         if self._is_editing_tab_focused():
             page = self._get_active_page()
             if page is None:
