@@ -354,3 +354,40 @@ def test_group_temp_channels_action() -> None:
     assert group.channels == {3: 200, 4: 150}
     # Editor overrides should be cleared after update
     assert not editor.has_overrides(1.0)
+
+
+def test_group_delete_clears_and_restores_fader_assignment() -> None:
+    """Test group.delete clears referencing faders and Undo/Redo restores them."""
+    from olc.show.fader import FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.groups.clear()
+
+    app.action_registry.execute("group.new", 1.0)
+    group = app.lightshow.groups.get(1.0)
+    assert group is not None
+
+    app.action_registry.execute("fader.assign", 1, 2, FaderType.GROUP, 1.0)
+    fader_bank = app.lightshow.fader_bank
+    assert fader_bank.get_fader_type(1, 2) == FaderType.GROUP
+    assert fader_bank.faders[1][2].contents is group
+
+    # Delete group -> fader is cleared atomically
+    app.action_registry.execute("group.delete", 1.0)
+    assert app.lightshow.groups.get(1.0) is None
+    assert fader_bank.get_fader_type(1, 2) == FaderType.NONE
+    assert fader_bank.faders[1][2].contents is None
+
+    # Undo -> group AND fader assignment are restored
+    app.history.undo()
+    restored_group = app.lightshow.groups.get(1.0)
+    assert restored_group is group
+    assert fader_bank.get_fader_type(1, 2) == FaderType.GROUP
+    assert fader_bank.faders[1][2].contents is group
+
+    # Redo -> group deleted and fader cleared again
+    app.history.redo()
+    assert app.lightshow.groups.get(1.0) is None
+    assert fader_bank.get_fader_type(1, 2) == FaderType.NONE
+    assert fader_bank.faders[1][2].contents is None

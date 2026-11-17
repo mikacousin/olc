@@ -19,6 +19,7 @@ import typing
 from collections.abc import Mapping
 
 from olc.core.action import Action
+from olc.show.fader import FaderType
 from olc.show.group import Group
 
 if typing.TYPE_CHECKING:
@@ -115,6 +116,7 @@ class DeleteGroupAction(Action):
         self.group_nb: typing.Optional[float] = None
         self.deleted_group: typing.Optional[Group] = None
         self.deleted_index: typing.Optional[int] = None
+        self.cleared_faders: list[tuple[int, int, FaderType, float]] = []
 
     def configure(self, group_nb: float) -> None:
         """Configure the action with the group number to delete.
@@ -146,6 +148,20 @@ class DeleteGroupAction(Action):
         except ValueError:
             self.deleted_index = None
 
+        # Snapshot and clear any faders referencing the deleted group
+        self.cleared_faders = []
+        fader_bank = getattr(lightshow, "fader_bank", None)
+        if fader_bank is not None:
+            for page, faders in fader_bank.faders.items():
+                for fader in list(faders.values()):
+                    if fader.contents is target_group:
+                        fader_type = fader_bank.get_fader_type(page, fader.index)
+                        self.cleared_faders.append(
+                            (page, fader.index, fader_type, float(group_nb))
+                        )
+                        fader_bank.set_fader(page, fader.index, FaderType.NONE, None)
+                        self.app.emit("fader.changed", page, fader.index)
+
         # Remove from model
         lightshow.groups.remove(target_group)
         lightshow.set_modified()
@@ -154,18 +170,28 @@ class DeleteGroupAction(Action):
         self.app.emit("group.deleted", target_group)
 
     def undo(self) -> None:
-        """Undo the deletion, restoring the group back to its original index."""
+        """Undo the deletion, restoring the group and any faders referencing it."""
         if self.deleted_group:
             if self.deleted_index is not None:
                 self.app.lightshow.groups.insert(self.deleted_index, self.deleted_group)
             else:
                 self.app.lightshow.groups.add(self.deleted_group)
+            fader_bank = getattr(self.app.lightshow, "fader_bank", None)
+            if fader_bank is not None:
+                for page, fader_idx, old_type, old_num in self.cleared_faders:
+                    fader_bank.set_fader(page, fader_idx, old_type, old_num)
+                    self.app.emit("fader.changed", page, fader_idx)
             self.app.lightshow.set_modified()
             self.app.emit("group.created", self.deleted_group)
 
     def redo(self) -> None:
-        """Redo the deletion, removing the group again."""
+        """Redo the deletion, removing the group and clearing referencing faders."""
         if self.deleted_group:
+            fader_bank = getattr(self.app.lightshow, "fader_bank", None)
+            if fader_bank is not None:
+                for page, fader_idx, _old_type, _old_num in self.cleared_faders:
+                    fader_bank.set_fader(page, fader_idx, FaderType.NONE, None)
+                    self.app.emit("fader.changed", page, fader_idx)
             self.app.lightshow.groups.remove(self.deleted_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.deleted", self.deleted_group)

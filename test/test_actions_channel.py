@@ -436,8 +436,8 @@ def test_channel_level_plus_minus_and_undo_redo() -> None:
     assert app.backend.dmx.levels["user"][0] == pytest.approx(60.0 / 255.0)
 
 
-def test_channel_set_level_full_and_from_cmd() -> None:
-    """Test channel.set_level_full and channel.set_level_from_cmd actions."""
+def test_channel_set_level_from_cmd() -> None:
+    """Test channel.set_level_from_cmd action."""
     settings = MagicMock()
     settings.get_boolean.return_value = False
     app = CoreApplication(settings)
@@ -450,21 +450,6 @@ def test_channel_set_level_full_and_from_cmd() -> None:
 
     app.selected_channels = [3, 4]
 
-    # Test set_level_full
-    app.action_registry.execute("channel.set_level_full")
-    assert app.backend.dmx.levels["user"][2] == 1.0
-    assert app.backend.dmx.levels["user"][3] == 1.0
-
-    # Undo
-    app.history.undo()
-    assert app.backend.dmx.levels["user"][2] == pytest.approx(20.0 / 255.0)
-    assert app.backend.dmx.levels["user"][3] == pytest.approx(20.0 / 255.0)
-
-    # Redo
-    app.history.redo()
-    assert app.backend.dmx.levels["user"][2] == 1.0
-    assert app.backend.dmx.levels["user"][3] == 1.0
-
     # Test set_level_from_cmd
     app.commandline.set_string("128")
     app.action_registry.execute("channel.set_level_from_cmd")
@@ -474,8 +459,8 @@ def test_channel_set_level_full_and_from_cmd() -> None:
 
     # Undo
     app.history.undo()
-    assert app.backend.dmx.levels["user"][2] == 1.0
-    assert app.backend.dmx.levels["user"][3] == 1.0
+    assert app.backend.dmx.levels["user"][2] == pytest.approx(20.0 / 255.0)
+    assert app.backend.dmx.levels["user"][3] == pytest.approx(20.0 / 255.0)
 
     # Redo
     app.history.redo()
@@ -506,7 +491,6 @@ def test_channel_level_actions_empty_selection() -> None:
     app.action_registry.execute("channel.wheel_adjust", 10, 1)
     app.action_registry.execute("channel.level_plus")
     app.action_registry.execute("channel.level_minus")
-    app.action_registry.execute("channel.set_level_full")
     app.commandline.set_string("100")
     app.action_registry.execute("channel.set_level_from_cmd")
     # Command line should remain untouched if no channel was selected

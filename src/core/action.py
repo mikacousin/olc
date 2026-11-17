@@ -39,7 +39,6 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "channel.select_thru": _("Select channel range"),
     "channel.set_level": _("Set channel level"),
     "channel.set_level_from_cmd": _("Set level"),
-    "channel.set_level_full": _("Set channels at Full"),
     "channel.set_multi_levels": _("Set channels level"),
     "channel.unpark": _("Unpark channel"),
     "channel.wheel_adjust": _("Adjust channel level"),

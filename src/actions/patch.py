@@ -26,77 +26,6 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
 
 
-class PatchAddOutputAction(Action):
-    """Action to associate a DMX output with a channel."""
-
-    name = "patch.add_output"
-    history_label = _("Patch DMX output")
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.channel: int = 1
-        self.output: int = 1
-        self.univ: int = 0
-        self.curve: int = 0
-
-        # State saved for undo
-        self.old_channel: typing.Optional[int] = None
-        self.old_curve: int = 0
-
-    def configure(self, channel: int, output: int, univ: int, curve: int = 0) -> None:
-        """Configure the action with output patching parameters.
-
-        Args:
-            channel: The channel to associate with the output.
-            output: The DMX output number.
-            univ: The DMX universe index.
-            curve: The transfer curve index (default 0 = linear).
-        """
-        self.channel = channel
-        self.output = output
-        self.univ = univ
-        self.curve = curve
-
-    def execute(self) -> None:
-        """Execute the action, patching the configured output."""
-        patch = self.app.lightshow.patch
-
-        # Save previous state of this output
-        info = patch.get_output_info(self.univ, self.output)
-        if info is not None:
-            self.old_channel, self.old_curve = info
-        else:
-            self.old_channel = None
-            self.old_curve = 0
-
-        # Execute
-        if self.old_channel is not None:
-            patch.unpatch_address(self.univ, self.output)
-        patch.add_output(self.channel, self.output, self.univ, self.curve)
-
-        self.app.lightshow.set_modified()
-        self.app.emit("patch.changed")
-
-    def undo(self) -> None:
-        patch = self.app.lightshow.patch
-        patch.unpatch_address(self.univ, self.output)
-        if self.old_channel is not None:
-            patch.add_output(self.old_channel, self.output, self.univ, self.old_curve)
-
-        self.app.lightshow.set_modified()
-        self.app.emit("patch.changed")
-
-    def redo(self) -> None:
-        patch = self.app.lightshow.patch
-        if self.old_channel is not None:
-            patch.unpatch_address(self.univ, self.output)
-        patch.add_output(self.channel, self.output, self.univ, self.curve)
-
-        self.app.lightshow.set_modified()
-        self.app.emit("patch.changed")
-
-
 class PatchAddOutputsAction(Action):
     """Action to atomically associate multiple DMX outputs with channels."""
 
@@ -168,61 +97,6 @@ class PatchAddOutputsAction(Action):
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
-
-
-class PatchUnpatchOutputAction(Action):
-    """Action to unpatch a DMX output."""
-
-    name = "patch.unpatch_output"
-    history_label = _("Unpatch DMX output")
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.output: int = 1
-        self.univ: int = 0
-        self.old_channel: typing.Optional[int] = None
-        self.old_curve: int = 0
-
-    def configure(self, output: int, univ: int) -> None:
-        """Configure the action with the output to unpatch.
-
-        Args:
-            output: The DMX output number.
-            univ: The DMX universe index.
-        """
-        self.output = output
-        self.univ = univ
-
-    def execute(self) -> None:
-        """Execute the action, unpatching the configured output."""
-        patch = self.app.lightshow.patch
-        info = patch.get_output_info(self.univ, self.output)
-        if info is not None:
-            self.old_channel, self.old_curve = info
-        else:
-            self.old_channel = None
-            self.old_curve = 0
-
-        if self.old_channel is not None:
-            patch.unpatch_address(self.univ, self.output)
-
-        self.app.lightshow.set_modified()
-        self.app.emit("patch.changed")
-
-    def undo(self) -> None:
-        if self.old_channel is not None:
-            patch = self.app.lightshow.patch
-            patch.add_output(self.old_channel, self.output, self.univ, self.old_curve)
-            self.app.lightshow.set_modified()
-            self.app.emit("patch.changed")
-
-    def redo(self) -> None:
-        if self.old_channel is not None:
-            patch = self.app.lightshow.patch
-            patch.unpatch_address(self.univ, self.output)
-            self.app.lightshow.set_modified()
-            self.app.emit("patch.changed")
 
 
 class PatchClearAction(Action):
@@ -305,60 +179,6 @@ class PatchSet1on1Action(Action):
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
-
-
-class PatchSetOutputCurveAction(Action):
-    """Action to set the transfer curve of a patched DMX output."""
-
-    name = "patch.set_output_curve"
-    history_label = _("Set output curve")
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.output: int = 1
-        self.univ: int = 0
-        self.curve: int = 0
-        self.old_curve: int = 0
-
-    def configure(self, output: int, univ: int, curve: int) -> None:
-        """Configure the action with the output and new curve.
-
-        Args:
-            output: The DMX output number.
-            univ: The DMX universe index.
-            curve: The new transfer curve index.
-        """
-        self.output = output
-        self.univ = univ
-        self.curve = curve
-
-    def execute(self) -> None:
-        """Execute the action, assigning the configured curve to the output."""
-        patch = self.app.lightshow.patch
-        info = patch.get_output_info(self.univ, self.output)
-        if info is not None:
-            self.old_curve = info[1]
-            patch.set_output_curve(self.univ, self.output, self.curve)
-        else:
-            raise ValueError(
-                f"Output {self.output} in universe {self.univ} is not patched."
-            )
-
-        self.app.lightshow.set_modified()
-        self.app.emit("patch.changed")
-
-    def undo(self) -> None:
-        patch = self.app.lightshow.patch
-        if patch.set_output_curve(self.univ, self.output, self.old_curve):
-            self.app.lightshow.set_modified()
-            self.app.emit("patch.changed")
-
-    def redo(self) -> None:
-        patch = self.app.lightshow.patch
-        if patch.set_output_curve(self.univ, self.output, self.curve):
-            self.app.lightshow.set_modified()
-            self.app.emit("patch.changed")
 
 
 class PatchSetDeviceCurveAction(Action):
@@ -840,7 +660,6 @@ class PatchMoveDeviceAddressAction(Action):
 
 
 __all__ = [
-    "PatchAddOutputAction",
     "PatchAddOutputsAction",
     "PatchClearAction",
     "PatchDeviceAction",
@@ -849,8 +668,6 @@ __all__ = [
     "PatchSet1on1Action",
     "PatchSetDeviceCurveAction",
     "PatchSetDeviceLabelAction",
-    "PatchSetOutputCurveAction",
     "PatchUnpatchBatchAction",
     "PatchUnpatchDeviceAction",
-    "PatchUnpatchOutputAction",
 ]

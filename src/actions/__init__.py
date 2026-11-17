@@ -32,7 +32,6 @@ from olc.actions.channel import (
     SelectThruChannelAction,
     SetChannelLevelAction,
     SetLevelFromCmdAction,
-    SetLevelFullAction,
     SetMultiChannelsLevelAction,
 )
 from olc.actions.commandline import (
@@ -146,7 +145,6 @@ from olc.actions.park import (
     ParkUnparkAllAction,
 )
 from olc.actions.patch import (
-    PatchAddOutputAction,
     PatchAddOutputsAction,
     PatchClearAction,
     PatchDeviceAction,
@@ -155,10 +153,8 @@ from olc.actions.patch import (
     PatchSet1on1Action,
     PatchSetDeviceCurveAction,
     PatchSetDeviceLabelAction,
-    PatchSetOutputCurveAction,
     PatchUnpatchBatchAction,
     PatchUnpatchDeviceAction,
-    PatchUnpatchOutputAction,
 )
 from olc.actions.playback import (
     GoAction,
@@ -167,7 +163,6 @@ from olc.actions.playback import (
     PlaybackGotoAction,
     PlaybackManualXFadeAction,
     PlaybackRecordCueAction,
-    PlaybackSneakAction,
     PlaybackStopAction,
     PlaybackUpdateActiveStepAction,
     SequenceMinusAction,
@@ -213,7 +208,6 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SelectRemoveChannelAction,
         SelectAllChannelsAction,
         SetLevelFromCmdAction,
-        SetLevelFullAction,
         ChannelSneakAction,
         LevelPlusAction,
         LevelMinusAction,
@@ -238,8 +232,6 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SequenceMinusAction,
         UndoAction,
         RedoAction,
-        PatchAddOutputAction,
-        PatchUnpatchOutputAction,
         PatchDeviceAction,
         PatchUnpatchDeviceAction,
         PatchUnpatchBatchAction,
@@ -249,7 +241,6 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PatchSetDeviceCurveAction,
         PatchSetDeviceLabelAction,
         PatchMoveDeviceAddressAction,
-        PatchSetOutputCurveAction,
         CurveNewAction,
         CurveDeleteAction,
         CurveUpdatePointsAction,
@@ -296,7 +287,6 @@ def register_all_actions(registry: ActionRegistry) -> None:
         ChannelWheelAdjustAction,
         PlaybackManualXFadeAction,
         PlaybackRecordCueAction,
-        PlaybackSneakAction,
         PlaybackUpdateActiveStepAction,
         MidiPortToggleAction,
         MidiSetPortModeAction,

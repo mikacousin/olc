@@ -41,7 +41,7 @@ def test_show_new_resets_show_state() -> None:
     assert app.lightshow.modified is True
 
     # Add output patch and push action to history
-    app.action_registry.execute("patch.add_output", 5, 10, 1)
+    app.action_registry.execute("patch.add_outputs", [(5, 10, 1, 0)])
     assert len(app.history.undo_stack) > 0
 
     # Surcharge a manual user level
@@ -174,7 +174,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
 
     app.lightshow.cues.add(Cue(1, 2.5))
     app.lightshow.groups.add(Group(index=1.0, channels={1: 1.0, 2: 0.5}))
-    app.action_registry.execute("patch.add_output", 5, 20, 1)
+    app.action_registry.execute("patch.add_outputs", [(5, 20, 1, 0)])
 
     save_path = str(tmp_path / "test_show.olc")
     saved_events: list[str] = []

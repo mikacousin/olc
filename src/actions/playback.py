@@ -704,26 +704,6 @@ class PlaybackUpdateActiveStepAction(Action):
         self.app.emit("cue.updated", self.target_cue.sequence, self.target_cue.number)
 
 
-class PlaybackSneakAction(Action):
-    """Action to gradually release all active manual overrides (Sneak)."""
-
-    name = "playback.sneak"
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.duration: float | None = None
-
-    def configure(self, duration: float | None = None) -> None:
-        """Configure optional sneak duration."""
-        self.duration = duration
-
-    def execute(self) -> None:
-        """Execute sneak across all manual channels."""
-        sneak_ctrl = getattr(self.app, "sneak_controller", None)
-        if sneak_ctrl is not None:
-            sneak_ctrl.sneak_channels(None, self.duration)
-
-
 class PlaybackStopAction(Action):
     """Action to stop the main playback sequence."""
 

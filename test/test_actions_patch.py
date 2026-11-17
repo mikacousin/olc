@@ -23,8 +23,8 @@ import numpy as np
 from olc.core.app import CoreApplication
 
 
-def test_patch_add_output_and_undo_redo() -> None:
-    """Test patch.add_output action and its undo/redo."""
+def test_patch_add_outputs_and_undo_redo() -> None:
+    """Test patch.add_outputs action and its undo/redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
     patch = app.lightshow.patch
@@ -42,7 +42,7 @@ def test_patch_add_output_and_undo_redo() -> None:
     app.subscribe("patch.changed", on_patch_changed)
 
     # Add output patch: Channel 5 to Output 10, Universe 1
-    app.action_registry.execute("patch.add_output", 5, 10, 1)
+    app.action_registry.execute("patch.add_outputs", [(5, 10, 1, 0)])
     assert patch_events == 1
     assert patch.get_output_info(1, 10) == (5, 0)  # (channel, curve)
     assert [(ch.address, ch.universe) for ch in patch.devices[5].channels] == [(10, 1)]
@@ -59,7 +59,7 @@ def test_patch_add_output_and_undo_redo() -> None:
 
     # Add another patch to the same output: Channel 6 to Output 10, Universe 1
     # This should unpatch Channel 5 from Output 10 first
-    app.action_registry.execute("patch.add_output", 6, 10, 1)
+    app.action_registry.execute("patch.add_outputs", [(6, 10, 1, 0)])
     assert patch.get_output_info(1, 10) == (6, 0)
     assert not patch.is_patched(5)
     assert [(ch.address, ch.universe) for ch in patch.devices[6].channels] == [(10, 1)]
@@ -75,18 +75,18 @@ def test_patch_add_output_and_undo_redo() -> None:
     assert patch.get_output_info(1, 10) == (6, 0)
 
 
-def test_patch_unpatch_and_undo_redo() -> None:
-    """Test patch.unpatch_output action and its undo/redo."""
+def test_patch_unpatch_batch_and_undo_redo() -> None:
+    """Test patch.unpatch_batch action and its undo/redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
     patch = app.lightshow.patch
 
     app.action_registry.execute("patch.clear")
-    app.action_registry.execute("patch.add_output", 6, 10, 1)
+    app.action_registry.execute("patch.add_outputs", [(6, 10, 1, 0)])
     assert patch.get_output_info(1, 10) == (6, 0)
 
     # Unpatch output 10
-    app.action_registry.execute("patch.unpatch_output", 10, 1)
+    app.action_registry.execute("patch.unpatch_batch", addresses=[(1, 10)])
     assert patch.get_output_info(1, 10) is None
     assert not patch.is_patched(6)
 
@@ -103,7 +103,7 @@ def test_patch_set_1on1_and_undo_redo() -> None:
     patch = app.lightshow.patch
 
     app.action_registry.execute("patch.clear")
-    app.action_registry.execute("patch.add_output", 6, 10, 1)
+    app.action_registry.execute("patch.add_outputs", [(6, 10, 1, 0)])
 
     # Set 1on1 patch
     app.action_registry.execute("patch.set_1on1")
@@ -122,8 +122,8 @@ def test_patch_set_1on1_and_undo_redo() -> None:
     assert patch.get_output_info(1, 10) == (10, 0)
 
 
-def test_patch_set_output_curve_and_undo_redo() -> None:
-    """Test patch.set_output_curve action and its undo/redo."""
+def test_patch_set_device_curve_and_undo_redo() -> None:
+    """Test patch.set_device_curve action and its undo/redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
     patch = app.lightshow.patch
@@ -131,15 +131,15 @@ def test_patch_set_output_curve_and_undo_redo() -> None:
     app.action_registry.execute("patch.set_1on1")
     assert patch.get_output_info(1, 10) == (10, 0)
 
-    # Set output curve
-    app.action_registry.execute("patch.set_output_curve", 10, 1, 5)
+    # Set device curve
+    app.action_registry.execute("patch.set_device_curve", 10, 5)
     assert patch.get_output_info(1, 10) == (10, 5)
 
-    # Undo set output curve
+    # Undo set device curve
     app.history.undo()
     assert patch.get_output_info(1, 10) == (10, 0)
 
-    # Redo set output curve
+    # Redo set device curve
     app.history.redo()
     assert patch.get_output_info(1, 10) == (10, 5)
 

@@ -482,19 +482,6 @@ class SetLevelFromCmdAction(BaseSelectedChannelsLevelAction):
         self._apply_levels(self.new_levels)
 
 
-class SetLevelFullAction(BaseSelectedChannelsLevelAction):
-    """Action to set the level of all selected channels to 100%."""
-
-    name = "channel.set_level_full"
-    history_label = _("Set channels at Full")
-
-    def execute(self) -> None:
-        if not self._capture_old_levels():
-            return
-        self.new_levels = {ch: 1.0 for ch in self.channels}
-        self._apply_levels(self.new_levels)
-
-
 class BaseRelativeLevelAction(BaseSelectedChannelsLevelAction):
     """Base class for relative level changes on selected channels."""
 
