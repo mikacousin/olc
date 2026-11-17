@@ -20,6 +20,7 @@ import typing
 
 from olc.core.parser.ast_nodes import (
     AddressItemNode,
+    AddressLevelCommandNode,
     AddressNumberNode,
     AddressParkCommandNode,
     AddressRangeNode,
@@ -251,8 +252,10 @@ class CommandParser:
                     return AddressParkCommandNode(addresses=addrs, level=lvl)
                 return AddressParkCommandNode(addresses=addrs, level=100.0)
             if self.match(TokenType.AT):
+                if self.peek().type == TokenType.EOF:
+                    return AddressLevelCommandNode(addresses=addrs, level=None)
                 lvl, _ = self._parse_intensity_value()
-                return AddressParkCommandNode(addresses=addrs, level=lvl)
+                return AddressLevelCommandNode(addresses=addrs, level=lvl)
             raise CommandSyntaxError(
                 f"Expected PARK, UNPARK, or AT after ADDRESS, "
                 f"got {self.peek().raw_text!r}",

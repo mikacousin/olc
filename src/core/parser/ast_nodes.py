@@ -264,6 +264,14 @@ class AddressParkCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
+class AddressLevelCommandNode(CommandNode):
+    """Command to temporarily set DMX output test level(s) (ADDRESS ... AT ...)."""
+
+    addresses: AddressSelectionNode
+    level: float | None = None
+
+
+@dataclasses.dataclass
 class AddressUnparkCommandNode(CommandNode):
     """Command to unpark physical DMX addresses."""
 

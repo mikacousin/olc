@@ -429,11 +429,15 @@ class Dmx:
                     self.frame[index][output - 1] = level
             if not level:
                 self.user_outputs.pop((output, universe), None)
-            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            elif (
+                self.lightshow.app is not None and self.lightshow.app.engine is not None
+            ):
                 try:
                     self.lightshow.app.engine.set_output_level(universe, output, level)
                 except (KeyError, IndexError):
                     pass
+        if not level:
+            self.set_levels()
 
     def get_output_level(self, universe: int, output: int) -> int:
         """Return current DMX level (0-255) for 1-indexed *output* in *universe*."""

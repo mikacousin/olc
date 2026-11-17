@@ -618,15 +618,18 @@ class Window(Gtk.ApplicationWindow):
             self.app.core.action_registry.execute("commandline.history_next")
             return True
         if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
-            self.live_view.channels_view.select_previous()
+            if not self.app.core.step_address_check(-1):
+                self.live_view.channels_view.select_previous()
             return True
         if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
-            self.live_view.channels_view.select_next()
+            if not self.app.core.step_address_check(1):
+                self.live_view.channels_view.select_next()
             return True
         return False
 
     def _clear_on_escape(self) -> None:
         """Clear command line and unselect channels on Escape."""
+        self.app.core.clear_address_check()
         self.app.core.action_registry.execute("commandline.clear")
         self.live_view.channels_view.flowbox.unselect_all()
         self.live_view.channels_view.last_selected_channel = ""

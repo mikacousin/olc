@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import typing
+from gettext import gettext as _
 
 import numpy as np
 
@@ -220,11 +221,13 @@ class DmxTestOutputAction(Action):
     """Action to set a test level on DMX output(s)."""
 
     name = "dmx.test_output"
+    history_label = _("Test DMX output")
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.targets: list[tuple[int, int]] = []
+        self.release_targets: list[tuple[int, int]] = []
         self.level: int = 255
         self.old_levels: dict[tuple[int, int], int] = {}
 
@@ -233,6 +236,7 @@ class DmxTestOutputAction(Action):
         output: int | list[tuple[int, int]],
         universe: int = 1,
         level: int = 255,
+        release_targets: list[tuple[int, int]] | None = None,
     ) -> None:
         """Configure the action with target output(s) and test level.
 
@@ -240,6 +244,7 @@ class DmxTestOutputAction(Action):
             output: Single output (1-512) or list of (output, universe) tuples.
             universe: DMX universe identifier if output is an integer.
             level: Level to apply (0-255).
+            release_targets: Optional list of (output, universe) to release to 0.
         """
         if isinstance(output, list):
             self.targets = list(output)
@@ -247,50 +252,66 @@ class DmxTestOutputAction(Action):
         else:
             self.targets = [(output, universe)]
             self.level = level
+        self.release_targets = list(release_targets) if release_targets else []
+
+    def get_history_details(self) -> str:
+        """Return concise DMX output test details for Undo History."""
+        if not self.targets:
+            return ""
+        pct = int(round((self.level / 255.0) * 100))
+        if len(self.targets) == 1:
+            out, univ = self.targets[0]
+            if self.level <= 0:
+                return f"{univ}/{out} → {_('Released')}"
+            return f"{univ}/{out} @ {pct}%"
+        if self.level <= 0:
+            return f"{len(self.targets)} {_('outputs')} → {_('Released')}"
+        return f"{len(self.targets)} {_('outputs')} @ {pct}%"
+
+    def _apply_output_level(self, out: int, univ: int, lvl: int) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.send_user_output(out, univ, lvl)
+        elif self.app.engine is not None:
+            try:
+                self.app.engine.set_output_level(univ, out, lvl)
+            except (KeyError, IndexError, AttributeError):
+                pass
+        self.app.emit("dmx.user_output_changed", univ, out, lvl)
+
+    def _read_output_level(self, out: int, univ: int) -> int:
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            return int(backend.dmx.user_outputs.get((out, univ), 0))
+        if self.app.engine is not None:
+            try:
+                return int(self.app.engine.get_output_level(univ, out))
+            except (KeyError, IndexError, AttributeError):
+                pass
+        return 0
 
     def execute(self) -> None:
-        """Apply test level to configured outputs."""
-        backend = getattr(self.app, "backend", None)
+        """Apply test level to configured outputs and release previous ones."""
         self.old_levels = {}
+        for out, univ in self.release_targets:
+            self.old_levels[(out, univ)] = self._read_output_level(out, univ)
+            self._apply_output_level(out, univ, 0)
         for out, univ in self.targets:
-            old = 0
-            if backend is not None and getattr(backend, "dmx", None) is not None:
-                old = backend.dmx.user_outputs.get((out, univ), 0)
-                backend.dmx.send_user_output(out, univ, self.level)
-            elif self.app.engine is not None:
-                try:
-                    old = self.app.engine.get_output_level(univ, out)
-                    self.app.engine.set_output_level(univ, out, self.level)
-                except (KeyError, IndexError, AttributeError):
-                    pass
-            self.old_levels[(out, univ)] = old
-            self.app.emit("dmx.user_output_changed", univ, out, self.level)
+            if (out, univ) not in self.old_levels:
+                self.old_levels[(out, univ)] = self._read_output_level(out, univ)
+            self._apply_output_level(out, univ, self.level)
 
     def undo(self) -> None:
         """Restore previous output levels prior to test."""
-        backend = getattr(self.app, "backend", None)
         for (out, univ), old in self.old_levels.items():
-            if backend is not None and getattr(backend, "dmx", None) is not None:
-                backend.dmx.send_user_output(out, univ, old)
-            elif self.app.engine is not None:
-                try:
-                    self.app.engine.set_output_level(univ, out, old)
-                except (KeyError, IndexError, AttributeError):
-                    pass
-            self.app.emit("dmx.user_output_changed", univ, out, old)
+            self._apply_output_level(out, univ, old)
 
     def redo(self) -> None:
         """Re-apply test level to target outputs."""
-        backend = getattr(self.app, "backend", None)
+        for out, univ in self.release_targets:
+            self._apply_output_level(out, univ, 0)
         for out, univ in self.targets:
-            if backend is not None and getattr(backend, "dmx", None) is not None:
-                backend.dmx.send_user_output(out, univ, self.level)
-            elif self.app.engine is not None:
-                try:
-                    self.app.engine.set_output_level(univ, out, self.level)
-                except (KeyError, IndexError, AttributeError):
-                    pass
-            self.app.emit("dmx.user_output_changed", univ, out, self.level)
+            self._apply_output_level(out, univ, self.level)
 
 
 class DmxClearUserOutputsAction(Action):
@@ -312,6 +333,8 @@ class DmxClearUserOutputsAction(Action):
             for out, univ in list(self.old_user_outputs.keys()):
                 backend.dmx.send_user_output(out, univ, 0)
             backend.dmx.user_outputs.clear()
+        if hasattr(self.app, "address_check"):
+            self.app.address_check = None
         self.app.emit("dmx.user_outputs_cleared")
 
     def undo(self) -> None:

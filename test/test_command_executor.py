@@ -772,3 +772,96 @@ def test_executor_unpatch_command_and_atomic_undo_redo() -> None:
     assert res3.success is True
     assert patch.get_address_occupant(1, 20) is None
     assert patch.get_address_occupant(1, 21) is None
+
+
+def test_executor_address_at_level_and_next_last_stepping() -> None:
+    """Test ADDRESS ... AT <level>, Undo/Redo, and Eos-style Next/Last stepping."""
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.dmx import Dmx
+
+    settings = MagicMock()
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+    dmx = Dmx(None, app.lightshow)
+    app.backend = MagicMock()
+    app.backend.dmx = dmx
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. ADDRESS 10 AT 50 -> sets user_outputs[(10, 1)] = 128 and Address Check
+    app.commandline.set_string("ADDRESS 10 AT 50")
+    res = app.commandline.execute()
+    assert res.success is True
+    assert dmx.user_outputs[(10, 1)] == 128
+    assert app.address_check == (1, 10, 128)
+    assert app.commandline.get_string() == "ADDRESS 1/10 AT 50"
+
+    # 2. Next (+1) -> releases 10, tests 11 at 128, updates command line
+    assert app.step_address_check(1) is True
+    assert (10, 1) not in dmx.user_outputs
+    assert dmx.user_outputs[(11, 1)] == 128
+    assert app.address_check == (1, 11, 128)
+    assert app.commandline.get_string() == "ADDRESS 1/11 AT 50"
+
+    # 3. Undo Next -> restores 10 at 128 and releases 11
+    app.action_registry.execute("edit.undo")
+    assert dmx.user_outputs[(10, 1)] == 128
+    assert (11, 1) not in dmx.user_outputs
+
+    # 4. Redo Next -> releases 10 and restores 11 at 128
+    app.action_registry.execute("edit.redo")
+    assert (10, 1) not in dmx.user_outputs
+    assert dmx.user_outputs[(11, 1)] == 128
+
+    # 5. Last (-1) -> releases 11 and returns to 10
+    assert app.step_address_check(-1) is True
+    assert (11, 1) not in dmx.user_outputs
+    assert dmx.user_outputs[(10, 1)] == 128
+    assert app.commandline.get_string() == "ADDRESS 1/10 AT 50"
+
+    # 6. ADDRESS 10 AT OUT -> releases 10 and exits Address Check
+    res_out = executor.execute(parser.parse("ADDRESS 10 AT OUT"))
+    assert res_out.success is True
+    assert (10, 1) not in dmx.user_outputs
+    assert app.address_check is None
+    assert app.step_address_check(1) is False
+
+    # 7. Exiting Address Check restores underlying channel/cue/fader DMX level
+    app.lightshow.patch.patch_dimmer(channel=1, universe=1, address=10)
+    dmx.levels["user"][0] = 102.0 / 255.0
+    dmx.set_levels()
+    assert dmx.get_output_level(1, 10) == 102
+
+    executor.execute(parser.parse("ADDRESS 10 AT FULL"))
+    assert dmx.get_output_level(1, 10) == 255
+    assert app.address_check == (1, 10, 255)
+
+    app.clear_address_check()
+    assert app.address_check is None
+    assert (10, 1) not in dmx.user_outputs
+    assert dmx.get_output_level(1, 10) == 102
+
+    # 8. Selecting a channel (e.g. clicking in ChannelsView) exits Address Check
+    executor.execute(parser.parse("ADDRESS 10 AT FULL"))
+    assert dmx.get_output_level(1, 10) == 255
+    assert app.address_check == (1, 10, 255)
+
+    app.action_registry.execute("channel.select_channels", [1])
+    assert app.address_check is None
+    assert (10, 1) not in dmx.user_outputs
+    assert dmx.get_output_level(1, 10) == 102
+
+    # 9. Pressing BackSpace during Address Check exits Address Check & clears cmdline
+    app.commandline.set_string("ADDRESS 10 AT FULL")
+    app.commandline.execute()
+    assert dmx.get_output_level(1, 10) == 255
+    assert app.address_check == (1, 10, 255)
+    assert app.commandline.get_string() == "ADDRESS 1/10 AT FULL"
+
+    app.action_registry.execute("commandline.backspace")
+    assert app.address_check is None
+    assert (10, 1) not in dmx.user_outputs
+    assert dmx.get_output_level(1, 10) == 102
+    assert app.commandline.get_string() == ""

@@ -109,6 +109,7 @@ class CoreApplication(EventDispatcher):
         )
         self.selected_cue: typing.Optional[tuple[float, int]] = None
         self.selected_group: typing.Optional[float] = None
+        self.address_check: typing.Optional[tuple[int, int, int]] = None
         self.zoom_level: float = 1.0
         self.dark_theme: bool = True
         self.tabs: CoreTabs = CoreTabs(typing.cast(typing.Any, self))
@@ -118,6 +119,68 @@ class CoreApplication(EventDispatcher):
 
         # Auto-register action classes from the actions package
         self._register_actions()
+
+    def step_address_check(self, delta: int) -> bool:
+        """Step active Address Check to next (+1) or previous (-1) DMX address."""
+        if self.address_check is None or delta == 0:
+            return False
+
+        univ, out, dmx_level = self.address_check
+        universes = sorted(self.lightshow.patch.universes) or [univ]
+        if univ not in universes:
+            universes = sorted({*universes, univ})
+
+        step_dir = 1 if delta > 0 else -1
+        next_univ = univ
+        next_out = out + step_dir
+
+        if next_out > 512:
+            idx = universes.index(univ)
+            if idx + 1 < len(universes):
+                next_univ = universes[idx + 1]
+                next_out = 1
+            else:
+                next_out = 512
+        elif next_out < 1:
+            idx = universes.index(univ)
+            if idx - 1 >= 0:
+                next_univ = universes[idx - 1]
+                next_out = 512
+            else:
+                next_out = 1
+
+        if (next_univ, next_out) != (univ, out):
+            self.action_registry.execute(
+                "dmx.test_output",
+                [(next_out, next_univ)],
+                level=dmx_level,
+                release_targets=[(out, univ)],
+            )
+            self.address_check = (next_univ, next_out, dmx_level)
+
+        self.commandline.set_string(self.format_address_check_command())
+        return True
+
+    def format_address_check_command(self) -> str:
+        """Format the active Address Check state for the command line display."""
+        if self.address_check is None:
+            return ""
+        univ, out, dmx_level = self.address_check
+        if dmx_level >= 255:
+            lvl_str = "FULL"
+        elif typing.cast(typing.Any, self.settings).get_boolean("percent"):
+            lvl_str = str(int(round((dmx_level / 255.0) * 100)))
+        else:
+            lvl_str = str(dmx_level)
+        return f"ADDRESS {univ}/{out} AT {lvl_str}"
+
+    def clear_address_check(self) -> None:
+        """Exit Address Check mode and restore the active test address."""
+        if self.address_check is None:
+            return
+        univ, out, _lvl = self.address_check
+        self.address_check = None
+        self.action_registry.execute("dmx.test_output", [(out, univ)], level=0)
 
     @property
     def selected_channels(self) -> list[int]:
@@ -141,6 +204,8 @@ class CoreApplication(EventDispatcher):
 
     def _on_live_selection_changed(self, channels: list[int]) -> None:
         """Propagate live selection changes to listeners."""
+        if self.address_check is not None:
+            self.clear_address_check()
         self.emit("channels.selected_changed", channels)
 
     def get_channel_level(self, channel: int) -> int:

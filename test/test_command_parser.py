@@ -590,3 +590,33 @@ def test_parser_patch_command() -> None:
     assert isinstance(u3, UnpatchCommandNode)
     assert u3.selection is None
     assert u3.addresses is not None
+
+
+def test_parser_address_at_level_and_park() -> None:
+    """Test ADDRESS ... AT <level> (test output) vs ADDRESS ... PARK AT <level>."""
+    from olc.core.parser.ast_nodes import (
+        AddressLevelCommandNode,
+        AddressParkCommandNode,
+    )
+
+    parser = CommandParser()
+
+    n1 = parser.parse("ADDRESS 10 AT 50")
+    assert isinstance(n1, AddressLevelCommandNode)
+    assert n1.level == 50.0
+
+    n2 = parser.parse("ADDRESS 2/1 THRU 10 AT FULL")
+    assert isinstance(n2, AddressLevelCommandNode)
+    assert n2.level == 100.0
+
+    n3 = parser.parse("ADDRESS 10 AT OUT")
+    assert isinstance(n3, AddressLevelCommandNode)
+    assert n3.level == 0.0
+
+    n4 = parser.parse("ADDRESS 10 AT")
+    assert isinstance(n4, AddressLevelCommandNode)
+    assert n4.level is None
+
+    p1 = parser.parse("ADDRESS 10 PARK AT 50")
+    assert isinstance(p1, AddressParkCommandNode)
+    assert p1.level == 50.0

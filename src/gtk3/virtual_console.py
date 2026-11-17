@@ -1197,6 +1197,8 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.is_learning_midi:
             self._select_midi_learn_target("right")
         else:
+            if self.app.core.step_address_check(1):
+                return
             if self.app.window and hasattr(self.app.window, "live_view"):
                 self.app.window.live_view.channels_view.select_next()
 
@@ -1205,6 +1207,8 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.is_learning_midi:
             self._select_midi_learn_target("left")
         else:
+            if self.app.core.step_address_check(-1):
+                return
             if self.app.window and hasattr(self.app.window, "live_view"):
                 self.app.window.live_view.channels_view.select_previous()
 

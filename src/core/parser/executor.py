@@ -20,6 +20,7 @@ import dataclasses
 import typing
 
 from olc.core.parser.ast_nodes import (
+    AddressLevelCommandNode,
     AddressNumberNode,
     AddressParkCommandNode,
     AddressRangeNode,
@@ -149,6 +150,9 @@ class CommandExecutor:
 
         if isinstance(node, AddressParkCommandNode):
             return self._execute_address_park(node)
+
+        if isinstance(node, AddressLevelCommandNode):
+            return self._execute_address_level(node)
 
         if isinstance(node, AddressUnparkCommandNode):
             return self._execute_address_unpark(node)
@@ -1069,6 +1073,39 @@ class CommandExecutor:
                 self.app.lightshow.park.park_address(u, o, target_dmx)
 
         return CommandResult(True, f"Parked {len(addresses)} address(es)")
+
+    def _execute_address_level(self, node: AddressLevelCommandNode) -> CommandResult:
+        addresses = self.resolve_address_selection(node.addresses)
+        if not addresses:
+            return CommandResult(False, "No addresses specified")
+
+        targets = [(o, u) for u, o in addresses]
+        if node.level is None or node.level <= 0.0:
+            dmx_level = 0
+        else:
+            dmx_level = max(0, min(255, int(round((node.level / 100.0) * 255.0))))
+
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("dmx.test_output", targets, level=dmx_level)
+        else:
+            backend = getattr(self.app, "backend", None)
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                for out, univ in targets:
+                    backend.dmx.send_user_output(out, univ, dmx_level)
+
+        if dmx_level > 0:
+            last_univ, last_out = addresses[-1]
+            if hasattr(self.app, "address_check"):
+                self.app.address_check = (last_univ, last_out, dmx_level)
+            pct = int(round((dmx_level / 255.0) * 100))
+            if len(addresses) == 1:
+                return CommandResult(True, f"Address {last_univ}/{last_out} at {pct}%")
+            return CommandResult(True, f"{len(addresses)} address(es) at {pct}%")
+
+        if hasattr(self.app, "address_check"):
+            self.app.address_check = None
+        return CommandResult(True, f"Released {len(addresses)} address(es)")
 
     def _execute_address_unpark(self, node: AddressUnparkCommandNode) -> CommandResult:
         addresses = self.resolve_address_selection(node.addresses)
