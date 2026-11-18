@@ -643,3 +643,6 @@ def test_parser_channel_check() -> None:
     c4 = parser.parse("1 CHECK AT OUT")
     assert isinstance(c4, ChannelCheckCommandNode)
     assert c4.level == 0.0
+
+    assert TokenType.AT in parser.get_expected_tokens("1 CHECK")
+    assert TokenType.CHECK in parser.get_expected_tokens("1 AT 50")

@@ -1160,9 +1160,14 @@ class CommandParser:
         ):
             if last.type == TokenType.NUMBER:
                 res = list(ATTRIBUTE_TOKENS.keys())
+                if not any(t.type == TokenType.CHECK for t in active_tokens):
+                    res.append(TokenType.CHECK)
                 if not text.endswith(" "):
                     res.append(TokenType.NUMBER)
                 return res
+
+        if last.type == TokenType.CHECK:
+            return [TokenType.AT]
 
         if last.type in (TokenType.NUMBER, TokenType.ALL):
             res = [

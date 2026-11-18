@@ -385,6 +385,17 @@ def test_virtual_console_sensitivity_flow(app_gui: Application) -> None:
     assert vc.home.get_sensitive() is True
     assert vc.locate.get_sensitive() is True
     assert vc.position.get_sensitive() is True
+    assert vc.check.get_sensitive() is True
+
+    # After "1 CHECK ", AT (@) must be enabled
+    cmdline.set_string("1 CHECK ")
+    vc.update_button_sensitivity()
+    assert vc.at_level.get_sensitive() is True
+
+    # After "1 AT 50 ", CHECK must be enabled
+    cmdline.set_string("1 AT 50 ")
+    vc.update_button_sensitivity()
+    assert vc.check.get_sensitive() is True
 
     cmdline.clear()
     vc.close()
