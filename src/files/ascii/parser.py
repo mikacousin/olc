@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import html
 import re
 import typing
 from enum import Enum, auto
@@ -77,9 +78,19 @@ class AsciiParser(ReadFile):
                 "part",
                 "text",
                 "up",
-                "$$wait",
+                "$$block",
+                "$$dwell",
                 "$$parttime",
                 "$$parttimechan",
+                "$$presettext",
+                "$$text",
+                "$$timecolor",
+                "$$timedown",
+                "$$timegraphic",
+                "$$timeposition",
+                "$$timeup",
+                "$$utext",
+                "$$wait",
             ),
         }
         self.state = State.START
@@ -94,6 +105,8 @@ class AsciiParser(ReadFile):
             "independent": 0,
             "preset": 0.0,
             "fader": 0,
+            "utext_active": False,
+            "pending_wait": {},
         }
 
     def parse(self) -> None:
@@ -124,18 +137,19 @@ class AsciiParser(ReadFile):
         if self.keyword[0] == "!":
             # Ignore comment line
             return True
-        self.args = tokens[1:]
-        # Remove comments at end of line but allow "!" in text
-        if self.keyword not in ("text", "$$text", "$$presettext"):
+        if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
+            # Preserve punctuation, HTML entities (&#8594;), and raw spacing
+            parts = line.split(None, 1)
+            self.args = [parts[1]] if len(parts) > 1 else []
+        else:
+            self.args = tokens[1:]
+            # Remove comments at end of line
             for num, arg in enumerate(self.args):
                 idx = arg.rfind("!")
                 if idx >= 0:
                     self.args[num] = self.args[num][:idx]
                     self.args = self.args[: num + 1]
             self.args = [arg.lower() for arg in self.args if arg != ""]
-        else:
-            # Remove empty args
-            self.args = [arg for arg in self.args if arg != ""]
 
         self._set_state()
         self._do_action()
@@ -226,24 +240,48 @@ class AsciiParser(ReadFile):
                         {"output": address, "universe": univ, "curve": curve_nb}
                     )
 
+    def _apply_label(self, target: dict[str, typing.Any], key: str = "label") -> None:
+        """Apply Text / $$Text / $$UText to *target*, decoding HTML entities."""
+        raw = self.args[0] if self.args else ""
+        if self.keyword == "$$utext":
+            decoded = html.unescape(raw)
+            if self.current["utext_active"]:
+                target[key] = f"{target.get(key, '')}{decoded}"
+            else:
+                target[key] = decoded
+                self.current["utext_active"] = True
+        else:
+            target[key] = raw
+            self.current["utext_active"] = False
+
+    def _ensure_sequence(self, seq_number: int, mode: str = "normal") -> None:
+        """Ensure sequence entry exists in parsed data."""
+        if seq_number not in self.data["sequences"]:
+            self.data["sequences"][seq_number] = {
+                "label": "",
+                "mode": mode,
+                "steps": {},
+                "cues": {},
+            }
+
     def _new_mprimary(self) -> None:
-        if self.keyword == "$sequence":
+        if self.keyword in ("$sequence", "$cuelist"):
             mode = "normal"
             seq_number = int(self.args[0])
             if self._is_console("nicobats", "dlight") and seq_number == 0:
                 # DLight MainPlayback is number 0, need to be number 1
                 seq_number = 1
-            self.data["sequences"][seq_number] = {}
-            if self._is_console("avab", "congo"):
-                if int(self.args[1]) == 1:
-                    mode = "chaser"
-            elif seq_number > 1:
+            if (
+                self._is_console("avab", "congo")
+                and len(self.args) > 1
+                and int(self.args[1]) == 1
+            ):
                 mode = "chaser"
-            self.data["sequences"][seq_number]["label"] = ""
+            self._ensure_sequence(seq_number, mode=mode)
             self.data["sequences"][seq_number]["mode"] = mode
-            self.data["sequences"][seq_number]["steps"] = {}
-            self.data["sequences"][seq_number]["cues"] = {}
             self.current["sequence"] = seq_number
+            self.current["step"] = len(self.data["sequences"][seq_number]["steps"])
+            self.current["utext_active"] = False
             self.state = State.IN_SEQUENCE
         elif self.keyword == "$specialfunction":
             # Parameters not implemented:
@@ -252,12 +290,12 @@ class AsciiParser(ReadFile):
             number = int(self.args[0])
             self.data["independents"][number] = {"label": "", "channels": {}}
             self.current["independent"] = number
+            self.current["utext_active"] = False
             self.state = State.IN_INDEPENDENT
 
     def _do_sequence(self) -> None:
-        if self.keyword in ("text", "$$text"):
-            label = " ".join(self.args)
-            self.data["sequences"][self.current["sequence"]]["label"] = label
+        if self.keyword in ("text", "$$text", "$$utext"):
+            self._apply_label(self.data["sequences"][self.current["sequence"]])
 
     def _do_independent(self) -> None:
         if self.keyword in ("text", "$$text"):
@@ -273,61 +311,95 @@ class AsciiParser(ReadFile):
 
     def _new_cue(self) -> None:
         if self.keyword == "cue":
-            # CUE cue_number
+            # CUE cue_number [cuelist_number]
             cue_number = float(self.args[0])
+            seq_number = (
+                int(self.args[1])
+                if len(self.args) >= 2
+                else int(self.current["sequence"])
+            )
         else:
             # $CUE sequence_number cue_number
+            seq_number = int(self.args[0])
             cue_number = float(self.args[1])
-        self.current["step"] += 1
-        step_nb = self.current["step"]
-        self.data["sequences"][self.current["sequence"]]["steps"][step_nb] = {
+
+        self._ensure_sequence(seq_number, mode="normal")
+        self.current["sequence"] = seq_number
+        steps = self.data["sequences"][seq_number]["steps"]
+        step_nb = len(steps) + 1
+        self.current["step"] = step_nb
+        wait_val = float(self.current["pending_wait"].pop(seq_number, 0.0))
+
+        steps[step_nb] = {
             "cue": cue_number,
             "time_in": self.default_time,
             "time_out": self.default_time,
             "delay_in": 0.0,
             "delay_out": 0.0,
-            "wait": 0.0,
+            "wait": wait_val,
             "channel_time": {},
             "label": "",
         }
-        self.data["sequences"][self.current["sequence"]]["cues"][cue_number] = {
+        self.data["sequences"][seq_number]["cues"][cue_number] = {
             "label": "",
             "channels": {},
         }
         self.current["cue"] = cue_number
+        self.current["utext_active"] = False
         self.state = State.IN_CUE
 
     def _do_cue(self) -> None:
-        # Missed keywords: followon, link, part
+        # Missed keywords: link, part
         cues = self.data["sequences"][self.current["sequence"]]["cues"]
         steps = self.data["sequences"][self.current["sequence"]]["steps"]
+        step = steps[self.current["step"]]
+        cue = cues[self.current["cue"]]
         if self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 if channel <= MAX_CHANNELS:
                     level = self._get_level(self.args[index + 1])
-                    cues[self.current["cue"]]["channels"][channel] = level
-        elif self.keyword == "down":
+                    cue["channels"][channel] = level
+        elif self.keyword in ("down", "$$timedown") and self.args:
             time = string_to_time(self.args[0])
-            if not time:
+            if not time and self.keyword == "down":
                 time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            steps[self.current["step"]]["time_out"] = time
-            steps[self.current["step"]]["delay_out"] = delay
-        elif self.keyword == "up":
+            step["time_out"] = time
+            step["delay_out"] = delay
+        elif self.keyword in ("up", "$$timeup") and self.args:
             time = string_to_time(self.args[0])
-            if not time:
+            if not time and self.keyword == "up":
                 time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            steps[self.current["step"]]["time_in"] = time
-            steps[self.current["step"]]["delay_in"] = delay
-        elif self.keyword in ("text", "$$text", "$$presettext"):
-            label = " ".join(self.args)
-            steps[self.current["step"]]["label"] = label
-            cues[self.current["cue"]]["label"] = label
-        elif self.keyword == "$$wait":
-            time = string_to_time(self.args[0])
-            steps[self.current["step"]]["wait"] = time
+            step["time_in"] = time
+            step["delay_in"] = delay
+        elif self.keyword == "$$timeposition" and self.args:
+            step["time_position"] = string_to_time(self.args[0])
+            step["delay_position"] = (
+                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+            )
+        elif self.keyword == "$$timecolor" and self.args:
+            step["time_color"] = string_to_time(self.args[0])
+            step["delay_color"] = (
+                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+            )
+        elif self.keyword == "$$timegraphic" and self.args:
+            step["time_beam"] = string_to_time(self.args[0])
+            step["delay_beam"] = (
+                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+            )
+        elif self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
+            self._apply_label(step)
+            cue["label"] = step["label"]
+        elif self.keyword in ("$$wait", "$$dwell", "followon") and self.args:
+            # Eos executes wait/follow at the end of cue N; OLC executes wait at
+            # the start of cue N+1, so queue it for the next step in this sequence.
+            self.current["pending_wait"][self.current["sequence"]] = string_to_time(
+                self.args[0]
+            )
+        elif self.keyword == "$$block":
+            cue["is_block"] = True
         elif self.keyword == "$$parttime":
             delay = string_to_time(self.args[0])
             time = string_to_time(self.args[1])
@@ -413,7 +485,7 @@ class AsciiParser(ReadFile):
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:
             self.state = State.NO_PRIMARY
-        elif self.keyword in ("$sequence", "$specialfunction"):
+        elif self.keyword in ("$sequence", "$cuelist", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):
             self.state = State.NEW_CUE

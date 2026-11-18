@@ -103,6 +103,11 @@ class SequenceTab(Gtk.Grid):
         self.mib_btn.connect("toggled", self._on_mib_toggled)
         self.header_box.pack_start(self.mib_btn, False, False, 0)
 
+        self.type_seq_btn = Gtk.ToggleButton(label="Type: Normal")
+        self.type_seq_btn.set_sensitive(False)
+        self.type_seq_btn.connect("toggled", self._on_type_seq_toggled)
+        self.header_box.pack_start(self.type_seq_btn, False, False, 0)
+
     def _on_tracking_mode_toggled(self, button: Gtk.ToggleButton) -> None:
         self.set_tracking_mode(button.get_active())
 
@@ -148,6 +153,39 @@ class SequenceTab(Gtk.Grid):
         new_state = not getattr(seq, "mib_enabled", True)
         self.set_mib_enabled(new_state)
         return new_state
+
+    def _on_type_seq_toggled(self, button: Gtk.ToggleButton) -> None:
+        self.set_sequence_type("Chaser" if button.get_active() else "Normal")
+
+    def set_sequence_type(self, type_seq: str) -> None:
+        """Set selected secondary sequence type ('Normal' or 'Chaser')."""
+        seq = self.get_selected_sequence()
+        if seq is None or seq.index == 1:
+            return
+        seq.type_seq = "Chaser" if type_seq == "Chaser" else "Normal"
+        is_chaser = seq.type_seq == "Chaser"
+        if self.type_seq_btn.get_active() != is_chaser:
+            self.type_seq_btn.set_active(is_chaser)
+        self.type_seq_btn.set_label(f"Type: {seq.type_seq}")
+        for row in self.liststore1:
+            if row[0] == seq.index:
+                row[1] = seq.type_seq
+                break
+
+    def _sync_type_seq_button(self) -> None:
+        """Update Type toggle button sensitivity and state for active sequence."""
+        seq = self.get_selected_sequence()
+        is_secondary = seq is not None and seq.index != 1
+        self.type_seq_btn.set_sensitive(is_secondary)
+        if seq is None:
+            self.type_seq_btn.set_label("Type: Normal")
+            if self.type_seq_btn.get_active():
+                self.type_seq_btn.set_active(False)
+            return
+        is_chaser = getattr(seq, "type_seq", "Normal") == "Chaser"
+        self.type_seq_btn.set_label(f"Type: {seq.type_seq}")
+        if self.type_seq_btn.get_active() != is_chaser:
+            self.type_seq_btn.set_active(is_chaser)
 
     def _setup_sequences_list(self) -> None:
         """Setup the sequence selection list"""
@@ -481,6 +519,7 @@ class SequenceTab(Gtk.Grid):
         if step_idx is None:
             step_idx = 1
         # Display Sequence
+        self._sync_type_seq_button()
         self.populate_liststore(step_idx)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:

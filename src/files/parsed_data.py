@@ -456,15 +456,17 @@ class ParsedData:
         """
         seq_data = self.data["sequences"][sequence]
         label = seq_data["label"]
+        type_seq = "Chaser" if seq_data.get("mode") == "chaser" else "Normal"
         for index, chsr in enumerate(self.lightshow.chasers):
             if chsr.index == sequence:
                 self.lightshow.chasers[index].text = label
+                self.lightshow.chasers[index].type_seq = type_seq
                 break
         else:
             self.lightshow.chasers.append(
                 Sequence(
                     sequence,
-                    type_seq="Chaser",
+                    type_seq=type_seq,
                     text=label,
                     lightshow=self.lightshow,
                 )
