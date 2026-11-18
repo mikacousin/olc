@@ -213,11 +213,10 @@ class BaseChannelSelectionAction(Action):
         self.new_last_selected = last_selected
         self.app.selected_channels = list(selection)
         self.app.last_selected_channel = last_selected
-        clear_fn = getattr(self.app, "clear_address_check", None)
-        if callable(clear_fn):
-            clear_fn()
-        elif hasattr(self.app, "address_check"):
-            self.app.address_check = None
+        for attr in ("clear_address_check", "clear_channel_check"):
+            clear_fn = getattr(self.app, attr, None)
+            if callable(clear_fn):
+                clear_fn()
         if clear_cmd:
             self.app.commandline.set_string("")
         self.app.emit("channels.selected_changed", self.app.selected_channels)
@@ -381,8 +380,12 @@ class SelectNextChannelAction(BaseChannelSelectionAction):
     step = 1
 
     def execute(self) -> None:
-        step_fn = getattr(self.app, "step_address_check", None)
-        if callable(step_fn) and step_fn(self.step):
+        step_addr = getattr(self.app, "step_address_check", None)
+        if callable(step_addr) and step_addr(self.step):
+            self.can_undo = False
+            return
+        step_ch = getattr(self.app, "step_channel_check", None)
+        if callable(step_ch) and step_ch(self.step):
             self.can_undo = False
             return
         self._save_previous_selection()

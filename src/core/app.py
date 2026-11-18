@@ -28,6 +28,7 @@ from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
 from olc.core.sneak import SneakController
 from olc.core.tabs import CoreTabs
+from olc.define import MAX_CHANNELS
 from olc.show.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
@@ -110,6 +111,7 @@ class CoreApplication(EventDispatcher):
         self.selected_cue: typing.Optional[tuple[float, int]] = None
         self.selected_group: typing.Optional[float] = None
         self.address_check: typing.Optional[tuple[int, int, int]] = None
+        self.channel_check: typing.Optional[tuple[int, float, float]] = None
         self.zoom_level: float = 1.0
         self.dark_theme: bool = True
         self.tabs: CoreTabs = CoreTabs(typing.cast(typing.Any, self))
@@ -182,6 +184,86 @@ class CoreApplication(EventDispatcher):
         self.address_check = None
         self.action_registry.execute("dmx.test_output", [(out, univ)], level=0)
 
+    def get_default_channel_check_level(self) -> float:
+        """Return default Channel Check percentage (0.0-100.0, default 80.0)."""
+        try:
+            settings = typing.cast(typing.Any, self.settings)
+            props = getattr(settings, "props", None)
+            schema = getattr(props, "settings_schema", None)
+            if schema is not None and callable(getattr(schema, "has_key", None)):
+                if not schema.has_key("channel-check-level"):
+                    return 80.0
+            val = settings.get_double("channel-check-level")
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                return max(0.0, min(100.0, float(val)))
+        except (AttributeError, TypeError, ValueError):
+            pass
+        return 80.0
+
+    def get_channel_user_level(self, channel: int) -> float:
+        """Return raw user override level (-1.0 if released) for 1-based *channel*."""
+        backend = getattr(self, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            try:
+                return float(backend.dmx.levels["user"][channel - 1])
+            except (IndexError, TypeError, KeyError):
+                pass
+        return -1.0
+
+    def _get_channel_check_targets(self) -> list[int]:
+        """Return sorted patched channel IDs, or all channels if patch is empty."""
+        patched = sorted(self.lightshow.patch.devices.keys())
+        if patched:
+            return patched
+        return list(range(1, MAX_CHANNELS + 1))
+
+    def step_channel_check(self, delta: int) -> bool:
+        """Step active Channel Check to next (+1) or previous (-1) channel."""
+        if self.channel_check is None or delta == 0:
+            return False
+
+        curr_ch, test_norm, old_user = self.channel_check
+        targets = self._get_channel_check_targets()
+        if not targets:
+            return False
+
+        if curr_ch in targets:
+            idx = targets.index(curr_ch)
+            step = 1 if delta > 0 else -1
+            next_ch = targets[max(0, min(len(targets) - 1, idx + step))]
+        else:
+            next_ch = targets[0]
+
+        if next_ch != curr_ch:
+            self.action_registry.execute("channel.set_level", curr_ch, old_user)
+            next_old = self.get_channel_user_level(next_ch)
+            self.action_registry.execute("channel.set_level", next_ch, test_norm)
+            self.channel_check = (next_ch, test_norm, next_old)
+
+        self.commandline.set_string(self.format_channel_check_command())
+        return True
+
+    def clear_channel_check(self) -> None:
+        """Exit Channel Check mode and restore the tested channel's previous level."""
+        if self.channel_check is None:
+            return
+        ch, _test_norm, old_user = self.channel_check
+        self.channel_check = None
+        self.action_registry.execute("channel.set_level", ch, old_user)
+
+    def format_channel_check_command(self) -> str:
+        """Format the active Channel Check state for the command line display."""
+        if self.channel_check is None:
+            return ""
+        ch, test_norm, _old = self.channel_check
+        if test_norm >= 1.0:
+            lvl_str = "FULL"
+        elif typing.cast(typing.Any, self.settings).get_boolean("percent"):
+            lvl_str = str(int(round(test_norm * 100.0)))
+        else:
+            lvl_str = str(int(round(test_norm * 255.0)))
+        return f"CHANNEL {ch} CHECK AT {lvl_str}"
+
     @property
     def selected_channels(self) -> list[int]:
         """Get the live selection channels."""
@@ -206,6 +288,8 @@ class CoreApplication(EventDispatcher):
         """Propagate live selection changes to listeners."""
         if self.address_check is not None:
             self.clear_address_check()
+        if self.channel_check is not None:
+            self.clear_channel_check()
         self.emit("channels.selected_changed", channels)
 
     def get_channel_level(self, channel: int) -> int:

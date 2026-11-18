@@ -778,3 +778,61 @@ def test_address_check_arrows_work_on_all_tabs(app_gui: Application) -> None:
     )
     assert app_gui.core.address_check is None
     assert app_gui.core.commandline.get_string() == ""
+
+
+@pytest.mark.gui
+def test_channel_check_shortcut_and_arrows(app_gui: Application) -> None:
+    """Test Shift+K shortcut and Right/Left arrows stepping Channel Check."""
+    win = app_gui.window
+    assert win is not None
+    controller = win.key_controller
+
+    app_gui.core.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1)
+    app_gui.core.lightshow.patch.patch_dimmer(channel=2, universe=1, address=2)
+    app_gui.core.commandline.clear()
+
+    # Shift+K appends CHECK
+    win._on_key_controller_pressed(controller, Gdk.KEY_1, 0, Gdk.ModifierType(0))
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_K, 0, Gdk.ModifierType.SHIFT_MASK
+        )
+        is True
+    )
+    assert app_gui.core.commandline.get_string() == "1 CHECK "
+
+    app_gui.core.commandline.execute()
+    assert app_gui.core.channel_check is not None
+    assert app_gui.core.channel_check[0] == 1
+
+    # Switch away from Main Playback tab
+    app_gui.activate_action("dmx_outputs", None)
+    process_events()
+    assert win._is_editing_tab_focused() is True
+
+    # Right arrow steps to channel 2 and consumes event
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_Right, 0, Gdk.ModifierType(0)
+        )
+        is True
+    )
+    assert app_gui.core.channel_check[0] == 2
+    assert app_gui.core.commandline.get_string() == "CHANNEL 2 CHECK AT 80"
+
+    # Left arrow steps back to channel 1
+    assert (
+        win._on_key_controller_pressed(controller, Gdk.KEY_Left, 0, Gdk.ModifierType(0))
+        is True
+    )
+    assert app_gui.core.channel_check[0] == 1
+
+    # BackSpace exits Channel Check
+    assert (
+        win._on_key_controller_pressed(
+            controller, Gdk.KEY_BackSpace, 0, Gdk.ModifierType(0)
+        )
+        is True
+    )
+    assert app_gui.core.channel_check is None
+    assert app_gui.core.commandline.get_string() == ""

@@ -580,6 +580,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="shift_syntax_k">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;K</property>
+                <property name="title" translatable="yes" context="shortcut window">CHECK</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="alt_syntax_p">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;alt&gt;P</property>

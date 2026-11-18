@@ -176,3 +176,21 @@ def test_midi_notes_channel_sneak_dispatch() -> None:
     msg = mido.Message("note_on", channel=0, note=12, velocity=127)
     notes._dispatch("channel.sneak", msg)
     app.action_registry.execute.assert_called_once_with("channel.sneak")
+
+
+def test_midi_notes_check_dispatch() -> None:
+    """Test that MIDI check appends ' CHECK ' to the command line."""
+    import mido
+
+    midi = MagicMock()
+    app = MagicMock()
+    notes = MidiNotes(midi, app)
+
+    assert "check" in notes.notes
+    assert "check" in notes.cc_notes
+
+    msg = mido.Message("note_on", channel=0, note=12, velocity=127)
+    notes._dispatch("check", msg)
+    app.action_registry.execute.assert_called_once_with(
+        "commandline.append_char", " CHECK "
+    )

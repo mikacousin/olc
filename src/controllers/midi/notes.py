@@ -63,6 +63,7 @@ SIMPLE_ACTION_MAPPING = {
     "cue": ("cue", None, "CUE "),
     "unblock": ("unblock", None, " UNBLOCK "),
     "sneak": ("sneak", None, " SNEAK "),
+    "check": ("check", None, " CHECK "),
     "channel.sneak": (None, "channel.sneak", None),
 }
 
@@ -95,6 +96,7 @@ class MidiNotes:
             "track": [0, -1],
             "goto": [0, -1],
             "sneak": [0, -1],
+            "check": [0, -1],
             "channel.sneak": [0, -1],
             "clear": [0, -1],
             "dot": [0, -1],

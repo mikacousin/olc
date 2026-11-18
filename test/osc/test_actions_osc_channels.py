@@ -442,3 +442,13 @@ def test_osc_sneak_routes() -> None:
     # 3. /olc/channel/2/sneak targets channel 2 directly
     delegate._channel_sneak("/olc/channel/2/sneak", [1, 0.0])
     assert app.backend.dmx.levels["user"][1] == -1.0
+
+
+def test_osc_check_key_route() -> None:
+    """Test /olc/key/check appends ' CHECK ' to the command line."""
+    app, _mock_osc = _setup_app_with_patch()
+    delegate = OSCDelegate(app)
+
+    app.commandline.set_string("1")
+    delegate._check_key("/olc/key/check", [1])
+    assert app.commandline.get_string() == "1 CHECK "

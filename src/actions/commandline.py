@@ -132,9 +132,15 @@ class CommandLineBackspaceAction(Action):
     can_undo = False
 
     def execute(self) -> None:
-        """Exit Address Check if active, otherwise remove last token/digit."""
+        """Exit Address/Channel Check if active, otherwise remove last token/digit."""
         if getattr(self.app, "address_check", None) is not None:
             clear_fn = getattr(self.app, "clear_address_check", None)
+            if callable(clear_fn):
+                clear_fn()
+            self.app.commandline.set_string("")
+            return
+        if getattr(self.app, "channel_check", None) is not None:
+            clear_fn = getattr(self.app, "clear_channel_check", None)
             if callable(clear_fn):
                 clear_fn()
             self.app.commandline.set_string("")

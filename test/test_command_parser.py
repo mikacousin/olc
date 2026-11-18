@@ -620,3 +620,26 @@ def test_parser_address_at_level_and_park() -> None:
     p1 = parser.parse("ADDRESS 10 PARK AT 50")
     assert isinstance(p1, AddressParkCommandNode)
     assert p1.level == 50.0
+
+
+def test_parser_channel_check() -> None:
+    """Test CHECK command syntax (<sel> CHECK [AT <level>], <sel> AT <level> CHECK)."""
+    from olc.core.parser.ast_nodes import ChannelCheckCommandNode
+
+    parser = CommandParser()
+
+    c1 = parser.parse("1 CHECK")
+    assert isinstance(c1, ChannelCheckCommandNode)
+    assert c1.level is None
+
+    c2 = parser.parse("1 CHECK AT 50")
+    assert isinstance(c2, ChannelCheckCommandNode)
+    assert c2.level == 50.0
+
+    c3 = parser.parse("1 AT 50 CHECK")
+    assert isinstance(c3, ChannelCheckCommandNode)
+    assert c3.level == 50.0
+
+    c4 = parser.parse("1 CHECK AT OUT")
+    assert isinstance(c4, ChannelCheckCommandNode)
+    assert c4.level == 0.0

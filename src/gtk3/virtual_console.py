@@ -239,6 +239,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.redo.connect("clicked", self._on_redo)
         self.patch = ButtonWidget(label="Patch", text="patch", shortcut_text="P")
         self.patch.connect("clicked", self._on_patch)
+        self.check = ButtonWidget(label="Check", text="check", shortcut_text="⇧K")
+        self.check.connect("clicked", self._on_check)
 
         # Attach Zone 2
         self.actions_pad.attach(self.at_level, 0, 0, 1, 1)
@@ -266,6 +268,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.actions_pad.attach(self.undo, 2, 4, 1, 1)
         self.actions_pad.attach(self.redo, 3, 4, 1, 1)
         self.actions_pad.attach(self.patch, 0, 5, 1, 1)
+        self.actions_pad.attach(self.check, 1, 5, 1, 1)
 
         # Zone 3: Moving Lights & Selection Tools (2x5)
         self.tools_pad = Gtk.Grid()
@@ -711,6 +714,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 "patch",
                 TokenType.PATCH in expected or TokenType.UNPATCH in expected,
             )
+        set_sens("check", TokenType.CHECK in expected)
 
         # Zone 3: Tools & Moving Lights
         set_sens("home", TokenType.HOME in expected or is_empty)
@@ -926,6 +930,17 @@ class VirtualConsoleWindow(Gtk.Window):
             self._select_midi_learn_target("patch")
         else:
             toggle_patch_keyword(self.app.core)
+
+    def _on_check(self, _widget: Gtk.Widget) -> None:
+        """Channel Check button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("check")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}CHECK "
+            )
 
     def _on_park_changed(self, count: int) -> None:
         """Handle park state changed event."""
@@ -1197,7 +1212,9 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.is_learning_midi:
             self._select_midi_learn_target("right")
         else:
-            if self.app.core.step_address_check(1):
+            if self.app.core.step_address_check(1) or self.app.core.step_channel_check(
+                1
+            ):
                 return
             if self.app.window and hasattr(self.app.window, "live_view"):
                 self.app.window.live_view.channels_view.select_next()
@@ -1207,7 +1224,9 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.is_learning_midi:
             self._select_midi_learn_target("left")
         else:
-            if self.app.core.step_address_check(-1):
+            if self.app.core.step_address_check(-1) or self.app.core.step_channel_check(
+                -1
+            ):
                 return
             if self.app.window and hasattr(self.app.window, "live_view"):
                 self.app.window.live_view.channels_view.select_previous()

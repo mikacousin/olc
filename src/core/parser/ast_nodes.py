@@ -272,6 +272,14 @@ class AddressLevelCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
+class ChannelCheckCommandNode(CommandNode):
+    """Command to enter or release Channel Check mode (1 CHECK [AT <level>])."""
+
+    selection: SelectionNode
+    level: float | None = None
+
+
+@dataclasses.dataclass
 class AddressUnparkCommandNode(CommandNode):
     """Command to unpark physical DMX addresses."""
 

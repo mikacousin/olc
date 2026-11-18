@@ -53,6 +53,8 @@ KEYWORDS: dict[str, TokenType] = {
     "GOTO": TokenType.GOTO,
     "BLOCK": TokenType.BLOCK,
     "UNBLOCK": TokenType.UNBLOCK,
+    "CHECK": TokenType.CHECK,
+    "CHK": TokenType.CHECK,
     "DELETE": TokenType.DELETE,
     "SNEAK": TokenType.SNEAK,
     "SNK": TokenType.SNEAK,

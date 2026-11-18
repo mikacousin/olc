@@ -83,6 +83,7 @@ class TokenType(Enum):
     UNPARK = auto()
     PATCH = auto()
     UNPATCH = auto()
+    CHECK = auto()
 
     # Identifiers (unrecognized words / custom labels)
     IDENT = auto()

@@ -341,6 +341,13 @@ def test_virtual_console_button_clicks_and_syntax(app_gui: Application) -> None:
     vc._on_locate(vc.locate)
     assert cmdline.get_string() == "1 LOCATE"
 
+    # Test check
+    assert vc.check.shortcut_text == "⇧K"
+    cmdline.clear()
+    vc._on_1(vc.one)
+    vc._on_check(vc.check)
+    assert cmdline.get_string() == "1 CHECK "
+
     cmdline.clear()
     vc.close()
     process_events()

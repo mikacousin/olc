@@ -29,6 +29,7 @@ from olc.core.parser.ast_nodes import (
     AllSelectionNode,
     AttributeCommandNode,
     BlockCueCommandNode,
+    ChannelCheckCommandNode,
     ChannelNumberNode,
     ChannelParkCommandNode,
     ChannelRangeNode,
@@ -317,6 +318,14 @@ class CommandParser:
             if self.match(TokenType.AT):
                 addrs = self._parse_address_selection(require_address_kw=False)
             return UnpatchCommandNode(selection=selection, addresses=addrs)
+
+        if self.match(TokenType.CHECK):
+            if self.match(TokenType.AT):
+                if self.peek().type == TokenType.EOF:
+                    return ChannelCheckCommandNode(selection=selection, level=0.0)
+                lvl, _ = self._parse_intensity_value()
+                return ChannelCheckCommandNode(selection=selection, level=lvl)
+            return ChannelCheckCommandNode(selection=selection, level=None)
 
         if self.match(TokenType.UNPARK):
             return ChannelUnparkCommandNode(selection=selection)
@@ -825,6 +834,14 @@ class CommandParser:
             else:
                 break
 
+        # Allow '<selection> AT <level> CHECK'
+        if (
+            selection is not None
+            and intensity_level is not None
+            and self.match(TokenType.CHECK)
+        ):
+            return ChannelCheckCommandNode(selection=selection, level=intensity_level)
+
         # Validate that at least one action was specified
         if intensity_level is None and not attributes:
             err = (
@@ -1157,6 +1174,7 @@ class CommandParser:
                 TokenType.AT,
                 TokenType.PATCH,
                 TokenType.UNPATCH,
+                TokenType.CHECK,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,
@@ -1175,6 +1193,7 @@ class CommandParser:
                 TokenType.AT,
                 TokenType.PATCH,
                 TokenType.UNPATCH,
+                TokenType.CHECK,
                 TokenType.SNEAK,
                 TokenType.HOME,
                 TokenType.LOCATE,

@@ -26,6 +26,12 @@
       <summary>Default Sneak Time</summary>
       <description>Default fade time in seconds for the Sneak command</description>
     </key>
+    <key name="channel-check-level" type="d">
+      <default>80.0</default>
+      <range min="0.0" max="100.0"/>
+      <summary>Default Channel Check Level</summary>
+      <description>Default intensity percentage (0-100) for the Channel Check command</description>
+    </key>
     <key name="osc" type="b">
       <default>true</default>
       <summary>OSC</summary>

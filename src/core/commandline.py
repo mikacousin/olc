@@ -190,9 +190,12 @@ class CoreCommandLine:
                 result = self.executor.execute(node)
 
             if result.success:
-                # Keep active Address Check displayed, otherwise clear buffer
+                # Keep active Address/Channel Check displayed, otherwise clear buffer
                 if getattr(self.app, "address_check", None) is not None:
                     fmt_fn = getattr(self.app, "format_address_check_command", None)
+                    self.set_string(fmt_fn() if callable(fmt_fn) else "")
+                elif getattr(self.app, "channel_check", None) is not None:
+                    fmt_fn = getattr(self.app, "format_channel_check_command", None)
                     self.set_string(fmt_fn() if callable(fmt_fn) else "")
                 else:
                     self.set_string("")

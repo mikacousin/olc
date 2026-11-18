@@ -180,6 +180,11 @@ class KeypadRoutesMixin:
         if self._is_momentary_press(args):
             self._execute_action("commandline.append_char", " SNEAK ")
 
+    @make_method("/olc/key/check")
+    def _check_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " CHECK ")
+
     @make_method("/olc/key/enter")
     def _enter(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):

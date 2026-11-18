@@ -64,6 +64,8 @@ COMMAND_KEYWORDS = frozenset(
         "IND",
         "PATCH",
         "UNPATCH",
+        "CHECK",
+        "CHK",
     }
 )
 

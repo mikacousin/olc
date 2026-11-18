@@ -121,6 +121,24 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         widget5.set_adjustment(adjustment_sneak)
         widget5.set_value(self.settings.get_double("sneak-time"))
 
+        adjustment_check = Gtk.Adjustment(
+            value=80.0,
+            lower=0.0,
+            upper=100.0,
+            step_increment=5.0,
+            page_increment=10.0,
+            page_size=0,
+        )
+        widget6 = typing.cast(
+            Gtk.SpinButton, builder.get_object("spin_channel_check_level")
+        )
+        widget6.set_adjustment(adjustment_check)
+        schema = getattr(self.settings.props, "settings_schema", None)
+        if schema is None or schema.has_key("channel-check-level"):
+            widget6.set_value(self.settings.get_double("channel-check-level"))
+        else:
+            widget6.set_value(80.0)
+
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         self.switch_osc.set_state(self.settings.get_boolean("osc"))
@@ -518,6 +536,12 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
     def _on_change_sneak_time(self, widget: Gtk.SpinButton) -> None:
         time = widget.get_value()
         self.settings.set_value("sneak-time", GLib.Variant("d", time))
+
+    def _on_change_channel_check_level(self, widget: Gtk.SpinButton) -> None:
+        level = widget.get_value()
+        schema = getattr(self.settings.props, "settings_schema", None)
+        if schema is None or schema.has_key("channel-check-level"):
+            self.settings.set_value("channel-check-level", GLib.Variant("d", level))
 
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)

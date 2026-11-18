@@ -865,3 +865,75 @@ def test_executor_address_at_level_and_next_last_stepping() -> None:
     assert (10, 1) not in dmx.user_outputs
     assert dmx.get_output_level(1, 10) == 102
     assert app.commandline.get_string() == ""
+
+
+def test_executor_channel_check_and_next_last_stepping() -> None:
+    """Test Eos-style CHECK, default 80%, Next/Last stepping, and restore."""
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.dmx import Dmx
+
+    settings = MagicMock()
+    settings.get_boolean.return_value = True
+    settings.get_double.return_value = 80.0
+    app = CoreApplication(settings)
+    dmx = Dmx(None, app.lightshow)
+    app.backend = MagicMock()
+    app.backend.dmx = dmx
+    app.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1)
+    app.lightshow.patch.patch_dimmer(channel=3, universe=1, address=3)
+    app.lightshow.patch.patch_dimmer(channel=5, universe=1, address=5)
+
+    # Existing user level on ch 3 before check
+    dmx.levels["user"][2] = 0.25
+
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. `1 CHECK` uses default channel-check-level (80.0%)
+    app.commandline.set_string("1 CHECK")
+    app.commandline.execute()
+    assert app.channel_check == (1, 0.8, -1.0)
+    assert abs(dmx.levels["user"][0] - 0.8) < 1e-6
+    assert app.commandline.get_string() == "CHANNEL 1 CHECK AT 80"
+
+    # 2. Step Next (+1) -> channel 3 (next patched channel), restores ch 1 to -1.0
+    app.step_channel_check(1)
+    assert app.channel_check == (3, 0.8, 0.25)
+    assert dmx.levels["user"][0] == -1.0
+    assert abs(dmx.levels["user"][2] - 0.8) < 1e-6
+    assert app.commandline.get_string() == "CHANNEL 3 CHECK AT 80"
+
+    # 3. Step Next (+1) -> channel 5, restores ch 3 to its previous 0.25
+    app.step_channel_check(1)
+    assert app.channel_check == (5, 0.8, -1.0)
+    assert abs(dmx.levels["user"][2] - 0.25) < 1e-6
+    assert abs(dmx.levels["user"][4] - 0.8) < 1e-6
+
+    # 4. Step Last (-1) -> back to channel 3
+    app.step_channel_check(-1)
+    assert app.channel_check == (3, 0.8, 0.25)
+    assert dmx.levels["user"][4] == -1.0
+    assert abs(dmx.levels["user"][2] - 0.8) < 1e-6
+
+    # 5. BackSpace exits Channel Check and restores ch 3 to 0.25
+    app.action_registry.execute("commandline.backspace")
+    assert app.channel_check is None
+    assert abs(dmx.levels["user"][2] - 0.25) < 1e-6
+    assert app.commandline.get_string() == ""
+
+    # 6. `1 AT 50 CHECK` & selecting another channel exits Channel Check
+    executor.execute(parser.parse("1 AT 50 CHECK"))
+    assert app.channel_check == (1, 0.5, -1.0)
+    assert abs(dmx.levels["user"][0] - 0.5) < 1e-6
+
+    app.action_registry.execute("channel.select_channels", [3])
+    assert app.channel_check is None
+    assert dmx.levels["user"][0] == -1.0
+
+    # 7. `1 CHECK AT OUT` releases immediately without entering channel_check
+    dmx.levels["user"][0] = 0.6
+    executor.execute(parser.parse("1 CHECK AT OUT"))
+    assert app.channel_check is None
+    assert dmx.levels["user"][0] == -1.0

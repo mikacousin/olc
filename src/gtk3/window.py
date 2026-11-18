@@ -588,12 +588,20 @@ class Window(Gtk.ApplicationWindow):
         ):
             return None
 
-        if modifiers == 0 and self.app.core.address_check is not None:
+        if modifiers == 0 and (
+            self.app.core.address_check is not None
+            or self.app.core.channel_check is not None
+        ):
+            step_fn = (
+                self.app.core.step_address_check
+                if self.app.core.address_check is not None
+                else self.app.core.step_channel_check
+            )
             if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
-                self.app.core.step_address_check(-1)
+                step_fn(-1)
                 return True
             if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
-                self.app.core.step_address_check(1)
+                step_fn(1)
                 return True
 
         if self._is_editing_tab_focused():
@@ -638,6 +646,7 @@ class Window(Gtk.ApplicationWindow):
     def _clear_on_escape(self) -> None:
         """Clear command line and unselect channels on Escape."""
         self.app.core.clear_address_check()
+        self.app.core.clear_channel_check()
         self.app.core.action_registry.execute("commandline.clear")
         self.live_view.channels_view.flowbox.unselect_all()
         self.live_view.channels_view.last_selected_channel = ""
@@ -770,6 +779,7 @@ class Window(Gtk.ApplicationWindow):
                 (Gdk.KEY_l, Gdk.KEY_L): ("LOCATE", False),
                 (Gdk.KEY_p, Gdk.KEY_P): ("PARK", True),
                 (Gdk.KEY_d, Gdk.KEY_D): ("ADDRESS", True),
+                (Gdk.KEY_k, Gdk.KEY_K): ("CHECK", True),
             }
             if keyval in (Gdk.KEY_c, Gdk.KEY_C):
                 self._clear_on_escape()

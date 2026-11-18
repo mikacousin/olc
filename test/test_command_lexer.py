@@ -128,3 +128,21 @@ def test_lexer_patch_keyword() -> None:
         TokenType.UNPATCH,
         TokenType.EOF,
     ]
+
+
+def test_lexer_check_keyword() -> None:
+    lexer = CommandLexer()
+    tokens = lexer.tokenize("1 CHECK AT 80")
+    assert [t.type for t in tokens] == [
+        TokenType.NUMBER,
+        TokenType.CHECK,
+        TokenType.AT,
+        TokenType.NUMBER,
+        TokenType.EOF,
+    ]
+    chk_tokens = lexer.tokenize("2 CHK")
+    assert [t.type for t in chk_tokens] == [
+        TokenType.NUMBER,
+        TokenType.CHECK,
+        TokenType.EOF,
+    ]

@@ -29,6 +29,7 @@ from olc.core.parser.ast_nodes import (
     AllSelectionNode,
     AttributeCommandNode,
     BlockCueCommandNode,
+    ChannelCheckCommandNode,
     ChannelNumberNode,
     ChannelParkCommandNode,
     ChannelRangeNode,
@@ -153,6 +154,9 @@ class CommandExecutor:
 
         if isinstance(node, AddressLevelCommandNode):
             return self._execute_address_level(node)
+
+        if isinstance(node, ChannelCheckCommandNode):
+            return self._execute_channel_check(node)
 
         if isinstance(node, AddressUnparkCommandNode):
             return self._execute_address_unpark(node)
@@ -1106,6 +1110,61 @@ class CommandExecutor:
         if hasattr(self.app, "address_check"):
             self.app.address_check = None
         return CommandResult(True, f"Released {len(addresses)} address(es)")
+
+    def _execute_channel_check(self, node: ChannelCheckCommandNode) -> CommandResult:
+        channels = self.resolve_selection(node.selection)
+        if not channels:
+            return CommandResult(False, "No channels specified")
+
+        raw_level = node.level
+        if raw_level is None:
+            default_fn = getattr(self.app, "get_default_channel_check_level", None)
+            raw_level = default_fn() if callable(default_fn) else 80.0
+
+        if raw_level <= 0.0:
+            clear_fn = getattr(self.app, "clear_channel_check", None)
+            if callable(clear_fn):
+                clear_fn()
+            registry = self._get_registry()
+            for ch in channels:
+                if registry is not None:
+                    registry.execute("channel.set_level", ch, -1.0)
+                else:
+                    backend = getattr(self.app, "backend", None)
+                    if (
+                        backend is not None
+                        and getattr(backend, "dmx", None) is not None
+                    ):
+                        backend.dmx.levels["user"][ch - 1] = -1.0
+                        backend.dmx.set_levels()
+            return CommandResult(True, "Channel Check released")
+
+        for attr in ("clear_address_check", "clear_channel_check"):
+            fn = getattr(self.app, attr, None)
+            if callable(fn):
+                fn()
+
+        ch = channels[0]
+        norm_lvl = max(0.0, min(1.0, float(raw_level) / 100.0))
+        get_user_fn = getattr(self.app, "get_channel_user_level", None)
+        old_user = get_user_fn(ch) if callable(get_user_fn) else -1.0
+
+        registry = self._get_registry()
+        if registry is not None:
+            registry.execute("channel.set_level", ch, norm_lvl)
+        else:
+            backend = getattr(self.app, "backend", None)
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                backend.dmx.levels["user"][ch - 1] = norm_lvl
+                backend.dmx.set_levels()
+
+        if hasattr(self.app, "channel_check"):
+            self.app.channel_check = (ch, norm_lvl, old_user)
+
+        pct = int(round(norm_lvl * 100.0))
+        return CommandResult(
+            True, f"Channel {ch} Check at {pct}%", affected_channels=[ch]
+        )
 
     def _execute_address_unpark(self, node: AddressUnparkCommandNode) -> CommandResult:
         addresses = self.resolve_address_selection(node.addresses)
