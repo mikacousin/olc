@@ -646,3 +646,84 @@ def test_parser_channel_check() -> None:
 
     assert TokenType.AT in parser.get_expected_tokens("1 CHECK")
     assert TokenType.CHECK in parser.get_expected_tokens("1 AT 50")
+
+
+_CONTRACT_CORPUS: tuple[str, ...] = (
+    "1 AT 50",
+    "1 THRU 5 + 8 - 3 AT FULL",
+    "1 ODD AT OUT",
+    "ALL AT 25",
+    "CHANNEL 1 AT +10",
+    "GROUP 2 AT -10",
+    "1 CHECK",
+    "1 CHECK AT 80",
+    "1 AT 50 CHECK",
+    "1 CHECK AT OUT",
+    "ADDRESS 1/10 AT 50",
+    "ADDRESS 1/10 AT OUT",
+    "ADDRESS 1/10 PARK AT 50",
+    "ADDRESS 1/10 UNPARK",
+    "ADDRESS 1/10 UNPATCH",
+    "1 PATCH AT 1/10",
+    "1 THRU 4 UNPATCH",
+    "1 THRU 4 UNPATCH AT 1/10",
+    "PARK ALL",
+    "UNPARK ALL",
+    "PARK 1 AT 50",
+    "1 PARK",
+    "1 PARK AT 50",
+    "1 UNPARK",
+    "CUE 1 RECORD",
+    "RECORD CUE 1 TIME 3",
+    "RECORD CUE 1 TIME 3/5 DELAY 1 BLOCK",
+    "CUE 1 GOTO TIME 2",
+    "GOTO CUE 1 TIME 2",
+    "CUE 1 UPDATE",
+    "UPDATE CUE 1",
+    "CUE 1 BLOCK",
+    "CUE 1 UNBLOCK",
+    "CUE 1 DELETE",
+    "1 SNEAK",
+    "1 SNEAK TIME 2",
+    "SNEAK TIME 2",
+    "SNEAK 1 THRU 4 TIME 2",
+    "1 HOME",
+    "HOME POSITION",
+    "POSITION HOME",
+    "1 POSITION HOME",
+    "1 LOCATE",
+    "1 PAN 50",
+    "INDEPENDENT 1 SNEAK TIME 2",
+    "INDEPENDENT ALL SNEAK",
+)
+
+
+def test_parser_expected_tokens_contract() -> None:
+    """Every valid command prefix must expect the next token in its grammar."""
+    parser = CommandParser()
+
+    for cmd in _CONTRACT_CORPUS:
+        # Verify the command itself is valid
+        parser.parse(cmd)
+        tokens = parser.lexer.tokenize(cmd)[:-1]
+        for idx, tok in enumerate(tokens):
+            prefix = " ".join(t.raw_text for t in tokens[:idx])
+            if prefix:
+                prefix += " "
+            expected = parser.get_expected_tokens(prefix)
+            assert tok.type in expected, (
+                f"Expected {tok.type.name} for prefix {prefix!r} in {cmd!r}, "
+                f"got {[t.name for t in expected]}"
+            )
+
+    # Negative checks: ADDRESS 1/2 only allows UNPATCH, UNPARK, PARK, AT, +, -, THRU
+    addr_expected = set(parser.get_expected_tokens("ADDRESS 1/2 "))
+    assert {
+        TokenType.UNPATCH,
+        TokenType.UNPARK,
+        TokenType.PARK,
+        TokenType.AT,
+    } <= addr_expected
+    assert TokenType.CHECK not in addr_expected
+    assert TokenType.ODD not in addr_expected
+    assert TokenType.HOME not in addr_expected

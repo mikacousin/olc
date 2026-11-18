@@ -90,23 +90,24 @@ def test_completer_ambiguous_cycling() -> None:
     parser = CommandParser()
     completer = CommandCompleter(parser)
 
-    # 'G' matches GOTO and GROUP
+    # 'G' matches GROUP, GOTO, GOBO, GOBO_WHEEL
     res1 = completer.complete("G")
     assert res1.has_completed is True
-    assert set(res1.candidates) == {"GROUP", "GOTO"}
-    cand1 = res1.candidates[0]
-    cand2 = res1.candidates[1]
-    assert res1.new_text == f"{cand1} "
+    assert set(res1.candidates) == {"GROUP", "GOTO", "GOBO", "GOBO_WHEEL"}
+    cands = res1.candidates
+    assert res1.new_text == f"{cands[0]} "
 
-    # Second Tab cycles to second candidate
-    res2 = completer.complete(res1.new_text)
-    assert res2.has_completed is True
-    assert res2.new_text == f"{cand2} "
+    # Subsequent Tabs cycle through all candidates and wrap around
+    cur = res1.new_text
+    for expected_cand in cands[1:]:
+        nxt = completer.complete(cur)
+        assert nxt.has_completed is True
+        assert nxt.new_text == f"{expected_cand} "
+        cur = nxt.new_text
 
-    # Third Tab cycles back to first candidate
-    res3 = completer.complete(res2.new_text)
-    assert res3.has_completed is True
-    assert res3.new_text == f"{cand1} "
+    wrapped = completer.complete(cur)
+    assert wrapped.has_completed is True
+    assert wrapped.new_text == f"{cands[0]} "
 
 
 def test_completer_show_cues_and_groups() -> None:

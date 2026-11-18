@@ -626,6 +626,41 @@ class VirtualConsoleWindow(Gtk.Window):
         """Handle undo/redo history changed event."""
         GLib.idle_add(self.update_button_sensitivity)
 
+    _TOKEN_BUTTON_MAP: tuple[tuple[str, TokenType], ...] = (
+        ("slash", TokenType.SLASH),
+        ("channel", TokenType.CHANNEL),
+        ("cue", TokenType.CUE),
+        ("group", TokenType.GROUP),
+        ("address", TokenType.ADDRESS),
+        ("thru", TokenType.THRU),
+        ("plus", TokenType.PLUS),
+        ("minus", TokenType.MINUS),
+        ("at_level", TokenType.AT),
+        ("full", TokenType.FULL),
+        ("out", TokenType.OUT),
+        ("block", TokenType.BLOCK),
+        ("record", TokenType.RECORD),
+        ("update", TokenType.UPDATE),
+        ("delete", TokenType.DELETE),
+        ("goto", TokenType.GOTO),
+        ("time", TokenType.TIME),
+        ("delay", TokenType.DELAY),
+        ("sneak", TokenType.SNEAK),
+        ("unblock", TokenType.UNBLOCK),
+        ("park", TokenType.PARK),
+        ("unpark", TokenType.UNPARK),
+        ("check", TokenType.CHECK),
+        ("home", TokenType.HOME),
+        ("locate", TokenType.LOCATE),
+        ("position", TokenType.POSITION),
+        ("focus", TokenType.FOCUS),
+        ("color", TokenType.COLOR),
+        ("beam", TokenType.BEAM),
+        ("all", TokenType.ALL),
+        ("odd", TokenType.ODD),
+        ("even", TokenType.EVEN),
+    )
+
     def update_button_sensitivity(self) -> None:
         """Enable or disable commandline buttons based on parser expectations."""
         if self.is_learning_midi:
@@ -640,8 +675,8 @@ class VirtualConsoleWindow(Gtk.Window):
             if btn is not None:
                 btn.set_sensitive(sensitive)
 
-        # Zone 1: Numeric pad & targets
-        can_number = (TokenType.NUMBER in expected) or is_empty
+        # Numeric pad
+        can_number = TokenType.NUMBER in expected
         for num_name in (
             "zero",
             "one",
@@ -657,35 +692,17 @@ class VirtualConsoleWindow(Gtk.Window):
         ):
             set_sens(num_name, can_number)
 
-        set_sens("slash", TokenType.SLASH in expected)
-        set_sens("channel", TokenType.CHANNEL in expected or is_empty)
-        set_sens("cue", TokenType.CUE in expected or is_empty)
-        set_sens("group", TokenType.GROUP in expected or is_empty)
-        set_sens("address", TokenType.ADDRESS in expected or is_empty)
-        set_sens("thru", TokenType.THRU in expected)
-        set_sens("plus", TokenType.PLUS in expected)
-        set_sens("minus", TokenType.MINUS in expected)
-        set_sens("enter", not is_empty)
+        # Grammar-driven buttons
+        for attr_name, token_type in self._TOKEN_BUTTON_MAP:
+            set_sens(attr_name, token_type in expected)
 
-        # Zone 2: Actions, Levels & Editing
-        set_sens("at_level", TokenType.AT in expected)
-        set_sens("full", TokenType.FULL in expected)
-        set_sens("out", TokenType.OUT in expected)
+        # UI-specific controls
+        set_sens("enter", not is_empty)
+        set_sens("backspace", not is_empty)
         set_sens("clear", True)
         set_sens("percent_plus", TokenType.AT in expected)
         set_sens("percent_minus", TokenType.AT in expected)
-        set_sens("block", TokenType.BLOCK in expected)
-        set_sens("backspace", not is_empty)
-        set_sens("record", TokenType.RECORD in expected or is_empty)
-        set_sens("update", TokenType.UPDATE in expected or is_empty)
-        set_sens("delete", TokenType.DELETE in expected or is_empty)
-        set_sens("goto", TokenType.GOTO in expected or is_empty)
-        set_sens("time", TokenType.TIME in expected)
-        set_sens("delay", TokenType.DELAY in expected)
-        set_sens("sneak", TokenType.SNEAK in expected or is_empty)
-        set_sens("unblock", TokenType.UNBLOCK in expected)
-        set_sens("park", TokenType.PARK in expected or is_empty)
-        set_sens("unpark", TokenType.UNPARK in expected or is_empty)
+        set_sens("seq", TokenType.SEQUENCE in expected or is_empty)
 
         can_undo = bool(
             hasattr(self.app.core, "history")
@@ -714,19 +731,6 @@ class VirtualConsoleWindow(Gtk.Window):
                 "patch",
                 TokenType.PATCH in expected or TokenType.UNPATCH in expected,
             )
-        set_sens("check", TokenType.CHECK in expected)
-
-        # Zone 3: Tools & Moving Lights
-        set_sens("home", TokenType.HOME in expected or is_empty)
-        set_sens("locate", TokenType.LOCATE in expected or is_empty)
-        set_sens("position", TokenType.POSITION in expected or is_empty)
-        set_sens("focus", TokenType.FOCUS in expected or is_empty)
-        set_sens("color", TokenType.COLOR in expected or is_empty)
-        set_sens("beam", TokenType.BEAM in expected or is_empty)
-        set_sens("all", TokenType.ALL in expected or is_empty)
-        set_sens("seq", TokenType.SEQUENCE in expected or is_empty)
-        set_sens("odd", TokenType.ODD in expected)
-        set_sens("even", TokenType.EVEN in expected)
 
         self.queue_draw()
 

@@ -91,6 +91,19 @@ class CommandParser:
         self.lexer = CommandLexer()
         self.tokens: list[Token] = []
         self.pos: int = 0
+        self._probe_expected: list[TokenType] | None = None
+
+    def _record_expected(self, *types: TokenType) -> None:
+        """Record expected token types when probing at EOF."""
+        if self._probe_expected is not None and self.current.type == TokenType.EOF:
+            for t in types:
+                if t not in self._probe_expected:
+                    self._probe_expected.append(t)
+
+    def _peek_is(self, *types: TokenType) -> bool:
+        """Check if current token matches *types, recording expectations at EOF."""
+        self._record_expected(*types)
+        return self.current.type in types
 
     @property
     def current(self) -> Token:
@@ -119,6 +132,7 @@ class CommandParser:
 
     def match(self, *expected_types: TokenType) -> bool:
         """Check if current token matches any expected type; if so, advance."""
+        self._record_expected(*expected_types)
         if self.current.type in expected_types:
             self.advance()
             return True
@@ -126,6 +140,7 @@ class CommandParser:
 
     def expect(self, expected_type: TokenType, error_msg: str) -> Token:
         """Consume current token if it matches expected_type, otherwise raise."""
+        self._record_expected(expected_type)
         tok = self.current
         if tok.type != expected_type:
             raise CommandSyntaxError(
@@ -172,74 +187,79 @@ class CommandParser:
     # --- Top Level Commands ---
 
     def _parse_command(self) -> CommandNode:  # pylint: disable=too-many-return-statements
-        tok = self.peek()
-
-        if tok.type == TokenType.CUE:
+        if self._peek_is(TokenType.CUE):
             return self._parse_cue_first_command()
 
-        if tok.type == TokenType.RECORD:
+        if self._peek_is(TokenType.RECORD):
             return self._parse_record_cue()
 
-        if tok.type == TokenType.UPDATE:
+        if self._peek_is(TokenType.UPDATE):
             return self._parse_update_cue()
 
-        if tok.type == TokenType.GOTO:
+        if self._peek_is(TokenType.GOTO):
             return self._parse_goto_cue()
 
-        if tok.type == TokenType.BLOCK:
+        if self._peek_is(TokenType.BLOCK):
             return self._parse_block_cue()
 
-        if tok.type == TokenType.UNBLOCK:
+        if self._peek_is(TokenType.UNBLOCK):
             return self._parse_unblock_cue()
 
-        if tok.type == TokenType.DELETE:
+        if self._peek_is(TokenType.DELETE):
             return self._parse_delete_cue()
 
-        if tok.type == TokenType.SNEAK:
+        if self._peek_is(TokenType.SNEAK):
             return self._parse_sneak_command(selection=None)
 
-        if tok.type == TokenType.INDEPENDENT:
+        if self._peek_is(TokenType.INDEPENDENT):
             return self._parse_independent_command()
 
-        if tok.type == TokenType.PARK:
+        if self._peek_is(TokenType.PARK):
             self.advance()
             if self.match(TokenType.ALL):
                 return ParkUnparkAllCommandNode()
             if self.match(TokenType.AT):
                 if self.peek().type == TokenType.EOF:
+                    self._record_expected(
+                        TokenType.NUMBER,
+                        TokenType.FULL,
+                        TokenType.OUT,
+                        TokenType.PLUS,
+                        TokenType.MINUS,
+                    )
                     return ChannelUnparkCommandNode(selection=None)
                 level, _ = self._parse_intensity_value()
                 return ChannelParkCommandNode(selection=None, level=level)
-            if self.peek().type in (
-                TokenType.NUMBER,
-                TokenType.CHANNEL,
-                TokenType.GROUP,
-            ):
+            if self._peek_is(TokenType.NUMBER, TokenType.CHANNEL, TokenType.GROUP):
                 sel = self._parse_selection()
                 lvl = None
                 if self.match(TokenType.AT):
-                    if self.peek().type != TokenType.EOF:
+                    if self.peek().type == TokenType.EOF:
+                        self._record_expected(
+                            TokenType.NUMBER,
+                            TokenType.FULL,
+                            TokenType.OUT,
+                            TokenType.PLUS,
+                            TokenType.MINUS,
+                        )
+                    else:
                         lvl, _ = self._parse_intensity_value()
                 return ChannelParkCommandNode(selection=sel, level=lvl)
             return ChannelParkCommandNode(selection=None, level=None)
 
-        if tok.type == TokenType.UNPARK:
+        if self._peek_is(TokenType.UNPARK):
             self.advance()
             if self.match(TokenType.ALL):
                 return ParkUnparkAllCommandNode()
-            if self.peek().type == TokenType.ADDRESS:
+            if self._peek_is(TokenType.ADDRESS):
                 addrs = self._parse_address_selection()
                 return AddressUnparkCommandNode(addresses=addrs)
-            if self.peek().type in (
-                TokenType.NUMBER,
-                TokenType.CHANNEL,
-                TokenType.GROUP,
-            ):
+            if self._peek_is(TokenType.NUMBER, TokenType.CHANNEL, TokenType.GROUP):
                 sel = self._parse_selection()
                 return ChannelUnparkCommandNode(selection=sel)
             return ChannelUnparkCommandNode(selection=None)
 
-        if tok.type == TokenType.ADDRESS:
+        if self._peek_is(TokenType.ADDRESS):
             addrs = self._parse_address_selection()
             if self.match(TokenType.UNPATCH):
                 return UnpatchCommandNode(selection=None, addresses=addrs)
@@ -248,12 +268,26 @@ class CommandParser:
             if self.match(TokenType.PARK):
                 if self.match(TokenType.AT):
                     if self.peek().type == TokenType.EOF:
+                        self._record_expected(
+                            TokenType.NUMBER,
+                            TokenType.FULL,
+                            TokenType.OUT,
+                            TokenType.PLUS,
+                            TokenType.MINUS,
+                        )
                         return AddressUnparkCommandNode(addresses=addrs)
                     lvl, _ = self._parse_intensity_value()
                     return AddressParkCommandNode(addresses=addrs, level=lvl)
                 return AddressParkCommandNode(addresses=addrs, level=100.0)
             if self.match(TokenType.AT):
                 if self.peek().type == TokenType.EOF:
+                    self._record_expected(
+                        TokenType.NUMBER,
+                        TokenType.FULL,
+                        TokenType.OUT,
+                        TokenType.PLUS,
+                        TokenType.MINUS,
+                    )
                     return AddressLevelCommandNode(addresses=addrs, level=None)
                 lvl, _ = self._parse_intensity_value()
                 return AddressLevelCommandNode(addresses=addrs, level=lvl)
@@ -265,22 +299,18 @@ class CommandParser:
             )
 
         # Standalone LOCATE / HOME (implicit selection)
-        if tok.type == TokenType.LOCATE:
+        if self._peek_is(TokenType.LOCATE):
             self.advance()
             return LocateCommandNode(selection=None)
 
-        if tok.type == TokenType.HOME:
+        if self._peek_is(TokenType.HOME):
             self.advance()
             cat = None
-            if self.peek().type in (
-                TokenType.POSITION,
-                TokenType.COLOR,
-                TokenType.BEAM,
-            ):
+            if self._peek_is(TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
                 cat = self.advance().raw_text.lower()
             return HomeCommandNode(selection=None, category=cat)
 
-        if tok.type in (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
+        if self._peek_is(TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
             if (
                 self.pos + 1 < len(self.tokens)
                 and self.tokens[self.pos + 1].type == TokenType.HOME
@@ -290,22 +320,29 @@ class CommandParser:
                 return HomeCommandNode(
                     selection=None, category=cat_tok.raw_text.lower()
                 )
+            if (
+                self._probe_expected is not None
+                and self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].type == TokenType.EOF
+                and TokenType.HOME not in self._probe_expected
+            ):
+                self._probe_expected.append(TokenType.HOME)
 
         # Relative selection starting with +, -, or THRU (applies to active selection)
-        if tok.type in (TokenType.PLUS, TokenType.MINUS, TokenType.THRU):
+        if self._peek_is(TokenType.PLUS, TokenType.MINUS, TokenType.THRU):
             selection = self._parse_relative_selection()
         # Relative odd/even filter starting directly on active selection
-        elif tok.type in (TokenType.ODD, TokenType.EVEN):
+        elif self._peek_is(TokenType.ODD, TokenType.EVEN):
             selection = self._parse_relative_filter_selection()
         # Check if command starts directly with an intensity or attribute
         # (implicit selection on currently active fixtures)
-        elif tok.type == TokenType.AT or tok.type in ATTRIBUTE_TOKENS:
+        elif self._peek_is(TokenType.AT, *ATTRIBUTE_TOKENS.keys()):
             return self._parse_action_clause(selection=None)
         else:
             # Otherwise, starts with channel selection
             selection = self._parse_selection()
 
-        if self.peek().type == TokenType.EOF:
+        if self._probe_expected is None and self.peek().type == TokenType.EOF:
             return SelectOnlyCommandNode(selection)
 
         if self.match(TokenType.PATCH):
@@ -322,6 +359,13 @@ class CommandParser:
         if self.match(TokenType.CHECK):
             if self.match(TokenType.AT):
                 if self.peek().type == TokenType.EOF:
+                    self._record_expected(
+                        TokenType.NUMBER,
+                        TokenType.FULL,
+                        TokenType.OUT,
+                        TokenType.PLUS,
+                        TokenType.MINUS,
+                    )
                     return ChannelCheckCommandNode(selection=selection, level=0.0)
                 lvl, _ = self._parse_intensity_value()
                 return ChannelCheckCommandNode(selection=selection, level=lvl)
@@ -333,30 +377,33 @@ class CommandParser:
         if self.match(TokenType.PARK):
             if self.match(TokenType.AT):
                 if self.peek().type == TokenType.EOF:
+                    self._record_expected(
+                        TokenType.NUMBER,
+                        TokenType.FULL,
+                        TokenType.OUT,
+                        TokenType.PLUS,
+                        TokenType.MINUS,
+                    )
                     return ChannelUnparkCommandNode(selection=selection)
                 level, _ = self._parse_intensity_value()
                 return ChannelParkCommandNode(selection=selection, level=level)
             return ChannelParkCommandNode(selection=selection, level=None)
 
-        if self.peek().type == TokenType.SNEAK:
+        if self._peek_is(TokenType.SNEAK):
             return self._parse_sneak_command(selection=selection)
 
-        if self.peek().type == TokenType.LOCATE:
+        if self._peek_is(TokenType.LOCATE):
             self.advance()
             return LocateCommandNode(selection=selection)
 
-        if self.peek().type == TokenType.HOME:
+        if self._peek_is(TokenType.HOME):
             self.advance()
             cat = None
-            if self.peek().type in (
-                TokenType.POSITION,
-                TokenType.COLOR,
-                TokenType.BEAM,
-            ):
+            if self._peek_is(TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
                 cat = self.advance().raw_text.lower()
             return HomeCommandNode(selection=selection, category=cat)
 
-        if self.peek().type in (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
+        if self._peek_is(TokenType.POSITION, TokenType.COLOR, TokenType.BEAM):
             if (
                 self.pos + 1 < len(self.tokens)
                 and self.tokens[self.pos + 1].type == TokenType.HOME
@@ -366,6 +413,13 @@ class CommandParser:
                 return HomeCommandNode(
                     selection=selection, category=cat_tok.raw_text.lower()
                 )
+            if (
+                self._probe_expected is not None
+                and self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].type == TokenType.EOF
+                and TokenType.HOME not in self._probe_expected
+            ):
+                self._probe_expected.append(TokenType.HOME)
 
         return self._parse_action_clause(selection)
 
@@ -376,7 +430,7 @@ class CommandParser:
         if self.match(TokenType.TIME):
             tok = self.expect(TokenType.NUMBER, "Expected duration number after TIME")
             return float(tok.value)
-        if self.peek().type == TokenType.NUMBER:
+        if self._peek_is(TokenType.NUMBER):
             tok = self.advance()
             return float(tok.value)
         return None
@@ -387,13 +441,12 @@ class CommandParser:
         self.advance()  # consume SNEAK
         dur: float | None = None
         if selection is None:
-            tok = self.peek()
-            if tok.type in (TokenType.CHANNEL, TokenType.GROUP):
+            if self._peek_is(TokenType.CHANNEL, TokenType.GROUP):
                 selection = self._parse_selection()
                 dur = self._parse_optional_duration()
-            elif tok.type == TokenType.TIME:
+            elif self._peek_is(TokenType.TIME):
                 dur = self._parse_optional_duration()
-            elif tok.type == TokenType.NUMBER:
+            elif self._peek_is(TokenType.NUMBER):
                 next_tok = self.peek_ahead(1)
                 if next_tok.type in (TokenType.THRU, TokenType.PLUS, TokenType.MINUS):
                     selection = self._parse_selection()
@@ -401,6 +454,9 @@ class CommandParser:
                 else:
                     # Isolated number after SNEAK: direct duration (ETC Eos syntax)
                     dur = float(self.advance().value)
+                    self._record_expected(
+                        TokenType.THRU, TokenType.PLUS, TokenType.MINUS
+                    )
         else:
             dur = self._parse_optional_duration()
 
@@ -410,10 +466,10 @@ class CommandParser:
         self.advance()  # consume INDEPENDENT
         tok = self.peek()
         indes: list[int] = []
-        if tok.type == TokenType.ALL:
+        if self._peek_is(TokenType.ALL):
             self.advance()
             indes = list(range(1, 10))
-        elif tok.type == TokenType.NUMBER:
+        elif self._peek_is(TokenType.NUMBER):
             num_tok = self.advance()
             indes = [int(num_tok.value)]
             while self.match(TokenType.PLUS):
@@ -529,7 +585,7 @@ class CommandParser:
 
         while self.peek().type != TokenType.EOF:
             if self.match(TokenType.TIME):
-                if self.peek().type in family_tokens:
+                if self._peek_is(*family_tokens):
                     fam_tok = self.advance().type
                     tok_ft = self.expect(
                         TokenType.NUMBER, "Expected family time value in seconds"
@@ -548,7 +604,7 @@ class CommandParser:
                     else:
                         time_out = time_in
             elif self.match(TokenType.DELAY):
-                if self.peek().type in family_tokens:
+                if self._peek_is(*family_tokens):
                     fam_tok = self.advance().type
                     tok_fd = self.expect(
                         TokenType.NUMBER, "Expected family delay value in seconds"
@@ -559,7 +615,7 @@ class CommandParser:
                         TokenType.NUMBER, "Expected delay value in seconds"
                     )
                     delay = float(tok_del.value)
-            elif self.peek().type in family_tokens:
+            elif self._peek_is(*family_tokens):
                 fam_tok = self.advance().type
                 f_time, f_delay = self._parse_family_timing_clause(fam_tok)
                 if f_time is not None:
@@ -570,6 +626,13 @@ class CommandParser:
                 is_block = True
             else:
                 break
+
+        self._record_expected(
+            TokenType.TIME,
+            TokenType.DELAY,
+            *family_tokens,
+            TokenType.BLOCK,
+        )
 
         return RecordCueCommandNode(
             cue_id=cue_id,
@@ -598,7 +661,7 @@ class CommandParser:
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         cue_id: float | None = None
-        if self.peek().type == TokenType.NUMBER:
+        if self._peek_is(TokenType.NUMBER):
             cue_id = float(self.advance().value)
 
         return UpdateCueCommandNode(cue_id=cue_id)
@@ -777,23 +840,19 @@ class CommandParser:
         )
 
     def _parse_selection_item(self) -> SelectionItemNode:
-        tok = self.peek()
-
         # Optional CHANNEL / CHAN prefix (e.g. CHANNEL 1, CHAN 1 THRU 10)
-        if tok.type == TokenType.CHANNEL:
-            self.advance()
-            tok = self.peek()
+        self.match(TokenType.CHANNEL)
 
-        if tok.type == TokenType.ALL:
+        if self._peek_is(TokenType.ALL):
             self.advance()
             return AllSelectionNode()
 
-        if tok.type == TokenType.GROUP:
+        if self._peek_is(TokenType.GROUP):
             self.advance()
             num_tok = self.expect(TokenType.NUMBER, "Expected group number after GROUP")
             return GroupSelectionNode(group_id=int(num_tok.value))
 
-        if tok.type == TokenType.NUMBER:
+        if self._peek_is(TokenType.NUMBER):
             start_val = int(self.advance().value)
             if self.match(TokenType.THRU):
                 end_tok = self.expect(
@@ -803,6 +862,7 @@ class CommandParser:
                 return ChannelRangeNode(start=start_val, end=end_val)
             return ChannelNumberNode(channel=start_val)
 
+        tok = self.peek()
         raise CommandSyntaxError(
             f"Expected channel number, GROUP or ALL, got {tok.raw_text!r}",
             tok.position,
@@ -833,6 +893,8 @@ class CommandParser:
 
             else:
                 break
+
+        self._record_expected(TokenType.AT, *ATTRIBUTE_TOKENS.keys())
 
         # Allow '<selection> AT <level> CHECK'
         if (
@@ -869,32 +931,30 @@ class CommandParser:
         )
 
     def _parse_intensity_value(self) -> tuple[float, bool]:
-        tok = self.peek()
-
-        if tok.type == TokenType.FULL:
+        if self._peek_is(TokenType.FULL):
             self.advance()
             return (100.0, False)
 
-        if tok.type == TokenType.OUT:
+        if self._peek_is(TokenType.OUT):
             self.advance()
             return (0.0, False)
 
-        if tok.type == TokenType.PLUS:
+        if self._peek_is(TokenType.PLUS):
             self.advance()
             num_tok = self.expect(
                 TokenType.NUMBER, "Expected number after '+' for relative intensity"
             )
             return (float(num_tok.value), True)
 
-        if tok.type == TokenType.MINUS:
+        if self._peek_is(TokenType.MINUS):
             self.advance()
             num_tok = self.expect(
                 TokenType.NUMBER, "Expected number after '-' for relative intensity"
             )
             return (-float(num_tok.value), True)
 
-        if tok.type == TokenType.NUMBER:
-            self.advance()
+        if self._peek_is(TokenType.NUMBER):
+            tok = self.advance()
             val = float(tok.value)
             if not 0.0 <= val <= 100.0:
                 raise CommandSyntaxError(
@@ -904,6 +964,7 @@ class CommandParser:
                 )
             return (val, False)
 
+        tok = self.peek()
         msg = (
             f"Expected intensity level (0..100, FULL, OUT, +N, -N), "
             f"got {tok.raw_text!r}"
@@ -915,13 +976,11 @@ class CommandParser:
         )
 
     def _parse_attribute_value(self, attr_type: TokenType) -> object:
-        tok = self.peek()
-
         # Handle color values (#FF8800, "RED", or identifier RED)
         if attr_type == TokenType.COLOR:
-            if tok.type in (TokenType.HEX_COLOR, TokenType.STRING, TokenType.IDENT):
-                self.advance()
-                return tok.value
+            if self._peek_is(TokenType.HEX_COLOR, TokenType.STRING, TokenType.IDENT):
+                return self.advance().value
+            tok = self.peek()
             raise CommandSyntaxError(
                 f"Expected color hex code or name, got {tok.raw_text!r}",
                 tok.position,
@@ -930,156 +989,33 @@ class CommandParser:
 
         # Handle signed numerical angles/values (PAN -45, TILT +30, ZOOM 25)
         sign = 1.0
-        if tok.type == TokenType.MINUS:
+        if self._peek_is(TokenType.MINUS):
             sign = -1.0
             self.advance()
-            tok = self.peek()
-        elif tok.type == TokenType.PLUS:
+        elif self._peek_is(TokenType.PLUS):
             self.advance()
-            tok = self.peek()
 
-        if tok.type == TokenType.NUMBER:
-            self.advance()
-            return sign * float(tok.value)
+        if self._peek_is(TokenType.NUMBER):
+            return sign * float(self.advance().value)
 
         # String or ident for gobos/wheels (e.g. GOBO "Open", GOBO 2)
-        if tok.type in (TokenType.STRING, TokenType.IDENT):
-            self.advance()
-            return tok.value
+        if self._peek_is(TokenType.STRING, TokenType.IDENT):
+            return self.advance().value
 
+        tok = self.peek()
         raise CommandSyntaxError(
             f"Expected value for attribute {attr_type.name}, got {tok.raw_text!r}",
             tok.position,
             tok,
         )
 
-    @staticmethod
-    def _get_record_expected_tokens(
-        active_tokens: list[Token], text: str
-    ) -> list[TokenType]:
-        """Return expected tokens within a RECORD CUE options clause."""
-        last = active_tokens[-1]
-        prev = active_tokens[-2].type if len(active_tokens) >= 2 else None
-        families = (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM)
-
-        if last.type in (TokenType.TIME, TokenType.DELAY):
-            if prev in families:
-                return [TokenType.NUMBER]
-            return [TokenType.NUMBER, *families]
-
-        if last.type in families:
-            if prev in (TokenType.TIME, TokenType.DELAY):
-                return [TokenType.NUMBER]
-            return [TokenType.NUMBER, TokenType.TIME, TokenType.DELAY]
-
-        if last.type == TokenType.SLASH:
-            return [TokenType.NUMBER]
-
-        res = [
-            TokenType.TIME,
-            TokenType.DELAY,
-            TokenType.BLOCK,
-            *families,
-        ]
-        if last.type == TokenType.NUMBER and prev == TokenType.TIME:
-            res.insert(0, TokenType.SLASH)
-        if last.type == TokenType.NUMBER and not text.endswith(" "):
-            res.append(TokenType.NUMBER)
-        return res
-
-    @staticmethod
-    def _get_goto_expected_tokens(
-        active_tokens: list[Token], text: str
-    ) -> list[TokenType]:
-        """Return expected tokens within a GOTO CUE options clause."""
-        last = active_tokens[-1]
-        if last.type == TokenType.TIME:
-            return [TokenType.NUMBER]
-        if all(t.type != TokenType.TIME for t in active_tokens):
-            res = [TokenType.TIME]
-            if last.type == TokenType.NUMBER and not text.endswith(" "):
-                res.append(TokenType.NUMBER)
-            return res
-        return []
-
-    def _get_cue_expected_tokens(  # pylint: disable=too-many-return-statements
-        self, active_tokens: list[Token], text: str
-    ) -> list[TokenType] | None:
-        """Return expected tokens when the command starts with a cue keyword."""
-        first = active_tokens[0].type
-
-        if first == TokenType.CUE:
-            if len(active_tokens) == 1:
-                return [TokenType.NUMBER]
-            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.NUMBER:
-                res = [
-                    TokenType.RECORD,
-                    TokenType.UPDATE,
-                    TokenType.GOTO,
-                    TokenType.BLOCK,
-                    TokenType.UNBLOCK,
-                    TokenType.DELETE,
-                ]
-                if not text.endswith(" "):
-                    res.append(TokenType.NUMBER)
-                return res
-            if active_tokens[2].type == TokenType.RECORD:
-                return self._get_record_expected_tokens(active_tokens, text)
-            if active_tokens[2].type == TokenType.GOTO:
-                return self._get_goto_expected_tokens(active_tokens, text)
-            return []
-
-        if first in (
-            TokenType.RECORD,
-            TokenType.GOTO,
-            TokenType.UPDATE,
-            TokenType.BLOCK,
-            TokenType.UNBLOCK,
-            TokenType.DELETE,
-        ):
-            if len(active_tokens) == 1:
-                return [TokenType.CUE, TokenType.NUMBER]
-            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.CUE:
-                return [TokenType.NUMBER]
-            if first == TokenType.RECORD:
-                return self._get_record_expected_tokens(active_tokens, text)
-            if first == TokenType.GOTO:
-                return self._get_goto_expected_tokens(active_tokens, text)
-            return []
-
-        return None
-
-    def get_expected_tokens(  # pylint: disable=too-many-return-statements,too-many-branches
-        self, text: str
-    ) -> list[TokenType]:
+    def get_expected_tokens(self, text: str) -> list[TokenType]:
         """Inspect a partial command string and return expected token types next.
 
-        Useful for GUI feedback, auto-completion, and dynamic button enablement.
+        Probes the recursive-descent parser at EOF so valid continuations stay in
+        sync with the grammar automatically.
         """
         trimmed = text.strip()
-        if not trimmed:
-            return [
-                TokenType.CHANNEL,
-                TokenType.NUMBER,
-                TokenType.CUE,
-                TokenType.GROUP,
-                TokenType.ALL,
-                TokenType.RECORD,
-                TokenType.UPDATE,
-                TokenType.GOTO,
-                TokenType.BLOCK,
-                TokenType.UNBLOCK,
-                TokenType.DELETE,
-                TokenType.SNEAK,
-                TokenType.INDEPENDENT,
-                TokenType.AT,
-                TokenType.PLUS,
-                TokenType.MINUS,
-                TokenType.THRU,
-                TokenType.ODD,
-                TokenType.EVEN,
-            ]
-
         try:
             tokens = self.lexer.tokenize(trimmed)
         except LexerError:
@@ -1088,147 +1024,24 @@ class CommandParser:
         if not tokens or tokens[-1].type != TokenType.EOF:
             return []
 
-        # Remove EOF for inspection
         active_tokens = tokens[:-1]
-        if not active_tokens:
-            return []
+        self.tokens = tokens
+        self.pos = 0
+        self._probe_expected = []
+        try:
+            self._parse_command()
+        except CommandSyntaxError:
+            pass
+        finally:
+            expected = list(self._probe_expected or [])
+            self._probe_expected = None
 
-        first = active_tokens[0].type
-        if first == TokenType.SNEAK:
-            if len(active_tokens) == 1:
-                return [
-                    TokenType.TIME,
-                    TokenType.NUMBER,
-                    TokenType.CHANNEL,
-                    TokenType.GROUP,
-                ]
-            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.TIME:
-                return [TokenType.NUMBER]
-            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.NUMBER:
-                if not text.endswith(" "):
-                    return [TokenType.NUMBER]
-                return [TokenType.THRU, TokenType.PLUS, TokenType.MINUS]
-            return []
-
-        if first == TokenType.INDEPENDENT:
-            if len(active_tokens) == 1:
-                return [TokenType.NUMBER, TokenType.ALL]
-            if active_tokens[-1].type in (TokenType.NUMBER, TokenType.ALL):
-                return [TokenType.SNEAK, TokenType.PLUS]
-            if active_tokens[-1].type == TokenType.SNEAK:
-                return [TokenType.TIME, TokenType.NUMBER]
-            if active_tokens[-1].type == TokenType.TIME:
-                return [TokenType.NUMBER]
-            return []
-
-        cue_expected = self._get_cue_expected_tokens(active_tokens, text)
-        if cue_expected is not None:
-            return cue_expected
-
-        last = active_tokens[-1]
-
-        if last.type == TokenType.SNEAK:
-            return [TokenType.TIME, TokenType.NUMBER]
-
-        if last.type == TokenType.TIME:
-            return [TokenType.NUMBER]
-
-        if last.type == TokenType.NUMBER and len(active_tokens) >= 2:
-            prev = active_tokens[-2]
-            if prev.type in (TokenType.SNEAK, TokenType.TIME):
-                if not text.endswith(" "):
-                    return [TokenType.NUMBER]
-                return []
-
-        if any(t.type in (TokenType.PATCH, TokenType.UNPATCH) for t in active_tokens):
-            if last.type == TokenType.PATCH:
-                return [TokenType.AT]
-            if last.type == TokenType.UNPATCH:
-                return [TokenType.AT]
-            if last.type == TokenType.AT:
-                return [TokenType.NUMBER, TokenType.ADDRESS]
-            if last.type == TokenType.NUMBER:
-                res = [TokenType.THRU, TokenType.PLUS, TokenType.MINUS, TokenType.SLASH]
-                if not text.endswith(" "):
-                    res.append(TokenType.NUMBER)
-                return res
-
-        # If we have already seen AT or an attribute token,
-        # we are in the value/action phase
-        if any(
-            t.type == TokenType.AT or t.type in ATTRIBUTE_TOKENS for t in active_tokens
+        if (
+            active_tokens
+            and active_tokens[-1].type == TokenType.NUMBER
+            and not text.endswith(" ")
+            and TokenType.NUMBER not in expected
         ):
-            if last.type == TokenType.NUMBER:
-                res = list(ATTRIBUTE_TOKENS.keys())
-                if not any(t.type == TokenType.CHECK for t in active_tokens):
-                    res.append(TokenType.CHECK)
-                if not text.endswith(" "):
-                    res.append(TokenType.NUMBER)
-                return res
+            expected.append(TokenType.NUMBER)
 
-        if last.type == TokenType.CHECK:
-            return [TokenType.AT]
-
-        if last.type in (TokenType.NUMBER, TokenType.ALL):
-            res = [
-                TokenType.THRU,
-                TokenType.PLUS,
-                TokenType.MINUS,
-                TokenType.ODD,
-                TokenType.EVEN,
-                TokenType.AT,
-                TokenType.PATCH,
-                TokenType.UNPATCH,
-                TokenType.CHECK,
-                TokenType.SNEAK,
-                TokenType.HOME,
-                TokenType.LOCATE,
-                TokenType.POSITION,
-                TokenType.BEAM,
-                *ATTRIBUTE_TOKENS.keys(),
-            ]
-            # If the user is currently typing a multi-digit number (no trailing space),
-            # allow entering more digits
-            if last.type == TokenType.NUMBER and not text.endswith(" "):
-                res.append(TokenType.NUMBER)
-            return res
-
-        if last.type in (TokenType.ODD, TokenType.EVEN):
-            return [
-                TokenType.AT,
-                TokenType.PATCH,
-                TokenType.UNPATCH,
-                TokenType.CHECK,
-                TokenType.SNEAK,
-                TokenType.HOME,
-                TokenType.LOCATE,
-                *ATTRIBUTE_TOKENS.keys(),
-            ]
-
-        if last.type == TokenType.THRU:
-            return [TokenType.NUMBER]
-
-        if last.type in (TokenType.PLUS, TokenType.MINUS):
-            return [TokenType.CHANNEL, TokenType.NUMBER, TokenType.GROUP]
-
-        if last.type in (TokenType.ADDRESS, TokenType.SLASH):
-            return [TokenType.NUMBER]
-
-        if last.type == TokenType.AT:
-            return [
-                TokenType.NUMBER,
-                TokenType.FULL,
-                TokenType.OUT,
-                TokenType.PLUS,
-                TokenType.MINUS,
-            ]
-
-        if last.type in ATTRIBUTE_TOKENS:
-            if last.type == TokenType.COLOR:
-                return [TokenType.HEX_COLOR, TokenType.STRING, TokenType.IDENT]
-            return [TokenType.NUMBER, TokenType.STRING, TokenType.IDENT]
-
-        if last.type == TokenType.GROUP:
-            return [TokenType.NUMBER]
-
-        return []
+        return expected

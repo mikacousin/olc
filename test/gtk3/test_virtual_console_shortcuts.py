@@ -465,3 +465,103 @@ def test_virtual_console_button_labels_and_multiline(app_gui: Application) -> No
 
     vc.close()
     process_events()
+
+
+def test_virtual_console_contract_all_command_prefixes(app_gui: Application) -> None:
+    """Every Virtual Console button matching a valid next token must be sensitive."""
+    from olc.core.parser.tokens import TokenType
+
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+    cmdline = app_gui.core.commandline
+
+    token_to_attr: dict[TokenType, str] = {
+        TokenType.NUMBER: "one",
+        TokenType.SLASH: "slash",
+        TokenType.CHANNEL: "channel",
+        TokenType.CUE: "cue",
+        TokenType.GROUP: "group",
+        TokenType.ADDRESS: "address",
+        TokenType.THRU: "thru",
+        TokenType.PLUS: "plus",
+        TokenType.MINUS: "minus",
+        TokenType.AT: "at_level",
+        TokenType.FULL: "full",
+        TokenType.OUT: "out",
+        TokenType.BLOCK: "block",
+        TokenType.RECORD: "record",
+        TokenType.UPDATE: "update",
+        TokenType.DELETE: "delete",
+        TokenType.GOTO: "goto",
+        TokenType.TIME: "time",
+        TokenType.DELAY: "delay",
+        TokenType.SNEAK: "sneak",
+        TokenType.UNBLOCK: "unblock",
+        TokenType.PARK: "park",
+        TokenType.UNPARK: "unpark",
+        TokenType.CHECK: "check",
+        TokenType.HOME: "home",
+        TokenType.LOCATE: "locate",
+        TokenType.POSITION: "position",
+        TokenType.FOCUS: "focus",
+        TokenType.COLOR: "color",
+        TokenType.BEAM: "beam",
+        TokenType.ALL: "all",
+        TokenType.ODD: "odd",
+        TokenType.EVEN: "even",
+        TokenType.PATCH: "patch",
+        TokenType.UNPATCH: "patch",
+    }
+
+    corpus = (
+        "1 AT 50",
+        "1 THRU 5 + 8 - 3 AT FULL",
+        "1 ODD AT OUT",
+        "ALL AT 25",
+        "CHANNEL 1 AT +10",
+        "GROUP 2 AT -10",
+        "1 CHECK AT 80",
+        "1 AT 50 CHECK",
+        "ADDRESS 1/10 AT 50",
+        "ADDRESS 1/10 PARK AT 50",
+        "ADDRESS 1/10 UNPARK",
+        "ADDRESS 1/10 UNPATCH",
+        "1 PATCH AT 1/10",
+        "1 THRU 4 UNPATCH",
+        "PARK 1 AT 50",
+        "1 PARK AT 50",
+        "1 UNPARK",
+        "CUE 1 RECORD",
+        "RECORD CUE 1 TIME 3/5 DELAY 1 BLOCK",
+        "CUE 1 GOTO TIME 2",
+        "CUE 1 UPDATE",
+        "CUE 1 BLOCK",
+        "CUE 1 UNBLOCK",
+        "CUE 1 DELETE",
+        "1 SNEAK TIME 2",
+        "1 HOME",
+        "HOME POSITION",
+        "1 LOCATE",
+        "1 FOCUS 50",
+    )
+
+    for cmd in corpus:
+        tokens = cmdline.parser.lexer.tokenize(cmd)[:-1]
+        for idx, tok in enumerate(tokens):
+            prefix = " ".join(t.raw_text for t in tokens[:idx])
+            if prefix:
+                prefix += " "
+            cmdline.set_string(prefix)
+            vc.update_button_sensitivity()
+            attr = token_to_attr.get(tok.type)
+            if attr is not None:
+                btn = getattr(vc, attr)
+                assert btn.get_sensitive() is True, (
+                    f"Button {attr!r} disabled for prefix {prefix!r} in {cmd!r}"
+                )
+
+    cmdline.clear()
+    vc.close()
+    process_events()
