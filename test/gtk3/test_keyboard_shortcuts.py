@@ -836,3 +836,22 @@ def test_channel_check_shortcut_and_arrows(app_gui: Application) -> None:
     )
     assert app_gui.core.channel_check is None
     assert app_gui.core.commandline.get_string() == ""
+
+
+@pytest.mark.gui
+def test_commandline_spans_full_window_width(app_gui: Application) -> None:
+    """Verify the commandline bar spans the full window width below the paned."""
+    win = app_gui.window
+    assert win is not None
+    win.resize(1200, 700)
+    process_events()
+
+    assert win.commandline_widget.widget.get_parent() is win.main_box
+    assert win.paned.get_child1() is win.live_view
+    assert win.paned.get_child2() is win.playback
+
+    cmd_width = win.commandline_widget.widget.get_allocated_width()
+    live_width = win.live_view.get_allocated_width()
+    paned_width = win.paned.get_allocated_width()
+    assert cmd_width > live_width
+    assert abs(paned_width - cmd_width) <= 32

@@ -96,7 +96,9 @@ class Window(Gtk.ApplicationWindow):
         self.header.pack_end(box)
         self.set_titlebar(self.header)
 
-        # Paned
+        # Main vertical layout: Paned (LiveView | Playback) above full-width CommandLine
+        self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.paned.set_position(800)
 
@@ -104,19 +106,22 @@ class Window(Gtk.ApplicationWindow):
         self.live_view = LiveView(
             typing.cast("olc.gtk3.window.Window", self), self.tabs_manager
         )
-        self.paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.paned_chan.set_position(1100)
-        self.paned_chan.pack1(self.live_view, resize=True, shrink=False)
-        # Gtk.Statusbar to display keyboard's keys
-        self.commandline_widget = CommandLineWidget(self.app)
-        self.paned_chan.pack2(self.commandline_widget.widget, resize=True, shrink=False)
-        self.paned.pack1(self.paned_chan, resize=True, shrink=False)
+        self.paned.pack1(self.live_view, resize=True, shrink=False)
 
         # Main Playback
         self.playback = MainPlaybackView(self.app)
         self.paned.pack2(self.playback, resize=True, shrink=False)
 
-        self.add(self.paned)
+        self.main_box.pack_start(self.paned, True, True, 0)
+
+        # Command line spanning full window width at the bottom
+        self.commandline_widget = CommandLineWidget(self.app)
+        self.main_box.pack_end(self.commandline_widget.widget, False, True, 0)
+        self.main_box.pack_end(
+            Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0
+        )
+
+        self.add(self.main_box)
 
         self.live_view.connect("page-reordered", self._on_page_reordered, "live")
         self.playback.connect("page-reordered", self._on_page_reordered, "playback")
