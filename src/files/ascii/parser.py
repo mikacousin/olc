@@ -19,7 +19,14 @@ import re
 import typing
 from enum import Enum, auto
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
+from olc.define import (
+    MAX_CHANNELS,
+    MAX_FADER_PAGE,
+    MAX_FADER_PER_PAGE,
+    NB_UNIVERSES,
+    UNIVERSES,
+    string_to_time,
+)
 from olc.files.ascii.eos_devices import (
     build_device_and_definition,
     decode_eos_cue_params,
@@ -46,6 +53,8 @@ class State(Enum):
     NEW_FADER = auto()
     NEW_PERSONALITY = auto()
     NEW_PATCH = auto()
+    NEW_CURVE = auto()
+    NEW_FADERDEF = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
@@ -55,6 +64,8 @@ class State(Enum):
     IN_FADER = auto()
     IN_PERSONALITY = auto()
     IN_PATCH = auto()
+    IN_CURVE = auto()
+    IN_FADERDEF = auto()
 
 
 # pylint: disable=too-many-instance-attributes
@@ -119,6 +130,7 @@ class AsciiParser(ReadFile):
         self.channel_personality: dict[int, int] = {}
         self._registered_fdef_keys: set[tuple[str, str]] = set()
         self._cue_raw_params: dict[int, list[tuple[int, float]]] = {}
+        self.subs: dict[int, dict[str, typing.Any]] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -130,6 +142,9 @@ class AsciiParser(ReadFile):
             "fader": 0,
             "personality": 0,
             "patch_channel": 0,
+            "curve": 0,
+            "sub": 0,
+            "faderdef": -1,
             "utext_active": False,
             "pending_wait": {},
         }
@@ -214,6 +229,18 @@ class AsciiParser(ReadFile):
             self._new_patch()
         elif self.state is State.IN_PATCH:
             self._do_patch_device()
+        elif self.state is State.NEW_CURVE:
+            self._new_curve()
+        elif self.state is State.IN_CURVE:
+            self._do_curve()
+        elif self.state is State.NEW_SUB:
+            self._new_sub()
+        elif self.state is State.IN_SUB:
+            self._do_sub()
+        elif self.state is State.NEW_FADERDEF:
+            self._new_faderdef()
+        elif self.state is State.IN_FADERDEF:
+            self._do_faderdef()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
@@ -488,17 +515,23 @@ class AsciiParser(ReadFile):
         group_number = float(self.args[0])
         self.data["groups"][group_number] = {"label": "", "channels": {}}
         self.current["group"] = group_number
+        self.current["utext_active"] = False
         self.state = State.IN_GROUP
 
     def _do_group(self) -> None:
-        if self.keyword in ("text", "$$text", "$$presettext"):
-            label = " ".join(self.args)
-            self.data["groups"][self.current["group"]]["label"] = label
+        grp = self.data["groups"][self.current["group"]]
+        if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
+            self._apply_label(grp)
         elif self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 level = self._get_level(self.args[index + 1])
-                self.data["groups"][self.current["group"]]["channels"][channel] = level
+                grp["channels"][channel] = level
+        elif self.keyword == "$$chanlist":
+            for arg in self.args:
+                channel = int(arg)
+                if 1 <= channel <= MAX_CHANNELS:
+                    grp["channels"][channel] = 1.0
 
     def _new_fader(self) -> None:
         page = int(self.args[0])
@@ -634,6 +667,127 @@ class AsciiParser(ReadFile):
             dev["model"] = model
             dev["label"] = f"{model} {ch}"
 
+    def _new_curve(self) -> None:
+        if not self.args:
+            self.state = State.NO_PRIMARY
+            return
+        curve_id = int(self.args[0])
+        self.data["curves"][curve_id] = {
+            "type": "SegmentsCurve",
+            "label": "",
+            "points": [],
+            "normalized": False,
+        }
+        self.current["curve"] = curve_id
+        self.current["utext_active"] = False
+        self.state = State.IN_CURVE
+
+    def _do_curve(self) -> None:
+        curve = self.data["curves"].get(self.current["curve"])
+        if curve is None:
+            return
+        if self.keyword in ("text", "$$text", "$$utext"):
+            self._apply_label(curve)
+        elif self.keyword == "$$interpolated":
+            curve["type"] = "InterpolateCurve"
+        elif self.keyword == "$$curvedata":
+            for index in range(0, len(self.args) - 1, 2):
+                x = max(0, min(255, int(self.args[index])))
+                y = max(0, min(255, int(self.args[index + 1])))
+                curve["points"].append([x, y])
+        elif self.keyword == "$$curvepoint" and not curve["points"]:
+            for index in range(0, len(self.args) - 1, 2):
+                x = max(0, min(255, round(float(self.args[index]) * 2.55)))
+                y = max(0, min(255, round(float(self.args[index + 1]) * 2.55)))
+                curve["points"].append([x, y])
+
+    def _new_sub(self) -> None:
+        if not self.args:
+            self.state = State.NO_PRIMARY
+            return
+        sub_id = int(self.args[0])
+        self.subs[sub_id] = {"label": "", "channels": {}}
+        self.current["sub"] = sub_id
+        self.current["utext_active"] = False
+        self.state = State.IN_SUB
+
+    def _do_sub(self) -> None:
+        sub = self.subs.get(self.current["sub"])
+        if sub is None:
+            return
+        if self.keyword in ("text", "$$text", "$$utext"):
+            self._apply_label(sub)
+        elif self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                if channel <= MAX_CHANNELS:
+                    sub["channels"][channel] = self._get_level(self.args[index + 1])
+        elif self.keyword == "$$param" and len(self.args) >= 3:
+            channel = int(self.args[0])
+            if channel <= MAX_CHANNELS and channel not in sub["channels"]:
+                for index in range(1, len(self.args) - 1, 2):
+                    try:
+                        p_id = int(self.args[index])
+                        raw_val = float(self.args[index + 1])
+                    except ValueError:
+                        continue
+                    if p_id == 1:
+                        max_raw = 65535.0 if raw_val > 255.0 else 255.0
+                        sub["channels"][channel] = max(0.0, min(1.0, raw_val / max_raw))
+
+    def _new_faderdef(self) -> None:
+        if not self.args:
+            self.current["faderdef"] = -1
+            self.state = State.NO_PRIMARY
+            return
+        fader_num = int(self.args[0])
+        max_faders = MAX_FADER_PAGE * MAX_FADER_PER_PAGE
+        if not 1 <= fader_num <= max_faders:
+            self.current["faderdef"] = -1
+            self.state = State.IN_FADERDEF
+            return
+        page = ((fader_num - 1) // MAX_FADER_PER_PAGE) + 1
+        number = ((fader_num - 1) % MAX_FADER_PER_PAGE) + 1
+        index = fader_num - 1
+        self.current["faderdef"] = index
+        self.current["faderdef_page"] = page
+        self.current["faderdef_number"] = number
+        self.state = State.IN_FADERDEF
+
+    def _do_faderdef(self) -> None:
+        index = self.current.get("faderdef", -1)
+        if index < 0 or self.keyword != "$$target" or not self.args:
+            return
+        page = int(self.current.get("faderdef_page", 1))
+        number = int(self.current.get("faderdef_number", 1))
+        target_type = self.args[0]
+        if target_type == "s" and len(self.args) >= 2:
+            sub_id = int(self.args[1])
+            sub = self.subs.get(sub_id)
+            if sub and sub["channels"]:
+                self.data["faders"][index] = {
+                    "page": page,
+                    "number": number,
+                    "type": FaderType.CHANNELS,
+                    "contents": dict(sub["channels"]),
+                    "label": sub["label"] or f"Sub {sub_id}",
+                }
+        elif target_type == "cl" and len(self.args) >= 2:
+            seq_id = int(self.args[1])
+            self.data["faders"][index] = {
+                "page": page,
+                "number": number,
+                "type": FaderType.SEQUENCE,
+                "contents": seq_id,
+            }
+        elif target_type == "gm":
+            self.data["faders"][index] = {
+                "page": page,
+                "number": number,
+                "type": FaderType.MAIN,
+                "contents": None,
+            }
+
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:
             self.state = State.NO_PRIMARY
@@ -641,6 +795,10 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_PERSONALITY
         elif self.keyword == "$patch":
             self.state = State.NEW_PATCH
+        elif self.keyword == "$curve":
+            self.state = State.NEW_CURVE
+        elif self.keyword == "$faderdef":
+            self.state = State.NEW_FADERDEF
         elif self.keyword in ("$sequence", "$cuelist", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):

@@ -84,7 +84,7 @@ class ParsedData:
                         break
                 self.data["groups"][index] = {
                     "channels": values.get("contents"),
-                    "label": str(index),
+                    "label": values.get("label") or str(index),
                 }
                 values["type"] = FaderType.GROUP
                 values["contents"] = index
@@ -235,7 +235,7 @@ class ParsedData:
             # Don't create fader for non imported elements
             if (
                 fader_type == FaderType.SEQUENCE
-                and actions["sequences"][contents] is Action.IGNORE
+                and actions["sequences"].get(contents) is Action.IGNORE
             ):
                 continue
             if fader_type == FaderType.GROUP and actions["groups"] is Action.IGNORE:

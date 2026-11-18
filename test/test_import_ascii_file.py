@@ -277,3 +277,114 @@ def test_import_eos_base_nocturne_devices_and_params(
         step.cue is not None and bool(step.cue.device_values)
         for step in lightshow.main_playback.steps
     )
+
+
+def test_import_eos_groups_curves_subs_and_faders(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Test $Group/$$ChanList, $Curve, Sub, and $FaderDef ($$Target S / CL)."""
+    import pathlib
+
+    from olc.show.curve import InterpolateCurve
+    from olc.show.fader import FaderType
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$Curve 901
+   Text IES Square
+   $$Interpolated
+   $$CurveData 0@0 128@130 255@255
+$Patch 1 51365 1 901 1
+$Group 2
+   Text Ghibli
+   $$ChanList 1 2 3
+Sub 6 1
+   Text PAR Anneau
+   Chan 21@Hff 22@H80
+Sub 99 1
+   Text Unused Sub
+   Chan 30@Hff
+$FaderDef 1
+   $$Target S 6
+$FaderDef 2
+   $$Target CL 1
+$CueList 1
+Cue 1 1
+   Chan 1@Hff
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_lot3.asc"
+    asc_file.write_text(asc_content, encoding="utf-8")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # Curve 901 imported as InterpolateCurve and linked to channel 1
+    curve_901 = lightshow.curves.get_curve(901)
+    assert isinstance(curve_901, InterpolateCurve)
+    assert curve_901.name == "IES Square"
+    dev1 = lightshow.patch.get_device(1)
+    assert dev1 is not None and dev1.curve_id == 901
+
+    # $Group 2 imported with channels 1, 2, 3
+    grp2 = lightshow.groups.get(2.0)
+    assert grp2 is not None
+    assert grp2.text == "Ghibli"
+    assert set(grp2.channels.keys()) == {1, 2, 3}
+
+    # Fader 1 -> Sub 6 converted into Group 500+ with preserved label "PAR Anneau"
+    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    fader1_grp = lightshow.fader_bank.faders[1][1].contents
+    assert fader1_grp.text == "PAR Anneau"
+    assert fader1_grp.channels[21] == 1.0
+    assert abs(fader1_grp.channels[22] - (128 / 255.0)) < 0.01
+
+    # Unused Sub 99 must not pollute groups
+    assert lightshow.groups.get(99.0) is None
+
+    # Fader 2 -> CueList 1 (Main Playback)
+    assert lightshow.fader_bank.get_fader_type(1, 2) == FaderType.SEQUENCE
+
+
+def test_import_eos_base_nocturne_groups_curves_and_faders(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify doc/00  Base  Nocturne.asc imports $Group, $Curve, and $FaderDef."""
+    import pathlib
+
+    from olc.show.fader import FaderType
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # $Group 1..40 populated via $$ChanList
+    grp1 = lightshow.groups.get(1.0)
+    assert grp1 is not None and grp1.text == "All Moving"
+    assert len(grp1.channels) == 22
+
+    # $Curve 901 imported
+    c901 = lightshow.curves.get_curve(901)
+    assert c901 is not None and c901.name == "IES Square"
+
+    # $FaderDef 1 -> Sub 6
+    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
