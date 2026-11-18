@@ -169,6 +169,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
     ) -> None:
         """Set a callable (curve_id -> Curve) to resolve curves dynamically."""
         self._curve_provider = provider
+        if provider is not None and self.curve_id != 0 and self.uses_virtual_dimmer:
+            self._apply_virtual_dimmer()
 
     def get_effective_curve(self) -> Optional[Curve]:
         """Resolve effective Curve instance if assigned."""
@@ -418,11 +420,15 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
     def _apply_virtual_dimmer(self, curve: Optional[Curve] = None) -> None:
         """Scale base emitter levels by current intensity (curved if assigned)."""
-        eff_intensity = (
-            float(curve.evaluate_normalized(self._intensity))
-            if curve
-            else self._intensity
-        )
+        active_curve = curve if curve is not None else self.get_effective_curve()
+        if active_curve is not None:
+            try:
+                eff_intensity = float(active_curve.evaluate_normalized(self._intensity))
+            except NotImplementedError:
+                idx = max(0, min(255, round(self._intensity * 255.0)))
+                eff_intensity = float(active_curve.values_array[idx]) / 255.0
+        else:
+            eff_intensity = self._intensity
         for ctype in COLOR_CHANNEL_TYPES:
             base_val = self._base_emitters.get(ctype, 0.0)
             self._set_color_emitter_channels(ctype, base_val * eff_intensity)

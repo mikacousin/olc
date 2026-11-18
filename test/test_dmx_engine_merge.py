@@ -236,6 +236,31 @@ def test_virtual_dimmer_with_curve() -> None:
     assert g_ch is not None and g_ch.value == 128
     assert b_ch is not None and b_ch.value == 128
 
+    # Changing color while intensity is already at 100% must still apply the curve
+    par.set_color_rgb(255, 0, 0)
+    assert r_ch.value == 128
+    assert g_ch.value == 0
+    assert b_ch.value == 0
+
+
+def test_virtual_dimmer_curve_fallback_to_values_array() -> None:
+    """Test virtual dimmer falls back to values_array on NotImplementedError."""
+    import numpy as np
+
+    rgb_def = create_rgb_definition()
+    par = rgb_def.instantiate(
+        fixture_id=6, label="LED Par", universe=1, address=10, mode_name="RGB 3ch"
+    )
+    fallback_curve = MagicMock()
+    fallback_curve.evaluate_normalized.side_effect = NotImplementedError
+    fallback_curve.values_array = np.full(256, 64, dtype=np.uint8)
+    par.set_curve(fallback_curve)
+    par.set_color_rgb(255, 255, 255)
+    par.set_intensity(1.0)
+
+    r_ch = par.get_channel(ChannelType.RED)
+    assert r_ch is not None and r_ch.value == 64
+
 
 def test_patch_dimmer_attaches_curve() -> None:
     """Test that PatchManager.patch_dimmer connects curve_id and provider."""
