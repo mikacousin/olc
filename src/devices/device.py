@@ -1205,6 +1205,13 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             self.set_iris(float(value))
         elif p_lower in ("gobo", "gobo_wheel"):
             self._apply_gobo_param(value)
+        else:
+            try:
+                ctype = ChannelType(p_lower)
+            except ValueError:
+                return
+            if self.get_channel(ctype) is not None:
+                self.set_parameter_normalized(ctype, max(0.0, min(1.0, float(value))))
 
     def apply_device_values(self, values: dict[str, Any]) -> None:
         """Apply a batch of parameter values to this device."""

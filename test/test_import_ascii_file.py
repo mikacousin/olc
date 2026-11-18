@@ -155,3 +155,125 @@ def test_import_eos_base_nocturne_cuelists_and_labels(
     assert seqs[3]["mode"] == "normal"
     assert "!!!" in seqs[1]["cues"][99.0]["label"]
     assert "→" in seqs[1]["cues"][106.0]["label"]
+
+
+def test_import_eos_personalities_patch_and_cue_params(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Test $ParamType, $Personality, $Patch (16-bit & virtual dimmer), and $$Param."""
+    import pathlib
+
+    from olc.devices.channel import ChannelType, FixtureType
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$ParamType 12 3 Red
+$ParamType 13 3 Green
+$ParamType 14 3 Blue
+$ParamType 79 5 Zoom
+$Personality 100
+   $$Manuf Ayrton
+   $$Model Spot_Test
+   $$Footprint 6
+   $$PersChan 1 1 1 0 0
+   $$PersSlot 0 255 0 0.0 100.0 %
+   $$PersChan 2 2 2 3 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 D
+   $$PersChan 3 2 4 5 32768
+   $$PersSlot 0 65535 32768 -130.0 130.0 D
+   $$PersChan 79 1 6 0 128
+   $$PersSlot 0 255 128 10.0 50.0 D
+$Personality 200
+   $$Manuf Cameo
+   $$Model RGB_Test
+   $$Footprint 3
+   $$VirtualInt
+   $$PersChan 12 1 1 0 255
+   $$PersChan 13 1 2 0 255
+   $$PersChan 14 1 3 0 255
+Patch 1 21<31@Hff
+$Patch 1 100 513 0 1
+   $$Pers Spot_Test
+$Patch 2 200 10 0 1
+   $$Pers RGB_Test
+$CueList 1
+Cue 1 1
+   Chan 1@Hff 2@H80 21@Hff
+   $$Param 1 1@255 2@32768 3@65535 79@128
+   $$Param 2 12@255 13@0
+   $$Param 2 14@128
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_devices.asc"
+    asc_file.write_text(asc_content, encoding="utf-8")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # Patch has Moving Head (ch 1), Virtual Dimmer LED (ch 2), and Dimmer (ch 21)
+    dev1 = lightshow.patch.get_device(1)
+    dev2 = lightshow.patch.get_device(2)
+    dev21 = lightshow.patch.get_device(21)
+    assert dev1 is not None
+    assert dev1.fixture_type is FixtureType.MOVING_HEAD
+    pan_ch = dev1.get_channel(ChannelType.PAN)
+    assert pan_ch is not None
+    assert pan_ch.universe == 2 and pan_ch.address == 2
+    pan_channels = [c for c in dev1.channels if c.channel_type is ChannelType.PAN]
+    assert len(pan_channels) == 2 and pan_channels[1].fine is True
+
+    assert dev2 is not None
+    assert dev2.fixture_type is FixtureType.LED_PAR
+    assert dev2.uses_virtual_dimmer is True
+
+    assert dev21 is not None
+    assert dev21.fixture_type is FixtureType.DIMMER
+
+    # Cue 1 device_values decoded properly
+    cue1 = lightshow.main_playback.steps[1].cue
+    assert cue1 is not None
+    assert abs(cue1.device_values[1]["pan"] - 0.0) < 0.1
+    assert abs(cue1.device_values[1]["tilt"] - 130.0) < 0.1
+    assert abs(cue1.device_values[1]["zoom"] - 30.0) < 0.2
+    assert cue1.device_values[2]["color"] == "#ff0080"
+
+
+def test_import_eos_base_nocturne_devices_and_params(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify doc/00  Base  Nocturne.asc imports all moving/LED devices and $$Param."""
+    import pathlib
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # Moving heads 1..5 (Ghibli / Diablo), LEDs 41.., conventionals (21.., 31.., 60)
+    for ch in (1, 2, 3, 4, 5, 21, 31, 41, 60):
+        assert lightshow.patch.get_device(ch) is not None
+    assert any(
+        step.cue is not None and bool(step.cue.device_values)
+        for step in lightshow.main_playback.steps
+    )

@@ -20,6 +20,11 @@ import typing
 from enum import Enum, auto
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
+from olc.files.ascii.eos_devices import (
+    build_device_and_definition,
+    decode_eos_cue_params,
+    is_dimmer_personality,
+)
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
 from olc.show.fader import FaderType
@@ -39,6 +44,8 @@ class State(Enum):
     NEW_MPRIMARY = auto()
     NEW_PRESET = auto()
     NEW_FADER = auto()
+    NEW_PERSONALITY = auto()
+    NEW_PATCH = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
@@ -46,6 +53,8 @@ class State(Enum):
     IN_INDEPENDENT = auto()
     IN_PRESET = auto()
     IN_FADER = auto()
+    IN_PERSONALITY = auto()
+    IN_PATCH = auto()
 
 
 # pylint: disable=too-many-instance-attributes
@@ -69,7 +78,15 @@ class AsciiParser(ReadFile):
         self.data = imported.data.data
         self.default_time = default_time
         self.tokens = {
-            "basic": ("clear", "console", "ident", "manufacturer", "patch", "set"),
+            "basic": (
+                "clear",
+                "console",
+                "ident",
+                "manufacturer",
+                "patch",
+                "set",
+                "$paramtype",
+            ),
             "cue": (
                 "chan",
                 "down",
@@ -80,6 +97,7 @@ class AsciiParser(ReadFile):
                 "up",
                 "$$block",
                 "$$dwell",
+                "$$param",
                 "$$parttime",
                 "$$parttimechan",
                 "$$presettext",
@@ -96,6 +114,11 @@ class AsciiParser(ReadFile):
         self.state = State.START
         self.keyword = ""
         self.args = []
+        self.param_types: dict[int, str] = {}
+        self.personalities: dict[int, dict[str, typing.Any]] = {}
+        self.channel_personality: dict[int, int] = {}
+        self._registered_fdef_keys: set[tuple[str, str]] = set()
+        self._cue_raw_params: dict[int, list[tuple[int, float]]] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -105,6 +128,8 @@ class AsciiParser(ReadFile):
             "independent": 0,
             "preset": 0.0,
             "fader": 0,
+            "personality": 0,
+            "patch_channel": 0,
             "utext_active": False,
             "pending_wait": {},
         }
@@ -181,6 +206,14 @@ class AsciiParser(ReadFile):
             self._new_fader()
         elif self.state is State.IN_FADER:
             self._do_fader()
+        elif self.state is State.NEW_PERSONALITY:
+            self._new_personality()
+        elif self.state is State.IN_PERSONALITY:
+            self._do_personality()
+        elif self.state is State.NEW_PATCH:
+            self._new_patch()
+        elif self.state is State.IN_PATCH:
+            self._do_patch_device()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
@@ -198,6 +231,8 @@ class AsciiParser(ReadFile):
         elif self.keyword == "set":
             # Not implemented
             pass
+        elif self.keyword == "$paramtype" and len(self.args) >= 3:
+            self.param_types[int(self.args[0])] = self.args[2]
 
     def _do_patch(self) -> None:
         # self.args[0] is Page Patch, not used
@@ -346,6 +381,7 @@ class AsciiParser(ReadFile):
         }
         self.current["cue"] = cue_number
         self.current["utext_active"] = False
+        self._cue_raw_params = {}
         self.state = State.IN_CUE
 
     def _do_cue(self) -> None:
@@ -400,6 +436,27 @@ class AsciiParser(ReadFile):
             )
         elif self.keyword == "$$block":
             cue["is_block"] = True
+        elif self.keyword == "$$param" and len(self.args) >= 3:
+            channel = int(self.args[0])
+            if channel <= MAX_CHANNELS:
+                raw_list = self._cue_raw_params.setdefault(channel, [])
+                for index in range(1, len(self.args) - 1, 2):
+                    try:
+                        p_id = int(self.args[index])
+                        raw_val = float(self.args[index + 1])
+                    except ValueError:
+                        # Palette references (e.g. cp106, fp12, bp5) are skipped for now
+                        continue
+                    raw_list.append((p_id, raw_val))
+                pers_id = self.channel_personality.get(channel)
+                pers = self.personalities.get(pers_id) if pers_id is not None else None
+                dev_vals, intensity_val = decode_eos_cue_params(
+                    raw_list, pers, self.param_types
+                )
+                if dev_vals:
+                    cue.setdefault("device_values", {})[channel] = dev_vals
+                if intensity_val is not None and channel not in cue["channels"]:
+                    cue["channels"][channel] = intensity_val
         elif self.keyword == "$$parttime":
             delay = string_to_time(self.args[0])
             time = string_to_time(self.args[1])
@@ -482,9 +539,108 @@ class AsciiParser(ReadFile):
             return int(level[1:], 16) / 255.0
         return float(level) / 100.0
 
+    def _new_personality(self) -> None:
+        pers_id = int(self.args[0])
+        self.personalities[pers_id] = {
+            "manufacturer": "",
+            "model": f"Personality {pers_id}",
+            "dcid": "",
+            "footprint": 1,
+            "virtual_int": False,
+            "channels": [],
+        }
+        self.current["personality"] = pers_id
+        self.state = State.IN_PERSONALITY
+
+    def _do_personality(self) -> None:
+        pers = self.personalities.get(self.current["personality"])
+        if pers is None:
+            return
+        if self.keyword == "$$manuf" and self.args:
+            pers["manufacturer"] = " ".join(self.args)
+        elif self.keyword == "$$model" and self.args:
+            pers["model"] = " ".join(self.args)
+        elif self.keyword == "$$dcid" and self.args:
+            pers["dcid"] = self.args[0]
+        elif self.keyword == "$$footprint" and self.args:
+            pers["footprint"] = int(self.args[0])
+        elif self.keyword == "$$virtualint":
+            pers["virtual_int"] = True
+        elif self.keyword == "$$perschan" and len(self.args) >= 5:
+            pers["channels"].append(
+                {
+                    "param_id": int(self.args[0]),
+                    "bytes": int(self.args[1]),
+                    "offset_coarse": int(self.args[2]),
+                    "offset_fine": int(self.args[3]),
+                    "default": int(self.args[4]),
+                    "phys_min": 0.0,
+                    "phys_max": 1.0,
+                    "slots": 0,
+                }
+            )
+        elif self.keyword == "$$persslot" and len(self.args) >= 5 and pers["channels"]:
+            ch_def = pers["channels"][-1]
+            p_min = float(self.args[3])
+            p_max = float(self.args[4])
+            if ch_def["slots"] == 0:
+                ch_def["phys_min"] = p_min
+                ch_def["phys_max"] = p_max
+            else:
+                ch_def["phys_min"] = min(ch_def["phys_min"], p_min)
+                ch_def["phys_max"] = max(ch_def["phys_max"], p_max)
+            ch_def["slots"] += 1
+
+    def _new_patch(self) -> None:
+        if len(self.args) < 3:
+            self.state = State.NO_PRIMARY
+            return
+        channel = int(self.args[0])
+        pers_id = int(self.args[1])
+        dmx_addr = int(self.args[2])
+        curve_id = int(self.args[3]) if len(self.args) > 3 else 0
+
+        if channel > MAX_CHANNELS or dmx_addr < 1:
+            self.state = State.NO_PRIMARY
+            return
+
+        self.channel_personality[channel] = pers_id
+        self.current["patch_channel"] = channel
+        pers = self.personalities.get(pers_id)
+
+        if pers is None or is_dimmer_personality(pers, self.param_types):
+            self._add_patch(channel, dmx_addr, 1.0)
+            if curve_id and channel in self.data["patch"]:
+                self.data["patch"][channel][-1]["curve"] = curve_id
+        else:
+            built = build_device_and_definition(
+                channel, pers_id, dmx_addr, curve_id, pers, self.param_types
+            )
+            if built is not None:
+                device_dict, fdef_dict = built
+                self.data.setdefault("devices", {})[channel] = device_dict
+                key = (fdef_dict["manufacturer"], fdef_dict["model"])
+                if key not in self._registered_fdef_keys:
+                    self._registered_fdef_keys.add(key)
+                    self.data.setdefault("fixture_definitions", []).append(fdef_dict)
+
+        self.state = State.IN_PATCH
+
+    def _do_patch_device(self) -> None:
+        ch = self.current.get("patch_channel", 0)
+        dev = self.data.get("devices", {}).get(ch)
+        if dev is not None and self.keyword == "$$pers" and self.args:
+            model = " ".join(self.args)
+            dev["model"] = model
+            dev["label"] = f"{model} {ch}"
+
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:
             self.state = State.NO_PRIMARY
+        elif self.keyword == "$personality":
+            self.state = State.NEW_PERSONALITY
+        elif self.keyword == "$patch":
+            self.state = State.NEW_PATCH
         elif self.keyword in ("$sequence", "$cuelist", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):

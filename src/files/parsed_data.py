@@ -159,8 +159,9 @@ class ParsedData:
         """Import data patch and lighting devices."""
         self.import_fixture_definitions()
         devices_data = self.data.get("devices")
+        imported_dev_ids: set[int] = set()
         if devices_data:
-            for dev_dict in devices_data.values():
+            for dev_id, dev_dict in devices_data.items():
                 if not isinstance(dev_dict, dict):
                     continue
                 device = LightingDevice.from_dict(dev_dict)
@@ -176,10 +177,12 @@ class ParsedData:
                     if fdef is not None and fdef.color_profile is not None:
                         device.color_profile = fdef.color_profile
                 self.lightshow.patch.restore_device(device)
+                imported_dev_ids.add(int(dev_id))
             self.lightshow.patch.invalidate_cache()
-            return
 
         for channel, values in self.data["patch"].items():
+            if int(channel) in imported_dev_ids:
+                continue
             for out in values:
                 output = out["output"]
                 universe = out["universe"]
