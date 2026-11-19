@@ -34,7 +34,7 @@ def test_show_new_resets_show_state() -> None:
 
     # Setup non-default state
     app.lightshow.cues.add(Cue(1, 3.0))
-    app.lightshow.groups.add(Group(index=1.0, channels={1: 255}))
+    app.lightshow.groups.add(Group(index=1.0, channels=[1]))
     app.lightshow.file_path = "/tmp/test.olc"
     app.lightshow.basename = "test.olc"
     app.lightshow.set_modified()
@@ -173,7 +173,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     app = CoreApplication(settings)
 
     app.lightshow.cues.add(Cue(1, 2.5))
-    app.lightshow.groups.add(Group(index=1.0, channels={1: 1.0, 2: 0.5}))
+    app.lightshow.groups.add(Group(index=1.0, channels=[3, 1, 2]))
     app.action_registry.execute("patch.add_outputs", [(5, 20, 1, 0)])
 
     save_path = str(tmp_path / "test_show.olc")
@@ -195,7 +195,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     assert app2.lightshow.modified is False
     group = app2.lightshow.groups.get(1.0)
     assert group is not None
-    assert group.channels == {1: 1.0, 2: 0.5}
+    assert group.channels == [3, 1, 2]
     assert app2.lightshow.patch.get_output_info(1, 20) == (5, 0)
 
 
@@ -271,7 +271,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     # Initial state
-    app.lightshow.groups.add(Group(index=99.0, channels={1: 100}, text="Initial Group"))
+    app.lightshow.groups.add(Group(index=99.0, channels=[1], text="Initial Group"))
     app.lightshow.cues.add(Cue(1, 99.0, channels={1: 50}, text="Initial Cue"))
     app.lightshow.patch.add_output(1, 47, 1)
     app.lightshow.set_not_modified()

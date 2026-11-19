@@ -226,11 +226,15 @@ class CommandExecutor:
 
         if isinstance(item, GroupSelectionNode):
             if hasattr(self.app, "lightshow") and self.app.lightshow:
-                groups = getattr(self.app.lightshow, "groups", {})
-                if item.group_id in groups:
-                    grp = groups[item.group_id]
+                groups = getattr(self.app.lightshow, "groups", None)
+                grp = None
+                if isinstance(groups, dict):
+                    grp = groups.get(item.group_id) or groups.get(float(item.group_id))
+                elif groups is not None and hasattr(groups, "get"):
+                    grp = groups.get(float(item.group_id))
+                if grp is not None:
                     channels = getattr(grp, "channels", [])
-                    return {ch for ch in channels if 1 <= ch <= MAX_CHANNELS}
+                    return {int(ch) for ch in channels if 1 <= int(ch) <= MAX_CHANNELS}
             return set()
 
         if isinstance(item, AllSelectionNode):

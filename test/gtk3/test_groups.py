@@ -40,8 +40,8 @@ def test_group_tab_behavior(app_gui: Application) -> None:
     """Test GroupTab selection, rename, and undo/redo."""
     # 1. Populate groups
     app_gui.core.lightshow.groups.clear()
-    app_gui.core.lightshow.groups.add(Group(1.0, {}, "Group A"))
-    app_gui.core.lightshow.groups.add(Group(2.0, {}, "Group B"))
+    app_gui.core.lightshow.groups.add(Group(1.0, [], "Group A"))
+    app_gui.core.lightshow.groups.add(Group(2.0, [], "Group B"))
 
     # 2. Open groups tab
     app_gui.activate_action("groups", None)
@@ -135,7 +135,7 @@ def test_group_tab_channel_selection(app_gui: Application) -> None:
     """
     # 1. Set up a group and open the tab
     app_gui.core.lightshow.groups.clear()
-    app_gui.core.lightshow.groups.add(Group(1.0, {1: 200, 2: 150, 3: 100}, "G1"))
+    app_gui.core.lightshow.groups.add(Group(1.0, [1, 2, 3], "G1"))
 
     app_gui.activate_action("groups", None)
     process_events()
@@ -204,3 +204,13 @@ def test_group_tab_channel_selection(app_gui: Application) -> None:
     process_events()
     assert selection_manager.selected_channels == []
     assert selection_manager.last_selected_channel is None
+
+    # 8. Select channels 1 and 3 and press U to update group channels
+    commandline.set_string("1")
+    channels_view.select_channel()
+    commandline.set_string("3")
+    channels_view.select_plus()
+    process_events()
+    group_tab._keypress_u()
+    process_events()
+    assert app_gui.core.lightshow.groups[0].channels == [1, 3]

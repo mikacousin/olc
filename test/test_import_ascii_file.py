@@ -286,7 +286,8 @@ def test_import_eos_groups_curves_subs_and_faders(
     import pathlib
 
     from olc.show.curve import InterpolateCurve
-    from olc.show.fader import FaderType
+    from olc.show.fader import FaderPreset, FaderType
+    from olc.show.palette import PaletteCategory
 
     mock_app = MagicMock()
     monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
@@ -302,7 +303,7 @@ $Curve 901
 $Patch 1 51365 1 901 1
 $Group 2
    Text Ghibli
-   $$ChanList 1 2 3
+   $$ChanList 3 1 2
 Sub 6 1
    Text PAR Anneau
    Chan 21@Hff 22@H80
@@ -335,24 +336,75 @@ EndData
     dev1 = lightshow.patch.get_device(1)
     assert dev1 is not None and dev1.curve_id == 901
 
-    # $Group 2 imported with channels 1, 2, 3
+    # $Group 2 imported as ordered pure channel list [3, 1, 2]
     grp2 = lightshow.groups.get(2.0)
     assert grp2 is not None
     assert grp2.text == "Ghibli"
-    assert set(grp2.channels.keys()) == {1, 2, 3}
+    assert grp2.channels == [3, 1, 2]
+    assert not any(g.index >= 500 for g in lightshow.groups)
 
-    # Fader 1 -> Sub 6 converted into Group 500+ with preserved label "PAR Anneau"
-    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
-    fader1_grp = lightshow.fader_bank.faders[1][1].contents
-    assert fader1_grp.text == "PAR Anneau"
-    assert fader1_grp.channels[21] == 1.0
-    assert abs(fader1_grp.channels[22] - (128 / 255.0)) < 0.01
+    # Fader 1 -> Sub 6 imported as Preset 6 with FaderType.PRESET (no 500+ groups)
+    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+    fader1 = lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader1, FaderPreset)
+    preset6 = lightshow.palettes.get(PaletteCategory.PRESET, 6.0)
+    assert preset6 is not None
+    assert fader1.contents is preset6
+    assert preset6.text == "PAR Anneau"
+    assert preset6.channels[21] == 1.0
+    assert abs(preset6.channels[22] - (128 / 255.0)) < 0.01
 
-    # Unused Sub 99 must not pollute groups
+    # Unused Sub 99 must not pollute groups or palettes
     assert lightshow.groups.get(99.0) is None
+    assert lightshow.palettes.get(PaletteCategory.PRESET, 99.0) is None
 
     # Fader 2 -> CueList 1 (Main Playback)
     assert lightshow.fader_bank.get_fader_type(1, 2) == FaderType.SEQUENCE
+
+
+def test_import_legacy_ascii_groups_and_faders_migration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify sample.asc groups/faders migrate to list[int] + Presets."""
+    from olc.show.fader import FaderPreset, FaderType
+    from olc.show.palette import PaletteCategory
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(lightshow, gfile, FileType.ASCII)
+    imported.parse_sync(auto_import=True)
+
+    # Legacy groups retain ordered channel lists without levels
+    grp1 = lightshow.groups.get(1.0)
+    assert grp1 is not None and grp1.channels == [1, 2]
+    grp3 = lightshow.groups.get(3.0)
+    assert grp3 is not None and grp3.channels == [13, 17, 36, 40]
+    assert not any(g.index >= 500 for g in lightshow.groups)
+
+    # Migrated presets keep levels and bind to FaderType.PRESET
+    preset3 = lightshow.palettes.get(PaletteCategory.PRESET, 3.0)
+    preset5 = lightshow.palettes.get(PaletteCategory.PRESET, 5.0)
+    preset101 = lightshow.palettes.get(PaletteCategory.PRESET, 101.0)
+    preset104 = lightshow.palettes.get(PaletteCategory.PRESET, 104.0)
+    assert preset3 is not None and preset5 is not None
+    assert preset101 is not None and preset104 is not None
+
+    assert lightshow.fader_bank.get_fader_type(1, 4) == FaderType.PRESET
+    assert lightshow.fader_bank.faders[1][4].contents is preset3
+
+    # Group 5 and Cue 5 both exist in sample.asc -> Fader 6 must resolve Preset 5
+    assert lightshow.fader_bank.get_fader_type(1, 6) == FaderType.PRESET
+    fader6 = lightshow.fader_bank.faders[1][6]
+    assert isinstance(fader6, FaderPreset)
+    assert fader6.contents is preset5
+
+    assert lightshow.fader_bank.get_fader_type(1, 10) == FaderType.PRESET
+    assert lightshow.fader_bank.faders[1][10].contents is preset101
+    assert lightshow.fader_bank.get_fader_type(2, 10) == FaderType.PRESET
+    assert lightshow.fader_bank.faders[2][10].contents is preset104
 
 
 def test_import_eos_base_nocturne_groups_curves_and_faders(
@@ -362,6 +414,7 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     import pathlib
 
     from olc.show.fader import FaderType
+    from olc.show.palette import PaletteCategory
 
     asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
     if not asc_path.exists():
@@ -377,14 +430,21 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     )
     imported.parse_sync(auto_import=True)
 
-    # $Group 1..40 populated via $$ChanList
+    # 7 $Group entries populated via $$ChanList preserving order
+    assert len(lightshow.groups) == 7
     grp1 = lightshow.groups.get(1.0)
     assert grp1 is not None and grp1.text == "All Moving"
     assert len(grp1.channels) == 22
+    grp2 = lightshow.groups.get(2.0)
+    assert grp2 is not None and grp2.channels == [3, 1, 2]
+    assert not any(g.index >= 500 for g in lightshow.groups)
 
     # $Curve 901 imported
     c901 = lightshow.curves.get_curve(901)
     assert c901 is not None and c901.name == "IES Square"
 
-    # $FaderDef 1 -> Sub 6
-    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    # $FaderDef 1 -> Sub 6 imported as Preset 6 with FaderType.PRESET
+    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+    preset6 = lightshow.palettes.get(PaletteCategory.PRESET, 6.0)
+    assert preset6 is not None
+    assert lightshow.fader_bank.faders[1][1].contents is preset6

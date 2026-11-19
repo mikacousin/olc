@@ -20,37 +20,71 @@ from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
 from olc.show.cue import Cue
-from olc.show.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
-from olc.show.group import Group
+from olc.show.fader import FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.palette import Palette, PaletteCategory
 from olc.show.sequence import Sequence
 
 
-def test_fader_assign_group() -> None:
-    """FaderAssignAction assigns a Group to a fader and is undoable."""
+def test_fader_assign_preset_palette() -> None:
+    """FaderAssignAction assigns a Preset palette to a FaderPreset and is undoable."""
+    import pytest
+
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    group = Group(1.0, {1: 200, 2: 150}, "G1")
-    app.lightshow.groups.add(group)
+    preset = Palette(
+        category=PaletteCategory.PRESET,
+        number=1.0,
+        text="Preset 1",
+        channels={1: 0.8, 2: 0.5},
+    )
+    app.lightshow.palettes.add(preset)
 
     # Initial state: fader 1 page 1 is NONE
     assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
 
-    # Assign group 1 to fader page=1, index=1
-    app.action_registry.execute("fader.assign", 1, 1, FaderType.GROUP, 1.0)
+    # Assign preset 1 to fader page=1, index=1
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.PRESET, 1.0)
 
-    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
     fader = app.lightshow.fader_bank.faders[1][1]
-    assert isinstance(fader, FaderGroup)
-    assert fader.contents is group
+    assert isinstance(fader, FaderPreset)
+    assert fader.contents is preset
+    assert fader.channels == {1, 2}
+
+    fader.set_level(0.5)
+    assert fader.dmx[0] == pytest.approx(0.4)
+    assert fader.dmx[1] == pytest.approx(0.25)
 
     # Undo → back to NONE
     app.history.undo()
     assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
 
-    # Redo → GROUP again
+    # Redo → PRESET again
     app.history.redo()
-    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+    assert app.lightshow.fader_bank.faders[1][1].contents is preset
+
+
+def test_fader_assign_preset_prefers_palette_over_cue() -> None:
+    """When Preset N and Cue N both exist, FaderType.PRESET prefers the Preset."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    cue5 = Cue(0, 5.0, {1: 1.0}, "Cue 5")
+    app.lightshow.cues.append(cue5)
+    preset5 = Palette(
+        category=PaletteCategory.PRESET,
+        number=5.0,
+        text="Sub 5",
+        channels={2: 0.6},
+    )
+    app.lightshow.palettes.add(preset5)
+
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.PRESET, 5.0)
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderPreset)
+    assert fader.contents is preset5
 
 
 def test_fader_assign_preset() -> None:
@@ -125,23 +159,28 @@ def test_fader_clear() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    group = Group(1.0, {1: 200}, "G1")
-    app.lightshow.groups.add(group)
+    preset = Palette(
+        category=PaletteCategory.PRESET,
+        number=1.0,
+        text="P1",
+        channels={1: 0.8},
+    )
+    app.lightshow.palettes.add(preset)
 
-    # First assign a group
-    app.action_registry.execute("fader.assign", 1, 1, FaderType.GROUP, 1.0)
-    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    # First assign a preset
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.PRESET, 1.0)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
 
     # Now clear it
     app.action_registry.execute("fader.clear", 1, 1)
     assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
 
-    # Undo clear → GROUP restored
+    # Undo clear → PRESET restored
     app.history.undo()
-    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
     fader = app.lightshow.fader_bank.faders[1][1]
-    assert isinstance(fader, FaderGroup)
-    assert fader.contents is group
+    assert isinstance(fader, FaderPreset)
+    assert fader.contents is preset
 
     # Redo clear → NONE again
     app.history.redo()

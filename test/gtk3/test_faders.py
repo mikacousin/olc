@@ -27,7 +27,7 @@ from gi.repository import Gdk, Gtk  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.fader import FaderEdit, FaderTab  # noqa: E402
 from olc.show.fader_bank import FaderType  # noqa: E402
-from olc.show.group import Group  # noqa: E402
+from olc.show.palette import Palette, PaletteCategory  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
@@ -68,9 +68,11 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
     assert fader_edit is not None, "FaderEdit for page 1, index 1 not found"
     assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
 
-    # 3. Configure fader 1 as GROUP fader
-    app_gui.core.lightshow.groups.clear()
-    app_gui.core.lightshow.groups.add(Group(1.0, {}, "Group A"))
+    # 3. Configure fader 1 as PRESET fader
+    app_gui.core.lightshow.palettes.clear()
+    app_gui.core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 1.0, "Preset A", channels={1: 1.0})
+    )
     process_events()
 
     assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
@@ -79,21 +81,21 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
         is None
     )
 
-    # Setting type to GROUP
-    fader_edit._on_type_changed(Gtk.ModelButton(), FaderType.GROUP)
+    # Setting type to PRESET
+    fader_edit._on_type_changed(Gtk.ModelButton(), FaderType.PRESET)
     process_events()
-    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
     assert (
         getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
         is None
     )
 
-    # Setting contents to Group 1.0
+    # Setting contents to Preset 1.0
     mock_button = Gtk.ModelButton()
-    mock_button.set_label("1.0 : Group A")
-    fader_edit._on_contents_changed(mock_button, FaderType.GROUP, 1.0)
+    mock_button.set_label("1 : Preset A")
+    fader_edit._on_contents_changed(mock_button, FaderType.PRESET, 1.0)
     process_events()
-    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
     assert (
         getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
         is not None
@@ -103,12 +105,14 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
     app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.5
 
-    # 4. Change contents to Group B (2.0)
-    app_gui.core.lightshow.groups.add(Group(2.0, {}, "Group B"))
+    # 4. Change contents to Preset B (2.0)
+    app_gui.core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 2.0, "Preset B", channels={2: 1.0})
+    )
     process_events()
     mock_button2 = Gtk.ModelButton()
-    mock_button2.set_label("2.0 : Group B")
-    fader_edit._on_contents_changed(mock_button2, FaderType.GROUP, 2.0)
+    mock_button2.set_label("2 : Preset B")
+    fader_edit._on_contents_changed(mock_button2, FaderType.PRESET, 2.0)
     process_events()
 
     # The fader level is reset to 0 upon content change
@@ -117,22 +121,22 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
         app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None
     )
     assert contents_b is not None
-    assert contents_b.index == 2.0
+    assert contents_b.number == 2.0
 
     # Raise the fader again to 50%
     app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
 
-    # 5. First Ctrl+Z (reverts contents to Group A)
+    # 5. First Ctrl+Z (reverts contents to Preset A)
     app_gui.activate_action("undo", None)
     process_events()
-    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
-    # The level must be reset to 0 because content changed back to Group A (1.0)
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+    # The level must be reset to 0 because content changed back to Preset A (1.0)
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
     contents_a = getattr(
         app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None
     )
     assert contents_a is not None
-    assert contents_a.index == 1.0
+    assert contents_a.number == 1.0
 
     # Raise the fader again to 50%
     app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
@@ -140,7 +144,7 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
     # 6. Second Ctrl+Z (reverts contents to None)
     app_gui.activate_action("undo", None)
     process_events()
-    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
     assert (
         getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
@@ -177,13 +181,15 @@ def test_fader_set_level_action(app_gui: Application) -> None:
     assert logical_fader.level == 0.0
     assert gui_fader_widget.get_value() == 0.0
 
-    # 2. Configure fader 1 contents as Group 1 (levels: {1: 255})
-    app_gui.core.lightshow.groups.clear()
-    app_gui.core.lightshow.groups.add(Group(1.0, {1: 255}, "Group A"))
-    app_gui.core.lightshow.fader_bank.set_fader(1, 1, FaderType.GROUP, 1.0)
+    # 2. Configure fader 1 contents as Preset 1 (channels: {1: 1.0})
+    app_gui.core.lightshow.palettes.clear()
+    app_gui.core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 1.0, "Preset A", channels={1: 1.0})
+    )
+    app_gui.core.lightshow.fader_bank.set_fader(1, 1, FaderType.PRESET, 1.0)
     process_events()
 
-    # Re-evaluate logical_fader as it has been replaced with a FaderGroup instance
+    # Re-evaluate logical_fader as it has been replaced with a FaderPreset instance
     logical_fader = app_gui.core.lightshow.fader_bank.faders[1][1]
     assert logical_fader.level == 0.0
     assert logical_fader.dmx[0] == 0
@@ -195,8 +201,8 @@ def test_fader_set_level_action(app_gui: Application) -> None:
     # 4. Assert passive updates
     # A. Model level updated to 0.8
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.8
-    # B. DMX output reflects change (channel 1 is at 80% * 255 = 204)
-    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == 204
+    # B. DMX output reflects normalized change (channel 1 is at 80% -> 0.8)
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == pytest.approx(0.8)
     # C. GUI fader widget value updated to 0.8 * 255 = 204
     assert gui_fader_widget.get_value() == 204.0
 
@@ -208,9 +214,7 @@ def test_fader_set_level_action(app_gui: Application) -> None:
 
     # Model and DMX must reflect 50%
     assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.5
-    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == pytest.approx(
-        127.5
-    )  # 0.5 * 255 continuous float
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == pytest.approx(0.5)
 
     # Close Virtual Console window
     app_gui.virtual_console.close()

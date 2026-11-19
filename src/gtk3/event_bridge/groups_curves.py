@@ -20,10 +20,8 @@ import typing
 
 from gi.repository import Gtk
 
-from olc.gtk3.fader import FaderTab
 from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.show.curve import LimitCurve, PointsCurve
-from olc.show.fader import FaderType
 from olc.show.independent import IndependentType
 
 from .base import BaseEventBridgeHandler
@@ -49,10 +47,6 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         )
         self.app.core.subscribe(
             "group.deleted", lambda g: self._run_idle(self._on_group_deleted, g)
-        )
-        self.app.core.subscribe(
-            "group_editor.changed",
-            lambda index: self._run_idle(self._safe_refresh_group_editor, index),
         )
         self.app.core.subscribe(
             "group.selected_changed",
@@ -99,7 +93,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         return False
 
     def _on_group_updated(self, group: Group) -> bool:
-        """Update group UI, fader text, virtual console, and midi LCD on group update.
+        """Update group UI on group update.
 
         Args:
             group: Group instance updated.
@@ -109,17 +103,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         """
         self._safe_refresh_groups()
 
-        # Update fader text, virtual console and MIDI LCD if needed
         text = group.text
-        fader_bank = self.app.core.lightshow.fader_bank
-        for page, faders in fader_bank.faders.items():
-            for fader in faders.values():
-                if fader.contents is group:
-                    fader.text = text
-                    # Update Virtual Console
-                    if self.app.virtual_console and page == fader_bank.active_page:
-                        self.app.virtual_console.flashes[fader.index - 1].label = text
-
         # Update the widgets in the GroupTab if we renamed
         if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
             group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
@@ -133,22 +117,6 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
                 ):
                     typing.cast("GroupWidget", group_widget).name = text
                     group_widget.queue_draw()
-        return False
-
-    def _safe_refresh_group_editor(self, index: float) -> bool:
-        """Refresh the channel view in groups tab when temporary overrides change.
-
-        Args:
-            index: Group index.
-
-        Returns:
-            Always False.
-        """
-        if self.app.tabs:
-            if self.app.tabs.tabs.get("groups") is not None:
-                group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
-                if getattr(group_tab, "selected_group_number", None) == index:
-                    group_tab.channels_view.update()
         return False
 
     def _on_group_selected_changed(self, group_nb: float | None) -> bool:
@@ -256,30 +224,16 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
                     curves_tab.flowbox.select_child(child)
                     break
 
-    def _on_group_deleted(self, group: Group) -> bool:
-        """Clean up faders referencing the deleted group and refresh UI.
+    def _on_group_deleted(self, _group: Group) -> bool:
+        """Refresh UI when a group is deleted.
 
         Args:
-            group: The deleted group instance.
+            _group: The deleted group instance.
 
         Returns:
             Always False (required for GLib.idle_add to remove the callback).
         """
-        fader_bank = self.app.core.lightshow.fader_bank
-        faders_updated = False
-        for page, faders in fader_bank.faders.items():
-            for fader in faders.values():
-                if fader.contents is group:
-                    fader_bank.set_fader(page, fader.index, FaderType.NONE, None)
-                    faders_updated = True
-
         self._safe_refresh_groups()
-        if faders_updated:
-            if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
-                fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
-                fader_tab.refresh()
-            if self.app.virtual_console:
-                self.app.virtual_console.update_page_display()
         return False
 
     def _on_independent_level_changed(self, number: int, level: float) -> bool:

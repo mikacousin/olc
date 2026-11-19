@@ -249,9 +249,15 @@ class PaletteManager:
             cat_dict[float(palette.number)] = palette.to_dict()
         return result
 
-    def from_dict(self, data: dict[typing.Any, typing.Any] | None) -> None:
-        """Clear and populate palettes from a serialized mapping."""
-        self.clear()
+    def from_dict(
+        self,
+        data: dict[typing.Any, typing.Any] | None,
+        *,
+        clear: bool = True,
+    ) -> None:
+        """Populate palettes from a serialized mapping, optionally clearing first."""
+        if clear:
+            self.clear()
         if not isinstance(data, dict):
             return
         for cat_key, entries in data.items():

@@ -18,7 +18,8 @@ import typing
 
 from gi.repository import Gtk
 
-from olc.show.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.fader import FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.palette import PaletteCategory
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -65,7 +66,6 @@ class FaderEdit(Gtk.Box):
             (FaderType.NONE, ""),
             (FaderType.PRESET, "Preset"),
             (FaderType.SEQUENCE, "Sequence"),
-            (FaderType.GROUP, "Group"),
             (FaderType.MAIN, "Main Fader"),
         ]
         self.type_button = Gtk.MenuButton()
@@ -84,8 +84,6 @@ class FaderEdit(Gtk.Box):
 
         if isinstance(fader, FaderPreset):
             self._fader_preset()
-        elif isinstance(fader, FaderGroup):
-            self._fader_group()
         elif isinstance(fader, FaderSequence):
             self._fader_sequence()
         elif isinstance(fader, FaderMain):
@@ -113,26 +111,6 @@ class FaderEdit(Gtk.Box):
         self.contents_button = Gtk.MenuButton()
         self.contents_button.set_label("")
 
-    def _fader_group(self) -> None:
-        """Create edition of group fader"""
-        fader = self.lightshow.fader_bank.faders[self.page][self.index]
-        self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
-        self.get_style_context().remove_class("empty")
-        self.type_button.set_label("Group")
-        self.contents_button = Gtk.MenuButton()
-        vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
-        vbox.set_border_width(5)
-        for group in self.lightshow.groups:
-            button = Gtk.ModelButton()
-            button.set_label(f"{group.index:g} : {group.text}")
-            button.connect(
-                "clicked", self._on_contents_changed, FaderType.GROUP, group.index
-            )
-            vbox.add(button)
-            if group is fader.contents:
-                self.contents_button.set_label(f"{group.index:g} : {group.text}")
-        self._contents_popup(vbox)
-
     def _fader_sequence(self) -> None:
         """Create edition of sequence fader"""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
@@ -154,7 +132,7 @@ class FaderEdit(Gtk.Box):
         self._contents_popup(vbox)
 
     def _fader_preset(self) -> None:
-        """Create edition of preset fader"""
+        """Create edition of preset fader (Preset palettes and Cues)."""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.get_style_context().remove_class("empty")
@@ -162,15 +140,39 @@ class FaderEdit(Gtk.Box):
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
-        for cue in self.lightshow.cues:
+        presets = self.lightshow.palettes.list_by_category(PaletteCategory.PRESET)
+        preset_numbers: set[float] = set()
+        for preset in presets:
+            preset_numbers.add(float(preset.number))
             button = Gtk.ModelButton()
-            button.set_label(f"{cue.number} : {cue.text}")
+            lbl = f"{preset.number:g} : {preset.text}"
+            button.set_label(lbl)
+            button.connect(
+                "clicked",
+                self._on_contents_changed,
+                FaderType.PRESET,
+                preset.number,
+            )
+            vbox.add(button)
+            if preset is fader.contents:
+                self.contents_button.set_label(lbl)
+        cues = [
+            cue
+            for cue in self.lightshow.cues
+            if float(cue.number) not in preset_numbers
+        ]
+        if presets and cues:
+            vbox.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        for cue in cues:
+            button = Gtk.ModelButton()
+            lbl = f"Cue {cue.number:g} : {cue.text}"
+            button.set_label(lbl)
             button.connect(
                 "clicked", self._on_contents_changed, FaderType.PRESET, cue.number
             )
             vbox.add(button)
             if cue is fader.contents:
-                self.contents_button.set_label(f"{cue.number} : {cue.text}")
+                self.contents_button.set_label(lbl)
         self._contents_popup(vbox)
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
@@ -212,8 +214,6 @@ class FaderEdit(Gtk.Box):
             self._fader_none()
         elif fader_type == FaderType.MAIN:
             self._fader_main()
-        elif fader_type == FaderType.GROUP:
-            self._fader_group()
         elif fader_type == FaderType.PRESET:
             self._fader_preset()
         elif fader_type == FaderType.SEQUENCE:

@@ -135,10 +135,8 @@ def test_palette_propagate_update_cascade_presets_cues_and_faders() -> None:
     ls.main_playback.add_step(Step(1, cue=cue1))
     ls.main_playback.add_step(Step(1, cue=cue2))
 
-    import typing
-
     # FaderPreset attached directly to Preset 5
-    fader = FaderPreset(1, ls.fader_bank, typing.cast("typing.Any", preset))
+    fader = FaderPreset(1, ls.fader_bank, preset)
     ls.fader_bank.faders[1][1] = fader
     fader.set_level(0.5)
     assert fader.dmx[0] == pytest.approx(0.5)

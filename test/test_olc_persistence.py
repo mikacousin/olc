@@ -684,3 +684,81 @@ def test_olc_palettes_and_cue_palette_refs_roundtrip(
     restored_cue = ls2.main_playback.steps[1].cue
     assert restored_cue is not None
     assert restored_cue.palette_refs == {1: {"color": ("color", 2.0)}}
+
+
+def test_olc_legacy_group_dict_and_fader_group_migration(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Legacy .olc files with dict Groups and FaderType.GROUP (13) migrate cleanly."""
+    import gzip
+
+    from olc.show.fader import FaderPreset, FaderType
+    from olc.show.palette import PaletteCategory
+
+    legacy_payload = {
+        "application": "olc",
+        "version": "0.8.5.beta",
+        "normalized_levels": False,
+        "patch": {},
+        "sequences": {},
+        "cues": {},
+        "groups": {
+            "1.0": {"label": "Front Legacy", "channels": {"2": 255, "1": 128}},
+            "2.0": {"label": "Empty Legacy", "channels": {}},
+        },
+        "faders": {
+            "0": {
+                "page": 1,
+                "number": 1,
+                "type": 13,
+                "contents": 1.0,
+                "text": "Front Legacy",
+            },
+            "1": {
+                "page": 1,
+                "number": 2,
+                "type": 13,
+                "contents": 2.0,
+                "text": "Empty Legacy",
+            },
+        },
+    }
+    legacy_path = tmp_path / "legacy_groups.olc"
+    with gzip.open(str(legacy_path), "wb") as gz_file:
+        gz_file.write(json.dumps(legacy_payload).encode("utf-8"))
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute("show.open", str(legacy_path))
+    ls = app.lightshow
+
+    # Groups become ordered pure channel selections
+    g1 = ls.groups.get(1.0)
+    assert g1 is not None
+    assert g1.channels == [2, 1]
+    assert g1.text == "Front Legacy"
+    g2 = ls.groups.get(2.0)
+    assert g2 is not None
+    assert g2.channels == []
+
+    # Migrated Presets exist with normalized [0.0..1.0] levels
+    p1 = ls.palettes.get(PaletteCategory.PRESET, 1.0)
+    assert p1 is not None
+    assert p1.text == "Front Legacy"
+    assert p1.channels[2] == pytest.approx(1.0)
+    assert p1.channels[1] == pytest.approx(128.0 / 255.0)
+    p2 = ls.palettes.get(PaletteCategory.PRESET, 2.0)
+    assert p2 is not None
+    assert p2.channels == {}
+
+    # Faders migrated to FaderType.PRESET bound to Preset instances
+    assert ls.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+    fader1 = ls.fader_bank.faders[1][1]
+    assert isinstance(fader1, FaderPreset)
+    assert fader1.contents is p1
+    fader1.set_level(0.5)
+    assert fader1.dmx[1] == pytest.approx(0.5)
+    assert fader1.dmx[0] == pytest.approx(0.5 * (128.0 / 255.0))
+
+    assert ls.fader_bank.get_fader_type(1, 2) == FaderType.PRESET
+    assert ls.fader_bank.faders[1][2].contents is p2

@@ -27,7 +27,7 @@ from olc.define import MAX_CHANNELS
 from olc.dmx_engine.universe_config import Protocol, UniverseMap
 from olc.show.cue import Cue
 from olc.show.fader import FaderType
-from olc.show.group import Group
+from olc.show.palette import Palette, PaletteCategory
 
 
 def _create_headless_app() -> tuple[CoreApplication, MagicMock]:
@@ -165,12 +165,12 @@ def test_headless_groups_curves_independents_workflow() -> None:
     # 1. Groups workflow
     app.action_registry.execute("group.new", 1.0)
     app.action_registry.execute("group.rename", 1.0, "Front")
-    app.action_registry.execute("group.update_channels", 1.0, {1: 1.0, 2: 1.0})
+    app.action_registry.execute("group.update_channels", 1.0, [1, 2])
 
     group = app.lightshow.groups.get(1.0)
     assert group is not None
     assert group.text == "Front"
-    assert group.channels == {1: 1.0, 2: 1.0}
+    assert group.channels == [1, 2]
 
     app.action_registry.execute("group.rename", 1.0, "Front Stage")
     assert group.text == "Front Stage"
@@ -213,14 +213,19 @@ def test_headless_faders_workflow() -> None:
     """Test Fader assignment, leveling, flashing, and paging without GUI."""
     app, backend = _create_headless_app()
 
-    group = Group(1.0, {1: 0.8}, "Backlight")
-    app.lightshow.groups.add(group)
+    preset = Palette(
+        category=PaletteCategory.PRESET,
+        number=1.0,
+        text="Backlight",
+        channels={1: 0.8},
+    )
+    app.lightshow.palettes.add(preset)
 
-    # 1. Assign group to fader 1 on page 1
-    app.action_registry.execute("fader.assign", 1, 1, FaderType.GROUP, 1.0)
+    # 1. Assign preset to fader 1 on page 1
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.PRESET, 1.0)
     fader_bank = app.lightshow.fader_bank
     fader = fader_bank.faders[1][1]
-    assert fader.contents is group
+    assert fader.contents is preset
 
     # 2. Adjust fader level
     app.action_registry.execute("fader.set_level", 1, 1, 0.7)
@@ -242,7 +247,7 @@ def test_headless_faders_workflow() -> None:
 
     # Undo clear restores fader assignment
     app.history.undo()
-    assert fader_bank.faders[1][1].contents is group
+    assert fader_bank.faders[1][1].contents is preset
 
 
 def test_headless_show_lifecycle_workflow(tmp_path: pathlib.Path) -> None:

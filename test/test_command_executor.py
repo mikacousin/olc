@@ -937,3 +937,28 @@ def test_executor_channel_check_and_next_last_stepping() -> None:
     executor.execute(parser.parse("1 CHECK AT OUT"))
     assert app.channel_check is None
     assert dmx.levels["user"][0] == -1.0
+
+
+def test_executor_group_selection_real_lightshow() -> None:
+    """Test GROUP <n> selection resolves against real LightShow.groups."""
+    from olc.core.app import CoreApplication
+    from olc.show.group import Group
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [0.0] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    app.lightshow.groups.add(Group(2.0, [3, 1, 5], "Movers"))
+
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+    res = executor.execute(parser.parse("GROUP 2 AT 80"))
+
+    assert res.success is True
+    assert app.selected_channels == [1, 3, 5]
+    for ch in (1, 3, 5):
+        assert app.backend.dmx.levels["user"][ch - 1] == pytest.approx(0.8)

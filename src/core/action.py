@@ -75,7 +75,6 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "group.new": _("Create group"),
     "group.rename": _("Rename group"),
     "group.select": _("Select group"),
-    "group.set_temp_channels": _("Edit group channels"),
     "group.update_channels": _("Update group channels"),
     "independent.change_type": _("Change independent type"),
     "independent.rename": _("Rename independent"),

@@ -15,9 +15,7 @@
 from __future__ import annotations
 
 import typing
-from dataclasses import dataclass
-
-from olc.show.editor import TempChannelsEditor
+from dataclasses import dataclass, field
 
 if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
@@ -25,36 +23,43 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class Group:
-    """A Group is composed of channels at some DMX levels."""
+    """A Group is an ordered pure selection of channels (aligned with Eos)."""
 
     index: float
-    channels: dict[int, int | float]
+    channels: list[int] = field(default_factory=list)
     text: str = ""
+
+    def __post_init__(self) -> None:
+        """Normalize channel list to unique ordered integers."""
+        self.channels = list(dict.fromkeys(int(ch) for ch in self.channels))
 
     def set_text(self, text: str) -> None:
         """Set the group's text description."""
         self.text = text
 
-    def set_channel(self, channel: int, level: int | float) -> None:
-        """Set the DMX level of a channel in the group."""
-        self.channels[channel] = level
+    def add_channel(self, channel: int) -> None:
+        """Append a channel to the selection if not already present."""
+        ch = int(channel)
+        if ch not in self.channels:
+            self.channels.append(ch)
 
     def remove_channel(self, channel: int) -> None:
-        """Remove a channel from the group."""
-        if channel in self.channels:
-            del self.channels[channel]
+        """Remove a channel from the group selection."""
+        ch = int(channel)
+        if ch in self.channels:
+            self.channels.remove(ch)
 
-    def get_channel_level(self, channel: int, default: int | float = 0) -> int | float:
-        """Get the DMX level of a channel, returning default if not present."""
-        return self.channels.get(channel, default)
+    def has_channel(self, channel: int) -> bool:
+        """Return True if *channel* belongs to the group."""
+        return channel in self.channels
 
-    def get_channels(self) -> dict[int, int | float]:
-        """Return the dictionary of channels and their levels."""
+    def get_channels(self) -> list[int]:
+        """Return the ordered list of channels in the group."""
         return self.channels
 
-    def set_channels(self, channels: dict[int, int | float]) -> None:
-        """Set/overwrite the dictionary of channels."""
-        self.channels = channels
+    def set_channels(self, channels: typing.Iterable[int]) -> None:
+        """Set/overwrite the ordered list of channels."""
+        self.channels = list(dict.fromkeys(int(ch) for ch in channels))
 
     def clear(self) -> None:
         """Clear all channels from the group."""
@@ -76,7 +81,6 @@ class Groups:
         """
         self.lightshow = lightshow
         self._groups: list[Group] = []
-        self.group_editor = GroupEditor(lightshow)
 
     def __len__(self) -> int:
         """Return the number of groups."""
@@ -177,17 +181,3 @@ class Groups:
             The next index (1.0 if empty, else last index + 1.0).
         """
         return 1.0 if not self._groups else self._groups[-1].index + 1.0
-
-
-class GroupEditor(TempChannelsEditor[float]):
-    """Manages the temporary channel levels during group editing, agnostic to the UI."""
-
-    def _notify_changed(self, key: float) -> None:
-        """Notify that the group editor state has changed.
-
-        Args:
-            key: Identification key of the edited group (index).
-        """
-        index = key
-        if self.lightshow and self.lightshow.app:
-            self.lightshow.app.emit("group_editor.changed", index)

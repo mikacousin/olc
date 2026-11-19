@@ -24,10 +24,10 @@ from olc.files.import_types import Action
 from olc.show.channel_time import ChannelTime
 from olc.show.cue import Cue
 from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.show.fader import FaderType
+from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.group import Group
 from olc.show.independent import IndependentType
-from olc.show.palette import deserialize_palette_refs
+from olc.show.palette import PaletteCategory, deserialize_palette_refs
 from olc.show.sequence import Sequence
 from olc.show.step import Step
 
@@ -65,7 +65,7 @@ class ParsedData:
         }
 
     def clean(self) -> None:
-        """Remove useless data"""
+        """Remove useless data and migrate legacy groups/faders to Groups/Presets."""
         # Remove Sequences without cue
         keys = []
         for sequence, values in self.data["sequences"].items():
@@ -73,24 +73,82 @@ class ParsedData:
                 keys.append(sequence)
         for key in keys:
             self.data["sequences"].pop(key)
-        # Transform fader of channels in fader with group
-        index = 500.0
-        if not self.data["faders"]:
+
+        faders_data = self.data.get("faders") or {}
+        referenced_legacy_groups: set[float] = {
+            float(values["contents"])
+            for values in faders_data.values()
+            if values.get("type") == LEGACY_FADER_TYPE_GROUP
+            and isinstance(values.get("contents"), (int, float))
+        }
+
+        presets_dict: dict[typing.Any, typing.Any] | None = None
+
+        for group_number, grp in (self.data.get("groups") or {}).items():
+            raw_chans = grp.get("channels")
+            if isinstance(raw_chans, dict):
+                raw_levels: typing.Any = raw_chans
+                grp["channels"] = list(
+                    dict.fromkeys(int(ch) for ch in raw_levels.keys())
+                )
+            else:
+                raw_levels = grp.pop("legacy_levels", None)
+                grp["channels"] = list(
+                    dict.fromkeys(int(ch) for ch in (raw_chans or []))
+                )
+
+            if (isinstance(raw_levels, dict) and raw_levels) or (
+                float(group_number) in referenced_legacy_groups
+            ):
+                norm_levels = (
+                    self._normalize_channels_dict(raw_levels)
+                    if isinstance(raw_levels, dict)
+                    else {}
+                )
+                if presets_dict is None:
+                    presets_dict = self.data.setdefault("palettes", {}).setdefault(
+                        PaletteCategory.PRESET.value, {}
+                    )
+                p_num = float(group_number)
+                if p_num not in presets_dict:
+                    presets_dict[p_num] = {
+                        "category": PaletteCategory.PRESET.value,
+                        "number": p_num,
+                        "label": grp.get("label") or str(group_number),
+                        "channels": norm_levels,
+                    }
+
+        if not faders_data:
             return
-        for values in self.data["faders"].values():
-            if values.get("type") == FaderType.CHANNELS:
-                while True:
-                    if index in self.data["groups"]:
-                        index += 1
-                    else:
-                        break
-                self.data["groups"][index] = {
-                    "channels": values.get("contents"),
-                    "label": values.get("label") or str(index),
+
+        preset_num = 1.0
+        for values in faders_data.values():
+            raw_type = values.get("type")
+            if raw_type == LEGACY_FADER_TYPE_GROUP:
+                values["type"] = FaderType.PRESET
+            elif raw_type == FaderType.CHANNELS:
+                if presets_dict is None:
+                    presets_dict = self.data.setdefault("palettes", {}).setdefault(
+                        PaletteCategory.PRESET.value, {}
+                    )
+                while preset_num in presets_dict:
+                    preset_num += 1.0
+                norm_levels = self._normalize_channels_dict(values.get("contents"))
+                label = values.get("label") or f"Preset {int(preset_num)}"
+                presets_dict[preset_num] = {
+                    "category": PaletteCategory.PRESET.value,
+                    "number": preset_num,
+                    "label": label,
+                    "channels": norm_levels,
                 }
-                values["type"] = FaderType.GROUP
-                values["contents"] = index
-                index += 1
+                values["type"] = FaderType.PRESET
+                values["contents"] = preset_num
+                preset_num += 1.0
+            elif isinstance(raw_type, int) and not isinstance(raw_type, FaderType):
+                try:
+                    values["type"] = FaderType(raw_type)
+                except ValueError:
+                    values["type"] = FaderType.NONE
 
     def import_midi(self) -> None:
         """Import MIDI mapping"""
@@ -207,12 +265,18 @@ class ParsedData:
         }
 
     def import_groups(self) -> None:
-        """Import groups data"""
+        """Import groups data as ordered pure channel selections."""
         if not self.data.get("groups"):
             return
         for group_number, values in self.data["groups"].items():
-            channels = self._normalize_channels_dict(values.get("channels"))
-            label = values.get("label")
+            raw_channels = values.get("channels")
+            if isinstance(raw_channels, dict):
+                channels = list(dict.fromkeys(int(ch) for ch in raw_channels.keys()))
+            elif isinstance(raw_channels, (list, tuple, set)):
+                channels = list(dict.fromkeys(int(ch) for ch in raw_channels))
+            else:
+                channels = []
+            label = values.get("label") or ""
             group = self.lightshow.groups.get(group_number)
             if group is not None:
                 group.set_text(label)
@@ -226,7 +290,7 @@ class ParsedData:
         palettes_data = self.data.get("palettes")
         if not palettes_data or not hasattr(self.lightshow, "palettes"):
             return
-        self.lightshow.palettes.from_dict(palettes_data)
+        self.lightshow.palettes.from_dict(palettes_data, clear=False)
 
     def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data
@@ -247,7 +311,11 @@ class ParsedData:
                 and actions["sequences"].get(contents) is Action.IGNORE
             ):
                 continue
-            if fader_type == FaderType.GROUP and actions["groups"] is Action.IGNORE:
+            if (
+                fader_type == FaderType.PRESET
+                and actions.get("palettes", Action.REPLACE) is Action.IGNORE
+                and actions["sequences"].get(1) is Action.IGNORE
+            ):
                 continue
             if number <= MAX_FADER_PER_PAGE:
                 self.lightshow.fader_bank.set_fader(page, number, fader_type, contents)

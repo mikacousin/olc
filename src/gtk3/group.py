@@ -16,16 +16,16 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import GLib, Gtk
 
-from olc.define import MAX_CHANNELS, is_int, is_non_nul_float
+from olc.define import is_non_nul_float
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.gtk3.widgets.group import GroupWidget
 from olc.show.group import Group
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
+    from gi.repository import Gdk, Gio
 
     from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
@@ -72,119 +72,21 @@ class GroupChannelsView(ChannelsView):
         return self._cached_group
 
     def set_channel_level(self, channel: int, level: int | float) -> None:
-        """Set channel level via temporary action.
-
-        Args:
-            channel: Channel number (1 - MAX_CHANNELS)
-            level: DMX level (0 - 255)
-        """
-        if not self.tabs or not self.lightshow or not self.window:
-            return
-        group = self._get_selected_group()
-        if group is None:
-            return
-        self.window.app.core.action_registry.execute(
-            "group.set_temp_channels", group.index, {channel: level}
-        )
+        """No-op: groups store pure channel selections without intensity levels."""
+        _ = (channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel using a temporary action.
-
-        Args:
-            step: Step level
-            direction: Up or Down
-        """
-        if not self.tabs or not self.lightshow or not self.window:
-            return
-        group = self._get_selected_group()
-        if group is None:
-            return
-        channels = self.get_selected_channels()
-        channels_dict = {}
-        for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            if channel_widget:
-                level = channel_widget.level
-                if direction == Gdk.ScrollDirection.UP:
-                    level = min(level + step, 255)
-                elif direction == Gdk.ScrollDirection.DOWN:
-                    level = max(level - step, 0)
-                channels_dict[channel] = level
-        if channels_dict:
-            self.window.app.core.action_registry.execute(
-                "group.set_temp_channels", group.index, channels_dict
-            )
+        """No-op: groups store pure channel selections without intensity levels."""
+        _ = (step, direction)
 
     def at_level(self) -> None:
-        """Channels at level using a temporary action."""
-        if not self.window or not self.settings or not self.tabs or not self.lightshow:
-            return
-        group = self._get_selected_group()
-        if group is None:
-            return
-        keystring = self.commandline.get_string()
-        if not is_int(keystring):
-            return
-        level = int(keystring)
-        if self.settings.get_boolean("percent"):
-            level = int(round((level / 100) * 255))
-        level = min(level, 255)
-        channels = self.get_selected_channels()
-        channels_dict = {channel: level for channel in channels}
-        if channels_dict:
-            self.window.app.core.action_registry.execute(
-                "group.set_temp_channels", group.index, channels_dict
-            )
+        """No-op: groups store pure channel selections without intensity levels."""
 
     def level_plus(self) -> None:
-        """Channels +% using a temporary action."""
-        if not self.settings or not self.tabs or not self.lightshow or not self.window:
-            return
-        group = self._get_selected_group()
-        if group is None:
-            return
-        step_level = self.settings.get_int("percent-level")
-        channels = self.get_selected_channels()
-        channels_dict = {}
-        for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            if channel_widget:
-                level = channel_widget.level
-                if self.settings.get_boolean("percent"):
-                    percent_level = round((level / 256) * 100) + step_level
-                    new_level = min(round((percent_level / 100) * 256), 255)
-                else:
-                    new_level = min(level + step_level, 255)
-                channels_dict[channel] = new_level
-        if channels_dict:
-            self.window.app.core.action_registry.execute(
-                "group.set_temp_channels", group.index, channels_dict
-            )
+        """No-op: groups store pure channel selections without intensity levels."""
 
     def level_minus(self) -> None:
-        """Channels -% using a temporary action."""
-        if not self.settings or not self.tabs or not self.lightshow or not self.window:
-            return
-        group = self._get_selected_group()
-        if group is None:
-            return
-        step_level = self.settings.get_int("percent-level")
-        channels = self.get_selected_channels()
-        channels_dict = {}
-        for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            if channel_widget:
-                level = channel_widget.level
-                if self.settings.get_boolean("percent"):
-                    percent_level = round((level / 256) * 100) - step_level
-                    new_level = max(round((percent_level / 100) * 256), 0)
-                else:
-                    new_level = max(level - step_level, 0)
-                channels_dict[channel] = new_level
-        if channels_dict:
-            self.window.app.core.action_registry.execute(
-                "group.set_temp_channels", group.index, channels_dict
-            )
+        """No-op: groups store pure channel selections without intensity levels."""
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Select channels to display
@@ -212,7 +114,7 @@ class GroupChannelsView(ChannelsView):
         """Display all channels
 
         Args:
-            group: Group widget
+            group: Group object
             child: Parent of Channel Widget
 
         Returns:
@@ -222,18 +124,9 @@ class GroupChannelsView(ChannelsView):
             return False
         channel = child.get_index() + 1  # Channel number
         channel_widget = typing.cast(ChannelWidget, child.get_child())
-        group_editor = self.lightshow.groups.group_editor
-        temp_levels = group_editor.get_levels(group.index)
-        temp_level = temp_levels[channel - 1]
-
-        level = temp_level if temp_level != -1 else group.get_channel_level(channel, 0)
-
-        if level or child.is_selected() or temp_level != -1:
-            channel_widget.level = level
-            channel_widget.next_level = level
-        else:
-            channel_widget.level = 0
-            channel_widget.next_level = 0
+        level = 1.0 if group.has_channel(channel) else 0.0
+        channel_widget.level = level
+        channel_widget.next_level = level
         child.set_visible(True)
         return True
 
@@ -241,7 +134,7 @@ class GroupChannelsView(ChannelsView):
         """Display only patched channels
 
         Args:
-            group: Group widget
+            group: Group object
             child: Parent of Channel Widget
 
         Returns:
@@ -254,10 +147,10 @@ class GroupChannelsView(ChannelsView):
         return self.__filter_all(group, child)
 
     def __filter_active(self, group: Group, child: Gtk.FlowBoxChild) -> bool:
-        """Display only active channels
+        """Display only active channels (members of the group or selected)
 
         Args:
-            group: Group widget
+            group: Group object
             child: Parent of Channel Widget
 
         Returns:
@@ -267,15 +160,11 @@ class GroupChannelsView(ChannelsView):
             return False
         channel = child.get_index() + 1
         channel_widget = typing.cast(ChannelWidget, child.get_child())
-        group_editor = self.lightshow.groups.group_editor
-        temp_levels = group_editor.get_levels(group.index)
-        temp_level = temp_levels[channel - 1]
-
-        level = temp_level if temp_level != -1 else group.get_channel_level(channel, 0)
-
-        if level or child.is_selected() or temp_level != -1:
-            channel_widget.level = level
-            channel_widget.next_level = level
+        in_group = group.has_channel(channel)
+        level = 1.0 if in_group else 0.0
+        channel_widget.level = level
+        channel_widget.next_level = level
+        if in_group or child.is_selected():
             child.set_visible(True)
             return True
         child.set_visible(False)
@@ -460,7 +349,8 @@ class GroupTab(Gtk.Paned):
         self._keypress_right()
 
     def _keypress_u(self) -> None:
-        """Update Group"""
+        """Update Group channel selection from selected channels."""
+        selected_channels = self.channels_view.get_selected_channels()
         self.channels_view.flowbox.unselect_all()
 
         # Find selected group
@@ -468,18 +358,9 @@ class GroupTab(Gtk.Paned):
             flowboxchild = selected[0]
             group_widget = typing.cast(GroupWidget, flowboxchild.get_child())
             group_nb = group_widget.number
-            group = self.lightshow.groups.get(group_nb)
-            if group:
-                group_editor = self.lightshow.groups.group_editor
-                temp_levels = group_editor.get_levels(group_nb)
-                channels_dict = {}
-                for chan in range(MAX_CHANNELS):
-                    channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                    if channel_widget is not None:
-                        if (chan + 1 in group.channels) or (temp_levels[chan] != -1):
-                            channels_dict[chan + 1] = channel_widget.level
+            if self.lightshow.groups.get(group_nb) is not None:
                 self.window.app.core.action_registry.execute(
-                    "group.update_channels", group_nb, channels_dict
+                    "group.update_channels", group_nb, selected_channels
                 )
 
     def _keypress_right(self) -> None:
@@ -604,39 +485,6 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _update_fader_level(self) -> None:
-        """Update selected fader channels levels"""
-        if selected := self.flowbox.get_selected_children():
-            flowboxchild = selected[0]
-            index = flowboxchild.get_index()
-            group = self.lightshow.groups[index]
-            for page in self.lightshow.fader_bank.faders.values():
-                for fader in page.values():
-                    if fader.contents is group:
-                        fader.set_level(fader.level)
-                        break
-
-    def _keypress_equal(self) -> None:
-        """@ Level"""
-        self.channels_view.at_level()
-        self.channels_view.update()
-        self._update_fader_level()
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_colon(self) -> None:
-        """Level - %"""
-        self.channels_view.level_minus()
-        self.channels_view.update()
-        self._update_fader_level()
-        self.app.core.action_registry.execute("commandline.clear")
-
-    def _keypress_exclam(self) -> None:
-        """Level + %"""
-        self.channels_view.level_plus()
-        self.channels_view.update()
-        self._update_fader_level()
         self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_n(self) -> None:

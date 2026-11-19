@@ -179,7 +179,6 @@ class Midi:
         core.subscribe("fader.level_changed", self._on_fader_level_changed)
         core.subscribe("fader.flash_changed", self._on_fader_flash_changed)
         core.subscribe("fader.changed", self._on_fader_changed)
-        core.subscribe("group.updated", self._on_group_updated)
         core.subscribe("independent.level_changed", self._on_independent_changed)
         core.subscribe("show.new", self._on_show_changed)
         core.subscribe("show.loaded", self._on_show_changed)
@@ -225,14 +224,6 @@ class Midi:
             self.update_fader(fader_bank.faders[page][index])
         else:
             self.update_faders()
-
-    def _on_group_updated(self, group: typing.Any) -> None:  # noqa: ANN401
-        """Refresh LCD names when a group (possibly bound to a fader) changes."""
-        for faders in self.lightshow.fader_bank.faders.values():
-            for fader in faders.values():
-                if fader.contents is group:
-                    fader.text = group.text
-        self.messages.lcd.show_faders()
 
     def _on_independent_changed(self, number: int, level: float) -> None:
         """Send independent feedback (motor fader state, LEDs) to controller."""

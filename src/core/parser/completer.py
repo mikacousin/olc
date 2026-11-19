@@ -323,10 +323,23 @@ class CommandCompleter:
         """Extract existing group identifiers from the active LightShow."""
         if not self.lightshow or not hasattr(self.lightshow, "groups"):
             return []
-        groups_dict = getattr(self.lightshow.groups, "groups", None)
+        groups_obj = self.lightshow.groups
+        groups_dict = getattr(groups_obj, "groups", None)
         if isinstance(groups_dict, dict):
             return [str(k) for k in sorted(groups_dict.keys())]
-        return []
+        res: list[str] = []
+        for grp in groups_obj:
+            idx = getattr(grp, "index", None)
+            if idx is None:
+                continue
+            formatted = (
+                str(int(idx))
+                if isinstance(idx, (int, float)) and float(idx).is_integer()
+                else str(idx)
+            )
+            if formatted not in res:
+                res.append(formatted)
+        return res
 
     def _sort_candidates(self, candidates: list[str]) -> list[str]:
         """Sort candidates putting high-priority keywords first."""

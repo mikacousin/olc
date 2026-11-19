@@ -424,7 +424,15 @@ def _apply_import_options(
         imported: Target ImportFile instance.
         options: Dictionary specifying import actions for sections.
     """
-    for key in ("curves", "patch", "groups", "independents", "faders", "midi"):
+    for key in (
+        "curves",
+        "patch",
+        "groups",
+        "palettes",
+        "independents",
+        "faders",
+        "midi",
+    ):
         if options and key in options:
             imported.actions[key] = _normalize_action(options[key])
         else:
@@ -539,7 +547,7 @@ class ShowImportAction(Action):
 
         # 3. Groups and Palettes
         snapshot["groups"] = [
-            Group(g.index, channels=dict(g.channels), text=g.text)
+            Group(g.index, channels=list(g.channels), text=g.text)
             for g in lightshow.groups
         ]
         if hasattr(lightshow, "palettes"):
@@ -620,7 +628,7 @@ class ShowImportAction(Action):
         """Restore groups and cues from snapshot."""
         lightshow.groups.clear()
         for g in snapshot["groups"]:
-            lightshow.groups.add(Group(g.index, channels=dict(g.channels), text=g.text))
+            lightshow.groups.add(Group(g.index, channels=list(g.channels), text=g.text))
 
         if "palettes" in snapshot and hasattr(lightshow, "palettes"):
             lightshow.palettes.from_dict(snapshot["palettes"])

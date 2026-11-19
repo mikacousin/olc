@@ -22,17 +22,19 @@ from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.show.fader import (
     Fader,
     FaderChannels,
-    FaderGroup,
     FaderMain,
     FaderPreset,
     FaderSequence,
     FaderType,
 )
+from olc.show.palette import PaletteCategory
 
 if typing.TYPE_CHECKING:
     import olc.show.fader_bank
     from olc.core.app import CoreApplication
+    from olc.show.cue import Cue
     from olc.show.lightshow import LightShow
+    from olc.show.palette import Palette
 
 
 class FaderBank:
@@ -104,8 +106,6 @@ class FaderBank:
         Returns:
             Fader type
         """
-        if isinstance(self.faders[page][index], FaderGroup):
-            return FaderType.GROUP
         if isinstance(self.faders[page][index], FaderChannels):
             return FaderType.CHANNELS
         if isinstance(self.faders[page][index], FaderPreset):
@@ -150,6 +150,19 @@ class FaderBank:
                 self.faders[page][index].set_level(0)
             self._set_fader_type(page, index, fader_type, contents)
 
+    def _resolve_preset_contents(
+        self, contents: dict[int, int] | float | None
+    ) -> Palette | Cue | None:
+        """Resolve Preset palette first, falling back to Cue."""
+        if self.lightshow and isinstance(contents, (int, float)):
+            target_num = float(contents)
+            if hasattr(self.lightshow, "palettes"):
+                preset = self.lightshow.palettes.get(PaletteCategory.PRESET, target_num)
+                if preset is not None:
+                    return preset
+            return self.lightshow.get_cue(target_num)
+        return None
+
     def _set_fader_type(
         self,
         page: int,
@@ -165,27 +178,11 @@ class FaderBank:
             channels = contents if isinstance(contents, dict) else None
             self.faders[page][index] = FaderChannels(index, fader_bank_type, channels)
             self.faders[page][index].set_level(0)
-        elif fader_type == FaderType.GROUP:
-            if (
-                self.lightshow
-                and isinstance(contents, (int, float))
-                and (group := self.lightshow.get_group(contents))
-            ):
-                self.faders[page][index] = FaderGroup(index, fader_bank_type, group)
-            else:
-                self.faders[page][index] = FaderGroup(index, fader_bank_type)
-            self.faders[page][index].set_level(0)
         elif fader_type == FaderType.MAIN:
             self.faders[page][index] = FaderMain(index, fader_bank_type)
         elif fader_type == FaderType.PRESET:
-            if (
-                self.lightshow
-                and isinstance(contents, (int, float))
-                and (cue := self.lightshow.get_cue(contents))
-            ):
-                self.faders[page][index] = FaderPreset(index, fader_bank_type, cue)
-            else:
-                self.faders[page][index] = FaderPreset(index, fader_bank_type)
+            preset_obj = self._resolve_preset_contents(contents)
+            self.faders[page][index] = FaderPreset(index, fader_bank_type, preset_obj)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.SEQUENCE:
             if (
@@ -207,16 +204,9 @@ class FaderBank:
         fader_type: FaderType,
         contents: dict[int, int] | float | None,
     ) -> None:
-        if fader_type == FaderType.GROUP:
-            group = None
-            if self.lightshow and isinstance(contents, (int, float)):
-                group = self.lightshow.get_group(contents)
-            self.faders[page][index].set_contents(group)
-        elif fader_type == FaderType.PRESET:
-            cue = None
-            if self.lightshow and isinstance(contents, (int, float)):
-                cue = self.lightshow.get_cue(contents)
-            self.faders[page][index].set_contents(cue)
+        if fader_type == FaderType.PRESET:
+            preset_obj = self._resolve_preset_contents(contents)
+            self.faders[page][index].set_contents(preset_obj)
         elif fader_type == FaderType.SEQUENCE:
             chaser = None
             if self.lightshow and isinstance(contents, (int, float)):
@@ -228,9 +218,7 @@ class FaderBank:
         self.active_faders = set()
         for page in self.faders.values():
             for fader in page.values():
-                if isinstance(
-                    fader, (FaderGroup, FaderPreset, FaderChannels, FaderSequence)
-                ):
+                if isinstance(fader, (FaderPreset, FaderChannels, FaderSequence)):
                     self.active_faders.add(fader)
                     self.channels = self.channels | fader.channels
 

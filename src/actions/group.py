@@ -14,12 +14,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import copy
 import typing
-from collections.abc import Mapping
 
 from olc.core.action import Action
-from olc.show.fader import FaderType
 from olc.show.group import Group
 
 if typing.TYPE_CHECKING:
@@ -43,16 +40,27 @@ class NewGroupAction(Action):
         """
         super().__init__(app)
         self.group_nb: typing.Optional[float] = None
+        self.channels: list[int] = []
         self.created_group: typing.Optional[Group] = None
 
-    def configure(self, group_nb: float | None = None) -> None:
-        """Configure the action with an optional group number.
+    def configure(
+        self,
+        group_nb: float | None = None,
+        channels: typing.Iterable[int] | None = None,
+    ) -> None:
+        """Configure the action with an optional group number and channels.
 
         Args:
             group_nb: Optional group number.
                       If None, the next available integer is used.
+            channels: Optional ordered channel selection.
         """
         self.group_nb = group_nb
+        self.channels = (
+            list(dict.fromkeys(int(ch) for ch in channels))
+            if channels is not None
+            else []
+        )
 
     def get_history_details(self) -> str:
         """Return group number."""
@@ -71,9 +79,8 @@ class NewGroupAction(Action):
         if lightshow.groups.get(group_nb) is not None:
             raise ValueError(f"Group {group_nb} already exists.")
 
-        # Create new group with empty channel list
-        channels: dict[int, int | float] = {}
-        self.created_group = Group(group_nb, channels, str(group_nb))
+        # Create new group with ordered channel list
+        self.created_group = Group(group_nb, list(self.channels), str(group_nb))
 
         # Add group to Groups container (sorted insert)
         lightshow.groups.add(self.created_group)
@@ -116,7 +123,6 @@ class DeleteGroupAction(Action):
         self.group_nb: typing.Optional[float] = None
         self.deleted_group: typing.Optional[Group] = None
         self.deleted_index: typing.Optional[int] = None
-        self.cleared_faders: list[tuple[int, int, FaderType, float]] = []
 
     def configure(self, group_nb: float) -> None:
         """Configure the action with the group number to delete.
@@ -148,20 +154,6 @@ class DeleteGroupAction(Action):
         except ValueError:
             self.deleted_index = None
 
-        # Snapshot and clear any faders referencing the deleted group
-        self.cleared_faders = []
-        fader_bank = getattr(lightshow, "fader_bank", None)
-        if fader_bank is not None:
-            for page, faders in fader_bank.faders.items():
-                for fader in list(faders.values()):
-                    if fader.contents is target_group:
-                        fader_type = fader_bank.get_fader_type(page, fader.index)
-                        self.cleared_faders.append(
-                            (page, fader.index, fader_type, float(group_nb))
-                        )
-                        fader_bank.set_fader(page, fader.index, FaderType.NONE, None)
-                        self.app.emit("fader.changed", page, fader.index)
-
         # Remove from model
         lightshow.groups.remove(target_group)
         lightshow.set_modified()
@@ -170,28 +162,18 @@ class DeleteGroupAction(Action):
         self.app.emit("group.deleted", target_group)
 
     def undo(self) -> None:
-        """Undo the deletion, restoring the group and any faders referencing it."""
+        """Undo the deletion, restoring the group."""
         if self.deleted_group:
             if self.deleted_index is not None:
                 self.app.lightshow.groups.insert(self.deleted_index, self.deleted_group)
             else:
                 self.app.lightshow.groups.add(self.deleted_group)
-            fader_bank = getattr(self.app.lightshow, "fader_bank", None)
-            if fader_bank is not None:
-                for page, fader_idx, old_type, old_num in self.cleared_faders:
-                    fader_bank.set_fader(page, fader_idx, old_type, old_num)
-                    self.app.emit("fader.changed", page, fader_idx)
             self.app.lightshow.set_modified()
             self.app.emit("group.created", self.deleted_group)
 
     def redo(self) -> None:
-        """Redo the deletion, removing the group and clearing referencing faders."""
+        """Redo the deletion, removing the group."""
         if self.deleted_group:
-            fader_bank = getattr(self.app.lightshow, "fader_bank", None)
-            if fader_bank is not None:
-                for page, fader_idx, _old_type, _old_num in self.cleared_faders:
-                    fader_bank.set_fader(page, fader_idx, FaderType.NONE, None)
-                    self.app.emit("fader.changed", page, fader_idx)
             self.app.lightshow.groups.remove(self.deleted_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.deleted", self.deleted_group)
@@ -200,7 +182,7 @@ class DeleteGroupAction(Action):
 class GroupUpdateChannelsAction(Action):
     """Action to update the channels of a group.
 
-    Supports Undo/Redo by retaining a deep copy of the previous channels.
+    Supports Undo/Redo by retaining a copy of the previous channel selection.
     """
 
     name = "group.update_channels"
@@ -214,18 +196,18 @@ class GroupUpdateChannelsAction(Action):
         """
         super().__init__(app)
         self.group_nb: float = 0.0
-        self.new_channels: dict[int, int | float] = {}
-        self.old_channels: dict[int, int | float] = {}
+        self.new_channels: list[int] = []
+        self.old_channels: list[int] = []
 
-    def configure(self, group_nb: float, channels: Mapping[int, int | float]) -> None:
+    def configure(self, group_nb: float, channels: typing.Iterable[int]) -> None:
         """Configure the action.
 
         Args:
             group_nb: The index of the group.
-            channels: New channels dict.
+            channels: Ordered iterable of selected channel numbers.
         """
         self.group_nb = group_nb
-        self.new_channels = dict(channels)
+        self.new_channels = list(dict.fromkeys(int(ch) for ch in channels))
 
     def get_history_details(self) -> str:
         """Return group number."""
@@ -238,10 +220,9 @@ class GroupUpdateChannelsAction(Action):
         if not target_group:
             raise ValueError(f"Group {self.group_nb} does not exist.")
 
-        self.old_channels = copy.deepcopy(target_group.channels)
-        target_group.channels = self.new_channels
+        self.old_channels = list(target_group.channels)
+        target_group.set_channels(self.new_channels)
         lightshow.set_modified()
-        lightshow.groups.group_editor.clear(self.group_nb)
         self.app.emit("group.updated", target_group)
 
     def undo(self) -> None:
@@ -250,7 +231,7 @@ class GroupUpdateChannelsAction(Action):
         target_group = lightshow.groups.get(self.group_nb)
         if not target_group:
             return
-        target_group.channels = self.old_channels
+        target_group.set_channels(self.old_channels)
         lightshow.set_modified()
         self.app.emit("group.updated", target_group)
 
@@ -350,58 +331,3 @@ class GroupSelectAction(Action):
     def redo(self) -> None:
         self.app.selected_group = self.group_nb
         self.app.emit("group.selected_changed", self.group_nb)
-
-
-class GroupSetTempChannelsAction(Action):
-    """Action to set temp channel levels in a group, supporting Undo/Redo."""
-
-    name = "group.set_temp_channels"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        """Initialize the Action.
-
-        Args:
-            app: The core application instance.
-        """
-        super().__init__(app)
-        self.group_nb: float = 0.0
-        self.new_levels: dict[int, float] = {}
-        self.old_levels: dict[int, float] = {}
-
-    def configure(self, group_nb: float, channels: dict[int, float]) -> None:
-        """Configure the action.
-
-        Args:
-            group_nb: The index of the group.
-            channels: Dict mapping channel number (1-based) to level (0-255).
-        """
-        self.group_nb = group_nb
-        self.new_levels = dict(channels)
-
-    def get_history_details(self) -> str:
-        """Return group number."""
-        return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
-
-    def execute(self) -> None:
-        """Execute the action, storing temp levels."""
-        group_editor = self.app.lightshow.groups.group_editor
-        levels = group_editor.get_levels(self.group_nb)
-        self.old_levels = {}
-        for channel in self.new_levels:
-            self.old_levels[channel] = float(levels[channel - 1])
-
-        for channel, level in self.new_levels.items():
-            group_editor.set_level(self.group_nb, channel, level)
-
-    def undo(self) -> None:
-        """Undo the temporary level changes."""
-        group_editor = self.app.lightshow.groups.group_editor
-        for channel, level in self.old_levels.items():
-            group_editor.set_level(self.group_nb, channel, level)
-
-    def redo(self) -> None:
-        """Redo the temporary level changes."""
-        group_editor = self.app.lightshow.groups.group_editor
-        for channel, level in self.new_levels.items():
-            group_editor.set_level(self.group_nb, channel, level)

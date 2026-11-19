@@ -37,21 +37,20 @@ def _get_fader_contents_number(
         index: Fader index within the page.
 
     Returns:
-        Float identifier (group.index, cue.number, chaser.index) or None.
+        Float identifier (preset.number, cue.number, chaser.index) or None.
     """
     fader = app.lightshow.fader_bank.faders[page][index]
     contents = getattr(fader, "contents", None)
     if contents is None:
         return None
-    # Sequence / Chaser has both .index and .steps — check steps first
+    # Sequence / Chaser has .index and .steps
     if hasattr(contents, "index") and hasattr(contents, "steps"):
         return float(contents.index)
-    # Group has .index but no .steps
-    if hasattr(contents, "index"):
-        return float(contents.index)
-    # Cue / Preset has .number
+    # Preset Palette or Cue has .number
     if hasattr(contents, "number"):
         return float(contents.number)
+    if hasattr(contents, "index"):
+        return float(contents.index)
     return None
 
 
@@ -93,7 +92,7 @@ class FaderAssignAction(Action):
             index: Fader index within the page.
             fader_type: Target FaderType to assign.
             contents: Optional numeric identifier for the fader contents
-                (group index, cue number, or chaser index).
+                (preset/cue number or chaser index).
         """
         self.page = page
         self.index = index

@@ -27,9 +27,12 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
     from olc.show.cue import Cue
     from olc.show.fader_bank import FaderBank
-    from olc.show.group import Group
     from olc.show.main_fader import MainFader
+    from olc.show.palette import Palette
     from olc.show.sequence import Sequence
+
+
+LEGACY_FADER_TYPE_GROUP = 13
 
 
 class FaderType(IntEnum):
@@ -39,7 +42,6 @@ class FaderType(IntEnum):
     PRESET = 1
     CHANNELS = 2
     SEQUENCE = 3
-    GROUP = 13
     MAIN = 99
 
 
@@ -114,76 +116,26 @@ class FaderMain(Fader):
                 self.app.backend.dmx.set_levels()
 
 
-class FaderGroup(Fader):
-    """Fader with group"""
-
-    contents: Group | None
-    dmx: np.ndarray
-    channels: set
-
-    def __init__(
-        self, index: int, fader_bank: FaderBank, group: Group | None = None
-    ) -> None:
-        super().__init__(index, fader_bank)
-        self.contents = group
-        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
-        # Channels used by fader
-        self.channels = set()
-        if group:
-            self.text = group.text
-            self.update_channels()
-
-    def update_channels(self) -> None:
-        """Update channels used by fader"""
-        self.channels.clear()
-        if self.contents is None:
-            return
-        for channel in self.contents.get_channels():
-            self.channels.add(channel)
-        self.fader_bank.update_active_faders()
-
-    def set_contents(self, group: Group | None) -> None:
-        """Set group
-
-        Args:
-            group: Fader Group
-        """
-        self.contents = group
-        if group is not None:
-            self.text = group.text
-            self.update_channels()
-        else:
-            self.text = ""
-            self.channels.clear()
-            self.fader_bank.update_active_faders()
-
-    def level_changed(self) -> None:
-        """Fader level has changed"""
-        if self.contents:
-            for channel, lvl in self.contents.get_channels().items():
-                self.dmx[channel - 1] = float(lvl) * self.level
-            self.fader_bank.update_levels()
-            if self.app and hasattr(self.app, "backend") and self.app.backend:
-                self.app.backend.dmx.set_levels()
-
-
 class FaderPreset(Fader):
-    """Fader with preset"""
+    """Fader with preset (Palette Preset or Cue)."""
 
-    contents: Cue | None
+    contents: Palette | Cue | None
     dmx: np.ndarray
     channels: set
 
     def __init__(
-        self, index: int, fader_bank: FaderBank, cue: Cue | None = None
+        self,
+        index: int,
+        fader_bank: FaderBank,
+        preset: Palette | Cue | None = None,
     ) -> None:
         super().__init__(index, fader_bank)
-        self.contents = cue
+        self.contents = preset
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
-        if cue:
-            self.text = cue.text
+        if preset:
+            self.text = preset.text
             self.update_channels()
 
     def update_channels(self) -> None:
@@ -195,26 +147,29 @@ class FaderPreset(Fader):
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
 
-    def set_contents(self, cue: Cue | None) -> None:
-        """Set cue
+    def set_contents(self, preset: Palette | Cue | None) -> None:
+        """Set Preset or Cue.
 
         Args:
-            cue: Cue to put in fader
+            preset: Preset palette or Cue to put in fader.
         """
-        self.contents = cue
-        if cue is not None:
-            self.text = cue.text
+        self.contents = preset
+        if preset is not None:
+            self.text = preset.text
             self.update_channels()
         else:
             self.text = ""
             self.channels.clear()
+            self.dmx.fill(0.0)
             self.fader_bank.update_active_faders()
 
     def level_changed(self) -> None:
         """Fader level has changed"""
+        self.dmx.fill(0.0)
         if self.contents:
             for channel, lvl in self.contents.channels.items():
-                self.dmx[channel - 1] = float(lvl) * self.level
+                if 1 <= channel <= MAX_CHANNELS:
+                    self.dmx[channel - 1] = float(lvl) * self.level
             self.fader_bank.update_levels()
             if self.app and hasattr(self.app, "backend") and self.app.backend:
                 self.app.backend.dmx.set_levels()

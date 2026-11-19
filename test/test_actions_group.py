@@ -126,7 +126,7 @@ def test_group_new_action_auto_index() -> None:
 
 
 def test_group_update_channels_action() -> None:
-    """Test group update_channels action, including undo and redo."""
+    """Test group update_channels action, including deduplication, undo, and redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
@@ -137,27 +137,27 @@ def test_group_update_channels_action() -> None:
     app.action_registry.execute("group.new", 1.0)
     group = app.lightshow.groups[0]
     assert group.index == 1.0
-    assert group.channels == {}
+    assert group.channels == []
 
     # Track updated events
     updated_events = []
     app.subscribe("group.updated", lambda g: updated_events.append(g.index))
 
-    # Test group.update_channels
-    app.action_registry.execute("group.update_channels", 1.0, {1: 255, 2: 128})
-    assert group.channels == {1: 255, 2: 128}
+    # Test group.update_channels preserves order and deduplicates
+    app.action_registry.execute("group.update_channels", 1.0, [3, 1, 2, 1])
+    assert group.channels == [3, 1, 2]
     assert updated_events == [1.0]
 
     # Undo update_channels
     updated_events.clear()
     app.history.undo()
-    assert group.channels == {}
+    assert group.channels == []
     assert updated_events == [1.0]
 
     # Redo update_channels
     updated_events.clear()
     app.history.redo()
-    assert group.channels == {1: 255, 2: 128}
+    assert group.channels == [3, 1, 2]
     assert updated_events == [1.0]
 
 
@@ -205,7 +205,7 @@ def test_group_extended_actions_errors() -> None:
 
     # Update non-existent group channels
     with pytest.raises(ValueError, match="Group 2.0 does not exist"):
-        app.action_registry.execute("group.update_channels", 2.0, {1: 255})
+        app.action_registry.execute("group.update_channels", 2.0, [1])
 
     # Rename non-existent group
     with pytest.raises(ValueError, match="Group 2.0 does not exist"):
@@ -225,7 +225,7 @@ def test_groups_container_class() -> None:
     assert groups.get_next_index() == 1.0
 
     # Test add
-    g1 = Group(index=1.0, channels={})
+    g1 = Group(index=1.0, channels=[])
     groups.add(g1)
     assert len(groups) == 1
     assert groups[0] == g1
@@ -234,11 +234,11 @@ def test_groups_container_class() -> None:
 
     # Test add duplicate raises ValueError
     with pytest.raises(ValueError, match="Group with index 1.0 already exists"):
-        groups.add(Group(index=1.0, channels={}))
+        groups.add(Group(index=1.0, channels=[]))
 
     # Test insert/append maintains sorted order
-    g3 = Group(index=3.0, channels={})
-    g2 = Group(index=2.0, channels={})
+    g3 = Group(index=3.0, channels=[])
+    g2 = Group(index=2.0, channels=[])
     groups.add(g3)
     groups.add(g2)
 
@@ -313,81 +313,43 @@ def test_group_select_action_undo_redo() -> None:
     assert received_selections[-1] is None
 
 
-def test_group_temp_channels_action() -> None:
-    """Test group set_temp_channels action and GroupEditor."""
-    settings = MagicMock()
-    app = CoreApplication(settings)
+def test_group_pure_selection_methods() -> None:
+    """Test Group ordered pure channel selection API."""
+    grp = Group(1.0, [5, 2, 5], "Ordered")
+    assert grp.channels == [5, 2]
+    assert grp.has_channel(2) is True
+    assert grp.has_channel(9) is False
 
-    # Clean groups list
-    app.lightshow.groups.clear()
+    grp.add_channel(3)
+    grp.add_channel(5)
+    assert grp.get_channels() == [5, 2, 3]
 
-    # Create initial group
-    app.action_registry.execute("group.new", 1.0)
-    group = app.lightshow.groups[0]
+    grp.remove_channel(2)
+    grp.remove_channel(99)
+    assert grp.get_channels() == [5, 3]
 
-    # Track updated/changed events
-    editor_changed_events = []
-    app.subscribe("group_editor.changed", editor_changed_events.append)
+    grp.set_channels([10, 8, 10])
+    assert grp.get_channels() == [10, 8]
 
-    # Check initially no overrides
-    editor = app.lightshow.groups.group_editor
-    assert not editor.has_overrides(1.0)
-
-    # 1. Set temp channels
-    app.action_registry.execute("group.set_temp_channels", 1.0, {3: 200, 4: 150})
-    assert editor.has_overrides(1.0)
-    assert list(editor.get_levels(1.0)[2:4]) == [200, 150]
-    assert editor_changed_events == [1.0, 1.0]
-
-    # 2. Undo temp channels
-    app.history.undo()
-    assert not editor.has_overrides(1.0)
-    assert list(editor.get_levels(1.0)[2:4]) == [-1, -1]
-
-    # 3. Redo temp channels
-    app.history.redo()
-    assert editor.has_overrides(1.0)
-    assert list(editor.get_levels(1.0)[2:4]) == [200, 150]
-
-    # 4. Commit using update_channels
-    app.action_registry.execute("group.update_channels", 1.0, {3: 200, 4: 150})
-    assert group.channels == {3: 200, 4: 150}
-    # Editor overrides should be cleared after update
-    assert not editor.has_overrides(1.0)
+    grp.clear()
+    assert grp.get_channels() == []
 
 
-def test_group_delete_clears_and_restores_fader_assignment() -> None:
-    """Test group.delete clears referencing faders and Undo/Redo restores them."""
-    from olc.show.fader import FaderType
-
+def test_group_new_with_initial_channels() -> None:
+    """Test creating a Group with an initial ordered channel list and Undo/Redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
     app.lightshow.groups.clear()
 
-    app.action_registry.execute("group.new", 1.0)
-    group = app.lightshow.groups.get(1.0)
-    assert group is not None
+    app.action_registry.execute("group.new", 4.0, [12, 5, 12, 8])
+    grp = app.lightshow.groups.get(4.0)
+    assert grp is not None
+    assert grp.channels == [12, 5, 8]
 
-    app.action_registry.execute("fader.assign", 1, 2, FaderType.GROUP, 1.0)
-    fader_bank = app.lightshow.fader_bank
-    assert fader_bank.get_fader_type(1, 2) == FaderType.GROUP
-    assert fader_bank.faders[1][2].contents is group
-
-    # Delete group -> fader is cleared atomically
-    app.action_registry.execute("group.delete", 1.0)
-    assert app.lightshow.groups.get(1.0) is None
-    assert fader_bank.get_fader_type(1, 2) == FaderType.NONE
-    assert fader_bank.faders[1][2].contents is None
-
-    # Undo -> group AND fader assignment are restored
     app.history.undo()
-    restored_group = app.lightshow.groups.get(1.0)
-    assert restored_group is group
-    assert fader_bank.get_fader_type(1, 2) == FaderType.GROUP
-    assert fader_bank.faders[1][2].contents is group
+    assert app.lightshow.groups.get(4.0) is None
 
-    # Redo -> group deleted and fader cleared again
     app.history.redo()
-    assert app.lightshow.groups.get(1.0) is None
-    assert fader_bank.get_fader_type(1, 2) == FaderType.NONE
-    assert fader_bank.faders[1][2].contents is None
+    restored = app.lightshow.groups.get(4.0)
+    assert restored is not None
+    assert restored.channels == [12, 5, 8]

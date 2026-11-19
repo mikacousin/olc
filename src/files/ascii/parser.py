@@ -34,7 +34,8 @@ from olc.files.ascii.eos_devices import (
 )
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
-from olc.show.fader import FaderType
+from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
+from olc.show.palette import PaletteCategory
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
@@ -50,6 +51,7 @@ class State(Enum):
     NEW_SUB = auto()
     NEW_MPRIMARY = auto()
     NEW_PRESET = auto()
+    NEW_EOS_PRESET = auto()
     NEW_FADER = auto()
     NEW_PERSONALITY = auto()
     NEW_PATCH = auto()
@@ -61,6 +63,7 @@ class State(Enum):
     IN_SEQUENCE = auto()
     IN_INDEPENDENT = auto()
     IN_PRESET = auto()
+    IN_EOS_PRESET = auto()
     IN_FADER = auto()
     IN_PERSONALITY = auto()
     IN_PATCH = auto()
@@ -131,6 +134,7 @@ class AsciiParser(ReadFile):
         self._registered_fdef_keys: set[tuple[str, str]] = set()
         self._cue_raw_params: dict[int, list[tuple[int, float]]] = {}
         self.subs: dict[int, dict[str, typing.Any]] = {}
+        self._sub_preset_numbers: dict[int, float] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -139,6 +143,7 @@ class AsciiParser(ReadFile):
             "group": 0.0,
             "independent": 0,
             "preset": 0.0,
+            "eos_preset": 0.0,
             "fader": 0,
             "personality": 0,
             "patch_channel": 0,
@@ -217,6 +222,10 @@ class AsciiParser(ReadFile):
             self._new_preset()
         elif self.state is State.IN_PRESET:
             self._do_preset()
+        elif self.state is State.NEW_EOS_PRESET:
+            self._new_eos_preset()
+        elif self.state is State.IN_EOS_PRESET:
+            self._do_eos_preset()
         elif self.state is State.NEW_FADER:
             self._new_fader()
         elif self.state is State.IN_FADER:
@@ -511,9 +520,40 @@ class AsciiParser(ReadFile):
                 level = self._get_level(self.args[index + 1])
                 self.data["cues"][self.current["preset"]]["channels"][channel] = level
 
+    def _new_eos_preset(self) -> None:
+        if not self.args:
+            self.state = State.NO_PRIMARY
+            return
+        number = float(self.args[0])
+        presets = self.data.setdefault("palettes", {}).setdefault(
+            PaletteCategory.PRESET.value, {}
+        )
+        presets[number] = {
+            "category": PaletteCategory.PRESET.value,
+            "number": number,
+            "label": "",
+            "channels": {},
+        }
+        self.current["eos_preset"] = number
+        self.current["utext_active"] = False
+        self.state = State.IN_EOS_PRESET
+
+    def _do_eos_preset(self) -> None:
+        presets = self.data.get("palettes", {}).get(PaletteCategory.PRESET.value, {})
+        preset = presets.get(self.current["eos_preset"])
+        if preset is None:
+            return
+        if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
+            self._apply_label(preset)
+        elif self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                if 1 <= channel <= MAX_CHANNELS:
+                    preset["channels"][channel] = self._get_level(self.args[index + 1])
+
     def _new_group(self) -> None:
         group_number = float(self.args[0])
-        self.data["groups"][group_number] = {"label": "", "channels": {}}
+        self.data["groups"][group_number] = {"label": "", "channels": []}
         self.current["group"] = group_number
         self.current["utext_active"] = False
         self.state = State.IN_GROUP
@@ -523,15 +563,18 @@ class AsciiParser(ReadFile):
         if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
             self._apply_label(grp)
         elif self.keyword == "chan":
+            legacy_levels = grp.setdefault("legacy_levels", {})
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
-                level = self._get_level(self.args[index + 1])
-                grp["channels"][channel] = level
+                if 1 <= channel <= MAX_CHANNELS:
+                    if channel not in grp["channels"]:
+                        grp["channels"].append(channel)
+                    legacy_levels[channel] = self._get_level(self.args[index + 1])
         elif self.keyword == "$$chanlist":
             for arg in self.args:
                 channel = int(arg)
-                if 1 <= channel <= MAX_CHANNELS:
-                    grp["channels"][channel] = 1.0
+                if 1 <= channel <= MAX_CHANNELS and channel not in grp["channels"]:
+                    grp["channels"].append(channel)
 
     def _new_fader(self) -> None:
         page = int(self.args[0])
@@ -539,8 +582,8 @@ class AsciiParser(ReadFile):
         fader_type = int(self.args[2])
         contents = int(self.args[3]) if int(self.args[3]) else None
         if self._is_console("nicobats", "dlight") and fader_type == FaderType.CHANNELS:
-            # DLight use channels type for groups
-            fader_type = FaderType.GROUP
+            # DLight uses channels type for groups -> migrate via legacy group path
+            fader_type = LEGACY_FADER_TYPE_GROUP
         index = number - 1 + ((page - 1) * 10)
         if fader_type == FaderType.CHANNELS:
             self.data["faders"][index] = {
@@ -765,12 +808,27 @@ class AsciiParser(ReadFile):
             sub_id = int(self.args[1])
             sub = self.subs.get(sub_id)
             if sub and sub["channels"]:
+                presets = self.data.setdefault("palettes", {}).setdefault(
+                    PaletteCategory.PRESET.value, {}
+                )
+                if sub_id in self._sub_preset_numbers:
+                    preset_num = self._sub_preset_numbers[sub_id]
+                else:
+                    preset_num = float(sub_id)
+                    while preset_num in presets:
+                        preset_num += 1.0
+                    self._sub_preset_numbers[sub_id] = preset_num
+                    presets[preset_num] = {
+                        "category": PaletteCategory.PRESET.value,
+                        "number": preset_num,
+                        "label": sub["label"] or f"Sub {sub_id}",
+                        "channels": dict(sub["channels"]),
+                    }
                 self.data["faders"][index] = {
                     "page": page,
                     "number": number,
-                    "type": FaderType.CHANNELS,
-                    "contents": dict(sub["channels"]),
-                    "label": sub["label"] or f"Sub {sub_id}",
+                    "type": FaderType.PRESET,
+                    "contents": preset_num,
                 }
         elif target_type == "cl" and len(self.args) >= 2:
             seq_id = int(self.args[1])
@@ -803,8 +861,12 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):
             self.state = State.NEW_CUE
+        elif self.keyword == "group" and self._is_console("etc", "eos"):
+            self.state = State.NEW_EOS_PRESET
         elif self.keyword == "$group" or (
-            self.keyword == "group" and not self._is_console("avab", "congo")
+            self.keyword == "group"
+            and not self._is_console("avab", "congo")
+            and not self._is_console("etc", "eos")
         ):
             self.state = State.NEW_GROUP
         elif (

@@ -44,7 +44,6 @@ class AsciiWriter(WriteFile):
         self._main_playback()
         self._chasers()
         self._groups()
-        self._cobalt_groups()
         self._masters()
         self._patch()
         self._independents()
@@ -128,39 +127,19 @@ class AsciiWriter(WriteFile):
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
-        self.stream.write(bytes("! Groups (presets not in sequence)\n", "ascii"))
-        self.stream.write(bytes("! GROUP  Standard ASCII Light Cues\n", "ascii"))
-        self.stream.write(bytes("! CHAN   Standard ASCII Light Cues\n", "ascii"))
-        self.stream.write(bytes("! TEXT   Standard ASCII Light Cues\n", "ascii"))
+        self.stream.write(bytes("! Groups (channel selections)\n", "ascii"))
+        self.stream.write(bytes("! $GROUP     Group number\n", "ascii"))
+        self.stream.write(bytes("! TEXT       Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(
-            bytes("! $$TEXT Unicode encoded version of the same text\n\n", "ascii")
+            bytes("! $$TEXT     Unicode encoded version of the same text\n", "ascii")
         )
-        for group in self.lightshow.groups:
-            self.stream.write(bytes(f"GROUP {group.index}\n", "ascii"))
-            self._ascii_text(group.text)
-            self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
-            self._save_channels(group.get_channels())
-            self.stream.write(bytes("\n", "ascii"))
-
-    def _cobalt_groups(self) -> None:
-        if self.stream is None:
-            return
-        self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
-        )
-        self.stream.write(bytes("! Congo Groups\n", "ascii"))
-        self.stream.write(bytes("! $GROUP  Group number\n", "ascii"))
-        self.stream.write(bytes("! CHAN    Standard ASCII Light Cues\n", "ascii"))
-        self.stream.write(bytes("! TEXT    Standard ASCII Light Cues\n", "ascii"))
-        self.stream.write(
-            bytes("! $$TEXT  Unicode encoded version of the same text\n", "ascii")
-        )
+        self.stream.write(bytes("! $$CHANLIST Ordered channel numbers\n", "ascii"))
         self.stream.write(bytes("CLEAR $GROUP\n\n", "ascii"))
         for group in self.lightshow.groups:
             self.stream.write(bytes(f"$GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
             self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
-            self._save_channels(group.get_channels())
+            self._save_channel_list(group.get_channels())
             self.stream.write(bytes("\n", "ascii"))
 
     def _masters(self) -> None:
@@ -181,13 +160,9 @@ class AsciiWriter(WriteFile):
         self.stream.write(
             bytes("!               Content type (1=Preset, 2=Channels,\n", "ascii")
         )
+        self.stream.write(bytes("!               3=Chaser, 99=Main Fader),\n", "ascii"))
         self.stream.write(
-            bytes("!               3=Chaser, 13=Group, 99=Main Fader),\n", "ascii")
-        )
-        self.stream.write(
-            bytes(
-                "!               Content value (Preset#, Chaser#, Group#),\n", "ascii"
-            )
+            bytes("!               Content value (Preset#, Chaser#),\n", "ascii")
         )
         self.stream.write(
             bytes("!               Time In, Wait time, Time Out,\n", "ascii")
@@ -199,16 +174,14 @@ class AsciiWriter(WriteFile):
             for index, fader in faders.items():
                 contents = "0"
                 content_type = self.lightshow.fader_bank.get_fader_type(page, index)
-                if content_type == FaderType.GROUP:
-                    contents = self._float_to_str(fader.contents.index)
-                elif content_type == FaderType.SEQUENCE:
+                if content_type == FaderType.SEQUENCE and fader.contents is not None:
                     contents = str(fader.contents.index)
-                elif content_type == FaderType.PRESET:
+                elif content_type == FaderType.PRESET and fader.contents is not None:
                     contents = self._float_to_str(fader.contents.number)
                 if content_type not in (FaderType.NONE, FaderType.MAIN):
                     self.stream.write(
                         bytes(
-                            f"$MASTPAGEITEM {page} {index} {content_type} "
+                            f"$MASTPAGEITEM {page} {index} {int(content_type)} "
                             f"{contents} 5 0 5 255\n",
                             "ascii",
                         )
@@ -266,6 +239,18 @@ class AsciiWriter(WriteFile):
         if self.stream is None:
             return
         self.stream.write(bytes("ENDDATA\n", "ascii"))
+
+    def _save_channel_list(self, chans: list[int]) -> None:
+        """Save ordered group channel list using $$CHANLIST.
+
+        Args:
+            chans: Ordered list of channel numbers.
+        """
+        if self.stream is None or not chans:
+            return
+        for i in range(0, len(chans), 10):
+            chunk = " ".join(str(int(ch)) for ch in chans[i : i + 10])
+            self.stream.write(bytes(f"$$CHANLIST {chunk}\n", "ascii"))
 
     def _save_channels(self, chans: Mapping[int, int | float]) -> None:
         """Save channels
