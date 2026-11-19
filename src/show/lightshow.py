@@ -25,6 +25,7 @@ from olc.show.curve import Curves
 from olc.show.fader_bank import FaderBank
 from olc.show.group import Groups
 from olc.show.independent import Independents
+from olc.show.palette import Palette, PaletteCategory, PaletteManager
 from olc.show.park import ParkManager
 from olc.show.patch import PatchManager
 from olc.show.sequence import Sequence
@@ -95,6 +96,7 @@ class LightShow(ShowFile):
     cues: Cues
     chasers: list
     groups: Groups
+    palettes: PaletteManager
     fader_bank: FaderBank
     independents: Independents
     patch: PatchManager
@@ -119,6 +121,8 @@ class LightShow(ShowFile):
         self.chasers = []
         # List of groups
         self.groups = Groups(lightshow_type)
+        # Palettes & Presets
+        self.palettes = PaletteManager()
         # Faders
         self.fader_bank = FaderBank(lightshow_type)
         # Independents
@@ -152,6 +156,12 @@ class LightShow(ShowFile):
         """
         return self.groups.get(number)
 
+    def get_palette(
+        self, category: PaletteCategory | str, number: float
+    ) -> None | Palette:
+        """Get Palette or Preset by category and number."""
+        return self.palettes.get(category, number)
+
     def get_chaser(self, number: float) -> None | Sequence:
         """Get Chaser with his number
 
@@ -179,6 +189,7 @@ class LightShow(ShowFile):
                 chaser.thread.join()
         del self.chasers[:]
         self.groups.clear()
+        self.palettes.clear()
         self.fader_bank.reset_faders()
         self.independents = Independents(lightshow_type)
         self.patch.patch_empty()

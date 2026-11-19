@@ -62,9 +62,11 @@ class ShowNewAction(Action):
                 chaser.thread.join()
             del lightshow.chasers[:]
 
-        # Reset cues and groups
+        # Reset cues, groups, and palettes
         lightshow.cues.clear()
         lightshow.groups.clear()
+        if hasattr(lightshow, "palettes"):
+            lightshow.palettes.clear()
 
         # Reset user curves
         if hasattr(lightshow, "curves"):
@@ -330,6 +332,7 @@ def _copy_cue(cue: Cue | None) -> Cue | None:
         text=cue.text,
     )
     copied.device_values = copy.deepcopy(cue.device_values)
+    copied.palette_refs = copy.deepcopy(cue.palette_refs)
     copied.is_block = bool(cue.is_block)
     return copied
 
@@ -534,11 +537,13 @@ class ShowImportAction(Action):
         if hasattr(lightshow, "universe_map"):
             snapshot["universe_map"] = copy.deepcopy(lightshow.universe_map)
 
-        # 3. Groups
+        # 3. Groups and Palettes
         snapshot["groups"] = [
             Group(g.index, channels=dict(g.channels), text=g.text)
             for g in lightshow.groups
         ]
+        if hasattr(lightshow, "palettes"):
+            snapshot["palettes"] = lightshow.palettes.to_dict()
 
         # 4. Cues
         snapshot["cues"] = [_copy_cue(c) for c in lightshow.cues if c is not None]
@@ -616,6 +621,9 @@ class ShowImportAction(Action):
         lightshow.groups.clear()
         for g in snapshot["groups"]:
             lightshow.groups.add(Group(g.index, channels=dict(g.channels), text=g.text))
+
+        if "palettes" in snapshot and hasattr(lightshow, "palettes"):
+            lightshow.palettes.from_dict(snapshot["palettes"])
 
         lightshow.cues.clear()
         cues_map: dict[tuple[float, int], Cue] = {}

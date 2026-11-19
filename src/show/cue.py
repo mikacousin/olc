@@ -21,6 +21,7 @@ import numpy as np
 
 from olc.define import MAX_CHANNELS
 from olc.show.editor import TempChannelsEditor
+from olc.show.palette import PaletteRef, serialize_palette_refs
 
 if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
@@ -72,6 +73,7 @@ class Cue:
     text: str  # Cue text
     _channels_array: np.ndarray | None
     device_values: dict[int, dict[str, typing.Any]]
+    palette_refs: dict[int, dict[str, PaletteRef]]
     is_block: bool
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -82,6 +84,7 @@ class Cue:
         text: str = "",
         device_values: dict[int, dict[str, typing.Any]] | None = None,
         is_block: bool = False,
+        palette_refs: dict[int, dict[str, PaletteRef]] | None = None,
     ) -> None:
         self.sequence = sequence
         self.number = number
@@ -89,6 +92,7 @@ class Cue:
         self._channels = CueChannels(self, channels or {})
         self.text = text
         self.device_values = device_values if device_values is not None else {}
+        self.palette_refs = palette_refs if palette_refs is not None else {}
         self.is_block = is_block
 
     @property
@@ -199,6 +203,8 @@ class Cue:
             d["device_values"] = {
                 int(k): dict(v) for k, v in self.device_values.items()
             }
+        if self.palette_refs:
+            d["palette_refs"] = serialize_palette_refs(self.palette_refs)
         if self.is_block:
             d["is_block"] = self.is_block
         return d

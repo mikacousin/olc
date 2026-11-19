@@ -584,3 +584,103 @@ def test_merge_olc_updates_existing_step_timings() -> None:
     assert step.delay_color is None
     assert step.time_beam == pytest.approx(2.2)
     assert step.delay_beam == pytest.approx(0.1)
+
+
+def test_olc_palettes_and_cue_palette_refs_roundtrip(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify Palettes, Presets, and Cue.palette_refs persist across .olc roundtrip."""
+    from olc.show.palette import Palette, PaletteCategory
+
+    settings = MagicMock()
+    settings.get_double.return_value = 5.0
+    settings.get_boolean.return_value = True
+    app1 = CoreApplication(settings)
+    ls1 = app1.lightshow
+
+    ls1.palettes.add(
+        Palette(
+            category=PaletteCategory.INTENSITY,
+            number=1.0,
+            text="Half",
+            channels={1: 0.5},
+        )
+    )
+    ls1.palettes.add(
+        Palette(
+            category=PaletteCategory.FOCUS,
+            number=10.0,
+            text="Center Stage",
+            device_values={1: {"pan": 12.5, "tilt": -25.0}},
+        )
+    )
+    ls1.palettes.add(
+        Palette(
+            category=PaletteCategory.COLOR,
+            number=2.0,
+            text="Lee 106",
+            device_values={1: {"color": "#ff1100"}},
+        )
+    )
+    ls1.palettes.add(
+        Palette(
+            category=PaletteCategory.BEAM,
+            number=3.0,
+            text="Frost",
+            device_values={1: {"frost": 1.0}},
+        )
+    )
+    ls1.palettes.add(
+        Palette(
+            category=PaletteCategory.PRESET,
+            number=1.0,
+            text="Chorus",
+            channels={1: 0.5},
+            device_values={1: {"color": "#ff1100", "pan": 12.5}},
+            palette_refs={
+                1: {
+                    "intensity": ("intensity", 1.0),
+                    "color": ("color", 2.0),
+                    "pan": ("focus", 10.0),
+                }
+            },
+        )
+    )
+
+    cue1 = Cue(
+        sequence=1,
+        number=1.5,
+        channels={1: 0.5},
+        text="Look 1.5",
+        device_values={1: {"color": "#ff1100"}},
+        palette_refs={1: {"color": ("color", 2.0)}},
+    )
+    ls1.cues.add(cue1)
+    ls1.main_playback.add_step(Step(1, cue=cue1, text="Look 1.5"))
+
+    olc_file = str(tmp_path / "palettes_roundtrip.olc")
+    app1.action_registry.execute("show.save", olc_file)
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", olc_file)
+
+    ls2 = app2.lightshow
+    assert len(ls2.palettes) == 5
+    cp2 = ls2.palettes.get(PaletteCategory.COLOR, 2.0)
+    assert cp2 is not None and cp2.text == "Lee 106"
+    assert cp2.device_values == {1: {"color": "#ff1100"}}
+
+    preset2 = ls2.palettes.get(PaletteCategory.PRESET, 1.0)
+    assert preset2 is not None
+    assert preset2.channels == {1: 0.5}
+    assert preset2.palette_refs == {
+        1: {
+            "intensity": ("intensity", 1.0),
+            "color": ("color", 2.0),
+            "pan": ("focus", 10.0),
+        }
+    }
+
+    restored_cue = ls2.main_playback.steps[1].cue
+    assert restored_cue is not None
+    assert restored_cue.palette_refs == {1: {"color": ("color", 2.0)}}

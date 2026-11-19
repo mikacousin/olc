@@ -107,6 +107,7 @@ class ImportFile:
             "patch": Action.REPLACE,
             "sequences": {},
             "groups": Action.REPLACE,
+            "palettes": Action.REPLACE,
             "independents": Action.REPLACE,
             "faders": Action.REPLACE,
             "midi": Action.REPLACE,
@@ -168,6 +169,7 @@ class ImportFile:
         if self.file_type is FileType.OLC:
             self._do_import_universes()
         self._do_import_patch()
+        self._do_import_palettes()
         self._do_import_sequences()
         self._do_import_groups()
         self._do_import_independents()
@@ -205,6 +207,14 @@ class ImportFile:
         if self.actions["groups"] is Action.REPLACE:
             self.lightshow.groups.clear()
         self.data.import_groups()
+
+    def _do_import_palettes(self) -> None:
+        palettes_action = self.actions.get("palettes", Action.REPLACE)
+        if palettes_action is Action.IGNORE:
+            return
+        if palettes_action is Action.REPLACE and hasattr(self.lightshow, "palettes"):
+            self.lightshow.palettes.clear()
+        self.data.import_palettes()
 
     def _do_import_faders(self) -> None:
         if self.actions["faders"] is Action.IGNORE:

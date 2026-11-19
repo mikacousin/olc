@@ -22,6 +22,7 @@ from olc.controllers.midi import Midi
 from olc.files.write import WriteFile
 from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.show.fader import FaderType
+from olc.show.palette import serialize_palette_refs
 
 if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
@@ -57,6 +58,7 @@ class OlcWriter(WriteFile):
         self._sequences()
         self._cues()
         self._groups()
+        self._palettes()
         self._faders()
         self._independents()
         self._midi()
@@ -145,6 +147,8 @@ class OlcWriter(WriteFile):
             }
             if step.cue.device_values:
                 cue_dict["device_values"] = step.cue.device_values
+            if step.cue.palette_refs:
+                cue_dict["palette_refs"] = serialize_palette_refs(step.cue.palette_refs)
             if step.cue.is_block:
                 cue_dict["is_block"] = step.cue.is_block
             self.data["sequences"][seq_index]["cues"][step.cue.number] = cue_dict
@@ -158,9 +162,16 @@ class OlcWriter(WriteFile):
             }
             if cue.device_values:
                 c_dict["device_values"] = cue.device_values
+            if cue.palette_refs:
+                c_dict["palette_refs"] = serialize_palette_refs(cue.palette_refs)
             if cue.is_block:
                 c_dict["is_block"] = cue.is_block
             self.data["cues"][cue.number] = c_dict
+
+    def _palettes(self) -> None:
+        if not hasattr(self.lightshow, "palettes") or len(self.lightshow.palettes) == 0:
+            return
+        self.data["palettes"] = self.lightshow.palettes.to_dict()
 
     def _groups(self) -> None:
         self.data["groups"] = {}

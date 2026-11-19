@@ -27,6 +27,7 @@ from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.show.fader import FaderType
 from olc.show.group import Group
 from olc.show.independent import IndependentType
+from olc.show.palette import deserialize_palette_refs
 from olc.show.sequence import Sequence
 from olc.show.step import Step
 
@@ -54,6 +55,7 @@ class ParsedData:
             "patch": {},
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
+            "palettes": {},
             "independents": {},
             "cues": {},
             "faders": {},
@@ -219,6 +221,13 @@ class ParsedData:
                 # Create new group
                 self.lightshow.groups.add(Group(group_number, channels, label))
 
+    def import_palettes(self) -> None:
+        """Import IFCB Palettes and Presets data."""
+        palettes_data = self.data.get("palettes")
+        if not palettes_data or not hasattr(self.lightshow, "palettes"):
+            return
+        self.lightshow.palettes.from_dict(palettes_data)
+
     def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data
 
@@ -268,6 +277,7 @@ class ParsedData:
             }
         else:
             cue.device_values = {}
+        cue.palette_refs = deserialize_palette_refs(cue_dict.get("palette_refs"))
         cue.is_block = bool(cue_dict.get("is_block", False))
 
     @staticmethod
