@@ -16,10 +16,20 @@
 
 from __future__ import annotations
 
+import re
 import typing
 
 from olc.define import NB_UNIVERSES, UNIVERSES
 from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
+
+_PALETTE_REF_RE = re.compile(r"^(ip|fp|cp|bp|pr)(\d+(?:\.\d+)?)$")
+_PALETTE_PREFIX_TO_CATEGORY: dict[str, str] = {
+    "ip": "intensity",
+    "fp": "focus",
+    "cp": "color",
+    "bp": "beam",
+    "pr": "preset",
+}
 
 EOS_PARAM_TO_CHANNEL_TYPE: dict[str, ChannelType] = {
     "intens": ChannelType.INTENSITY,
@@ -60,6 +70,53 @@ _PHYSICAL_PARAM_NAMES: dict[str, str] = {
     "color_temperature": "color_temp",
     "cto": "color_temp",
 }
+
+
+def parse_eos_param_token(
+    token: str,
+) -> tuple[float | None, tuple[str, float] | None]:
+    """Parse an Eos $$Param token into a numeric value or a palette reference.
+
+    Handles standard numbers, gel/library prefixed values (``GL106#65535``),
+    by-type / untyped markers (``t255``, ``u255``), and palette/preset
+    references (``IP<n>``, ``FP<n>``, ``CP<n>``, ``BP<n>``, ``PR<n>``).
+    """
+    tok = token.strip().lower()
+    if not tok:
+        return None, None
+    if match := _PALETTE_REF_RE.match(tok):
+        prefix, num_str = match.groups()
+        return None, (_PALETTE_PREFIX_TO_CATEGORY[prefix], float(num_str))
+    if "#" in tok:
+        _, raw_part = tok.rsplit("#", 1)
+        try:
+            return float(raw_part), None
+        except ValueError:
+            return None, None
+    if tok[0] in ("t", "u") and len(tok) > 1:
+        try:
+            return float(tok[1:]), None
+        except ValueError:
+            return None, None
+    try:
+        return float(tok), None
+    except ValueError:
+        return None, None
+
+
+def eos_param_id_to_olc_key(p_id: int, param_types: dict[int, str]) -> str | None:
+    """Map an Eos parameter ID to its OLC channel/device_values key."""
+    p_name = param_types.get(p_id, "").lower()
+    if not p_name:
+        return "intensity" if p_id == 1 else None
+    if p_name == "intens":
+        return "intensity"
+    if p_name in _PHYSICAL_PARAM_NAMES:
+        return _PHYSICAL_PARAM_NAMES[p_name]
+    if p_name in ("red", "green", "blue", "cyan", "magenta", "yellow"):
+        return "color"
+    ctype = map_eos_param_type(p_name)
+    return ctype.value if ctype is not ChannelType.GENERIC else None
 
 
 def map_eos_param_type(eos_name: str) -> ChannelType:
@@ -233,7 +290,7 @@ def decode_eos_cue_params(
         p_name = param_types.get(p_id, "").lower()
         pc = chan_by_param.get(p_id)
         num_bytes = int(pc.get("bytes", 1)) if pc else (2 if raw_val > 255 else 1)
-        max_raw = 65535.0 if num_bytes == 2 else 255.0
+        max_raw = 65535.0 if (num_bytes == 2 or raw_val > 255.0) else 255.0
         norm = max(0.0, min(1.0, raw_val / max_raw))
 
         if p_name == "intens":
@@ -251,7 +308,10 @@ def decode_eos_cue_params(
         else:
             ctype = map_eos_param_type(p_name)
             if ctype is not ChannelType.GENERIC:
-                dev_vals[ctype.value] = norm
+                key = ctype.value
+                existing = dev_vals.get(key)
+                if not isinstance(existing, (int, float)) or norm > float(existing):
+                    dev_vals[key] = norm
 
     if rgb:
         r = round(rgb.get("red", 0.0) * 255)

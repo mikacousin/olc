@@ -30,7 +30,9 @@ from olc.define import (
 from olc.files.ascii.eos_devices import (
     build_device_and_definition,
     decode_eos_cue_params,
+    eos_param_id_to_olc_key,
     is_dimmer_personality,
+    parse_eos_param_token,
 )
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
@@ -39,6 +41,13 @@ from olc.show.palette import PaletteCategory
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
+
+_EOS_PALETTE_KEYWORDS: dict[str, PaletteCategory] = {
+    "$intensitypalette": PaletteCategory.INTENSITY,
+    "$focuspalette": PaletteCategory.FOCUS,
+    "$colorpalette": PaletteCategory.COLOR,
+    "$beampalette": PaletteCategory.BEAM,
+}
 
 
 class State(Enum):
@@ -52,6 +61,7 @@ class State(Enum):
     NEW_MPRIMARY = auto()
     NEW_PRESET = auto()
     NEW_EOS_PRESET = auto()
+    NEW_PALETTE = auto()
     NEW_FADER = auto()
     NEW_PERSONALITY = auto()
     NEW_PATCH = auto()
@@ -64,6 +74,7 @@ class State(Enum):
     IN_INDEPENDENT = auto()
     IN_PRESET = auto()
     IN_EOS_PRESET = auto()
+    IN_PALETTE = auto()
     IN_FADER = auto()
     IN_PERSONALITY = auto()
     IN_PATCH = auto()
@@ -132,7 +143,18 @@ class AsciiParser(ReadFile):
         self.personalities: dict[int, dict[str, typing.Any]] = {}
         self.channel_personality: dict[int, int] = {}
         self._registered_fdef_keys: set[tuple[str, str]] = set()
-        self._cue_raw_params: dict[int, list[tuple[int, float]]] = {}
+        self._palette_raw_params: dict[
+            tuple[str, float], dict[int, dict[int, float]]
+        ] = {}
+        self._palette_raw_refs: dict[
+            tuple[str, float], dict[int, dict[int, tuple[str, float]]]
+        ] = {}
+        self._sub_raw_params: dict[int, dict[int, dict[int, float]]] = {}
+        self._sub_raw_refs: dict[int, dict[int, dict[int, tuple[str, float]]]] = {}
+        self._cue_raw_params: dict[tuple[int, float], dict[int, dict[int, float]]] = {}
+        self._cue_raw_refs: dict[
+            tuple[int, float], dict[int, dict[int, tuple[str, float]]]
+        ] = {}
         self.subs: dict[int, dict[str, typing.Any]] = {}
         self._sub_preset_numbers: dict[int, float] = {}
         self.current = {
@@ -144,6 +166,7 @@ class AsciiParser(ReadFile):
             "independent": 0,
             "preset": 0.0,
             "eos_preset": 0.0,
+            "palette": None,
             "fader": 0,
             "personality": 0,
             "patch_channel": 0,
@@ -155,13 +178,14 @@ class AsciiParser(ReadFile):
         }
 
     def parse(self) -> None:
-        """Parse file line by line"""
+        """Parse file line by line, then resolve palettes and references."""
         for line in self.contents.splitlines():
             line = line.strip()
             if line:
                 loop = self._do_parse(line)
                 if not loop:
                     break
+        self._resolve_palettes_and_refs()
 
     def _do_parse(self, line: str) -> bool:
         """Parse line
@@ -226,6 +250,10 @@ class AsciiParser(ReadFile):
             self._new_eos_preset()
         elif self.state is State.IN_EOS_PRESET:
             self._do_eos_preset()
+        elif self.state is State.NEW_PALETTE:
+            self._new_palette()
+        elif self.state is State.IN_PALETTE:
+            self._do_palette()
         elif self.state is State.NEW_FADER:
             self._new_fader()
         elif self.state is State.IN_FADER:
@@ -417,7 +445,9 @@ class AsciiParser(ReadFile):
         }
         self.current["cue"] = cue_number
         self.current["utext_active"] = False
-        self._cue_raw_params = {}
+        cue_key = (seq_number, cue_number)
+        self._cue_raw_params[cue_key] = {}
+        self._cue_raw_refs[cue_key] = {}
         self.state = State.IN_CUE
 
     def _do_cue(self) -> None:
@@ -473,26 +503,11 @@ class AsciiParser(ReadFile):
         elif self.keyword == "$$block":
             cue["is_block"] = True
         elif self.keyword == "$$param" and len(self.args) >= 3:
-            channel = int(self.args[0])
-            if channel <= MAX_CHANNELS:
-                raw_list = self._cue_raw_params.setdefault(channel, [])
-                for index in range(1, len(self.args) - 1, 2):
-                    try:
-                        p_id = int(self.args[index])
-                        raw_val = float(self.args[index + 1])
-                    except ValueError:
-                        # Palette references (e.g. cp106, fp12, bp5) are skipped for now
-                        continue
-                    raw_list.append((p_id, raw_val))
-                pers_id = self.channel_personality.get(channel)
-                pers = self.personalities.get(pers_id) if pers_id is not None else None
-                dev_vals, intensity_val = decode_eos_cue_params(
-                    raw_list, pers, self.param_types
-                )
-                if dev_vals:
-                    cue.setdefault("device_values", {})[channel] = dev_vals
-                if intensity_val is not None and channel not in cue["channels"]:
-                    cue["channels"][channel] = intensity_val
+            cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
+            self._record_param_line(
+                self._cue_raw_params.setdefault(cue_key, {}),
+                self._cue_raw_refs.setdefault(cue_key, {}),
+            )
         elif self.keyword == "$$parttime":
             delay = string_to_time(self.args[0])
             time = string_to_time(self.args[1])
@@ -520,6 +535,73 @@ class AsciiParser(ReadFile):
                 level = self._get_level(self.args[index + 1])
                 self.data["cues"][self.current["preset"]]["channels"][channel] = level
 
+    def _record_param_line(
+        self,
+        raw_params_by_ch: dict[int, dict[int, float]],
+        raw_refs_by_ch: dict[int, dict[int, tuple[str, float]]],
+    ) -> None:
+        """Record numeric values and palette references from a $$Param line."""
+        try:
+            channel = int(self.args[0])
+        except (IndexError, ValueError):
+            return
+        if not 1 <= channel <= MAX_CHANNELS:
+            return
+        ch_raw = raw_params_by_ch.setdefault(channel, {})
+        ch_refs = raw_refs_by_ch.setdefault(channel, {})
+        for index in range(1, len(self.args) - 1, 2):
+            try:
+                p_id = int(self.args[index])
+            except ValueError:
+                continue
+            raw_val, pal_ref = parse_eos_param_token(self.args[index + 1])
+            if raw_val is not None:
+                ch_raw[p_id] = raw_val
+            elif pal_ref is not None:
+                ch_refs[p_id] = pal_ref
+
+    def _new_palette(self) -> None:
+        category = _EOS_PALETTE_KEYWORDS.get(self.keyword)
+        if category is None or not self.args:
+            self.state = State.NO_PRIMARY
+            return
+        number = float(self.args[0])
+        cat_val = category.value
+        pal_dict = self.data.setdefault("palettes", {}).setdefault(cat_val, {})
+        pal_dict[number] = {
+            "category": cat_val,
+            "number": number,
+            "label": "",
+            "channels": {},
+        }
+        key = (cat_val, number)
+        self._palette_raw_params[key] = {}
+        self._palette_raw_refs[key] = {}
+        self.current["palette"] = key
+        self.current["utext_active"] = False
+        self.state = State.IN_PALETTE
+
+    def _do_palette(self) -> None:
+        pal_key = self.current.get("palette")
+        if pal_key is None:
+            return
+        cat_val, number = pal_key
+        pal = self.data.get("palettes", {}).get(cat_val, {}).get(number)
+        if pal is None:
+            return
+        if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
+            self._apply_label(pal)
+        elif self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                if 1 <= channel <= MAX_CHANNELS:
+                    pal["channels"][channel] = self._get_level(self.args[index + 1])
+        elif self.keyword == "$$param" and len(self.args) >= 3:
+            self._record_param_line(
+                self._palette_raw_params.setdefault(pal_key, {}),
+                self._palette_raw_refs.setdefault(pal_key, {}),
+            )
+
     def _new_eos_preset(self) -> None:
         if not self.args:
             self.state = State.NO_PRIMARY
@@ -534,6 +616,9 @@ class AsciiParser(ReadFile):
             "label": "",
             "channels": {},
         }
+        key = (PaletteCategory.PRESET.value, number)
+        self._palette_raw_params[key] = {}
+        self._palette_raw_refs[key] = {}
         self.current["eos_preset"] = number
         self.current["utext_active"] = False
         self.state = State.IN_EOS_PRESET
@@ -550,6 +635,12 @@ class AsciiParser(ReadFile):
                 channel = int(self.args[index])
                 if 1 <= channel <= MAX_CHANNELS:
                     preset["channels"][channel] = self._get_level(self.args[index + 1])
+        elif self.keyword == "$$param" and len(self.args) >= 3:
+            key = (PaletteCategory.PRESET.value, float(self.current["eos_preset"]))
+            self._record_param_line(
+                self._palette_raw_params.setdefault(key, {}),
+                self._palette_raw_refs.setdefault(key, {}),
+            )
 
     def _new_group(self) -> None:
         group_number = float(self.args[0])
@@ -750,12 +841,15 @@ class AsciiParser(ReadFile):
             return
         sub_id = int(self.args[0])
         self.subs[sub_id] = {"label": "", "channels": {}}
+        self._sub_raw_params[sub_id] = {}
+        self._sub_raw_refs[sub_id] = {}
         self.current["sub"] = sub_id
         self.current["utext_active"] = False
         self.state = State.IN_SUB
 
     def _do_sub(self) -> None:
-        sub = self.subs.get(self.current["sub"])
+        sub_id = int(self.current["sub"])
+        sub = self.subs.get(sub_id)
         if sub is None:
             return
         if self.keyword in ("text", "$$text", "$$utext"):
@@ -766,15 +860,19 @@ class AsciiParser(ReadFile):
                 if channel <= MAX_CHANNELS:
                     sub["channels"][channel] = self._get_level(self.args[index + 1])
         elif self.keyword == "$$param" and len(self.args) >= 3:
+            self._record_param_line(
+                self._sub_raw_params.setdefault(sub_id, {}),
+                self._sub_raw_refs.setdefault(sub_id, {}),
+            )
             channel = int(self.args[0])
             if channel <= MAX_CHANNELS and channel not in sub["channels"]:
                 for index in range(1, len(self.args) - 1, 2):
                     try:
                         p_id = int(self.args[index])
-                        raw_val = float(self.args[index + 1])
                     except ValueError:
                         continue
-                    if p_id == 1:
+                    raw_val, _ref = parse_eos_param_token(self.args[index + 1])
+                    if p_id == 1 and raw_val is not None:
                         max_raw = 65535.0 if raw_val > 255.0 else 255.0
                         sub["channels"][channel] = max(0.0, min(1.0, raw_val / max_raw))
 
@@ -807,7 +905,11 @@ class AsciiParser(ReadFile):
         if target_type == "s" and len(self.args) >= 2:
             sub_id = int(self.args[1])
             sub = self.subs.get(sub_id)
-            if sub and sub["channels"]:
+            if sub and (
+                sub["channels"]
+                or self._sub_raw_params.get(sub_id)
+                or self._sub_raw_refs.get(sub_id)
+            ):
                 presets = self.data.setdefault("palettes", {}).setdefault(
                     PaletteCategory.PRESET.value, {}
                 )
@@ -861,6 +963,8 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):
             self.state = State.NEW_CUE
+        elif self.keyword in _EOS_PALETTE_KEYWORDS:
+            self.state = State.NEW_PALETTE
         elif self.keyword == "group" and self._is_console("etc", "eos"):
             self.state = State.NEW_EOS_PRESET
         elif self.keyword == "$group" or (
@@ -895,3 +999,117 @@ class AsciiParser(ReadFile):
         ):
             return True
         return False
+
+    def _apply_resolved_params(
+        self,
+        target: dict[str, typing.Any],
+        raw_by_ch: dict[int, dict[int, float]],
+        refs_by_ch: dict[int, dict[int, tuple[str, float]]],
+        *,
+        store_resolved_key: tuple[str, float] | None = None,
+    ) -> None:
+        """Merge raw parameters and palette references onto *target* dict."""
+        palettes_data = self.data.get("palettes", {})
+        for ch in sorted(set(raw_by_ch.keys()) | set(refs_by_ch.keys())):
+            merged: dict[int, float] = dict(raw_by_ch.get(ch, {}))
+            ref_intensity: float | None = None
+            for p_id, (ref_cat, ref_num) in sorted(refs_by_ch.get(ch, {}).items()):
+                src_raw = self._palette_raw_params.get((ref_cat, ref_num), {}).get(
+                    ch, {}
+                )
+                if p_id in src_raw:
+                    merged[p_id] = src_raw[p_id]
+                elif p_id == 1 or self.param_types.get(p_id, "").lower() == "intens":
+                    src_pal = palettes_data.get(ref_cat, {}).get(ref_num)
+                    if isinstance(src_pal, dict) and ch in src_pal.get("channels", {}):
+                        ref_intensity = float(src_pal["channels"][ch])
+                olc_key = eos_param_id_to_olc_key(p_id, self.param_types)
+                if olc_key is not None:
+                    pal_refs_ch = target.setdefault("palette_refs", {}).setdefault(
+                        ch, {}
+                    )
+                    if olc_key not in pal_refs_ch:
+                        pal_refs_ch[olc_key] = [ref_cat, ref_num]
+            if store_resolved_key is not None and merged:
+                self._palette_raw_params.setdefault(store_resolved_key, {})[ch] = merged
+
+            pers_id = self.channel_personality.get(ch)
+            pers = self.personalities.get(pers_id) if pers_id is not None else None
+            dev_vals, intensity_val = decode_eos_cue_params(
+                list(merged.items()), pers, self.param_types
+            )
+            if ref_intensity is not None and intensity_val is None:
+                intensity_val = ref_intensity
+                dev_vals["intensity"] = ref_intensity
+            if dev_vals:
+                target.setdefault("device_values", {})[ch] = dev_vals
+            if intensity_val is not None and ch not in target.setdefault(
+                "channels", {}
+            ):
+                target["channels"][ch] = intensity_val
+
+    def _resolve_palettes_and_refs(self) -> None:
+        """Pass 2: decode base palettes and resolve refs on Presets, Subs, and Cues."""
+        base_cats = (
+            PaletteCategory.INTENSITY.value,
+            PaletteCategory.FOCUS.value,
+            PaletteCategory.COLOR.value,
+            PaletteCategory.BEAM.value,
+        )
+        all_pal_keys = list(
+            set(self._palette_raw_params.keys()) | set(self._palette_raw_refs.keys())
+        )
+        palettes_data = self.data.get("palettes", {})
+
+        # 1. Decode base IFCB palettes first
+        for key in all_pal_keys:
+            cat_val, num = key
+            if cat_val not in base_cats:
+                continue
+            target = palettes_data.get(cat_val, {}).get(num)
+            if target is not None:
+                self._apply_resolved_params(
+                    target,
+                    self._palette_raw_params.get(key, {}),
+                    self._palette_raw_refs.get(key, {}),
+                    store_resolved_key=key,
+                )
+
+        # 2. Resolve Eos Presets (may reference base palettes, e.g. PR110 -> BP2)
+        preset_cat = PaletteCategory.PRESET.value
+        for key in all_pal_keys:
+            cat_val, num = key
+            if cat_val != preset_cat:
+                continue
+            target = palettes_data.get(preset_cat, {}).get(num)
+            if target is not None:
+                self._apply_resolved_params(
+                    target,
+                    self._palette_raw_params.get(key, {}),
+                    self._palette_raw_refs.get(key, {}),
+                    store_resolved_key=key,
+                )
+
+        # 3. Resolve mounted Subs backed by $$Param lines
+        for sub_id, preset_num in self._sub_preset_numbers.items():
+            raw_by_ch = self._sub_raw_params.get(sub_id, {})
+            refs_by_ch = self._sub_raw_refs.get(sub_id, {})
+            if not raw_by_ch and not refs_by_ch:
+                continue
+            target = palettes_data.get(preset_cat, {}).get(preset_num)
+            if target is not None:
+                self._apply_resolved_params(target, raw_by_ch, refs_by_ch)
+
+        # 4. Resolve Cue parameters and palette/preset references
+        all_cue_keys = list(
+            set(self._cue_raw_params.keys()) | set(self._cue_raw_refs.keys())
+        )
+        sequences_data = self.data.get("sequences", {})
+        for seq_num, cue_num in all_cue_keys:
+            cue = sequences_data.get(seq_num, {}).get("cues", {}).get(cue_num)
+            if cue is not None:
+                self._apply_resolved_params(
+                    cue,
+                    self._cue_raw_params.get((seq_num, cue_num), {}),
+                    self._cue_raw_refs.get((seq_num, cue_num), {}),
+                )

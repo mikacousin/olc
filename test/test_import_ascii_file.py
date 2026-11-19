@@ -448,3 +448,258 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     preset6 = lightshow.palettes.get(PaletteCategory.PRESET, 6.0)
     assert preset6 is not None
     assert lightshow.fader_bank.faders[1][1].contents is preset6
+
+
+def test_eos_param_token_parsing() -> None:
+    """Unit-test parse_eos_param_token and eos_param_id_to_olc_key."""
+    from olc.files.ascii.eos_devices import (
+        eos_param_id_to_olc_key,
+        parse_eos_param_token,
+    )
+
+    assert parse_eos_param_token("GL106#65535") == (65535.0, None)
+    assert parse_eos_param_token("GL106#0") == (0.0, None)
+    assert parse_eos_param_token("t255") == (255.0, None)
+    assert parse_eos_param_token("u0") == (0.0, None)
+    assert parse_eos_param_token("CP106") == (None, ("color", 106.0))
+    assert parse_eos_param_token("FP12.5") == (None, ("focus", 12.5))
+    assert parse_eos_param_token("BP2") == (None, ("beam", 2.0))
+    assert parse_eos_param_token("IP3") == (None, ("intensity", 3.0))
+    assert parse_eos_param_token("PR100") == (None, ("preset", 100.0))
+    assert parse_eos_param_token("32768") == (32768.0, None)
+    assert parse_eos_param_token("not_a_token") == (None, None)
+    assert parse_eos_param_token("") == (None, None)
+
+    ptypes = {
+        1: "Intens",
+        2: "Pan",
+        12: "Red",
+        76: "Diffusion",
+        78: "Edge",
+        57675: "Medium_Diffusion",
+        9999: "UnknownParam",
+    }
+    assert eos_param_id_to_olc_key(1, ptypes) == "intensity"
+    assert eos_param_id_to_olc_key(1, {}) == "intensity"
+    assert eos_param_id_to_olc_key(2, ptypes) == "pan"
+    assert eos_param_id_to_olc_key(12, ptypes) == "color"
+    assert eos_param_id_to_olc_key(76, ptypes) == "frost"
+    assert eos_param_id_to_olc_key(78, ptypes) == "focus"
+    assert eos_param_id_to_olc_key(57675, ptypes) == "frost"
+    assert eos_param_id_to_olc_key(9999, ptypes) is None
+
+
+def test_import_eos_palettes_special_formats_and_two_pass_resolution(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Test two-pass resolution when Cues/Preset/Sub appear before Eos palettes."""
+    import pathlib
+
+    from olc.show.palette import PaletteCategory
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$ParamType 12 3 Red
+$ParamType 13 3 Green
+$ParamType 14 3 Blue
+$ParamType 76 5 Diffusion
+$ParamType 57675 5 Medium_Diffusion
+$Personality 100
+   $$Manuf TestBrand
+   $$Model Spot_RGB
+   $$Footprint 7
+   $$PersChan 1 1 1 0 0
+   $$PersChan 2 2 2 3 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 D
+   $$PersChan 3 2 4 5 32768
+   $$PersSlot 0 65535 32768 -135.0 135.0 D
+   $$PersChan 76 1 6 0 0
+   $$PersChan 57675 1 7 0 0
+$Personality 200
+   $$Manuf TestBrand
+   $$Model RGB_Fixture
+   $$Footprint 3
+   $$VirtualInt
+   $$PersChan 12 2 1 2 65535
+   $$PersChan 13 2 3 4 65535
+   $$PersChan 14 2 5 6 65535
+$Patch 1 100 1 0 1
+$Patch 3 100 10 0 1
+$Patch 41 200 20 0 1
+$CueList 1
+Cue 1 1
+   $$Param 1 1@IP3 2@FP12 3@FP12 76@BP2
+   $$Param 41 12@CP106 13@CP106 14@CP106
+Cue 2 1
+   $$Param 1 2@PR100 3@PR100 76@PR100
+Sub 6 1
+   Text Color Sub
+   Chan 41@Hff
+   $$Param 41 12@CP106 13@CP106 14@CP106
+$FaderDef 1
+   $$Target S 6
+Group 100
+   Text Preset 100
+   $$Param 1 2@FP12 3@FP12 76@BP2
+$IntensityPalette 3
+   Text IP 75
+   Chan 1@75
+$FocusPalette 12
+   Text Center Spot
+   $$Param 1 2@32768 3@65535
+$ColorPalette 106
+   Text L106
+   $$Param 41 12@GL106#65535 13@GL106#1712 14@GL106#0
+$BeamPalette 2
+   Text FROST
+   $$Param 1 76@t255 57675@t0
+   $$Param 3 76@u255 57675@u0
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_two_pass.asc"
+    asc_file.write_text(asc_content, encoding="utf-8")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # 1. Base palettes decoded properly
+    ip3 = lightshow.palettes.get(PaletteCategory.INTENSITY, 3.0)
+    fp12 = lightshow.palettes.get(PaletteCategory.FOCUS, 12.0)
+    cp106 = lightshow.palettes.get(PaletteCategory.COLOR, 106.0)
+    bp2 = lightshow.palettes.get(PaletteCategory.BEAM, 2.0)
+    assert ip3 is not None and ip3.channels[1] == pytest.approx(0.75)
+    assert fp12 is not None and fp12.device_values[1]["pan"] == pytest.approx(
+        0.0, abs=0.1
+    )
+    assert fp12.device_values[1]["tilt"] == pytest.approx(135.0, abs=0.1)
+    assert cp106 is not None and cp106.device_values[41]["color"] == "#ff0700"
+    assert bp2 is not None
+    assert bp2.device_values[1]["frost"] == pytest.approx(1.0)
+    assert bp2.device_values[3]["frost"] == pytest.approx(1.0)
+
+    # 2. Eos Preset 100 resolved against FP12 & BP2
+    pr100 = lightshow.palettes.get(PaletteCategory.PRESET, 100.0)
+    assert pr100 is not None
+    assert pr100.device_values[1]["pan"] == pytest.approx(0.0, abs=0.1)
+    assert pr100.device_values[1]["tilt"] == pytest.approx(135.0, abs=0.1)
+    assert pr100.device_values[1]["frost"] == pytest.approx(1.0)
+    assert pr100.palette_refs[1]["pan"] == ("focus", 12.0)
+    assert pr100.palette_refs[1]["frost"] == ("beam", 2.0)
+
+    # 3. Cues defined before palettes resolved all refs + cascade from PR100
+    cue1 = lightshow.cues.get(1.0, 0)
+    cue2 = lightshow.cues.get(2.0, 0)
+    assert cue1 is not None
+    assert cue1.channels[1] == pytest.approx(0.75)
+    assert cue1.device_values[1]["intensity"] == pytest.approx(0.75)
+    assert cue1.device_values[1]["tilt"] == pytest.approx(135.0, abs=0.1)
+    assert cue1.device_values[1]["frost"] == pytest.approx(1.0)
+    assert cue1.device_values[41]["color"] == "#ff0700"
+    assert cue1.palette_refs[1]["intensity"] == ("intensity", 3.0)
+    assert cue1.palette_refs[41]["color"] == ("color", 106.0)
+
+    assert cue2 is not None
+    assert cue2.device_values[1]["frost"] == pytest.approx(1.0)
+    assert cue2.palette_refs[1]["frost"] == ("preset", 100.0)
+
+    # 4. Mounted Sub 6 (Preset 6) resolved CP106
+    sub6 = lightshow.palettes.get(PaletteCategory.PRESET, 6.0)
+    assert sub6 is not None
+    assert sub6.channels[41] == pytest.approx(1.0)
+    assert sub6.device_values[41]["color"] == "#ff0700"
+    assert sub6.palette_refs[41]["color"] == ("color", 106.0)
+
+    # 5. Live cascade propagation after import: editing BP2 updates Preset 100 & Cue 2
+    bp2.device_values[1]["frost"] = 0.25
+    res = lightshow.palettes.propagate_update(lightshow, PaletteCategory.BEAM, 2.0)
+    assert res["presets"] >= 1
+    assert res["cues"] >= 2
+    assert pr100.device_values[1]["frost"] == pytest.approx(0.25)
+    assert cue2.device_values[1]["frost"] == pytest.approx(0.25)
+
+
+def test_import_eos_base_nocturne_palettes_and_refs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify Base Nocturne imports palettes and resolves Cue/Preset refs."""
+    import pathlib
+
+    from olc.show.fader import FaderType
+    from olc.show.palette import PaletteCategory
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # Palette counts
+    assert len(lightshow.palettes.list_by_category(PaletteCategory.COLOR)) == 26
+    assert len(lightshow.palettes.list_by_category(PaletteCategory.BEAM)) == 64
+    assert len(lightshow.palettes.list_by_category(PaletteCategory.FOCUS)) == 8
+    assert len(lightshow.groups) == 7
+    assert not any(g.index >= 500 for g in lightshow.groups)
+    assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
+
+    # CP106 (L106)
+    cp106 = lightshow.palettes.get(PaletteCategory.COLOR, 106.0)
+    assert cp106 is not None and cp106.text == "L106"
+    assert cp106.device_values[1]["color"] == "#ff0000"
+    assert cp106.device_values[41]["color"] == "#ff0700"
+
+    # BP1 (NO FROST) and BP2 (FROST)
+    bp1 = lightshow.palettes.get(PaletteCategory.BEAM, 1.0)
+    bp2 = lightshow.palettes.get(PaletteCategory.BEAM, 2.0)
+    assert bp1 is not None and bp2 is not None
+    for ch in range(1, 6):
+        assert bp1.device_values[ch]["frost"] == pytest.approx(0.0)
+        assert bp2.device_values[ch]["frost"] == pytest.approx(1.0)
+
+    # FP10 pan/tilt on ch 4 & 5
+    fp10 = lightshow.palettes.get(PaletteCategory.FOCUS, 10.0)
+    assert fp10 is not None
+    assert fp10.device_values[4]["pan"] == pytest.approx(-55.3, abs=0.2)
+    assert fp10.device_values[5]["tilt"] == pytest.approx(-6.9, abs=0.2)
+
+    # Eos Preset 110 references BP2 on channel 1
+    pr110 = lightshow.palettes.get(PaletteCategory.PRESET, 110.0)
+    assert pr110 is not None
+    assert pr110.device_values[1]["frost"] == pytest.approx(1.0)
+    assert pr110.palette_refs[1]["frost"] == ("beam", 2.0)
+
+    # Cues with CP106, PR100, BP2 references resolved cleanly
+    cue99 = lightshow.cues.get(99.0, 0)
+    assert cue99 is not None
+    assert cue99.device_values[41]["color"] == "#ff0700"
+    assert cue99.palette_refs[41]["color"] == ("color", 106.0)
+
+    cue100 = lightshow.cues.get(100.0, 0)
+    assert cue100 is not None
+    assert cue100.device_values[1]["color"] == "#ff0000"
+    assert cue100.palette_refs[1]["color"] == ("color", 106.0)
+    assert cue100.palette_refs[1]["pan"] == ("preset", 100.0)
+
+    cue106 = lightshow.cues.get(106.0, 0)
+    assert cue106 is not None
+    assert cue106.device_values[1]["frost"] == pytest.approx(1.0)
+    assert cue106.palette_refs[1]["frost"] == ("beam", 2.0)
