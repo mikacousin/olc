@@ -138,6 +138,10 @@ class FixtureSelectionPopover(Gtk.Popover):
 
         self.add(box)
 
+    def set_library(self, library: FixtureLibrary) -> None:
+        """Update the FixtureLibrary instance used for fixture lookups."""
+        self._library = library
+
     def _populate_list(self, query: str) -> None:
         for child in self._listbox.get_children():
             child.destroy()

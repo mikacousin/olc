@@ -16,14 +16,26 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import gi
+import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gio, Gtk  # noqa: E402
 
+from olc.devices.builtin import populate_builtin_library  # noqa: E402
+from olc.files.file_type import FileType  # noqa: E402
+from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.fixture_library import (  # noqa: E402
+    COL_CAT_MANUFACTURER,
     COL_CAT_MODEL,
+    COL_CH_FINE,
+    COL_CH_HOME,
+    COL_CH_LABEL,
+    COL_CH_OFFSET,
+    COL_CH_UNIT,
     FixtureLibraryTab,
 )
 
@@ -181,3 +193,121 @@ def test_fixture_library_tab_inspector_panels(app_gui: Application) -> None:
     fixtures_tab._on_delete_clicked(fixtures_tab.btn_delete)
     process_events()
     fixtures_tab.cleanup()
+
+
+def test_fixture_library_tab_eos_import_display_and_apply(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Verify FixtureLibraryTab shows Eos fixtures and Apply preserves patch."""
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
+
+    app_gui.activate_action("fixtures", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fixtures_tab = app_gui.tabs.tabs.get("fixtures")
+    assert isinstance(fixtures_tab, FixtureLibraryTab)
+
+    # Fine and Unit columns must be visible in Modes & Channels TreeView
+    col_titles = [c.get_title() for c in fixtures_tab.channels_tree.get_columns()]
+    assert "Fine" in col_titles
+    assert "Unit" in col_titles
+
+    try:
+        imported = ImportFile(
+            app_gui.core.lightshow,
+            Gio.File.new_for_path(str(asc_path)),
+            FileType.ASCII,
+            tabs=app_gui.tabs,
+        )
+        imported.parse_sync(auto_import=True)
+        process_events()
+
+        # All 9 Eos non-dimmer profiles appear in the catalog store
+        cat_keys = {
+            (row[COL_CAT_MANUFACTURER], row[COL_CAT_MODEL])
+            for row in fixtures_tab.cat_store
+        }
+        expected_profiles = {
+            ("Ayrton", "Ghibli_Extended"),
+            ("Ayrton", "Diablo_S_Extended_Pan_540"),
+            ("Cameo", "F1_FC_16_CH_Direct_CCT"),
+            ("Cameo", "F1_T_5ch"),
+            ("Cameo", "Zenit_W_600_2ch"),
+            ("Coemar", "ParLite_LED_RGBW"),
+            ("Custom", "ParLite_LED_RGBA"),
+            ("GLP", "Fusion_XPAR_12Z_M3_Adv"),
+            ("OXO_Show_Solutions", "Multibeam_LED_FCW_M4"),
+        }
+        assert expected_profiles.issubset(cat_keys)
+
+        # Inspect Ayrton Ghibli_Extended channels, 16-bit Fine, Unit, and slash names
+        ghibli = fixtures_tab.fixture_library.get("Ayrton", "Ghibli_Extended")
+        fixtures_tab.load_definition(ghibli)
+        process_events()
+
+        assert len(fixtures_tab.channels_store) == 35
+        row0 = fixtures_tab.channels_store[0]
+        assert row0[COL_CH_OFFSET] == "1"
+        assert row0[COL_CH_FINE] == "2"
+        assert row0[COL_CH_LABEL] == "Pan"
+        assert row0[COL_CH_HOME] == "32768"
+        assert row0[COL_CH_UNIT] == "deg"
+        ch_labels = [row[COL_CH_LABEL] for row in fixtures_tab.channels_store]
+        assert "Gobo_Index/Speed" in ch_labels
+        assert "Beam_Fx_Index/Speed" in ch_labels
+
+        # Inspect Cameo F1_FC_16_CH_Direct_CCT ranges & RGBW Color Profile (Scenario B)
+        cameo = fixtures_tab.fixture_library.get("Cameo", "F1_FC_16_CH_Direct_CCT")
+        fixtures_tab.load_definition(cameo)
+        process_events()
+
+        assert len(fixtures_tab.channels_store) == 11
+        assert len(fixtures_tab.emitters_store) == 4
+
+        cameo_labels = [row[COL_CH_LABEL] for row in fixtures_tab.channels_store]
+        cct_idx = cameo_labels.index("Color_Temperature")
+        fixtures_tab.channels_tree.get_selection().select_path(
+            Gtk.TreePath.new_from_indices([cct_idx])
+        )
+        process_events()
+        assert len(fixtures_tab.ranges_store) == 7
+
+        cmix_idx = cameo_labels.index("Color_Mix")
+        fixtures_tab.channels_tree.get_selection().select_path(
+            Gtk.TreePath.new_from_indices([cmix_idx])
+        )
+        process_events()
+        assert len(fixtures_tab.ranges_store) > 50
+
+        # Apply to Show updates library note without corrupting patched device #41
+        dev41_before = app_gui.core.lightshow.patch.get_device(41)
+        assert dev41_before is not None
+        addrs_before = [(c.universe, c.address) for c in dev41_before.channels]
+        assert len(addrs_before) == 16
+
+        fixtures_tab.entry_notes.set_text("Checked Eos")
+        fixtures_tab._on_apply_clicked(fixtures_tab.btn_apply)
+        process_events()
+
+        updated = fixtures_tab.fixture_library.get("Cameo", "F1_FC_16_CH_Direct_CCT")
+        assert updated.notes == "Checked Eos"
+        dev41_after = app_gui.core.lightshow.patch.get_device(41)
+        assert dev41_after is not None
+        assert [(c.universe, c.address) for c in dev41_after.channels] == addrs_before
+    finally:
+        app_gui.core.lightshow.fixture_library = populate_builtin_library()
+        app_gui.core.lightshow.patch.patch_empty()
+        app_gui.core.lightshow.palettes.clear()
+        app_gui.core.lightshow.groups.clear()
+        app_gui.core.lightshow.cues.clear()
+        app_gui.core.lightshow.chasers.clear()
+        app_gui.core.lightshow.curves.reset()
+        app_gui.core.lightshow.fader_bank.reset_faders()
+        app_gui.core.emit("fixture_library.changed")
+        app_gui.core.emit("patch.changed")
+        process_events()

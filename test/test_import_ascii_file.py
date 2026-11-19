@@ -703,3 +703,480 @@ def test_import_eos_base_nocturne_palettes_and_refs(
     assert cue106 is not None
     assert cue106.device_values[1]["frost"] == pytest.approx(1.0)
     assert cue106.palette_refs[1]["frost"] == ("beam", 2.0)
+
+
+def test_import_eos_fixture_library_definitions_modes_and_color_profiles(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Verify FixtureDefinition import (0-based, 16-bit, modes, $$Pers)."""
+    import pathlib
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$ParamType 9 3 Cyan
+$ParamType 10 3 Magenta
+$ParamType 11 3 Yellow
+$ParamType 12 3 Red
+$ParamType 13 3 Green
+$ParamType 14 3 Blue
+$ParamType 51 3 White
+$Personality 10
+   $$Manuf BrandA
+   $$Model DuoSpot
+   $$Footprint 7
+   $$PersChan 1 1 1 0 0
+   $$PersChan 2 2 2 3 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 D
+   $$PersChan 9 1 4 0 0
+   $$PersChan 10 1 5 0 0
+   $$PersChan 11 1 6 0 0
+   $$PersChan 3 1 7 0 128
+$Personality 11
+   $$Manuf BrandA
+   $$Model DuoSpot
+   $$Footprint 4
+   $$PersChan 1 2 1 2 65535
+   $$PersChan 2 2 3 4 32768
+$Personality 20
+   $$Manuf BrandB
+   $$Model LedRGBW
+   $$Footprint 9
+   $$PersChan 1 1 1 0 0
+   $$PersChan 12 2 2 3 65535
+   $$PersChan 13 2 4 5 65535
+   $$PersChan 14 2 6 7 65535
+   $$PersChan 51 2 8 9 65535
+$Personality 30
+   $$Manuf BrandC
+   $$Model UnpatchedWash
+   $$Footprint 4
+   $$PersChan 12 1 1 0 255
+   $$PersChan 13 1 2 0 255
+   $$PersChan 14 1 3 0 255
+   $$PersChan 48 1 4 0 255
+$Personality 40
+   $$Manuf Generic
+   $$Model Dimmer
+   $$Footprint 1
+   $$PersChan 1 1 1 0 0
+$Patch 1 10 500 0 1
+   $$Pers AliasNameThatDiffers
+$Patch 2 11 100 0 1
+$Patch 3 20 200 0 1
+$Patch 4 40 1 0 1
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_fixture_lib.asc"
+    asc_file.write_text(asc_content, encoding="utf-8")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # All non-dimmer personalities imported (patched + unpatched)
+    non_builtin = [f for f in lightshow.fixture_library.all() if not f.is_builtin]
+    assert len(non_builtin) == 3
+
+    # Mode collision merged under BrandA:DuoSpot, CMY keeps color_profile=None
+    duospot = lightshow.fixture_library.get("BrandA", "DuoSpot")
+    assert duospot.mode_names() == ["7ch", "4ch"]
+    assert duospot.color_profile is None
+    mode7 = duospot.get_mode("7ch")
+    assert mode7.footprint() == 7
+    assert len(mode7.channel_defs) == 6
+    assert mode7.channel_defs[0].offset == 0
+    assert mode7.channel_defs[1].offset == 1
+    assert mode7.channel_defs[1].fine_offset == 2
+    assert mode7.channel_defs[1].default_value == 32768
+    mode4 = duospot.get_mode("4ch")
+    assert mode4.footprint() == 4
+    assert mode4.channel_defs[0].offset == 0
+    assert mode4.channel_defs[0].fine_offset == 1
+    assert mode4.channel_defs[0].default_value == 65535
+
+    # $$Pers alias does not break count_devices_using_definition or sync
+    assert lightshow.patch.count_devices_using_definition("BrandA", "DuoSpot") == 2
+    dev1 = lightshow.patch.get_device(1)
+    assert dev1 is not None and dev1.mode_name == "7ch"
+    addrs_before = [(c.universe, c.address, c.channel_type) for c in dev1.channels]
+    synced = lightshow.patch.sync_devices_with_definition(duospot)
+    assert set(synced) == {1, 2}
+    dev1_after = lightshow.patch.get_device(1)
+    assert dev1_after is not None
+    dev1_after_addrs = [
+        (c.universe, c.address, c.channel_type) for c in dev1_after.channels
+    ]
+    assert dev1_after_addrs == addrs_before
+
+    # LED RGBW gets generic RGBW color profile and 16-bit default 65535
+    led = lightshow.fixture_library.get("BrandB", "LedRGBW")
+    assert led.color_profile is not None
+    assert [e.name for e in led.color_profile.emitters] == [
+        "Red",
+        "Green",
+        "Blue",
+        "White",
+    ]
+    led_mode = led.default_mode()
+    assert led_mode.footprint() == 9
+    assert led_mode.channel_defs[1].default_value == 65535
+
+    # Unpatched non-dimmer personality is imported with used == 0
+    unpatched = lightshow.fixture_library.get("BrandC", "UnpatchedWash")
+    assert (
+        lightshow.patch.count_devices_using_definition("BrandC", "UnpatchedWash") == 0
+    )
+    assert unpatched.default_mode().footprint() == 4
+    assert unpatched.default_mode().channel_defs[3].label == "param_48"
+
+
+def test_import_eos_base_nocturne_fixture_library(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify Base Nocturne populates fixture_library cleanly (Scenario B)."""
+    import pathlib
+
+    from olc.devices.channel import ChannelType
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    non_builtin = [f for f in lightshow.fixture_library.all() if not f.is_builtin]
+    assert len(non_builtin) == 9
+
+    # Moving heads (CMY -> no additive color_profile)
+    ghibli = lightshow.fixture_library.get("Ayrton", "Ghibli_Extended")
+    ghibli_mode = ghibli.default_mode()
+    assert len(ghibli_mode.channel_defs) == 35
+    assert ghibli_mode.footprint() == 58
+    assert ghibli_mode.channel_defs[0].offset == 0
+    assert ghibli_mode.channel_defs[0].fine_offset == 1
+    assert ghibli_mode.channel_defs[0].default_value == 32768
+    beam_fx = next(cd for cd in ghibli_mode.channel_defs if cd.offset == 35)
+    assert beam_fx.fine_offset == 36
+    assert beam_fx.default_value == 16383
+    assert ghibli.color_profile is None
+    assert (
+        lightshow.patch.count_devices_using_definition("Ayrton", "Ghibli_Extended") == 3
+    )
+
+    diablo = lightshow.fixture_library.get("Ayrton", "Diablo_S_Extended_Pan_540")
+    diablo_mode = diablo.default_mode()
+    assert len(diablo_mode.channel_defs) == 33
+    assert diablo_mode.footprint() == 56
+    assert diablo.color_profile is None
+    assert (
+        lightshow.patch.count_devices_using_definition(
+            "Ayrton", "Diablo_S_Extended_Pan_540"
+        )
+        == 2
+    )
+
+    # Cameo F1 FC (RGBW additive -> RGBW color_profile, 16-bit defaults intact)
+    cameo_fc = lightshow.fixture_library.get("Cameo", "F1_FC_16_CH_Direct_CCT")
+    cameo_mode = cameo_fc.default_mode()
+    assert len(cameo_mode.channel_defs) == 11
+    assert cameo_mode.footprint() == 16
+    for ct in (ChannelType.RED, ChannelType.GREEN, ChannelType.BLUE, ChannelType.WHITE):
+        cd = next(c for c in cameo_mode.channel_defs if c.channel_type is ct)
+        assert cd.default_value == 65535
+    assert cameo_fc.color_profile is not None
+    assert [e.name for e in cameo_fc.color_profile.emitters] == [
+        "Red",
+        "Green",
+        "Blue",
+        "White",
+    ]
+    assert (
+        lightshow.patch.count_devices_using_definition(
+            "Cameo", "F1_FC_16_CH_Direct_CCT"
+        )
+        == 4
+    )
+
+    # Unpatched non-dimmer personalities (used == 0)
+    expected_unpatched: list[tuple[str, str, int, list[str] | None]] = [
+        ("Cameo", "F1_T_5ch", 5, None),
+        ("Cameo", "Zenit_W_600_2ch", 2, None),
+        ("Coemar", "ParLite_LED_RGBW", 4, ["Red", "Green", "Blue", "White"]),
+        ("Custom", "ParLite_LED_RGBA", 4, ["Red", "Green", "Blue", "Amber"]),
+        ("GLP", "Fusion_XPAR_12Z_M3_Adv", 16, ["Red", "Green", "Blue", "Lime"]),
+        (
+            "OXO_Show_Solutions",
+            "Multibeam_LED_FCW_M4",
+            5,
+            ["Red", "Green", "Blue", "White"],
+        ),
+    ]
+    for mfg, mod, exp_fp, exp_emitters in expected_unpatched:
+        fdef = lightshow.fixture_library.get(mfg, mod)
+        assert fdef.default_mode().footprint() == exp_fp
+        assert len(fdef.default_mode().channel_defs) > 0
+        assert lightshow.patch.count_devices_using_definition(mfg, mod) == 0
+        if exp_emitters is None:
+            assert fdef.color_profile is None
+        else:
+            assert fdef.color_profile is not None
+            assert [e.name for e in fdef.color_profile.emitters] == exp_emitters
+
+    # Apply to Show round-trip preserves channel count and exact DMX addresses
+    dev1 = lightshow.patch.get_device(1)
+    dev41 = lightshow.patch.get_device(41)
+    assert dev1 is not None and dev41 is not None
+    dev1_addrs = [(c.universe, c.address, c.channel_type) for c in dev1.channels]
+    dev41_addrs = [(c.universe, c.address, c.channel_type) for c in dev41.channels]
+    assert len(dev1_addrs) == 58 and len(dev41_addrs) == 16
+
+    lightshow.patch.sync_devices_with_definition(ghibli)
+    lightshow.patch.sync_devices_with_definition(cameo_fc)
+    dev1_after = lightshow.patch.get_device(1)
+    dev41_after = lightshow.patch.get_device(41)
+    assert dev1_after is not None and dev41_after is not None
+    assert [
+        (c.universe, c.address, c.channel_type) for c in dev1_after.channels
+    ] == dev1_addrs
+    assert [
+        (c.universe, c.address, c.channel_type) for c in dev41_after.channels
+    ] == dev41_addrs
+
+    # Scenario B: setting pure red on RGBW zeroes out White channel via NNLS
+    dev41_after.set_color_hex("#ff0000")
+    red_ch = dev41_after.get_channel(ChannelType.RED)
+    white_ch = dev41_after.get_channel(ChannelType.WHITE)
+    assert red_ch is not None and red_ch.value == 255
+    assert white_ch is not None and white_ch.value == 0
+
+
+def test_import_eos_case_slots_units_notes_and_inversions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Verify synthetic Eos case, slash params, slots, units, notes, inversions."""
+    import pathlib
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 79 5 Zoom
+$ParamType 206 4 Gobo_Index/Speed
+$ParamType 1719 3 Color_Temperature
+$Personality 500
+   $$Manuf MixedBrand
+   $$Model Test_Fixture_X
+   $$Footprint 6
+   $$PersChan 1 1 1 0 0
+   $$PersSlot 0 255 0 0.0 100.0 %
+   $$PersChan 2 2 2 3 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 -270 to 270 D
+   $$PersChan 206 1 4 0 0
+   $$PersSlot 0 9 0 0.0 0.0 Stop
+   $$PersSlot 10 255 128 1.0 100.0
+   $$PersSlText Indexed / Rotate
+   $$PersChan 1719 1 5 0 0
+   $$PersSlot 255 0 0 3200.0 8500.0 Temp +
+   $$PersChan 79 1 6 0 128
+   $$PersSlot 0 0 0 0.0 0.0 Off
+   $$PersSlot 255 1 128 10.0 50.0 10 to 50 D
+   $$Notes First part&#10;Second li
+   $$Notes ne!
+$Patch 10 500 1 0 1
+$CueList 1
+Cue 1 1
+   $$Param 10 1719@255
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_lot2.asc"
+    asc_file.write_text(asc_content, encoding="utf-8")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    fdef = lightshow.fixture_library.get("MixedBrand", "Test_Fixture_X")
+    assert fdef.manufacturer == "MixedBrand"
+    assert fdef.model == "Test_Fixture_X"
+    assert fdef.notes == "First part\nSecond line!"
+
+    chans = {cd.offset + 1: cd for cd in fdef.default_mode().channel_defs}
+    assert chans[1].label == "Intens"
+    assert chans[1].physical_unit == "%"
+    assert chans[1].ranges == []
+
+    assert chans[2].label == "Pan"
+    assert chans[2].physical_unit == "deg"
+    assert chans[2].ranges == []
+
+    # Slash parameter and $$PersSlText preserved
+    assert chans[4].label == "Gobo_Index/Speed"
+    assert [r.label for r in chans[4].ranges] == ["Stop", "Indexed / Rotate"]
+    assert chans[4].ranges[1].value_min == 10
+    assert chans[4].ranges[1].value_max == 255
+
+    # Single-slot inverted channel: 255..0 maps 3200..8500 => 8500 -> 3200 K
+    assert chans[5].label == "Color_Temperature"
+    assert chans[5].physical_unit == "K"
+    assert chans[5].physical_min == 8500.0
+    assert chans[5].physical_max == 3200.0
+    assert chans[5].ranges == []
+
+    # Multi-slot with reversed DMX slot normalized + physical inverted on that slot
+    assert chans[6].label == "Zoom"
+    assert chans[6].physical_unit == "deg"
+    assert [(r.value_min, r.value_max) for r in chans[6].ranges] == [(0, 0), (1, 255)]
+    assert chans[6].ranges[1].physical_min == 50.0
+    assert chans[6].ranges[1].physical_max == 10.0
+
+
+def test_import_eos_base_nocturne_slots_units_notes_and_inversions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify doc/00  Base  Nocturne.asc preserves case, slots, units, notes."""
+    import itertools
+    import pathlib
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    # Exact case preserved
+    ghibli = lightshow.fixture_library.get("Ayrton", "Ghibli_Extended")
+    assert ghibli.manufacturer == "Ayrton"
+    assert ghibli.model == "Ghibli_Extended"
+    diablo = lightshow.fixture_library.get("Ayrton", "Diablo_S_Extended_Pan_540")
+    assert diablo.manufacturer == "Ayrton"
+    assert diablo.model == "Diablo_S_Extended_Pan_540"
+    cameo_fc = lightshow.fixture_library.get("Cameo", "F1_FC_16_CH_Direct_CCT")
+    assert cameo_fc.manufacturer == "Cameo"
+    assert cameo_fc.model == "F1_FC_16_CH_Direct_CCT"
+    oxo = lightshow.fixture_library.get("OXO_Show_Solutions", "Multibeam_LED_FCW_M4")
+    assert oxo.manufacturer == "OXO_Show_Solutions"
+    assert oxo.model == "Multibeam_LED_FCW_M4"
+
+    # Slash parameter names intact + physical units + single-slot no redundant ranges
+    ghibli_chs = ghibli.default_mode().channel_defs
+    ghibli_by_off = {cd.offset: cd for cd in ghibli_chs}
+    assert ghibli_by_off[0].label == "Pan"
+    assert ghibli_by_off[0].physical_unit == "deg"
+    assert ghibli_by_off[0].ranges == []
+    assert ghibli_by_off[2].label == "Tilt"
+    assert ghibli_by_off[2].physical_unit == "deg"
+    assert ghibli_by_off[6].label == "Intens"
+    assert ghibli_by_off[6].physical_unit == "%"
+    assert ghibli_by_off[6].ranges == []
+    assert ghibli_by_off[11].label == "Zoom"
+    assert ghibli_by_off[11].physical_unit == "deg"
+    assert ghibli_by_off[28].label == "Gobo_Index/Speed"
+    assert ghibli_by_off[35].label == "Beam_Fx_Index/Speed"
+    # Continuous inverted channel on Ghibli: Frame_Assembly (65535..0 -> -100..100%)
+    assert ghibli_by_off[55].label == "Frame_Assembly"
+    assert ghibli_by_off[55].physical_unit == "%"
+    assert ghibli_by_off[55].physical_min == 100.0
+    assert ghibli_by_off[55].physical_max == -100.0
+
+    # Diablo: slash params, 16-bit Edge_Mode converted cleanly, Frame_Assembly deg
+    diablo_by_off = {cd.offset: cd for cd in diablo.default_mode().channel_defs}
+    assert diablo_by_off[28].label == "Gobo_Index/Speed"
+    assert diablo_by_off[34].label == "Beam_Fx_Index/Speed"
+    assert diablo_by_off[53].label == "Frame_Assembly"
+    assert diablo_by_off[53].physical_unit == "deg"
+    assert diablo_by_off[53].physical_min == 45.0
+    assert diablo_by_off[53].physical_max == -45.0
+    edge_mode = diablo_by_off[15]
+    assert edge_mode.label == "Edge_Mode"
+    assert [r.label for r in edge_mode.ranges] == [
+        "Continuous",
+        "5m Auto Focus",
+        "7.5m Auto Focus",
+        "10m Auto Focus",
+        "15m Auto Focus",
+    ]
+    for prev, nxt in itertools.pairwise(edge_mode.ranges):
+        assert prev.value_max < nxt.value_min
+
+    # Cameo F1_FC: Red %, Color_Temperature K + 7 slots, Tint inverted, Color_Mix LEE
+    cameo_by_off = {cd.offset: cd for cd in cameo_fc.default_mode().channel_defs}
+    assert cameo_by_off[3].label == "Red"
+    assert cameo_by_off[3].physical_unit == "%"
+    cct = cameo_by_off[11]
+    assert cct.label == "Color_Temperature"
+    assert cct.physical_unit == "K"
+    assert len(cct.ranges) == 7
+    assert cct.ranges[0].label == "Off"
+    assert cct.ranges[1].label == "2700"
+    assert cct.ranges[-1].label == "Temp +"
+
+    tint = cameo_by_off[12]
+    assert tint.label == "Tint"
+    assert tint.physical_unit == "%"
+    assert [(r.value_min, r.value_max) for r in tint.ranges] == [(0, 0), (1, 255)]
+    assert tint.ranges[1].physical_min == 100.0
+    assert tint.ranges[1].physical_max == -100.0
+
+    cmix = cameo_by_off[13]
+    assert cmix.label == "Color_Mix"
+    assert len(cmix.ranges) > 50
+    cmix_labels = {r.label for r in cmix.ranges}
+    assert "135 - Deep Golden Amber" in cmix_labels
+    assert "778 - Millennium Gold" in cmix_labels
+    for prev, nxt in itertools.pairwise(cmix.ranges):
+        assert prev.value_max < nxt.value_min
+
+    # Zenit_W_600_2ch: single-slot inverted CTO
+    zenit = lightshow.fixture_library.get("Cameo", "Zenit_W_600_2ch")
+    zenit_cct = zenit.default_mode().channel_defs[1]
+    assert zenit_cct.label == "Color_Temperature"
+    assert zenit_cct.physical_unit == "K"
+    assert zenit_cct.physical_min == 8500.0
+    assert zenit_cct.physical_max == 3200.0
+
+    # GLP Fusion: Color_Mix includes $$PersSlText labels
+    glp = lightshow.fixture_library.get("GLP", "Fusion_XPAR_12Z_M3_Adv")
+    glp_cmix = next(
+        cd for cd in glp.default_mode().channel_defs if cd.label == "Color_Mix"
+    )
+    assert any(r.label == "Stop At Current color" for r in glp_cmix.ranges)
+
+    # Custom ParLite_LED_RGBA: $$Notes decoded and unwrapped
+    rgba = lightshow.fixture_library.get("Custom", "ParLite_LED_RGBA")
+    assert "flash in this range" in rgba.notes
+    assert "DMX Status: Tested\nRDM Status: Not Supported" in rgba.notes

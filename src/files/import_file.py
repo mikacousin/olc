@@ -200,6 +200,10 @@ class ImportFile:
             self.lightshow.patch.patch_empty()
         # Import patch
         self.data.import_patch()
+        app = getattr(self.lightshow, "app", None)
+        if app is not None and hasattr(app, "emit"):
+            app.emit("fixture_library.changed")
+            app.emit("patch.changed")
 
     def _do_import_groups(self) -> None:
         if self.actions["groups"] is Action.IGNORE:

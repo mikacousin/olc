@@ -357,12 +357,14 @@ class FixtureLibraryTab(Gtk.Box):
 
         ch_cols = [
             ("#", COL_CH_OFFSET, 35),
+            ("Fine", COL_CH_FINE, 40),
             ("Label", COL_CH_LABEL, 95),
             ("Type", COL_CH_TYPE, 75),
             ("Home", COL_CH_HOME, 50),
             ("Locate", COL_CH_LOCATE, 50),
             ("Min", COL_CH_MIN, 45),
             ("Max", COL_CH_MAX, 45),
+            ("Unit", COL_CH_UNIT, 40),
         ]
         for title, col_idx, min_w in ch_cols:
             renderer = Gtk.CellRendererText()

@@ -98,7 +98,7 @@ class PatchChannelsTab(Gtk.Box):
     settings: Gio.Settings
     backend: DMXBackend
     commandline: CoreCommandLine
-    fixture_library: FixtureLibrary
+    _fallback_fixture_library: FixtureLibrary
     sort_mode: str
     scope_mode: str
     devices_store: Gtk.ListStore
@@ -137,7 +137,7 @@ class PatchChannelsTab(Gtk.Box):
             else typing.cast(typing.Any, None)
         )
         self.commandline = app.core.commandline
-        self.fixture_library = (
+        self._fallback_fixture_library = (
             getattr(self.lightshow, "fixture_library", None)
             or populate_builtin_library()
         )
@@ -165,6 +165,14 @@ class PatchChannelsTab(Gtk.Box):
         self._setup_toolbar()
         self._setup_views()
         self.populate_devices_store()
+
+    @property
+    def fixture_library(self) -> FixtureLibrary:
+        """Return the active lightshow FixtureLibrary dynamically."""
+        return (
+            getattr(self.lightshow, "fixture_library", None)
+            or self._fallback_fixture_library
+        )
 
     def _setup_toolbar(self) -> None:
         """Create top action toolbar for device patch management."""
@@ -579,6 +587,7 @@ class PatchChannelsTab(Gtk.Box):
         selection.select_path(path)
 
         pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
+        self.fixture_popover.set_library(self.fixture_library)
         self.fixture_popover.open_for_device(
             dev, relative_to=treeview, pointing_to=pointing_rect
         )
@@ -1374,6 +1383,7 @@ class PatchChannelsTab(Gtk.Box):
 
     def refresh(self) -> None:
         """Refresh display."""
+        self.fixture_popover.set_library(self.fixture_library)
         self.populate_devices_store()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:

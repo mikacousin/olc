@@ -18,12 +18,17 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk  # noqa: E402
+from gi.repository import Gdk, Gio, Gtk  # noqa: E402
 
+from olc.devices.builtin import populate_builtin_library  # noqa: E402
+from olc.files.file_type import FileType  # noqa: E402
+from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialogs.patch_device import (  # noqa: E402
@@ -624,3 +629,57 @@ def test_fixture_popover_arrow_navigation_keeps_popover_open(
     assert patch_tab.get_selected_device_id() == 1
 
     pop.popdown()
+
+
+def test_patch_tab_refreshes_fixture_library_after_ascii_import(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Verify open PatchChannelsTab and its popover see imported Eos fixtures."""
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
+
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+    old_lib = patch_tab.fixture_library
+
+    try:
+        imported = ImportFile(
+            app_gui.core.lightshow,
+            Gio.File.new_for_path(str(asc_path)),
+            FileType.ASCII,
+            tabs=app_gui.tabs,
+        )
+        imported.parse_sync(auto_import=True)
+        process_events()
+
+        assert patch_tab.fixture_library is app_gui.core.lightshow.fixture_library
+        assert patch_tab.fixture_library is not old_lib
+        assert patch_tab.fixture_library.get("Ayrton", "Ghibli_Extended") is not None
+        assert (
+            patch_tab.fixture_library.get("GLP", "Fusion_XPAR_12Z_M3_Adv") is not None
+        )
+
+        active_lib = app_gui.core.lightshow.fixture_library
+        assert patch_tab.fixture_popover._library is active_lib
+        patch_tab.fixture_popover._populate_list("Ghibli")
+        process_events()
+        assert "Ayrton:Ghibli_Extended" in patch_tab.fixture_popover._row_keys.values()
+    finally:
+        app_gui.core.lightshow.fixture_library = populate_builtin_library()
+        app_gui.core.lightshow.patch.patch_empty()
+        app_gui.core.lightshow.palettes.clear()
+        app_gui.core.lightshow.groups.clear()
+        app_gui.core.lightshow.cues.clear()
+        app_gui.core.lightshow.chasers.clear()
+        app_gui.core.lightshow.curves.reset()
+        app_gui.core.lightshow.fader_bank.reset_faders()
+        app_gui.core.emit("fixture_library.changed")
+        app_gui.core.emit("patch.changed")
+        process_events()

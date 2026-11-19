@@ -28,7 +28,8 @@ from olc.define import (
     string_to_time,
 )
 from olc.files.ascii.eos_devices import (
-    build_device_and_definition,
+    build_device_from_definition,
+    build_fixture_definition,
     decode_eos_cue_params,
     eos_param_id_to_olc_key,
     is_dimmer_personality,
@@ -48,6 +49,26 @@ _EOS_PALETTE_KEYWORDS: dict[str, PaletteCategory] = {
     "$colorpalette": PaletteCategory.COLOR,
     "$beampalette": PaletteCategory.BEAM,
 }
+
+_RAW_TEXT_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "text",
+        "$$text",
+        "$$utext",
+        "$$presettext",
+        "$$manuf",
+        "$$model",
+        "$$dcid",
+        "$$pers",
+        "$$persslot",
+        "$$perssltext",
+        "$$notes",
+    }
+)
+
+_PERSSLOT_RE = re.compile(
+    r"^(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?[\d.]+)\s+(-?[\d.]+)(?:\s+(.*))?$"
+)
 
 
 class State(Enum):
@@ -142,7 +163,8 @@ class AsciiParser(ReadFile):
         self.param_types: dict[int, str] = {}
         self.personalities: dict[int, dict[str, typing.Any]] = {}
         self.channel_personality: dict[int, int] = {}
-        self._registered_fdef_keys: set[tuple[str, str]] = set()
+        self._registered_fdefs: dict[tuple[str, str], dict[str, typing.Any]] = {}
+        self._pers_fdef_info: dict[int, tuple[dict[str, typing.Any], str]] = {}
         self._palette_raw_params: dict[
             tuple[str, float], dict[int, dict[int, float]]
         ] = {}
@@ -185,6 +207,7 @@ class AsciiParser(ReadFile):
                 loop = self._do_parse(line)
                 if not loop:
                     break
+        self._finalize_personalities()
         self._resolve_palettes_and_refs()
 
     def _do_parse(self, line: str) -> bool:
@@ -206,8 +229,11 @@ class AsciiParser(ReadFile):
         if self.keyword[0] == "!":
             # Ignore comment line
             return True
-        if self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
-            # Preserve punctuation, HTML entities (&#8594;), and raw spacing
+        if self.keyword == "$paramtype":
+            parts = line.split(None, 3)
+            self.args = parts[1:]
+        elif self.keyword in _RAW_TEXT_KEYWORDS:
+            # Preserve case, punctuation, HTML entities (&#8594;), and raw spacing
             parts = line.split(None, 1)
             self.args = [parts[1]] if len(parts) > 1 else []
         else:
@@ -714,6 +740,7 @@ class AsciiParser(ReadFile):
             "dcid": "",
             "footprint": 1,
             "virtual_int": False,
+            "notes": "",
             "channels": [],
         }
         self.current["personality"] = pers_id
@@ -724,15 +751,17 @@ class AsciiParser(ReadFile):
         if pers is None:
             return
         if self.keyword == "$$manuf" and self.args:
-            pers["manufacturer"] = " ".join(self.args)
+            pers["manufacturer"] = self.args[0].strip()
         elif self.keyword == "$$model" and self.args:
-            pers["model"] = " ".join(self.args)
+            pers["model"] = self.args[0].strip()
         elif self.keyword == "$$dcid" and self.args:
-            pers["dcid"] = self.args[0]
+            pers["dcid"] = self.args[0].strip()
         elif self.keyword == "$$footprint" and self.args:
             pers["footprint"] = int(self.args[0])
         elif self.keyword == "$$virtualint":
             pers["virtual_int"] = True
+        elif self.keyword == "$$notes" and self.args:
+            pers["notes"] = f"{pers.get('notes', '')}{html.unescape(self.args[0])}"
         elif self.keyword == "$$perschan" and len(self.args) >= 5:
             pers["channels"].append(
                 {
@@ -741,22 +770,86 @@ class AsciiParser(ReadFile):
                     "offset_coarse": int(self.args[2]),
                     "offset_fine": int(self.args[3]),
                     "default": int(self.args[4]),
+                    "snap": len(self.args) > 5 and self.args[5] == "s",
                     "phys_min": 0.0,
                     "phys_max": 1.0,
                     "slots": 0,
+                    "slot_list": [],
                 }
             )
-        elif self.keyword == "$$persslot" and len(self.args) >= 5 and pers["channels"]:
+        elif self.keyword == "$$persslot" and self.args and pers["channels"]:
             ch_def = pers["channels"][-1]
-            p_min = float(self.args[3])
-            p_max = float(self.args[4])
-            if ch_def["slots"] == 0:
-                ch_def["phys_min"] = p_min
-                ch_def["phys_max"] = p_max
-            else:
-                ch_def["phys_min"] = min(ch_def["phys_min"], p_min)
-                ch_def["phys_max"] = max(ch_def["phys_max"], p_max)
-            ch_def["slots"] += 1
+            if match := _PERSSLOT_RE.match(self.args[0].strip()):
+                d_min = int(match.group(1))
+                d_max = int(match.group(2))
+                d_snap = int(match.group(3))
+                p_min = float(match.group(4))
+                p_max = float(match.group(5))
+                label = html.unescape((match.group(6) or "").strip())
+                ch_def["slot_list"].append(
+                    {
+                        "dmx_min": d_min,
+                        "dmx_max": d_max,
+                        "dmx_snap": d_snap,
+                        "phys_min": p_min,
+                        "phys_max": p_max,
+                        "label": label,
+                    }
+                )
+                if ch_def["slots"] == 0:
+                    ch_def["phys_min"] = p_min
+                    ch_def["phys_max"] = p_max
+                else:
+                    ch_def["phys_min"] = min(ch_def["phys_min"], p_min)
+                    ch_def["phys_max"] = max(ch_def["phys_max"], p_max)
+                ch_def["slots"] += 1
+        elif (
+            self.keyword == "$$perssltext"
+            and self.args
+            and pers["channels"]
+            and pers["channels"][-1]["slot_list"]
+        ):
+            pers["channels"][-1]["slot_list"][-1]["label"] = html.unescape(
+                self.args[0].strip()
+            )
+
+    def _register_personality_definition(
+        self, pers_id: int
+    ) -> tuple[dict[str, typing.Any], str] | None:
+        """Build and register a FixtureDefinition dict for non-dimmer *pers_id*."""
+        if pers_id in self._pers_fdef_info:
+            return self._pers_fdef_info[pers_id]
+        pers = self.personalities.get(pers_id)
+        if pers is None or is_dimmer_personality(pers, self.param_types):
+            return None
+
+        fdef_dict = build_fixture_definition(pers_id, pers, self.param_types)
+        if fdef_dict is None:
+            return None
+
+        key = (fdef_dict["manufacturer"].lower(), fdef_dict["model"].lower())
+        if key not in self._registered_fdefs:
+            self._registered_fdefs[key] = fdef_dict
+            self.data.setdefault("fixture_definitions", []).append(fdef_dict)
+            result = (fdef_dict, str(fdef_dict["dmx_modes"][0]["name"]))
+        else:
+            existing = self._registered_fdefs[key]
+            new_mode = fdef_dict["dmx_modes"][0]
+            existing_names = {m["name"] for m in existing["dmx_modes"]}
+            if new_mode["name"] in existing_names:
+                new_mode["name"] = f"{new_mode['name']} ({pers_id})"
+            existing["dmx_modes"].append(new_mode)
+            if "color_profile" not in existing and "color_profile" in fdef_dict:
+                existing["color_profile"] = fdef_dict["color_profile"]
+            result = (existing, str(new_mode["name"]))
+
+        self._pers_fdef_info[pers_id] = result
+        return result
+
+    def _finalize_personalities(self) -> None:
+        """Register all non-dimmer $Personality definitions, even unpatched."""
+        for pers_id in self.personalities:
+            self._register_personality_definition(pers_id)
 
     def _new_patch(self) -> None:
         if len(self.args) < 3:
@@ -780,16 +873,14 @@ class AsciiParser(ReadFile):
             if curve_id and channel in self.data["patch"]:
                 self.data["patch"][channel][-1]["curve"] = curve_id
         else:
-            built = build_device_and_definition(
-                channel, pers_id, dmx_addr, curve_id, pers, self.param_types
-            )
-            if built is not None:
-                device_dict, fdef_dict = built
-                self.data.setdefault("devices", {})[channel] = device_dict
-                key = (fdef_dict["manufacturer"], fdef_dict["model"])
-                if key not in self._registered_fdef_keys:
-                    self._registered_fdef_keys.add(key)
-                    self.data.setdefault("fixture_definitions", []).append(fdef_dict)
+            registered = self._register_personality_definition(pers_id)
+            if registered is not None:
+                fdef_dict, mode_name = registered
+                device_dict = build_device_from_definition(
+                    channel, dmx_addr, curve_id, fdef_dict, mode_name=mode_name
+                )
+                if device_dict is not None:
+                    self.data.setdefault("devices", {})[channel] = device_dict
 
         self.state = State.IN_PATCH
 
@@ -797,9 +888,11 @@ class AsciiParser(ReadFile):
         ch = self.current.get("patch_channel", 0)
         dev = self.data.get("devices", {}).get(ch)
         if dev is not None and self.keyword == "$$pers" and self.args:
-            model = " ".join(self.args)
-            dev["model"] = model
-            dev["label"] = f"{model} {ch}"
+            pers_id = self.channel_personality.get(ch)
+            if pers_id is None or pers_id not in self.personalities:
+                model = self.args[0].strip()
+                dev["model"] = model
+                dev["label"] = f"{model} {ch}"
 
     def _new_curve(self) -> None:
         if not self.args:
