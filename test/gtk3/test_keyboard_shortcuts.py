@@ -368,6 +368,7 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
     assert builder.get_object("syntax_shift") is not None
     assert builder.get_object("syntax_specialized") is not None
     for shortcut_id in (
+        "palettes",
         "alt_syntax_i",
         "alt_syntax_f",
         "alt_syntax_l",
@@ -387,11 +388,15 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
             labels.append(val.get_string())
     assert "Patch" in labels
     assert "DMX Outputs" in labels
+    assert "Palettes" in labels
     assert "Device Inspector" in labels
 
-    # Verify updated accelerators for Patch and DMX Outputs
+    # Verify updated accelerators for Patch, DMX Outputs, and Palettes
     patch_accels = app_gui.get_accels_for_action("app.patch_channels")
     assert any(a in patch_accels for a in ("<Control>p", "<Primary>p"))
+
+    pal_accels = app_gui.get_accels_for_action("app.palettes")
+    assert any(a in pal_accels for a in ("<Shift><Control>l", "<Primary><Shift>l"))
 
     dmx_accels = app_gui.get_accels_for_action("app.dmx_outputs")
     assert any(a in dmx_accels for a in ("<Control>d", "<Primary>d"))

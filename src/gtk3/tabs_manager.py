@@ -34,6 +34,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.group import GroupTab
     from olc.gtk3.history import HistoryTab
     from olc.gtk3.independent import IndependentsTab
+    from olc.gtk3.palettes import PalettesTab
     from olc.gtk3.patch_channels import PatchChannelsTab
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.settings import SettingsTab
@@ -51,6 +52,7 @@ if typing.TYPE_CHECKING:
         | GroupTab
         | HistoryTab
         | IndependentsTab
+        | PalettesTab
         | PatchChannelsTab
         | SequenceTab
         | SettingsTab
@@ -87,6 +89,7 @@ class Tabs:
             "indes": None,
             "memories": None,
             "dmx_outputs": None,
+            "palettes": None,
             "patch_channels": None,
             "sequences": None,
             "settings": None,
@@ -291,6 +294,12 @@ class Tabs:
             if callable(get_pos):
                 current["paned_position"] = get_pos()
 
+        # PalettesTab / active_category
+        if tab_name == "palettes":
+            cur_cat = getattr(widget, "current_category", None)
+            if cur_cat is not None:
+                current["active_category"] = getattr(cur_cat, "value", str(cur_cat))
+
     def _apply_tab_settings(self, tab_name: str, widget: Gtk.Widget | None) -> None:
         """Apply saved settings from lightshow.workspace to a tab widget."""
         if not widget or not getattr(self.app, "core", None):
@@ -326,6 +335,16 @@ class Tabs:
             set_pos = getattr(widget, "set_position", None)
             if "paned_position" in settings and callable(set_pos):
                 set_pos(int(settings["paned_position"]))
+
+        # PalettesTab / active_category
+        if tab_name == "palettes":
+            active_cat = settings.get("active_category")
+            set_cat_fn = getattr(widget, "set_active_category", None)
+            if active_cat and callable(set_cat_fn):
+                try:
+                    set_cat_fn(str(active_cat))
+                except ValueError:
+                    pass
 
     def get_workspace_state(self) -> dict[str, typing.Any]:
         """Capture the full GUI workspace state."""
@@ -450,6 +469,7 @@ class Tabs:
             "memories": app_any.open_memories,
             "sequences": app_any.open_sequences,
             "groups": app_any.open_groups,
+            "palettes": app_any.open_palettes,
             "indes": app_any.open_independents,
             "device_inspector": app_any.open_device_inspector,
             "fixtures": getattr(app_any, "open_fixtures", lambda: None),

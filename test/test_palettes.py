@@ -160,3 +160,40 @@ def test_palette_propagate_update_cascade_presets_cues_and_faders() -> None:
     assert cue2.channels[1] == pytest.approx(0.6)
     assert float(cue2.channels_array[0]) == pytest.approx(0.6)
     assert fader.dmx[0] == pytest.approx(0.3)
+
+
+def test_palette_rename_action_undo_redo() -> None:
+    """Test palette.rename updates label with Undo/Redo and rejects missing target."""
+    settings = MagicMock()
+    settings.get_double.return_value = 5.0
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+
+    cp = Palette(
+        category=PaletteCategory.COLOR,
+        number=2.0,
+        text="Old Blue",
+        device_values={1: {"color": "#0000ff"}},
+    )
+    app.lightshow.palettes.add(cp)
+
+    events: list[tuple[str, float, str]] = []
+    app.subscribe(
+        "palette.renamed",
+        lambda cat, num, text: events.append((cat, num, text)),
+    )
+
+    ok = app.action_registry.execute("palette.rename", "color", 2.0, "Deep Ocean")
+    assert ok is True
+    assert cp.text == "Deep Ocean"
+    assert events == [("color", 2.0, "Deep Ocean")]
+
+    app.action_registry.execute("edit.undo")
+    assert cp.text == "Old Blue"
+
+    app.action_registry.execute("edit.redo")
+    assert cp.text == "Deep Ocean"
+
+    # Missing palette returns False cleanly without corrupting history
+    missing = app.action_registry.execute("palette.rename", "color", 99.0, "Ghost")
+    assert missing is False

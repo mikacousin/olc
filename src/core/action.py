@@ -90,6 +90,7 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "palette.apply": _("Apply palette"),
     "palette.delete": _("Delete palette"),
     "palette.record": _("Record palette"),
+    "palette.rename": _("Rename palette"),
     "palette.update": _("Update palette"),
     "park.unpark_all": _("Unpark all"),
     "playback.record_cue": _("Record cue"),

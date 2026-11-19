@@ -29,6 +29,7 @@ from .base import BaseEventBridgeHandler
 if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.group import GroupTab
+    from olc.gtk3.palettes import PalettesTab
     from olc.gtk3.widgets.group import GroupWidget
     from olc.show.group import Group
 
@@ -51,6 +52,10 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         self.app.core.subscribe(
             "group.selected_changed",
             lambda group_nb: self._run_idle(self._on_group_selected_changed, group_nb),
+        )
+        self.app.core.subscribe(
+            "palettes.changed",
+            lambda *_args: self._run_idle(self._safe_refresh_palettes),
         )
         self.app.core.subscribe(
             "curve.changed",
@@ -90,6 +95,13 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
             group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
             group_tab.refresh()
+        return False
+
+    def _safe_refresh_palettes(self) -> bool:
+        """Refresh the palettes tab UI safely in the GTK thread."""
+        if self.app.tabs and self.app.tabs.tabs.get("palettes") is not None:
+            palettes_tab = typing.cast("PalettesTab", self.app.tabs.tabs["palettes"])
+            palettes_tab.refresh()
         return False
 
     def _on_group_updated(self, group: Group) -> bool:

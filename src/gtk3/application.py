@@ -44,6 +44,7 @@ from olc.gtk3.group import GroupTab  # noqa: E402
 from olc.gtk3.history import HistoryTab  # noqa: E402
 from olc.gtk3.independent import IndependentsTab  # noqa: E402
 from olc.gtk3.lightshow import GtkLightShow  # noqa: E402
+from olc.gtk3.palettes import PalettesTab  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402
 from olc.gtk3.settings import SettingsTab  # noqa: E402
@@ -204,6 +205,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.fixtures", ["<Shift><Control>p"])
         self.set_accels_for_action("app.dmx_outputs", ["<Control>d"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
+        self.set_accels_for_action("app.palettes", ["<Shift><Control>l"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.faders", ["<Shift><Control>f"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
@@ -305,6 +307,7 @@ class Application(Gtk.Application):
             "curves": "curves",
             "memories": "memories_cb",
             "groups": "groups_cb",
+            "palettes": "palettes_cb",
             "sequences": "sequences",
             "faders": "faders",
             "track_channels": "track_channels",
@@ -562,6 +565,17 @@ class Application(Gtk.Application):
         """Open Groups tab UI."""
         if self.tabs:
             self.tabs.open("groups", GroupTab, "Groups", self)
+
+    def palettes_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Create Palettes Tab"""
+        self.core.action_registry.execute("gui.tab_open", "palettes")
+
+    def open_palettes(self) -> None:
+        """Open Palettes tab UI."""
+        if self.tabs:
+            self.tabs.open("palettes", PalettesTab, _("Palettes"), self)
 
     def sequences(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

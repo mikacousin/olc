@@ -760,3 +760,64 @@ class PaletteDeleteAction(Action):
     def get_history_details(self) -> str:
         """Return deleted palette label for Undo History."""
         return format_palette_label(self.category, self.number)
+
+
+class PaletteRenameAction(Action):
+    """Rename an existing Palette or Preset with Undo/Redo support."""
+
+    name = "palette.rename"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.category: PaletteCategory = PaletteCategory.COLOR
+        self.number: float = 0.0
+        self.text: str = ""
+        self._old_text: str = ""
+
+    def configure(
+        self, category: PaletteCategory | str, number: float, text: str
+    ) -> None:
+        """Configure target palette/preset and new label."""
+        self.category = _normalize_category(category)
+        self.number = float(number)
+        self.text = str(text)
+
+    def execute(self) -> bool:
+        """Update the label on the stored palette/preset."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            self.can_undo = False
+            return False
+
+        self._old_text = existing.text
+        existing.text = self.text
+        lightshow.set_modified()
+        self.app.emit("palette.renamed", self.category.value, self.number, self.text)
+        self.app.emit("palettes.changed", self.category.value, self.number)
+        return True
+
+    def undo(self) -> None:
+        """Restore previous label."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.text = self._old_text
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def redo(self) -> None:
+        """Reapply new label."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.text = self.text
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def get_history_details(self) -> str:
+        """Return renamed palette label for Undo History."""
+        return f"{format_palette_label(self.category, self.number)} \u2192 {self.text}"

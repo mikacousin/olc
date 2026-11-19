@@ -56,6 +56,10 @@
       <attribute name="action">app.groups</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Palettes</attribute>
+      <attribute name="action">app.palettes</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">Sequences</attribute>
       <attribute name="action">app.sequences</attribute>
     </item>

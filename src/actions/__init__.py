@@ -140,6 +140,7 @@ from olc.actions.palette import (
     PaletteApplyAction,
     PaletteDeleteAction,
     PaletteRecordAction,
+    PaletteRenameAction,
     PaletteUpdateAction,
 )
 from olc.actions.park import (
@@ -343,6 +344,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PaletteRecordAction,
         PaletteUpdateAction,
         PaletteDeleteAction,
+        PaletteRenameAction,
     ]
 
     for action_class in actions_to_register:

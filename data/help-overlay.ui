@@ -124,6 +124,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="palettes">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;L</property>
+                <property name="title" translatable="yes" context="shortcut window">Palettes</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="edit_sequence">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;T</property>
