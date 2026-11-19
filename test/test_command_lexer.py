@@ -146,3 +146,22 @@ def test_lexer_check_keyword() -> None:
         TokenType.CHECK,
         TokenType.EOF,
     ]
+
+
+def test_lexer_palette_and_preset_keywords() -> None:
+    """Verify tokenization of INTENSITY, PALETTE, PRESET, and shorthand aliases."""
+    lexer = CommandLexer()
+    tokens = lexer.tokenize("INTENSITY INTENS PALETTE PAL PRESET PR IP FP CP BP")
+    assert [t.type for t in tokens] == [
+        TokenType.INTENSITY,
+        TokenType.INTENSITY,
+        TokenType.PALETTE,
+        TokenType.PALETTE,
+        TokenType.PRESET,
+        TokenType.PRESET,
+        TokenType.IP,
+        TokenType.FP,
+        TokenType.CP,
+        TokenType.BP,
+        TokenType.EOF,
+    ]

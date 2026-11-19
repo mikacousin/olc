@@ -45,8 +45,17 @@ class TokenType(Enum):
     EVEN = auto()
 
     # Intensity keywords
+    INTENSITY = auto()
     FULL = auto()
     OUT = auto()
+
+    # Palette & Preset keywords
+    PALETTE = auto()
+    PRESET = auto()
+    IP = auto()
+    FP = auto()
+    CP = auto()
+    BP = auto()
 
     # Moving lights & Attribute keywords
     HOME = auto()

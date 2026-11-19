@@ -136,6 +136,12 @@ from olc.actions.osc import (
     OscToggleAction,
     OscToggleStaticClientAction,
 )
+from olc.actions.palette import (
+    PaletteApplyAction,
+    PaletteDeleteAction,
+    PaletteRecordAction,
+    PaletteUpdateAction,
+)
 from olc.actions.park import (
     AddressParkAction,
     AddressUnparkAction,
@@ -333,6 +339,10 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PlaybackStopAction,
         SequenceSetMibEnabledAction,
         SequenceSetTrackingModeAction,
+        PaletteApplyAction,
+        PaletteRecordAction,
+        PaletteUpdateAction,
+        PaletteDeleteAction,
     ]
 
     for action_class in actions_to_register:

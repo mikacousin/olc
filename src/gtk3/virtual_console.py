@@ -241,6 +241,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.patch.connect("clicked", self._on_patch)
         self.check = ButtonWidget(label="Check", text="check", shortcut_text="⇧K")
         self.check.connect("clicked", self._on_check)
+        self.palette = ButtonWidget(
+            label="Palette", text="palette", shortcut_text="Alt+L"
+        )
+        self.palette.connect("clicked", self._on_palette)
+        self.preset = ButtonWidget(
+            label="Preset", text="preset_key", shortcut_text="Alt+R"
+        )
+        self.preset.connect("clicked", self._on_preset)
 
         # Attach Zone 2
         self.actions_pad.attach(self.at_level, 0, 0, 1, 1)
@@ -269,8 +277,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.actions_pad.attach(self.redo, 3, 4, 1, 1)
         self.actions_pad.attach(self.patch, 0, 5, 1, 1)
         self.actions_pad.attach(self.check, 1, 5, 1, 1)
+        self.actions_pad.attach(self.palette, 2, 5, 1, 1)
+        self.actions_pad.attach(self.preset, 3, 5, 1, 1)
 
-        # Zone 3: Moving Lights & Selection Tools (2x5)
+        # Zone 3: Moving Lights & Selection Tools (2x6)
         self.tools_pad = Gtk.Grid()
         self.home = ButtonWidget(label="Home", text="home", shortcut_text="H / ⇧H")
         self.home.connect("clicked", self._on_home)
@@ -301,6 +311,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.even = ButtonWidget(label="Even", text="even", shortcut_text="E")
         self.even.connect("clicked", self._on_even)
 
+        self.intensity = ButtonWidget(
+            label="Intensity", text="intensity", shortcut_text="Alt+I"
+        )
+        self.intensity.connect("clicked", self._on_intensity)
+
         # Attach Zone 3
         self.tools_pad.attach(self.home, 0, 0, 1, 1)
         self.tools_pad.attach(self.locate, 1, 0, 1, 1)
@@ -312,6 +327,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.tools_pad.attach(self.seq, 1, 3, 1, 1)
         self.tools_pad.attach(self.odd, 0, 4, 1, 1)
         self.tools_pad.attach(self.even, 1, 4, 1, 1)
+        self.tools_pad.attach(self.intensity, 0, 5, 1, 1)
 
         # Navigation Pad (Up, Down, Left, Right)
         self.modify_pad = Gtk.Grid()
@@ -650,8 +666,11 @@ class VirtualConsoleWindow(Gtk.Window):
         ("park", TokenType.PARK),
         ("unpark", TokenType.UNPARK),
         ("check", TokenType.CHECK),
+        ("palette", TokenType.PALETTE),
+        ("preset", TokenType.PRESET),
         ("home", TokenType.HOME),
         ("locate", TokenType.LOCATE),
+        ("intensity", TokenType.INTENSITY),
         ("position", TokenType.POSITION),
         ("focus", TokenType.FOCUS),
         ("color", TokenType.COLOR),
@@ -1060,6 +1079,39 @@ class VirtualConsoleWindow(Gtk.Window):
             prefix = " " if (curr and not curr.endswith(" ")) else ""
             self.app.core.action_registry.execute(
                 "commandline.append_char", f"{prefix}BEAM "
+            )
+
+    def _on_intensity(self, _widget: Gtk.Widget) -> None:
+        """Intensity button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("intensity")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}INTENSITY "
+            )
+
+    def _on_palette(self, _widget: Gtk.Widget) -> None:
+        """Palette button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("palette")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}PALETTE "
+            )
+
+    def _on_preset(self, _widget: Gtk.Widget) -> None:
+        """Preset button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("preset_key")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}PRESET "
             )
 
     def _on_undo(self, _widget: Gtk.Widget) -> None:

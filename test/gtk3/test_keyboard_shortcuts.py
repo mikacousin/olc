@@ -265,6 +265,21 @@ def test_modifier_shortcuts_ctrl_f_ctrl_a_ctrl_up_down_alt_up_down(
     )
     assert app_gui.core.commandline.get_string() == "POSITION "
 
+    for keyval, expected_kw in (
+        (Gdk.KEY_i, "INTENSITY "),
+        (Gdk.KEY_f, "FOCUS "),
+        (Gdk.KEY_l, "PALETTE "),
+        (Gdk.KEY_r, "PRESET "),
+    ):
+        app_gui.core.action_registry.execute("commandline.clear")
+        assert (
+            win._on_key_controller_pressed(
+                controller, keyval, 0, Gdk.ModifierType.MOD1_MASK
+            )
+            is True
+        )
+        assert app_gui.core.commandline.get_string() == expected_kw
+
 
 @pytest.mark.gui
 def test_editing_tab_navigation_and_f2_rename(
@@ -352,6 +367,13 @@ def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
     assert builder.get_object("syntax_actions") is not None
     assert builder.get_object("syntax_shift") is not None
     assert builder.get_object("syntax_specialized") is not None
+    for shortcut_id in (
+        "alt_syntax_i",
+        "alt_syntax_f",
+        "alt_syntax_l",
+        "alt_syntax_r",
+    ):
+        assert builder.get_object(shortcut_id) is not None
 
     app_gui.shortcuts.hide()
     app_gui.shortcuts.destroy()

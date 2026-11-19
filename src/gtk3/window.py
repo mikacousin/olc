@@ -494,6 +494,18 @@ class Window(Gtk.ApplicationWindow):
             if keyval in (Gdk.KEY_m, Gdk.KEY_M):
                 self._append_console_keyword("BEAM", trailing_space=True)
                 return True
+            if keyval in (Gdk.KEY_i, Gdk.KEY_I):
+                self._append_console_keyword("INTENSITY", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_f, Gdk.KEY_F):
+                self._append_console_keyword("FOCUS", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_l, Gdk.KEY_L):
+                self._append_console_keyword("PALETTE", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_r, Gdk.KEY_R):
+                self._append_console_keyword("PRESET", trailing_space=True)
+                return True
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():
                     page = self._get_active_page()

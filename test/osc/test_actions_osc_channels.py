@@ -452,3 +452,69 @@ def test_osc_check_key_route() -> None:
     app.commandline.set_string("1")
     delegate._check_key("/olc/key/check", [1])
     assert app.commandline.get_string() == "1 CHECK "
+
+
+def test_osc_palette_and_preset_keypad_and_direct_routes() -> None:
+    """Test /olc/key/* palette tokens and /olc/palette/*/* + /olc/preset/*."""
+    from olc.show.palette import Palette, PaletteCategory
+
+    app, _mock_osc = _setup_app_with_patch()
+    delegate = OSCDelegate(app)
+
+    # 1. Keypad composition for RECORD COLOR PALETTE 2
+    app.commandline.clear()
+    delegate._record_cmd_key("/olc/key/record_cmd", [1])
+    delegate._color_key("/olc/key/color", [1])
+    delegate._palette_key("/olc/key/palette", [1])
+    delegate._2("/olc/key/2", [1])
+    assert app.commandline.get_string() == "RECORD  COLOR  PALETTE 2"
+
+    # Additional keypad routes
+    app.commandline.clear()
+    delegate._update_cmd_key("/olc/key/update_cmd", [1])
+    delegate._intensity_key("/olc/key/intensity", [1])
+    delegate._focus_key("/olc/key/focus", [1])
+    delegate._beam_key("/olc/key/beam", [1])
+    delegate._preset_key("/olc/key/preset", [1])
+    assert app.commandline.get_string() == "UPDATE  INTENSITY  FOCUS  BEAM  PRESET "
+
+    # 2. Direct recall routes: /olc/palette/color/2 & /olc/preset/1
+    app.lightshow.palettes.add(
+        Palette(
+            category=PaletteCategory.COLOR,
+            number=2.0,
+            text="Blue",
+            device_values={3: {"color": "#0000FF"}},
+        )
+    )
+    app.lightshow.palettes.add(
+        Palette(
+            category=PaletteCategory.PRESET,
+            number=1.0,
+            text="Look 1",
+            channels={1: 0.75},
+            device_values={3: {"color": "#FF0000"}},
+        )
+    )
+
+    # Release (0.0) must be ignored
+    rgb_dev = app.lightshow.patch.devices[3]
+    rgb_dev.set_color_hex("#000000")
+    delegate._direct_palette("/olc/palette/color/2", [0.0])
+    assert rgb_dev.color_srgb.b == pytest.approx(0.0, abs=0.05)
+
+    # Press (1.0) recalls Color Palette 2 onto channel 3
+    app.selected_channels = [3]
+    delegate._direct_palette("/olc/palette/color/2", [1.0])
+    assert rgb_dev.color_srgb.b == pytest.approx(1.0, abs=0.05)
+
+    # Direct /olc/preset/1 recalls preset across its channels
+    app.selected_channels = []
+    delegate._direct_preset("/olc/preset/1", [1.0])
+    assert app.backend is not None
+    assert app.backend.dmx.levels["user"][0] == pytest.approx(0.75)
+    assert rgb_dev.color_srgb.r == pytest.approx(1.0, abs=0.05)
+
+    # Invalid category/number ignored without error
+    delegate._direct_palette("/olc/palette/unknown/2", [1.0])
+    delegate._direct_preset("/olc/preset/notanumber", [1.0])

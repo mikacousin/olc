@@ -18,6 +18,21 @@ import typing
 
 from olc.controllers.osc.transport import make_method
 
+_OSC_PALETTE_CAT_MAP: dict[str, str] = {
+    "intensity": "intensity",
+    "intens": "intensity",
+    "ip": "intensity",
+    "focus": "focus",
+    "fp": "focus",
+    "color": "color",
+    "colour": "color",
+    "cp": "color",
+    "beam": "beam",
+    "bp": "beam",
+    "preset": "preset",
+    "pr": "preset",
+}
+
 
 class KeypadRoutesMixin:
     """OSC routes for virtual console keypad keys."""
@@ -184,6 +199,75 @@ class KeypadRoutesMixin:
     def _check_key(self, _address: str, args: list) -> None:
         if self._is_momentary_press(args):
             self._execute_action("commandline.append_char", " CHECK ")
+
+    @make_method("/olc/key/record_cmd")
+    def _record_cmd_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "RECORD ")
+
+    @make_method("/olc/key/update_cmd")
+    def _update_cmd_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", "UPDATE ")
+
+    @make_method("/olc/key/palette")
+    def _palette_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " PALETTE ")
+
+    @make_method("/olc/key/preset")
+    def _preset_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " PRESET ")
+
+    @make_method("/olc/key/intensity")
+    def _intensity_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " INTENSITY ")
+
+    @make_method("/olc/key/focus")
+    def _focus_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " FOCUS ")
+
+    @make_method("/olc/key/color")
+    def _color_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " COLOR ")
+
+    @make_method("/olc/key/beam")
+    def _beam_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " BEAM ")
+
+    @make_method("/olc/palette/*/*")
+    def _direct_palette(self, address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
+        parts = address.strip("/").split("/")
+        if len(parts) < 4:
+            return
+        category = _OSC_PALETTE_CAT_MAP.get(parts[2].lower())
+        if category is None:
+            return
+        try:
+            number = float(parts[3])
+        except ValueError:
+            return
+        self._execute_action("palette.apply", category, number)
+
+    @make_method("/olc/preset/*")
+    def _direct_preset(self, address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
+        parts = address.strip("/").split("/")
+        if len(parts) < 3:
+            return
+        try:
+            number = float(parts[2])
+        except ValueError:
+            return
+        self._execute_action("palette.apply", "preset", number)
 
     @make_method("/olc/key/enter")
     def _enter(self, _address: str, args: list) -> None:

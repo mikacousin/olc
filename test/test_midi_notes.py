@@ -194,3 +194,35 @@ def test_midi_notes_check_dispatch() -> None:
     app.action_registry.execute.assert_called_once_with(
         "commandline.append_char", " CHECK "
     )
+
+
+def test_midi_notes_palette_and_preset_command_injection() -> None:
+    """Test MIDI dispatch of palette/preset/IFCB tokens preserves tab 'preset'."""
+    midi = MagicMock()
+    app = MagicMock()
+    notes = MidiNotes(midi, app)
+
+    expected_strings = {
+        "palette": " PALETTE ",
+        "preset_key": " PRESET ",
+        "intensity": " INTENSITY ",
+        "focus": " FOCUS ",
+        "color": " COLOR ",
+        "beam": " BEAM ",
+        "delete": " DELETE ",
+    }
+    for key, text in expected_strings.items():
+        assert key in notes.notes
+        assert key in notes.cc_notes
+        app.action_registry.execute.reset_mock()
+        msg = mido.Message("note_on", channel=0, note=10, velocity=127)
+        notes._dispatch(key, msg)
+        app.action_registry.execute.assert_called_once_with(
+            "commandline.append_char", text
+        )
+
+    # Existing "preset" key must still open the memories tab
+    app.action_registry.execute.reset_mock()
+    msg_tab = mido.Message("note_on", channel=0, note=10, velocity=127)
+    notes._dispatch("preset", msg_tab)
+    app.action_registry.execute.assert_called_once_with("gui.tab_open", "memories")

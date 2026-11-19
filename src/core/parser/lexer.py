@@ -65,7 +65,17 @@ KEYWORDS: dict[str, TokenType] = {
     "UNPARK": TokenType.UNPARK,
     "PATCH": TokenType.PATCH,
     "UNPATCH": TokenType.UNPATCH,
-    # ML Attributes & Families
+    # ML Attributes & Families / Palettes & Presets
+    "INTENSITY": TokenType.INTENSITY,
+    "INTENS": TokenType.INTENSITY,
+    "PALETTE": TokenType.PALETTE,
+    "PAL": TokenType.PALETTE,
+    "PRESET": TokenType.PRESET,
+    "PR": TokenType.PRESET,
+    "IP": TokenType.IP,
+    "FP": TokenType.FP,
+    "CP": TokenType.CP,
+    "BP": TokenType.BP,
     "HOME": TokenType.HOME,
     "LOCATE": TokenType.LOCATE,
     "POSITION": TokenType.POSITION,

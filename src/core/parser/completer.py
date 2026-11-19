@@ -67,6 +67,9 @@ TOKEN_TO_KEYWORD: dict[TokenType, str] = {
     TokenType.MINUS: "-",
     TokenType.SLASH: "/",
     TokenType.POSITION: "POSITION",
+    TokenType.INTENSITY: "INTENSITY",
+    TokenType.PALETTE: "PALETTE",
+    TokenType.PRESET: "PRESET",
     TokenType.BEAM: "BEAM",
     TokenType.PAN: "PAN",
     TokenType.TILT: "TILT",
@@ -106,6 +109,9 @@ KEYWORD_PRIORITY: list[str] = [
     "PATCH",
     "UNPATCH",
     "CHECK",
+    "PALETTE",
+    "PRESET",
+    "INTENSITY",
     "POSITION",
     "BEAM",
     "PAN",
@@ -270,6 +276,12 @@ class CommandCompleter:
                 TokenType.ALL,
                 TokenType.CUE,
                 TokenType.GROUP,
+                TokenType.PALETTE,
+                TokenType.PRESET,
+                TokenType.IP,
+                TokenType.FP,
+                TokenType.CP,
+                TokenType.BP,
             )
         except LexerError:
             return False
@@ -296,6 +308,11 @@ class CommandCompleter:
         if TokenType.NUMBER in expected and last_keyword == "GROUP" and self.lightshow:
             groups = self._get_show_group_candidates()
             candidates.extend(groups)
+
+        # Contextual show entities: Palettes & Presets
+        if TokenType.NUMBER in expected and self.lightshow:
+            palettes = self._get_show_palette_candidates(context_upper)
+            candidates.extend(palettes)
 
         # Contextual presets: Colors
         if TokenType.HEX_COLOR in expected and last_keyword in ("COLOR", "COLOUR"):
@@ -337,6 +354,56 @@ class CommandCompleter:
                 if isinstance(idx, (int, float)) and float(idx).is_integer()
                 else str(idx)
             )
+            if formatted not in res:
+                res.append(formatted)
+        return res
+
+    def _get_show_palette_candidates(self, context_upper: list[str]) -> list[str]:
+        """Extract existing palette/preset numbers matching the typed category."""
+        if (
+            not context_upper
+            or not self.lightshow
+            or not hasattr(self.lightshow, "palettes")
+        ):
+            return []
+
+        shorthand_cat_map = {
+            "PRESET": "preset",
+            "PR": "preset",
+            "IP": "intensity",
+            "FP": "focus",
+            "CP": "color",
+            "BP": "beam",
+        }
+        full_cat_map = {
+            "INTENSITY": "intensity",
+            "INTENS": "intensity",
+            "FOCUS": "focus",
+            "COLOR": "color",
+            "COLOUR": "color",
+            "BEAM": "beam",
+        }
+        last_kw = context_upper[-1]
+        category = shorthand_cat_map.get(last_kw)
+        if (
+            category is None
+            and last_kw in ("PALETTE", "PAL")
+            and len(context_upper) >= 2
+        ):
+            category = full_cat_map.get(context_upper[-2])
+        if category is None:
+            return []
+
+        palettes_mgr = self.lightshow.palettes
+        if not hasattr(palettes_mgr, "list_by_category"):
+            return []
+
+        res: list[str] = []
+        for pal in palettes_mgr.list_by_category(category):
+            num = getattr(pal, "number", None)
+            if not isinstance(num, (int, float)):
+                continue
+            formatted = str(int(num)) if float(num).is_integer() else str(num)
             if formatted not in res:
                 res.append(formatted)
         return res

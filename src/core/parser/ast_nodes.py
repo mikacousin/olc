@@ -289,3 +289,39 @@ class AddressUnparkCommandNode(CommandNode):
 @dataclasses.dataclass
 class ParkUnparkAllCommandNode(CommandNode):
     """Command to unpark all channels and physical DMX addresses."""
+
+
+# --- Palette & Preset Command Nodes ---
+
+
+@dataclasses.dataclass
+class ApplyPaletteCommandNode(CommandNode):
+    """Command to apply an IFCB palette or preset (e.g. 1 COLOR PALETTE 2)."""
+
+    selection: SelectionNode | None
+    category: str
+    palette_id: float
+
+
+@dataclasses.dataclass
+class RecordPaletteCommandNode(CommandNode):
+    """Command to record an IFCB palette or preset (e.g. RECORD COLOR PALETTE 2)."""
+
+    category: str
+    palette_id: float
+
+
+@dataclasses.dataclass
+class UpdatePaletteCommandNode(CommandNode):
+    """Command to update an existing palette or preset (e.g. UPDATE PRESET 1)."""
+
+    category: str
+    palette_id: float
+
+
+@dataclasses.dataclass
+class DeletePaletteCommandNode(CommandNode):
+    """Command to delete an IFCB palette or preset (e.g. DELETE BEAM PALETTE 1)."""
+
+    category: str
+    palette_id: float

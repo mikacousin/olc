@@ -66,11 +66,21 @@ COMMAND_KEYWORDS = frozenset(
         "UNPATCH",
         "CHECK",
         "CHK",
+        "PALETTE",
+        "PAL",
+        "PRESET",
+        "PR",
+        "IP",
+        "FP",
+        "CP",
+        "BP",
     }
 )
 
 ATTRIBUTE_KEYWORDS = frozenset(
     {
+        "INTENSITY",
+        "INTENS",
         "POSITION",
         "POS",
         "BEAM",

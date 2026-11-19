@@ -622,6 +622,34 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_i">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;I</property>
+                <property name="title" translatable="yes" context="shortcut window">INTENSITY</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_f">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;F</property>
+                <property name="title" translatable="yes" context="shortcut window">FOCUS</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_l">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;L</property>
+                <property name="title" translatable="yes" context="shortcut window">PALETTE</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_r">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;R</property>
+                <property name="title" translatable="yes" context="shortcut window">PRESET</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="shift_syntax_q">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;shift&gt;Q</property>

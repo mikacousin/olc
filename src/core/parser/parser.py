@@ -27,6 +27,7 @@ from olc.core.parser.ast_nodes import (
     AddressSelectionNode,
     AddressUnparkCommandNode,
     AllSelectionNode,
+    ApplyPaletteCommandNode,
     AttributeCommandNode,
     BlockCueCommandNode,
     ChannelCheckCommandNode,
@@ -36,6 +37,7 @@ from olc.core.parser.ast_nodes import (
     ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
+    DeletePaletteCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
@@ -44,6 +46,7 @@ from olc.core.parser.ast_nodes import (
     ParkUnparkAllCommandNode,
     PatchCommandNode,
     RecordCueCommandNode,
+    RecordPaletteCommandNode,
     RelativeThruNode,
     SelectionItemNode,
     SelectionNode,
@@ -52,6 +55,7 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
+    UpdatePaletteCommandNode,
 )
 from olc.core.parser.lexer import CommandLexer, LexerError
 from olc.core.parser.tokens import Token, TokenType
@@ -81,6 +85,20 @@ ATTRIBUTE_TOKENS = {
     TokenType.PRISM: "prism",
     TokenType.COLOR_WHEEL: "color_wheel",
     TokenType.GOBO_WHEEL: "gobo_wheel",
+}
+
+PALETTE_CATEGORY_TOKENS: dict[TokenType, str] = {
+    TokenType.INTENSITY: "intensity",
+    TokenType.FOCUS: "focus",
+    TokenType.COLOR: "color",
+    TokenType.BEAM: "beam",
+}
+
+PALETTE_SHORTHAND_TOKENS: dict[TokenType, str] = {
+    TokenType.IP: "intensity",
+    TokenType.FP: "focus",
+    TokenType.CP: "color",
+    TokenType.BP: "beam",
 }
 
 
@@ -328,6 +346,10 @@ class CommandParser:
             ):
                 self._probe_expected.append(TokenType.HOME)
 
+        palette_cmd = self._try_parse_apply_palette(selection=None)
+        if palette_cmd is not None:
+            return palette_cmd
+
         # Relative selection starting with +, -, or THRU (applies to active selection)
         if self._peek_is(TokenType.PLUS, TokenType.MINUS, TokenType.THRU):
             selection = self._parse_relative_selection()
@@ -421,7 +443,87 @@ class CommandParser:
             ):
                 self._probe_expected.append(TokenType.HOME)
 
+        palette_cmd = self._try_parse_apply_palette(selection=selection)
+        if palette_cmd is not None:
+            return palette_cmd
+
         return self._parse_action_clause(selection)
+
+    # --- Palette & Preset Commands ---
+
+    def _parse_palette_spec(self) -> tuple[str, float] | None:
+        """Parse `<cat> PALETTE <n>`, `IP|FP|CP|BP <n>`, or `PRESET <n>`."""
+        if self._peek_is(*PALETTE_CATEGORY_TOKENS.keys()):
+            cat_tok = self.advance()
+            category = PALETTE_CATEGORY_TOKENS[cat_tok.type]
+            self.expect(
+                TokenType.PALETTE,
+                f"Expected PALETTE after {cat_tok.raw_text.upper()}",
+            )
+            num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
+            return category, float(num_tok.value)
+
+        if self._peek_is(*PALETTE_SHORTHAND_TOKENS.keys()):
+            short_tok = self.advance()
+            category = PALETTE_SHORTHAND_TOKENS[short_tok.type]
+            num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
+            return category, float(num_tok.value)
+
+        if self._peek_is(TokenType.PRESET):
+            self.advance()
+            num_tok = self.expect(TokenType.NUMBER, "Expected preset number")
+            return "preset", float(num_tok.value)
+
+        return None
+
+    def _try_parse_apply_palette(
+        self, selection: SelectionNode | None
+    ) -> ApplyPaletteCommandNode | None:
+        """Attempt to parse a palette or preset recall without stealing attributes."""
+        if self._peek_is(TokenType.PRESET):
+            self.advance()
+            num_tok = self.expect(TokenType.NUMBER, "Expected preset number")
+            return ApplyPaletteCommandNode(
+                selection=selection, category="preset", palette_id=float(num_tok.value)
+            )
+
+        if self._peek_is(*PALETTE_SHORTHAND_TOKENS.keys()):
+            short_tok = self.advance()
+            category = PALETTE_SHORTHAND_TOKENS[short_tok.type]
+            num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
+            return ApplyPaletteCommandNode(
+                selection=selection, category=category, palette_id=float(num_tok.value)
+            )
+
+        if self._peek_is(TokenType.INTENSITY):
+            self.advance()
+            self.expect(TokenType.PALETTE, "Expected PALETTE after INTENSITY")
+            num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
+            return ApplyPaletteCommandNode(
+                selection=selection,
+                category="intensity",
+                palette_id=float(num_tok.value),
+            )
+
+        if self._peek_is(TokenType.FOCUS, TokenType.COLOR, TokenType.BEAM):
+            next_tok = self.peek_ahead(1)
+            if next_tok.type == TokenType.PALETTE:
+                cat_tok = self.advance()
+                self.advance()  # Consume PALETTE
+                num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
+                return ApplyPaletteCommandNode(
+                    selection=selection,
+                    category=PALETTE_CATEGORY_TOKENS[cat_tok.type],
+                    palette_id=float(num_tok.value),
+                )
+            if (
+                self._probe_expected is not None
+                and next_tok.type == TokenType.EOF
+                and TokenType.PALETTE not in self._probe_expected
+            ):
+                self._probe_expected.append(TokenType.PALETTE)
+
+        return None
 
     # --- Sneak Commands ---
 
@@ -648,16 +750,24 @@ class CommandParser:
             delay_beam=family_delays[TokenType.BEAM],
         )
 
-    def _parse_record_cue(self) -> RecordCueCommandNode:
+    def _parse_record_cue(self) -> RecordCueCommandNode | RecordPaletteCommandNode:
         self.advance()  # Consume RECORD
+        spec = self._parse_palette_spec()
+        if spec is not None:
+            return RecordPaletteCommandNode(category=spec[0], palette_id=spec[1])
+
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after RECORD")
         cue_id = float(tok_num.value)
         return self._parse_record_cue_options(cue_id)
 
-    def _parse_update_cue(self) -> UpdateCueCommandNode:
+    def _parse_update_cue(self) -> UpdateCueCommandNode | UpdatePaletteCommandNode:
         self.advance()  # Consume UPDATE
+        spec = self._parse_palette_spec()
+        if spec is not None:
+            return UpdatePaletteCommandNode(category=spec[0], palette_id=spec[1])
+
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         cue_id: float | None = None
@@ -692,8 +802,12 @@ class CommandParser:
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after UNBLOCK")
         return UnblockCueCommandNode(cue_id=float(tok_num.value))
 
-    def _parse_delete_cue(self) -> DeleteCueCommandNode:
+    def _parse_delete_cue(self) -> DeleteCueCommandNode | DeletePaletteCommandNode:
         self.advance()  # Consume DELETE
+        spec = self._parse_palette_spec()
+        if spec is not None:
+            return DeletePaletteCommandNode(category=spec[0], palette_id=spec[1])
+
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after DELETE")
         return DeleteCueCommandNode(cue_id=float(tok_num.value))

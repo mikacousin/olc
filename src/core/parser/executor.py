@@ -19,6 +19,13 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from olc.actions.palette import (
+    PaletteApplyAction,
+    PaletteDeleteAction,
+    PaletteRecordAction,
+    PaletteUpdateAction,
+    format_palette_label,
+)
 from olc.core.parser.ast_nodes import (
     AddressLevelCommandNode,
     AddressNumberNode,
@@ -27,6 +34,7 @@ from olc.core.parser.ast_nodes import (
     AddressSelectionNode,
     AddressUnparkCommandNode,
     AllSelectionNode,
+    ApplyPaletteCommandNode,
     AttributeCommandNode,
     BlockCueCommandNode,
     ChannelCheckCommandNode,
@@ -36,6 +44,7 @@ from olc.core.parser.ast_nodes import (
     ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
+    DeletePaletteCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
@@ -44,6 +53,7 @@ from olc.core.parser.ast_nodes import (
     ParkUnparkAllCommandNode,
     PatchCommandNode,
     RecordCueCommandNode,
+    RecordPaletteCommandNode,
     RelativeThruNode,
     SelectionItemNode,
     SelectionNode,
@@ -52,6 +62,7 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
+    UpdatePaletteCommandNode,
 )
 from olc.define import MAX_CHANNELS
 from olc.devices.device import FixtureType
@@ -169,6 +180,18 @@ class CommandExecutor:
 
         if isinstance(node, UnpatchCommandNode):
             return self._execute_unpatch(node)
+
+        if isinstance(node, ApplyPaletteCommandNode):
+            return self._execute_apply_palette(node)
+
+        if isinstance(node, RecordPaletteCommandNode):
+            return self._execute_record_palette(node)
+
+        if isinstance(node, UpdatePaletteCommandNode):
+            return self._execute_update_palette(node)
+
+        if isinstance(node, DeletePaletteCommandNode):
+            return self._execute_delete_palette(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -1362,3 +1385,128 @@ class CommandExecutor:
             f"Unpatched {len(filtered)} address(es)",
             affected_channels=sorted(target_channels),
         )
+
+    # --- Palette & Preset Commands ---
+
+    def _execute_apply_palette(self, node: ApplyPaletteCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "palettes"):
+            return CommandResult(False, "Palettes store not available")
+
+        registry = self._get_registry()
+        target_channels: list[int] | None = None
+        if node.selection is not None:
+            channels = self.resolve_selection(node.selection)
+            last_sel = channels[-1] if channels else None
+            if registry is not None and "channel.select_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "channel.select_channels",
+                    channels=channels,
+                    last_selected=last_sel,
+                )
+            else:
+                self.app.selected_channels = list(channels)
+                self.app.last_selected_channel = last_sel
+                self.app.emit("channels.selected_changed", channels)
+            if not channels:
+                return CommandResult(False, "No channels selected")
+            target_channels = channels
+
+        label = format_palette_label(node.category, node.palette_id)
+        palette = lightshow.palettes.get(node.category, node.palette_id)
+        if palette is None:
+            return CommandResult(False, f"{label} not found")
+
+        if registry is not None and "palette.apply" in getattr(
+            registry, "_action_classes", {}
+        ):
+            affected = registry.execute(
+                "palette.apply",
+                node.category,
+                node.palette_id,
+                channels=target_channels,
+            )
+        else:
+            action = PaletteApplyAction(self.app)
+            action.configure(node.category, node.palette_id, channels=target_channels)
+            affected = action.execute()
+
+        affected_list = list(affected) if isinstance(affected, list) else []
+        if not affected_list:
+            return CommandResult(False, f"{label} has no matching channel data")
+        return CommandResult(
+            True,
+            f"Applied {label} to {len(affected_list)} channel(s)",
+            affected_channels=affected_list,
+        )
+
+    def _execute_record_palette(self, node: RecordPaletteCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "palettes"):
+            return CommandResult(False, "Palettes store not available")
+
+        registry = self._get_registry()
+        if registry is not None and "palette.record" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("palette.record", node.category, node.palette_id)
+        else:
+            action = PaletteRecordAction(self.app)
+            action.configure(node.category, node.palette_id)
+            action.execute()
+
+        label = format_palette_label(node.category, node.palette_id)
+        return CommandResult(True, f"Recorded {label}")
+
+    def _execute_update_palette(self, node: UpdatePaletteCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "palettes"):
+            return CommandResult(False, "Palettes store not available")
+
+        label = format_palette_label(node.category, node.palette_id)
+        if lightshow.palettes.get(node.category, node.palette_id) is None:
+            return CommandResult(False, f"{label} does not exist")
+
+        registry = self._get_registry()
+        if registry is not None and "palette.update" in getattr(
+            registry, "_action_classes", {}
+        ):
+            res = registry.execute("palette.update", node.category, node.palette_id)
+        else:
+            action = PaletteUpdateAction(self.app)
+            action.configure(node.category, node.palette_id)
+            res = action.execute()
+
+        propagation = res.get("propagation", {}) if isinstance(res, dict) else {}
+        cues_upd = propagation.get("cues", 0)
+        presets_upd = propagation.get("presets", 0)
+        if presets_upd or cues_upd:
+            return CommandResult(
+                True,
+                f"Updated {label} (propagated to {presets_upd} preset(s), "
+                f"{cues_upd} cue(s))",
+            )
+        return CommandResult(True, f"Updated {label}")
+
+    def _execute_delete_palette(self, node: DeletePaletteCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "palettes"):
+            return CommandResult(False, "Palettes store not available")
+
+        label = format_palette_label(node.category, node.palette_id)
+        if lightshow.palettes.get(node.category, node.palette_id) is None:
+            return CommandResult(False, f"{label} not found")
+
+        registry = self._get_registry()
+        if registry is not None and "palette.delete" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("palette.delete", node.category, node.palette_id)
+        else:
+            action = PaletteDeleteAction(self.app)
+            action.configure(node.category, node.palette_id)
+            action.execute()
+
+        return CommandResult(True, f"Deleted {label}")

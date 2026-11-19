@@ -20,22 +20,26 @@ from __future__ import annotations
 import pytest
 
 from olc.core.parser.ast_nodes import (
+    ApplyPaletteCommandNode,
     AttributeCommandNode,
     BlockCueCommandNode,
     ChannelNumberNode,
     ChannelRangeNode,
     DeleteCueCommandNode,
+    DeletePaletteCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
     IntensityCommandNode,
     LocateCommandNode,
     RecordCueCommandNode,
+    RecordPaletteCommandNode,
     RelativeThruNode,
     SelectOnlyCommandNode,
     SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
+    UpdatePaletteCommandNode,
 )
 from olc.core.parser.highlighter import highlight_commandline_markup
 from olc.core.parser.parser import CommandParser, CommandSyntaxError
@@ -695,7 +699,99 @@ _CONTRACT_CORPUS: tuple[str, ...] = (
     "1 PAN 50",
     "INDEPENDENT 1 SNEAK TIME 2",
     "INDEPENDENT ALL SNEAK",
+    "1 INTENSITY PALETTE 3",
+    "1 FOCUS PALETTE 12",
+    "1 COLOR PALETTE 2",
+    "1 BEAM PALETTE 1",
+    "1 PRESET 1",
+    "1 CP 2",
+    "1 IP 3",
+    "1 FP 12",
+    "1 BP 1",
+    "COLOR PALETTE 2",
+    "PRESET 1",
+    "RECORD INTENSITY PALETTE 3",
+    "RECORD FOCUS PALETTE 10",
+    "RECORD COLOR PALETTE 2",
+    "RECORD BEAM PALETTE 1",
+    "RECORD PRESET 1",
+    "RECORD FP 10",
+    "UPDATE COLOR PALETTE 2",
+    "UPDATE PRESET 1",
+    "DELETE BEAM PALETTE 1",
+    "DELETE PRESET 1",
 )
+
+
+def test_parser_palette_and_preset_commands() -> None:
+    """Verify IFCB palette and preset commands plus non-regression with attributes."""
+    parser = CommandParser()
+
+    n_ip = parser.parse("1 INTENSITY PALETTE 3")
+    assert isinstance(n_ip, ApplyPaletteCommandNode)
+    assert n_ip.selection is not None
+    assert n_ip.category == "intensity"
+    assert n_ip.palette_id == 3.0
+
+    n_fp = parser.parse("1 THRU 4 FOCUS PALETTE 12")
+    assert isinstance(n_fp, ApplyPaletteCommandNode)
+    assert n_fp.selection is not None
+    assert n_fp.category == "focus"
+    assert n_fp.palette_id == 12.0
+
+    n_cp = parser.parse("COLOR PALETTE 2")
+    assert isinstance(n_cp, ApplyPaletteCommandNode)
+    assert n_cp.selection is None
+    assert n_cp.category == "color"
+    assert n_cp.palette_id == 2.0
+
+    n_bp = parser.parse("1 BP 1")
+    assert isinstance(n_bp, ApplyPaletteCommandNode)
+    assert n_bp.category == "beam"
+    assert n_bp.palette_id == 1.0
+
+    n_pr = parser.parse("1 PRESET 2.5")
+    assert isinstance(n_pr, ApplyPaletteCommandNode)
+    assert n_pr.category == "preset"
+    assert n_pr.palette_id == 2.5
+
+    r_pal = parser.parse("RECORD COLOR PALETTE 2")
+    assert isinstance(r_pal, RecordPaletteCommandNode)
+    assert r_pal.category == "color"
+    assert r_pal.palette_id == 2.0
+
+    r_fp = parser.parse("RECORD FP 10")
+    assert isinstance(r_fp, RecordPaletteCommandNode)
+    assert r_fp.category == "focus"
+    assert r_fp.palette_id == 10.0
+
+    u_pal = parser.parse("UPDATE PRESET 1")
+    assert isinstance(u_pal, UpdatePaletteCommandNode)
+    assert u_pal.category == "preset"
+    assert u_pal.palette_id == 1.0
+
+    d_pal = parser.parse("DELETE BEAM PALETTE 1")
+    assert isinstance(d_pal, DeletePaletteCommandNode)
+    assert d_pal.category == "beam"
+    assert d_pal.palette_id == 1.0
+
+    # Non-regression: attributes, HOME, and RECORD CUE timing remain intact
+    attr_col = parser.parse("1 COLOR RED")
+    assert isinstance(attr_col, AttributeCommandNode)
+    assert attr_col.attributes["color"] == "RED"
+
+    attr_foc = parser.parse("1 FOCUS 50")
+    assert isinstance(attr_foc, AttributeCommandNode)
+    assert attr_foc.attributes["focus"] == 50.0
+
+    home_col = parser.parse("1 COLOR HOME")
+    assert isinstance(home_col, HomeCommandNode)
+    assert home_col.category == "color"
+
+    rec_cue = parser.parse("RECORD CUE 1 COLOR 2")
+    assert isinstance(rec_cue, RecordCueCommandNode)
+    assert rec_cue.cue_id == 1.0
+    assert rec_cue.time_color == 2.0
 
 
 def test_parser_expected_tokens_contract() -> None:
@@ -727,3 +823,12 @@ def test_parser_expected_tokens_contract() -> None:
     assert TokenType.CHECK not in addr_expected
     assert TokenType.ODD not in addr_expected
     assert TokenType.HOME not in addr_expected
+
+    # Palette expectations: PALETTE only after category keywords, never at root
+    assert TokenType.PALETTE not in parser.get_expected_tokens("")
+    assert TokenType.PALETTE not in parser.get_expected_tokens("1 ")
+    assert TokenType.PALETTE in parser.get_expected_tokens("1 COLOR ")
+    assert TokenType.PALETTE in parser.get_expected_tokens("1 FOCUS ")
+    assert TokenType.PALETTE in parser.get_expected_tokens("1 BEAM ")
+    assert TokenType.PALETTE in parser.get_expected_tokens("1 INTENSITY ")
+    assert TokenType.PALETTE in parser.get_expected_tokens("RECORD FOCUS ")

@@ -174,3 +174,35 @@ def test_completer_patch_keyword() -> None:
     res = completer.complete("1 PA")
     assert res.has_completed is True
     assert "PATCH" in res.candidates
+
+
+def test_completer_palette_and_preset_candidates() -> None:
+    """Test completion for PALETTE/PRESET keywords and LightShow palette numbers."""
+    from olc.show.palette import Palette, PaletteCategory, PaletteManager
+
+    parser = CommandParser()
+    mock_show = MagicMock()
+    mgr = PaletteManager()
+    mgr.add(Palette(PaletteCategory.COLOR, 2.0, text="Blue"))
+    mgr.add(Palette(PaletteCategory.COLOR, 5.0, text="Red"))
+    mgr.add(Palette(PaletteCategory.PRESET, 1.0, text="Look 1"))
+    mock_show.palettes = mgr
+
+    completer = CommandCompleter(parser, mock_show)
+
+    res_kw = completer.complete("1 COLOR PALE")
+    assert res_kw.has_completed is True
+    assert "PALETTE" in res_kw.candidates
+    assert res_kw.new_text == "1 COLOR PALETTE "
+
+    res_cp = completer.complete("1 COLOR PALETTE")
+    assert res_cp.has_completed is True
+    assert res_cp.candidates == ["2", "5"]
+
+    res_pr = completer.complete("1 PRESET")
+    assert res_pr.has_completed is True
+    assert res_pr.candidates == ["1"]
+
+    res_cp_short = completer.complete("1 CP")
+    assert res_cp_short.has_completed is True
+    assert res_cp_short.candidates == ["2", "5"]

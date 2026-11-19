@@ -962,3 +962,154 @@ def test_executor_group_selection_real_lightshow() -> None:
     assert app.selected_channels == [1, 3, 5]
     for ch in (1, 3, 5):
         assert app.backend.dmx.levels["user"][ch - 1] == pytest.approx(0.8)
+
+
+def test_executor_palette_record_apply_update_cascade_and_undo_redo() -> None:
+    """Test end-to-end RECORD/APPLY/UPDATE/DELETE Palette & Preset + cascade."""
+    from olc.core.app import CoreApplication
+    from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
+    from olc.devices.channel import ChannelType
+    from olc.dmx import Dmx
+    from olc.show.cue import Cue
+    from olc.show.fader import FaderPreset
+    from olc.show.palette import Palette, PaletteCategory
+    from olc.show.step import Step
+
+    settings = MagicMock()
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+    dmx = Dmx(None, app.lightshow)
+    app.backend = MagicMock()
+    app.backend.dmx = dmx
+
+    # Ch 1: Dimmer, Ch 2: LED RGB, Ch 3: Moving Head Spot
+    app.lightshow.patch.patch_dimmer(channel=1, universe=1, address=1)
+    app.lightshow.patch.patch_device(2, create_rgb_definition(), 1, 10)
+    app.lightshow.patch.patch_device(3, create_moving_head_definition(), 1, 20)
+
+    rgb_dev = app.lightshow.patch.devices[2]
+    spot_dev = app.lightshow.patch.devices[3]
+
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. Record Intensity Palette 1 (ch 1 @ 80%), Color Palette 2 (ch 2 Red),
+    #    Focus Palette 10 (ch 3 Pan 45 Tilt -20), Beam Palette 1 (ch 3 Zoom 25)
+    executor.execute(parser.parse("1 AT 80"))
+    res_rec_ip = executor.execute(parser.parse("RECORD INTENSITY PALETTE 1"))
+    assert res_rec_ip.success is True
+    ip1 = app.lightshow.palettes.get(PaletteCategory.INTENSITY, 1.0)
+    assert ip1 is not None and ip1.channels[1] == pytest.approx(0.8)
+
+    executor.execute(parser.parse("2 COLOR #FF0000"))
+    res_rec_cp = executor.execute(parser.parse("RECORD COLOR PALETTE 2"))
+    assert res_rec_cp.success is True
+    cp2 = app.lightshow.palettes.get(PaletteCategory.COLOR, 2.0)
+    assert cp2 is not None
+    assert cp2.device_values[2]["color"].upper() == "#FF0000"
+
+    executor.execute(parser.parse("3 PAN 45 TILT -20"))
+    res_rec_fp = executor.execute(parser.parse("RECORD FOCUS PALETTE 10"))
+    assert res_rec_fp.success is True
+    fp10 = app.lightshow.palettes.get(PaletteCategory.FOCUS, 10.0)
+    assert fp10 is not None
+    assert fp10.device_values[3]["pan"] == pytest.approx(45.0, abs=1.5)
+    assert fp10.device_values[3]["tilt"] == pytest.approx(-20.0, abs=1.5)
+
+    executor.execute(parser.parse("3 ZOOM 25"))
+    res_rec_bp = executor.execute(parser.parse("RECORD BEAM PALETTE 1"))
+    assert res_rec_bp.success is True
+    bp1 = app.lightshow.palettes.get(PaletteCategory.BEAM, 1.0)
+    assert bp1 is not None
+    assert bp1.device_values[3]["zoom"] == pytest.approx(25.0, abs=1.0)
+
+    # 2. Record Preset 1 from live stage (ch 1, 2, 3) then clear live state
+    app.selected_channels = []
+    res_rec_pr = executor.execute(parser.parse("RECORD PRESET 1"))
+    assert res_rec_pr.success is True
+    pr1 = app.lightshow.palettes.get(PaletteCategory.PRESET, 1.0)
+    assert pr1 is not None and pr1.channels[1] == pytest.approx(0.8)
+
+    # Reset devices and user levels, then recall via CP 2 / FP 10 / BP 1 / PRESET 1
+    dmx.levels["user"][0] = 0.0
+    rgb_dev.set_color_hex("#000000")
+    spot_dev.home()
+
+    assert executor.execute(parser.parse("2 CP 2")).success is True
+    assert rgb_dev.color_srgb.r == pytest.approx(1.0, abs=0.05)
+    assert rgb_dev.color_srgb.g == pytest.approx(0.0, abs=0.05)
+
+    # Undo CP 2 recall reverts LED back to black
+    app.action_registry.execute("edit.undo")
+    assert rgb_dev.color_srgb.r == pytest.approx(0.0, abs=0.05)
+    app.action_registry.execute("edit.redo")
+    assert rgb_dev.color_srgb.r == pytest.approx(1.0, abs=0.05)
+
+    assert executor.execute(parser.parse("1 INTENSITY PALETTE 1")).success is True
+    assert dmx.levels["user"][0] == pytest.approx(0.8)
+
+    assert executor.execute(parser.parse("3 FOCUS PALETTE 10")).success is True
+    assert spot_dev.pan_degrees == pytest.approx(45.0, abs=1.5)
+
+    assert executor.execute(parser.parse("3 BEAM PALETTE 1")).success is True
+    assert spot_dev.zoom_degrees == pytest.approx(25.0, abs=1.0)
+
+    # Recall full Preset 1
+    dmx.levels["user"][0] = 0.0
+    rgb_dev.set_color_hex("#000000")
+    spot_dev.home()
+    assert executor.execute(parser.parse("1 THRU 3 PRESET 1")).success is True
+    assert dmx.levels["user"][0] == pytest.approx(0.8)
+    assert rgb_dev.color_srgb.r == pytest.approx(1.0, abs=0.05)
+    assert spot_dev.pan_degrees == pytest.approx(45.0, abs=1.5)
+
+    # 3. Cascade propagation via UPDATE COLOR PALETTE 2 (+ Undo/Redo rollback!)
+    pr5 = Palette(
+        category=PaletteCategory.PRESET,
+        number=5.0,
+        text="Linked Preset",
+        channels={2: 1.0},
+        device_values={2: {"color": "#FF0000"}},
+        palette_refs={2: {"color": ("color", 2.0)}},
+    )
+    app.lightshow.palettes.add(pr5)
+    cue1 = Cue(
+        sequence=1,
+        number=1.0,
+        channels={2: 1.0},
+        device_values={2: {"color": "#FF0000"}},
+        palette_refs={2: {"color": ("color", 2.0)}},
+    )
+    app.lightshow.cues.add(cue1)
+    app.lightshow.main_playback.add_step(Step(1, cue=cue1))
+    fader = FaderPreset(1, app.lightshow.fader_bank, pr5)
+    app.lightshow.fader_bank.faders[1][1] = fader
+
+    # Edit ch 2 color live to green (#00FF00) and run UPDATE COLOR PALETTE 2
+    executor.execute(parser.parse("2 COLOR #00FF00"))
+    res_upd = executor.execute(parser.parse("UPDATE COLOR PALETTE 2"))
+    assert res_upd.success is True
+    assert "propagated to 1 preset(s), 1 cue(s)" in res_upd.message
+    assert cp2.device_values[2]["color"].upper() == "#00FF00"
+    assert pr5.device_values[2]["color"].upper() == "#00FF00"
+    assert cue1.device_values[2]["color"].upper() == "#00FF00"
+
+    # Undo UPDATE cascades rollback back to #FF0000
+    app.action_registry.execute("edit.undo")
+    cp2_undone = app.lightshow.palettes.get(PaletteCategory.COLOR, 2.0)
+    assert cp2_undone is not None
+    assert cp2_undone.device_values[2]["color"].upper() == "#FF0000"
+    assert pr5.device_values[2]["color"].upper() == "#FF0000"
+    assert cue1.device_values[2]["color"].upper() == "#FF0000"
+
+    # Redo UPDATE cascades #00FF00 again
+    app.action_registry.execute("edit.redo")
+    assert pr5.device_values[2]["color"].upper() == "#00FF00"
+    assert cue1.device_values[2]["color"].upper() == "#00FF00"
+
+    # 4. Delete Beam Palette 1 + Undo/Redo
+    assert executor.execute(parser.parse("DELETE BEAM PALETTE 1")).success is True
+    assert app.lightshow.palettes.get(PaletteCategory.BEAM, 1.0) is None
+    app.action_registry.execute("edit.undo")
+    assert app.lightshow.palettes.get(PaletteCategory.BEAM, 1.0) is not None
+    assert spot_dev.get_channel(ChannelType.ZOOM) is not None

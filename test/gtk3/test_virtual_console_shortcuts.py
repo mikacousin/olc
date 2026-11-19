@@ -81,10 +81,14 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     # Moving Lights & Tools
     assert vc.home.shortcut_text == "H / ⇧H"
     assert vc.locate.shortcut_text == "L / ⇧L"
+    assert vc.intensity.shortcut_text == "Alt+I"
     assert vc.position.shortcut_text == "⇧Alt+P"
     assert vc.focus.shortcut_text == "Alt+F"
     assert vc.color.shortcut_text == "Alt+C"
     assert vc.beam.shortcut_text == "Alt+M"
+    assert vc.palette.shortcut_text == "Alt+L"
+    assert vc.preset.shortcut_text == "Alt+R"
+    assert vc.preset.text == "preset_key"
 
     # Digits and symbols
     assert vc.zero.shortcut_text == "0"
@@ -125,8 +129,30 @@ def test_virtual_console_shortcut_labels(app_gui: Application) -> None:
     assert not hasattr(vc, "format")
     assert not hasattr(vc, "blind")
     assert not hasattr(vc, "output")
-    assert not hasattr(vc, "preset")
     assert not hasattr(vc, "track")
+
+    # Verify Palette / Preset / Intensity command-line buttons append tokens cleanly
+    app_gui.core.action_registry.execute("commandline.clear")
+    vc.one.emit("clicked")
+    vc.color.emit("clicked")
+    vc.palette.emit("clicked")
+    vc.two.emit("clicked")
+    process_events()
+    assert app_gui.core.commandline.get_string() == "1 COLOR PALETTE 2"
+
+    app_gui.core.action_registry.execute("commandline.clear")
+    vc.intensity.emit("clicked")
+    vc.palette.emit("clicked")
+    vc.three.emit("clicked")
+    process_events()
+    assert app_gui.core.commandline.get_string() == "INTENSITY PALETTE 3"
+
+    app_gui.core.action_registry.execute("commandline.clear")
+    vc.preset.emit("clicked")
+    vc.one.emit("clicked")
+    process_events()
+    assert app_gui.core.commandline.get_string() == "PRESET 1"
+    app_gui.core.action_registry.execute("commandline.clear")
 
     vc.close()
     process_events()
@@ -505,6 +531,9 @@ def test_virtual_console_contract_all_command_prefixes(app_gui: Application) -> 
         TokenType.HOME: "home",
         TokenType.LOCATE: "locate",
         TokenType.POSITION: "position",
+        TokenType.INTENSITY: "intensity",
+        TokenType.PALETTE: "palette",
+        TokenType.PRESET: "preset",
         TokenType.FOCUS: "focus",
         TokenType.COLOR: "color",
         TokenType.BEAM: "beam",
@@ -545,6 +574,14 @@ def test_virtual_console_contract_all_command_prefixes(app_gui: Application) -> 
         "HOME POSITION",
         "1 LOCATE",
         "1 FOCUS 50",
+        "1 INTENSITY PALETTE 3",
+        "1 FOCUS PALETTE 12",
+        "1 COLOR PALETTE 2",
+        "1 BEAM PALETTE 1",
+        "1 PRESET 1",
+        "RECORD COLOR PALETTE 2",
+        "UPDATE PRESET 1",
+        "DELETE BEAM PALETTE 1",
     )
 
     for cmd in corpus:
