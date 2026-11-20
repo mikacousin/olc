@@ -22,6 +22,7 @@ from olc.devices.builtin import populate_builtin_library
 from olc.dmx_engine.universe_config import UniverseMap, default_universe_map
 from olc.show.cue import Cues
 from olc.show.curve import Curves
+from olc.show.effect import EffectDefinition, EffectManager
 from olc.show.fader_bank import FaderBank
 from olc.show.group import Groups
 from olc.show.independent import Independents
@@ -94,7 +95,8 @@ class LightShow(ShowFile):
     curves: Curves
     main_playback: Sequence
     cues: Cues
-    chasers: list
+    sequences: list
+    effects: EffectManager
     groups: Groups
     palettes: PaletteManager
     fader_bank: FaderBank
@@ -117,8 +119,9 @@ class LightShow(ShowFile):
         self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
         # List of global memories
         self.cues = Cues(self)
-        # List of chasers
-        self.chasers = []
+        # Secondary sequences (2..N) and parametric Effects Manager
+        self.sequences = []
+        self.effects = EffectManager(lightshow_type)
         # List of groups
         self.groups = Groups(lightshow_type)
         # Palettes & Presets
@@ -133,6 +136,15 @@ class LightShow(ShowFile):
         self.park = ParkManager()
         # Universe configurations
         self.universe_map = default_universe_map()
+
+    @property
+    def chasers(self) -> list:
+        """Compatibility alias for secondary sequences list."""
+        return self.sequences
+
+    @chasers.setter
+    def chasers(self, value: list) -> None:
+        self.sequences = value
 
     def get_cue(self, number: float) -> None | Cue:
         """Get Cue with his number
@@ -162,32 +174,36 @@ class LightShow(ShowFile):
         """Get Palette or Preset by category and number."""
         return self.palettes.get(category, number)
 
-    def get_chaser(self, number: float) -> None | Sequence:
-        """Get Chaser with his number
+    def get_effect(self, number: float) -> None | EffectDefinition:
+        """Get EffectDefinition by number, or None."""
+        return self.effects.get(number)
 
-        Args:
-            number: Chaser number
-
-        Returns:
-            Chaser or None
-        """
-        for chaser in self.chasers:
-            if chaser.index == number:
-                return chaser
+    def get_sequence(self, number: float) -> None | Sequence:
+        """Get secondary Sequence by its index number."""
+        for seq in self.sequences:
+            if seq.index == number:
+                return seq
         return None
+
+    def get_chaser(self, number: float) -> None | Sequence:
+        """Compatibility alias for get_sequence."""
+        return self.get_sequence(number)
 
     def reset(self) -> None:
         """Reset all"""
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
+        if self.app is not None and hasattr(self.app, "effects_engine"):
+            self.app.effects_engine.stop_all()
         self.fixture_library = populate_builtin_library()
         del self.main_playback.steps[1:]
         self.cues.clear()
-        for chaser in self.chasers:
-            if chaser.run and chaser.thread:
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
-        del self.chasers[:]
+        for seq in self.sequences:
+            if seq.run and seq.thread:
+                seq.run = False
+                seq.thread.stop()
+                seq.thread.join()
+        del self.sequences[:]
+        self.effects.clear()
         self.groups.clear()
         self.palettes.clear()
         self.fader_bank.reset_faders()

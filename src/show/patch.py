@@ -803,8 +803,8 @@ class PatchManager:
             for step in self.lightshow.main_playback.steps:
                 add_cue(step.cue)
 
-        if hasattr(self.lightshow, "chasers") and self.lightshow.chasers:
-            for seq in self.lightshow.chasers:
+        if hasattr(self.lightshow, "sequences") and self.lightshow.sequences:
+            for seq in self.lightshow.sequences:
                 for step in seq.steps:
                     add_cue(step.cue)
 

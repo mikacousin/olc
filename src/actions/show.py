@@ -54,13 +54,18 @@ class ShowNewAction(Action):
         """Reset all show data to default empty state and clear history."""
         lightshow = self.app.lightshow
 
-        # Stop and clear chasers
-        for chaser in list(lightshow.chasers):
-            if getattr(chaser, "run", False) and getattr(chaser, "thread", None):
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
-            del lightshow.chasers[:]
+        # Stop running effects and clear secondary sequences
+        if hasattr(self.app, "effects_engine"):
+            self.app.effects_engine.stop_all()
+        if hasattr(lightshow, "effects"):
+            lightshow.effects.clear()
+        for seq in list(lightshow.sequences):
+            thread = getattr(seq, "thread", None)
+            if getattr(seq, "run", False) and thread is not None:
+                seq.run = False
+                thread.stop()
+                thread.join()
+            del lightshow.sequences[:]
 
         # Reset cues, groups, and palettes
         lightshow.cues.clear()
@@ -575,8 +580,12 @@ class ShowImportAction(Action):
             getattr(mp, "tracking_mode", False)
         )
 
-        # 6. Chasers
-        snapshot["chasers"] = [_copy_sequence(c, lightshow) for c in lightshow.chasers]
+        # 6. Secondary sequences and effects
+        snapshot["chasers"] = [
+            _copy_sequence(c, lightshow) for c in lightshow.sequences
+        ]
+        if hasattr(lightshow, "effects"):
+            snapshot["effects"] = lightshow.effects.to_list()
 
         # 7. Independents
         snapshot["independents"] = [
@@ -674,14 +683,17 @@ class ShowImportAction(Action):
         mp.tracking_mode = bool(snapshot.get("main_playback_tracking_mode", False))
         mp.update_channels()
 
-        for chaser in list(lightshow.chasers):
-            if getattr(chaser, "run", False) and getattr(chaser, "thread", None):
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
-        del lightshow.chasers[:]
+        for seq in list(lightshow.sequences):
+            thread = getattr(seq, "thread", None)
+            if getattr(seq, "run", False) and thread is not None:
+                seq.run = False
+                thread.stop()
+                thread.join()
+        del lightshow.sequences[:]
         for c in snapshot["chasers"]:
-            lightshow.chasers.append(_copy_sequence(c, lightshow))
+            lightshow.sequences.append(_copy_sequence(c, lightshow))
+        if "effects" in snapshot and hasattr(lightshow, "effects"):
+            lightshow.effects.from_list(snapshot["effects"])
 
     def _restore_independents_and_faders(
         self, snapshot: dict[str, typing.Any], lightshow: LightShow

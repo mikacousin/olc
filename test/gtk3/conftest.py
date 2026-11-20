@@ -118,7 +118,9 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     main_pb.tracking_mode = False
     main_pb.mib_enabled = True
     main_pb.channels.clear()
-    app.core.lightshow.chasers.clear()
+    app.core.effects_engine.stop_all()
+    app.core.lightshow.effects.clear()
+    app.core.lightshow.sequences.clear()
     app.core.lightshow.groups.clear()
     app.core.lightshow.cues.clear()
     app.core.lightshow.palettes.clear()

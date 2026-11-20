@@ -149,6 +149,13 @@ class Dmx:
             if self.lightshow.independents.dmx[channel_idx] > level:
                 level = float(self.lightshow.independents.dmx[channel_idx])
                 color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
+        app = getattr(self.lightshow, "app", None)
+        eff_eng = getattr(app, "effects_engine", None)
+        if (
+            eff_eng is not None
+            and getattr(eff_eng, "has_active_effects", False) is True
+        ):
+            level = eff_eng.apply_channel_intensity(channel_idx + 1, level)
         return level, color_level
 
     def get_all_composite_levels(self) -> np.ndarray:
@@ -162,6 +169,13 @@ class Dmx:
         composite = np.maximum(composite, self.lightshow.independents.dmx)
         user_mask = self.levels["user"] >= 0.0
         composite[user_mask] = self.levels["user"][user_mask]
+        app = getattr(self.lightshow, "app", None)
+        eff_eng = getattr(app, "effects_engine", None)
+        if (
+            eff_eng is not None
+            and getattr(eff_eng, "has_active_effects", False) is True
+        ):
+            composite = eff_eng.apply_intensity_modulation(composite)
         park_mgr = getattr(self.lightshow, "park", None)
         if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
             for ch, lvl in park_mgr.parked_channels.items():
@@ -180,6 +194,8 @@ class Dmx:
             return
         main_val = self.effective_intensity_mult
         park_mgr = getattr(self.lightshow, "park", None)
+        app = getattr(self.lightshow, "app", None)
+        eff_eng = getattr(app, "effects_engine", None)
         for dev in self.patch.dynamic_intensity_devices:
             dev_id = dev.fixture_id
             if 1 <= dev_id <= len(composite):
@@ -193,9 +209,12 @@ class Dmx:
                     continue
                 user_val = float(self.levels["user"][dev_id - 1])
                 comp_val = float(composite[dev_id - 1])
-                if user_val >= 0.0:
-                    target_norm = user_val
-                elif comp_val > 0.0:
+                has_eff_int = bool(
+                    eff_eng is not None
+                    and getattr(eff_eng, "has_active_effects", False) is True
+                    and eff_eng.is_channel_intensity_modulated(dev_id)
+                )
+                if has_eff_int or user_val >= 0.0 or comp_val > 0.0:
                     target_norm = comp_val
                 else:
                     curr_int = (

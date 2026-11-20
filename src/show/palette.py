@@ -341,7 +341,7 @@ class PaletteManager:
             if cue is not None and id(cue) not in seen:
                 seen.add(id(cue))
                 cues.append(cue)
-        sequences = [lightshow.main_playback, *list(lightshow.chasers)]
+        sequences = [lightshow.main_playback, *list(lightshow.sequences)]
         for seq in sequences:
             for step in seq.steps:
                 cue = getattr(step, "cue", None)
