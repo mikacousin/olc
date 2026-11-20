@@ -175,6 +175,8 @@ class LiveView(Gtk.Notebook):
                 widget.next_level = next_lvl
 
         self.channels_view.mark_channels_dirty(None, invalidate_step=True)
+        if self.channels_view.view_mode in (VIEW_MODES["Active"], VIEW_MODES["Manual"]):
+            self.channels_view.refresh_filter()
 
 
 class LiveChannelsView(ChannelsView):
@@ -266,6 +268,15 @@ class LiveChannelsView(ChannelsView):
         finally:
             self._batch_next_levels = None
 
+    def is_manual_channel(self, channel: int) -> bool:
+        """Return True if *channel* has a manual live intensity or attribute edit."""
+        if not 1 <= channel <= MAX_CHANNELS:
+            return False
+        if self.app.core.get_user_channel_level(channel - 1) >= 0.0:
+            return True
+        live_state = getattr(self.app.core, "live_state", None)
+        return bool(live_state is not None and live_state.is_channel_manual(channel))
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
@@ -291,6 +302,18 @@ class LiveChannelsView(ChannelsView):
             patched = self.app.core.lightshow.patch.is_patched(channel)
             child.set_visible(patched)
             return patched
+        if self.view_mode == VIEW_MODES["Devices"]:
+            visible = self.is_device_channel(channel)
+            child.set_visible(visible)
+            return visible
+        if self.view_mode == VIEW_MODES["Selected"]:
+            visible = self.is_selected_channel(channel, child)
+            child.set_visible(visible)
+            return visible
+        if self.view_mode == VIEW_MODES["Manual"]:
+            visible = self.is_manual_channel(channel)
+            child.set_visible(visible)
+            return visible
         if not self.app.core.lightshow.patch.is_patched(channel):
             channel_widget.level = 0
         child.set_visible(True)

@@ -300,7 +300,28 @@
               <object class="GtkShortcutsShortcut" id="filter_channels">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;F</property>
-                <property name="title" translatable="yes" context="shortcut window">Toggle View Mode (All / Patched / Active)</property>
+                <property name="title" translatable="yes" context="shortcut window">Cycle Flexi View Mode (All / Patched / Active / Devices / Selected / Manual)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="channels_format">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;alt&gt;F</property>
+                <property name="title" translatable="yes" context="shortcut window">Cycle Channels Format (Compact / Summary+ / Table)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="channels_data">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;alt&gt;D</property>
+                <property name="title" translatable="yes" context="shortcut window">Toggle Data / Readout (Values vs Palette Refs)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="channels_labels">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;alt&gt;L</property>
+                <property name="title" translatable="yes" context="shortcut window">Toggle Fixture Labels</property>
               </object>
             </child>
             <child>

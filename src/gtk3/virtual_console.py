@@ -155,6 +155,23 @@ class VirtualConsoleWindow(Gtk.Window):
         self.enter = ButtonWidget(label="Enter", text="enter", shortcut_text="↵ / Ent")
         self.enter.connect("clicked", self._on_enter)
 
+        self.channels_format = ButtonWidget(
+            label="Format", text="gui.channels_format", shortcut_text="⇧Alt+F"
+        )
+        self.channels_format.connect("clicked", self._on_channels_format)
+        self.channels_data = ButtonWidget(
+            label="Data", text="gui.channels_data", shortcut_text="⇧Alt+D"
+        )
+        self.channels_data.connect("clicked", self._on_channels_data)
+        self.channels_labels = ButtonWidget(
+            label="Labels", text="gui.channels_labels", shortcut_text="⇧Alt+L"
+        )
+        self.channels_labels.connect("clicked", self._on_channels_labels)
+        self.channels_flexi = ButtonWidget(
+            label="Flexi", text="gui.channels_flexi", shortcut_text="^F"
+        )
+        self.channels_flexi.connect("clicked", self._on_channels_flexi)
+
         # Attach Zone 1
         self.num_pad.attach(self.channel, 0, 0, 1, 1)
         self.num_pad.attach(self.group, 1, 0, 1, 1)
@@ -180,6 +197,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad.attach(self.dot, 1, 4, 1, 1)
         self.num_pad.attach(self.slash, 2, 4, 1, 1)
         self.num_pad.attach(self.enter, 3, 4, 1, 1)
+        self.num_pad.attach(self.channels_format, 0, 5, 1, 1)
+        self.num_pad.attach(self.channels_data, 1, 5, 1, 1)
+        self.num_pad.attach(self.channels_labels, 2, 5, 1, 1)
+        self.num_pad.attach(self.channels_flexi, 3, 5, 1, 1)
 
         # Zone 2: Levels, Actions & Command Line Editing (4x5)
         self.actions_pad = Gtk.Grid()
@@ -1321,6 +1342,34 @@ class VirtualConsoleWindow(Gtk.Window):
             self._select_midi_learn_target("enter")
         else:
             self.app.core.action_registry.execute("commandline.execute")
+
+    def _on_channels_format(self, _widget: Gtk.Widget) -> None:
+        """Cycle display format on active ChannelsView."""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("gui.channels_format")
+        else:
+            self.app.core.action_registry.execute("gui.channels_format")
+
+    def _on_channels_data(self, _widget: Gtk.Widget) -> None:
+        """Toggle Data / Readout mode on active ChannelsView."""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("gui.channels_data")
+        else:
+            self.app.core.action_registry.execute("gui.channels_data")
+
+    def _on_channels_labels(self, _widget: Gtk.Widget) -> None:
+        """Toggle fixture label visibility on active ChannelsView."""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("gui.channels_labels")
+        else:
+            self.app.core.action_registry.execute("gui.channels_labels")
+
+    def _on_channels_flexi(self, _widget: Gtk.Widget) -> None:
+        """Cycle Flexi filter mode on active ChannelsView."""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("gui.channels_flexi")
+        else:
+            self.app.core.action_registry.execute("gui.channels_flexi")
 
     def _on_zero(self, _widget: Gtk.Widget) -> None:
         """0"""

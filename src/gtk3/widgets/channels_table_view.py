@@ -351,11 +351,13 @@ class ChannelsTableView(Gtk.ScrolledWindow):
         )
 
         # 2. Fixture / Label
-        self.treeview.append_column(
-            self._make_text_column(
-                "Fixture / Label", COL_FIXTURE, ellipsize=True, min_width=130
-            )
+        self._col_fixture = self._make_text_column(
+            "Fixture / Label", COL_FIXTURE, ellipsize=True, min_width=130
         )
+        self._col_fixture.set_visible(
+            bool(getattr(self.channels_view, "show_labels", True))
+        )
+        self.treeview.append_column(self._col_fixture)
 
         # 3. Int
         self.treeview.append_column(
@@ -466,7 +468,15 @@ class ChannelsTableView(Gtk.ScrolledWindow):
 
     def get_column_titles(self) -> list[str]:
         """Return ordered visible column titles."""
-        return [col.get_title() or "" for col in self.treeview.get_columns()]
+        return [
+            col.get_title() or ""
+            for col in self.treeview.get_columns()
+            if col.get_visible()
+        ]
+
+    def set_show_labels(self, show: bool) -> None:
+        """Show or hide the Fixture / Label column."""
+        self._col_fixture.set_visible(bool(show))
 
     def set_family_expanded(self, family: str, expanded: bool) -> None:
         """Expand or collapse dynamic sub-columns for *family*."""

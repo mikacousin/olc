@@ -308,6 +308,23 @@ class SeqChannelsView(ChannelsView):
                 channels_dict,
             )
 
+    def is_manual_channel(self, channel: int) -> bool:
+        """Return True if *channel* has an uncommitted cue-editor override on step."""
+        if self.lightshow is None or not 1 <= channel <= MAX_CHANNELS:
+            return False
+        sequence, step = self._get_cached_selection()
+        if sequence is None or step is None or not 0 <= step < len(sequence.steps):
+            return False
+        cue = sequence.steps[step].cue
+        if cue is None:
+            return False
+        return (
+            self.lightshow.cues.cue_editor.get_levels(cue.number, cue.sequence)[
+                channel - 1
+            ]
+            >= 0.0
+        )
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display and apply tracking color coding."""
         if not self.tabs or not self.tabs.tabs["sequences"]:
@@ -341,6 +358,21 @@ class SeqChannelsView(ChannelsView):
             return self._filter_active(child, channel_level)
         if self.view_mode == VIEW_MODES["Patched"]:
             return self._filter_patched(child, channel_level)
+        if self.view_mode == VIEW_MODES["Devices"] and not self.is_device_channel(
+            channel
+        ):
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Selected"] and not self.is_selected_channel(
+            channel, child
+        ):
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Manual"] and not self.is_manual_channel(
+            channel
+        ):
+            child.set_visible(False)
+            return False
         return self._filter_all(child, channel_level)
 
     def _filter_active(

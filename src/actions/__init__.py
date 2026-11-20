@@ -105,6 +105,10 @@ from olc.actions.group import (
 )
 from olc.actions.gui import (
     AboutOpenAction,
+    ChannelsDataAction,
+    ChannelsFlexiAction,
+    ChannelsFormatAction,
+    ChannelsLabelsAction,
     FullscreenToggleAction,
     SetDefaultTimeAction,
     SetPercentDisplayAction,
@@ -279,6 +283,10 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SetThemeAction,
         SetPercentDisplayAction,
         SetDefaultTimeAction,
+        ChannelsFormatAction,
+        ChannelsDataAction,
+        ChannelsLabelsAction,
+        ChannelsFlexiAction,
         CommandLineAppendCharAction,
         CommandLineAutocompleteAction,
         CommandLineClearAction,

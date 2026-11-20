@@ -29,6 +29,7 @@ from olc.core.selection import (
     SelectThruAction,
 )
 from olc.define import MAX_CHANNELS, is_int, is_non_nul_int
+from olc.devices.channel import ChannelType
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_table_view import (
     ChannelsTableView,
@@ -45,7 +46,14 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.window import Window
     from olc.show.lightshow import LightShow
 
-VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
+VIEW_MODES: dict[str, int] = {
+    "All": 0,
+    "Patched": 1,
+    "Active": 2,
+    "Devices": 3,
+    "Selected": 4,
+    "Manual": 5,
+}
 DISPLAY_FORMATS: tuple[str, ...] = ("Compact", "Summary+", "Table")
 READOUT_MODES: tuple[str, ...] = ("Auto", "Label", "Ref", "Percent", "DMX")
 REDRAW_COALESCE_INTERVAL_MS: int = 33
@@ -63,10 +71,12 @@ class ChannelsView(Gtk.Box):
     view_mode: int
     display_format: str
     readout_mode: str
+    show_labels: bool
     last_selected_channel: str
     header: Gtk.HeaderBar
     format_combo: Gtk.ComboBoxText
     readout_combo: Gtk.ComboBoxText
+    labels_btn: Gtk.ToggleButton
     expand_box: Gtk.Box
     expand_focus_btn: Gtk.ToggleButton
     expand_color_btn: Gtk.ToggleButton
@@ -105,9 +115,12 @@ class ChannelsView(Gtk.Box):
         self.view_mode = VIEW_MODES.get("All", 0)
         self.display_format = DISPLAY_FORMATS[0]
         self.readout_mode = READOUT_MODES[0]
+        self.show_labels = True
         self.last_selected_channel = ""
         self.updating_selection = False
         self._updating_expand_btn = False
+        self._updating_labels_btn = False
+        self._last_ref_readout: str = "Auto"
         self._snapshot_cache: dict[int, ChannelDisplaySnapshot] = {}
         self._dirty_channels: set[int] = set()
         self._dirty_all: bool = False
@@ -132,7 +145,7 @@ class ChannelsView(Gtk.Box):
             self.format_combo.append_text(fmt)
         self.format_combo.set_active(0)
         self.format_combo.set_tooltip_text(
-            "Display format (Compact / Summary+ / Table)"
+            "Display format (Compact / Summary+ / Table) (Alt+Shift+F)"
         )
         self.format_combo.connect("changed", self._on_display_format_changed)
         self.header.pack_start(self.format_combo)
@@ -143,10 +156,16 @@ class ChannelsView(Gtk.Box):
             self.readout_combo.append_text(readout)
         self.readout_combo.set_active(0)
         self.readout_combo.set_tooltip_text(
-            "Parameter readout (Auto / Label / Ref / Percent / DMX)"
+            "Parameter readout (Auto / Label / Ref / Percent / DMX) (Alt+Shift+D)"
         )
         self.readout_combo.connect("changed", self._on_readout_mode_changed)
         self.header.pack_start(self.readout_combo)
+
+        self.labels_btn = Gtk.ToggleButton(label="Labels")
+        self.labels_btn.set_active(True)
+        self.labels_btn.set_tooltip_text("Show or hide fixture labels (Alt+Shift+L)")
+        self.labels_btn.connect("toggled", self._on_labels_btn_toggled)
+        self.header.pack_start(self.labels_btn)
 
         self.expand_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.expand_box.get_style_context().add_class("linked")
@@ -173,6 +192,9 @@ class ChannelsView(Gtk.Box):
         for mode in VIEW_MODES:
             self.combo.append_text(mode)
         self.combo.set_active(0)
+        self.combo.set_tooltip_text(
+            "Flexi filter (All/Patched/Active/Devices/Selected/Manual) (Ctrl+F)"
+        )
         self.combo.connect("changed", self._on_view_mode_changed)
         self.header.pack_end(self.combo)
         self.pack_start(self.header, False, False, 0)
@@ -383,6 +405,9 @@ class ChannelsView(Gtk.Box):
             finally:
                 self._updating_expand_btn = False
         self.table_view.set_family_expanded(norm, target)
+        self._persist_tab_setting(
+            "expanded_families", dict(self.table_view.expanded_families)
+        )
 
     def toggle_family_expanded(self, family: str) -> bool:
         """Toggle Table column expansion for *family* and return the new state."""
@@ -394,6 +419,9 @@ class ChannelsView(Gtk.Box):
     def _on_expand_btn_toggled(self, btn: Gtk.ToggleButton, family: str) -> None:
         if not self._updating_expand_btn:
             self.table_view.set_family_expanded(family, btn.get_active())
+            self._persist_tab_setting(
+                "expanded_families", dict(self.table_view.expanded_families)
+            )
         self.grab_focus()
 
     def get_visible_channels(self) -> list[int]:
@@ -435,6 +463,7 @@ class ChannelsView(Gtk.Box):
                     widget.set_display_format(fmt)
             self.content_stack.set_visible_child_name("tiles")
             self.flowbox.queue_resize()
+        self._persist_tab_setting("display_format", fmt)
         for callback in list(self._on_dirty_flushed_callbacks):
             if fmt != "Table":
                 callback(None)
@@ -465,6 +494,15 @@ class ChannelsView(Gtk.Box):
         nxt = (cur + 1) % len(READOUT_MODES)
         self.readout_combo.set_active(nxt)
 
+    def toggle_data_mode(self) -> str:
+        """Toggle between reference/label readout and raw value readout (Data key)."""
+        if self.readout_mode in ("Percent", "DMX"):
+            self.set_readout_mode(self._last_ref_readout)
+        else:
+            use_percent = self.settings is None or self.settings.get_boolean("percent")
+            self.set_readout_mode("Percent" if use_percent else "DMX")
+        return self.readout_mode
+
     def _on_readout_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         text = combo.get_active_text()
         if text in READOUT_MODES:
@@ -473,6 +511,8 @@ class ChannelsView(Gtk.Box):
 
     def _apply_readout_mode(self, mode: str) -> None:
         self.readout_mode = mode
+        if mode in ("Auto", "Label", "Ref"):
+            self._last_ref_readout = mode
         is_table = self.display_format == "Table"
         for child in self.flowbox.get_children():
             fb_child = typing.cast(Gtk.FlowBoxChild, child)
@@ -482,8 +522,57 @@ class ChannelsView(Gtk.Box):
                     widget.readout_mode = mode
                 else:
                     widget.set_readout_mode(mode)
+        self._persist_tab_setting("readout_mode", mode)
         for callback in list(self._on_dirty_flushed_callbacks):
             callback(None)
+
+    def get_show_labels(self) -> bool:
+        """Return whether fixture labels are shown in tiles and Table view."""
+        return self.show_labels
+
+    def set_show_labels(self, show: bool) -> None:
+        """Show or hide fixture labels in tiles and Table view."""
+        target = bool(show)
+        if self.labels_btn.get_active() != target:
+            self._updating_labels_btn = True
+            try:
+                self.labels_btn.set_active(target)
+            finally:
+                self._updating_labels_btn = False
+        self._apply_show_labels(target)
+
+    def toggle_show_labels(self) -> bool:
+        """Toggle fixture label visibility and return the new state."""
+        new_state = not self.show_labels
+        self.set_show_labels(new_state)
+        return new_state
+
+    def _on_labels_btn_toggled(self, btn: Gtk.ToggleButton) -> None:
+        if not self._updating_labels_btn:
+            self._apply_show_labels(btn.get_active())
+        self.grab_focus()
+
+    def _apply_show_labels(self, show: bool) -> None:
+        target = bool(show)
+        self.show_labels = target
+        is_table = self.display_format == "Table"
+        for child in self.flowbox.get_children():
+            fb_child = typing.cast(Gtk.FlowBoxChild, child)
+            widget = fb_child.get_child()
+            if widget is not None and isinstance(widget, ChannelWidget):
+                if is_table or not fb_child.get_visible():
+                    widget.show_labels = target
+                else:
+                    widget.set_show_labels(target)
+        self.table_view.set_show_labels(target)
+        self._persist_tab_setting("show_labels", target)
+
+    def _persist_tab_setting(self, key: str, value: object) -> None:
+        """Persist a per-tab ChannelsView setting into lightshow.workspace."""
+        tab_name = self.get_tab_name()
+        if tab_name and self.lightshow and hasattr(self.lightshow, "workspace"):
+            tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
+            tab_settings.setdefault(tab_name, {})[key] = value
 
     def _get_channel_level_for_select(self, channel: int) -> int | float:
         """Helper callback to read the level from a ChannelWidget."""
@@ -508,7 +597,7 @@ class ChannelsView(Gtk.Box):
                 self.last_selected_channel = ""
             self.flowbox.invalidate_filter()
             if self.display_format == "Table":
-                if self.view_mode == VIEW_MODES["Active"]:
+                if self.view_mode in (VIEW_MODES["Active"], VIEW_MODES["Selected"]):
                     self.table_view.rebuild_rows()
                 self.table_view.sync_selection(selected_channels)
         finally:
@@ -594,9 +683,37 @@ class ChannelsView(Gtk.Box):
         return "All"
 
     def set_view_mode_by_name(self, name: str) -> None:
-        """Set view mode by string name ('All', 'Patched', 'Active')."""
-        if name in VIEW_MODES:
-            self.combo.set_active(VIEW_MODES[name])
+        """Set view mode by string name case-insensitively."""
+        target = str(name).strip().lower()
+        for mode_name, idx in VIEW_MODES.items():
+            if mode_name.lower() == target:
+                self.combo.set_active(idx)
+                return
+
+    def is_device_channel(self, channel: int) -> bool:
+        """Return True if *channel* is patched to a fixture with F/C/B attributes."""
+        if not self.lightshow:
+            return False
+        dev = self.lightshow.patch.devices.get(int(channel))
+        if dev is None:
+            return False
+        return any(
+            ch.channel_type != ChannelType.INTENSITY
+            for ch in getattr(dev, "channels", ())
+        )
+
+    def is_selected_channel(
+        self, channel: int, child: Gtk.FlowBoxChild | None = None
+    ) -> bool:
+        """Return True if *channel* is currently selected in this view."""
+        if int(channel) in self.selection_manager.selected_channels:
+            return True
+        return bool(child is not None and child.is_selected())
+
+    def is_manual_channel(self, channel: int) -> bool:
+        """Return True if *channel* carries manual overrides (subclasses override)."""
+        _ = channel
+        return False
 
     def _on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         """Change View Mode
@@ -611,10 +728,7 @@ class ChannelsView(Gtk.Box):
             self.flowbox.invalidate_filter()
             if self.display_format == "Table":
                 self.table_view.rebuild_rows(force=True)
-            tab_name = self.get_tab_name()
-            if tab_name and self.lightshow and hasattr(self.lightshow, "workspace"):
-                tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
-                tab_settings.setdefault(tab_name, {})["view_mode"] = text
+            self._persist_tab_setting("view_mode", text)
         self.grab_focus()
 
     def toggle_view_mode(self) -> None:
@@ -672,41 +786,53 @@ class ChannelsView(Gtk.Box):
             self.last_selected_channel
         ):
             return
-        if self.view_mode == VIEW_MODES["Patched"]:
-            channel_index = self._get_next_patched_index()
-        elif self.view_mode == VIEW_MODES["Active"]:
-            channel_index = self._get_next_active_index()
+        if self.view_mode in (
+            VIEW_MODES["Active"],
+            VIEW_MODES["Devices"],
+            VIEW_MODES["Selected"],
+            VIEW_MODES["Manual"],
+        ):
+            target_ch = self._get_filtered_next_channel()
+            if target_ch is None:
+                return
+            target_channel = target_ch
+        elif self.view_mode == VIEW_MODES["Patched"]:
+            target_channel = self._get_next_patched_index() + 1
         else:
             channel_index = (
                 int(self.last_selected_channel) if self.last_selected_channel else 0
             )
             if channel_index > MAX_CHANNELS - 1:
                 channel_index = 0
-
-        target_channel = channel_index + 1
+            target_channel = channel_index + 1
 
         self.selection_manager.execute_action(SelectActiveAction, target_channel)
+        self.last_selected_channel = str(target_channel)
         self._focus_channel(target_channel)
 
-    def _get_next_active_index(self) -> int:
-        """Get next active channel index"""
-        children = self.flowbox.get_children()
-        start = (
-            int(self.last_selected_channel)
-            if self.last_selected_channel
-            else self.__get_first_active_channel()
-        )
+    def _current_selection_anchor(self) -> int | None:
+        """Return the active 1-based channel anchor for step navigation."""
+        if (
+            self.selection_manager.selected_channels
+            and self.selection_manager.last_selected_channel is not None
+        ):
+            return int(self.selection_manager.last_selected_channel)
+        if self.last_selected_channel and is_non_nul_int(self.last_selected_channel):
+            return int(self.last_selected_channel)
+        return None
 
-        channel_index = start
-        for child in children:
-            flowboxchild = typing.cast(Gtk.FlowBoxChild, child)
-            idx = flowboxchild.get_index()
-            if flowboxchild.get_visible() and idx >= start:
-                channel_index = idx
-                break
-        if channel_index + 1 >= MAX_CHANNELS:
-            channel_index = self.__get_first_active_channel()
-        return channel_index
+    def _get_filtered_next_channel(self) -> int | None:
+        """Return next visible channel ID (1-based) in filtered modes, or None."""
+        visible = self.get_visible_channels()
+        if not visible:
+            return None
+        cur = self._current_selection_anchor()
+        if cur is None:
+            return visible[0]
+        for ch in visible:
+            if ch > cur:
+                return ch
+        return visible[0]
 
     def _get_next_patched_index(self) -> int:
         """Get next patched channel index"""
@@ -737,42 +863,42 @@ class ChannelsView(Gtk.Box):
             self.last_selected_channel
         ):
             return
-        if self.view_mode == VIEW_MODES["Patched"]:
-            channel_index = self._get_previous_patched_index()
-        elif self.view_mode == VIEW_MODES["Active"]:
-            channel_index = self._get_previous_active_index()
+        if self.view_mode in (
+            VIEW_MODES["Active"],
+            VIEW_MODES["Devices"],
+            VIEW_MODES["Selected"],
+            VIEW_MODES["Manual"],
+        ):
+            target_ch = self._get_filtered_previous_channel()
+            if target_ch is None:
+                return
+            target_channel = target_ch
+        elif self.view_mode == VIEW_MODES["Patched"]:
+            target_channel = self._get_previous_patched_index() + 1
         else:
             channel_index = (
                 int(self.last_selected_channel) - 2 if self.last_selected_channel else 0
             )
             if channel_index < 0:
                 channel_index = MAX_CHANNELS - 1
-
-        target_channel = channel_index + 1
+            target_channel = channel_index + 1
 
         self.selection_manager.execute_action(SelectActiveAction, target_channel)
+        self.last_selected_channel = str(target_channel)
         self._focus_channel(target_channel)
 
-    def _get_previous_active_index(self) -> int:
-        """Get previous active channel index"""
-        start = (
-            int(self.last_selected_channel) - 2
-            if self.last_selected_channel
-            else self.__get_last_active_channel() + 1
-        )
-
-        children = self.flowbox.get_children()
-        children.reverse()
-        channel_index = start
-        for child in children:
-            flowboxchild = typing.cast(Gtk.FlowBoxChild, child)
-            idx = flowboxchild.get_index()
-            if flowboxchild.get_visible() and idx <= start:
-                channel_index = idx
-                break
-        if channel_index < self.__get_first_active_channel() or start < 0:
-            channel_index = self.__get_last_active_channel()
-        return channel_index
+    def _get_filtered_previous_channel(self) -> int | None:
+        """Return previous visible channel ID (1-based) in filtered modes, or None."""
+        visible = self.get_visible_channels()
+        if not visible:
+            return None
+        cur = self._current_selection_anchor()
+        if cur is None:
+            return visible[-1]
+        for ch in reversed(visible):
+            if ch < cur:
+                return ch
+        return visible[-1]
 
     def _get_previous_patched_index(self) -> int:
         """Get previous patched channel index"""
@@ -865,37 +991,6 @@ class ChannelsView(Gtk.Box):
             Selected channels
         """
         return list(self.selection_manager.selected_channels)
-
-    def __get_first_active_channel(self) -> int:
-        """Return first active channel index
-
-        Returns:
-            Channel index (from 0 to MAX_CHANNELS - 1)
-        """
-        child = None
-        children = self.flowbox.get_children()
-        for child in children:
-            if child.get_visible():
-                break
-        if child is not None:
-            return typing.cast(Gtk.FlowBoxChild, child).get_index()
-        return 0
-
-    def __get_last_active_channel(self) -> int:
-        """Return last active channel index
-
-        Returns:
-            Channel index (from 0 to MAX_CHANNELS - 1)
-        """
-        child = None
-        children = self.flowbox.get_children()
-        children.reverse()
-        for child in children:
-            if child.get_visible():
-                break
-        if child is not None:
-            return typing.cast(Gtk.FlowBoxChild, child).get_index()
-        return 0
 
     def grab_focus(self) -> None:
         """Grab focus to active Tab"""

@@ -145,6 +145,50 @@ class ChannelsRoutesMixin:
             "channels", "/olc/channels/dump", dump_json, sender_addr=sender_addr
         )
 
+    @make_method("/olc/channels/format")
+    def _channels_format(self, _address: str, args: list) -> None:
+        """Cycle or set active ChannelsView display format via OSC."""
+        if args and isinstance(args[0], str):
+            self._execute_action("gui.channels_format", args[0])
+            return
+        if self._is_momentary_press(args):
+            self._execute_action("gui.channels_format")
+
+    @make_method("/olc/channels/data")
+    @make_method("/olc/channels/readout")
+    def _channels_data(self, _address: str, args: list) -> None:
+        """Toggle, cycle, or set active ChannelsView readout mode via OSC."""
+        if args and isinstance(args[0], str):
+            self._execute_action("gui.channels_data", args[0])
+            return
+        if self._is_momentary_press(args):
+            self._execute_action("gui.channels_data")
+
+    @make_method("/olc/channels/labels")
+    def _channels_labels(self, _address: str, args: list) -> None:
+        """Toggle or explicitly set fixture label visibility via OSC."""
+        if not args or (
+            isinstance(args[0], str) and args[0].strip().lower() == "toggle"
+        ):
+            self._execute_action("gui.channels_labels")
+            return
+        self._execute_action("gui.channels_labels", parse_osc_bool(args[0]))
+
+    @make_method("/olc/channels/labels/toggle")
+    def _channels_labels_toggle(self, _address: str, args: list) -> None:
+        """Momentary toggle for fixture label visibility via OSC."""
+        if self._is_momentary_press(args):
+            self._execute_action("gui.channels_labels")
+
+    @make_method("/olc/channels/flexi")
+    def _channels_flexi(self, _address: str, args: list) -> None:
+        """Cycle or set active ChannelsView Flexi view mode via OSC."""
+        if args and isinstance(args[0], str):
+            self._execute_action("gui.channels_flexi", args[0])
+            return
+        if self._is_momentary_press(args):
+            self._execute_action("gui.channels_flexi")
+
     def _toggle_channel_selection(self, ch: int) -> None:
         selected = list(getattr(self.app, "selected_channels", []))
         if ch in selected:

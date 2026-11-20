@@ -268,6 +268,16 @@ class IndeChannelsView(ChannelsView):
                 widget.queue_draw()
                 self.set_channel_level(channel, level)
 
+    def is_manual_channel(self, channel: int) -> bool:
+        """Return True if *channel* has an uncommitted independent override."""
+        if self.tabs is None or not 1 <= channel <= MAX_CHANNELS:
+            return False
+        tab_raw = self.tabs.tabs.get("indes")
+        if tab_raw is None:
+            return False
+        tab = typing.cast("olc.gtk3.independent.IndependentsTab", tab_raw)
+        return bool(tab.user_channels[channel - 1] != -1)
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
@@ -296,6 +306,22 @@ class IndeChannelsView(ChannelsView):
                 return self._filter_active(row, child)
             if self.view_mode == VIEW_MODES["Patched"]:
                 return self._filter_patched(row, child)
+            channel = child.get_index() + 1
+            if self.view_mode == VIEW_MODES["Devices"] and not self.is_device_channel(
+                channel
+            ):
+                child.set_visible(False)
+                return False
+            if self.view_mode == VIEW_MODES[
+                "Selected"
+            ] and not self.is_selected_channel(channel, child):
+                child.set_visible(False)
+                return False
+            if self.view_mode == VIEW_MODES["Manual"] and not self.is_manual_channel(
+                channel
+            ):
+                child.set_visible(False)
+                return False
             return self._filter_all(row, child)
         child.set_visible(False)
         return False

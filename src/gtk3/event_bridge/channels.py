@@ -102,7 +102,10 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
     def _on_device_changed_ui(self, channels: list[int]) -> bool:
         """Queue affected channel widgets for ~30 fps coalesced redraw."""
         if self.app.window and self.app.window.live_view:
-            self.app.window.live_view.channels_view.mark_channels_dirty(channels or [])
+            channels_view = self.app.window.live_view.channels_view
+            channels_view.mark_channels_dirty(channels or [])
+            if channels_view.view_mode == VIEW_MODES["Manual"]:
+                channels_view.refresh_filter()
         return False
 
     def _on_palette_metadata_changed_ui(self) -> bool:
@@ -135,6 +138,9 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
         """
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.update_channel_widget(channel, coalesce=True)
+            channels_view = self.app.window.live_view.channels_view
+            if channels_view.view_mode in (VIEW_MODES["Active"], VIEW_MODES["Manual"]):
+                channels_view.refresh_filter()
         return False
 
     def _on_channels_updated_ui(self, channels: list[int]) -> bool:
@@ -144,7 +150,8 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
             channels_view = live_view.channels_view
             curr_res, prev_res, next_lvls = channels_view.get_frame_tracking_context()
             is_active_mode = channels_view.view_mode == VIEW_MODES["Active"]
-            filter_dirty = False
+            is_manual_mode = channels_view.view_mode == VIEW_MODES["Manual"]
+            filter_dirty = bool(is_manual_mode and channels)
             for ch in channels or []:
                 old_active = False
                 if is_active_mode:

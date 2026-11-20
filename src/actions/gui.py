@@ -551,3 +551,150 @@ class SetDefaultTimeAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Return default time metadata."""
         return {"default_time": self.default_time}
+
+
+VALID_DISPLAY_FORMATS: tuple[str, ...] = ("Compact", "Summary+", "Table")
+VALID_READOUT_MODES: tuple[str, ...] = ("Auto", "Label", "Ref", "Percent", "DMX")
+VALID_FLEXI_MODES: tuple[str, ...] = (
+    "All",
+    "Patched",
+    "Active",
+    "Devices",
+    "Selected",
+    "Manual",
+)
+
+
+def _normalize_choice(value: str | None, valid: tuple[str, ...]) -> str | None:
+    """Match *value* case-insensitively against *valid* options."""
+    if value is None:
+        return None
+    low = str(value).strip().lower()
+    for candidate in valid:
+        if candidate.lower() == low:
+            return candidate
+    return None
+
+
+class ChannelsFormatAction(Action):
+    """Action to cycle or set the active ChannelsView display format."""
+
+    name = "gui.channels_format"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.display_format: str | None = None
+        self._invalid: bool = False
+
+    def configure(self, display_format: str | None = None) -> None:
+        """Configure target display format, or None to cycle."""
+        if display_format is None:
+            self.display_format = None
+            self._invalid = False
+            return
+        normalized = _normalize_choice(display_format, VALID_DISPLAY_FORMATS)
+        self.display_format = normalized
+        self._invalid = normalized is None
+
+    def execute(self) -> None:
+        """Emit event requesting the GUI to update display format."""
+        if self._invalid:
+            return
+        self.app.emit("gui.channels_format_requested", self.display_format)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return requested display format metadata."""
+        return {"display_format": self.display_format or "cycle"}
+
+
+class ChannelsDataAction(Action):
+    """Action to toggle, cycle, or set ChannelsView readout/data mode."""
+
+    name = "gui.channels_data"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.readout_mode: str | None = None
+        self._invalid: bool = False
+
+    def configure(self, readout_mode: str | None = None) -> None:
+        """Configure readout mode ('toggle', 'cycle', named mode, or None to toggle)."""
+        if readout_mode is None:
+            self.readout_mode = None
+            self._invalid = False
+            return
+        low = str(readout_mode).strip().lower()
+        if low in ("toggle", "cycle"):
+            self.readout_mode = low
+            self._invalid = False
+            return
+        normalized = _normalize_choice(readout_mode, VALID_READOUT_MODES)
+        self.readout_mode = normalized
+        self._invalid = normalized is None
+
+    def execute(self) -> None:
+        """Emit event requesting the GUI to toggle or set parameter readout mode."""
+        if self._invalid:
+            return
+        self.app.emit("gui.channels_data_requested", self.readout_mode)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return requested readout mode metadata."""
+        return {"readout_mode": self.readout_mode or "toggle"}
+
+
+class ChannelsLabelsAction(Action):
+    """Action to toggle or set fixture label visibility in ChannelsView."""
+
+    name = "gui.channels_labels"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.show: bool | None = None
+
+    def configure(self, show: bool | None = None) -> None:
+        """Configure label visibility (bool), or None to toggle."""
+        self.show = None if show is None else bool(show)
+
+    def execute(self) -> None:
+        """Emit event requesting the GUI to toggle or set fixture label visibility."""
+        self.app.emit("gui.channels_labels_requested", self.show)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return requested label visibility metadata."""
+        return {"show": self.show}
+
+
+class ChannelsFlexiAction(Action):
+    """Action to cycle or set the active ChannelsView Flexi filter mode."""
+
+    name = "gui.channels_flexi"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.view_mode: str | None = None
+        self._invalid: bool = False
+
+    def configure(self, view_mode: str | None = None) -> None:
+        """Configure target Flexi view mode, or None to cycle."""
+        if view_mode is None:
+            self.view_mode = None
+            self._invalid = False
+            return
+        normalized = _normalize_choice(view_mode, VALID_FLEXI_MODES)
+        self.view_mode = normalized
+        self._invalid = normalized is None
+
+    def execute(self) -> None:
+        """Emit event requesting the GUI to change Flexi view mode."""
+        if self._invalid:
+            return
+        self.app.emit("gui.channels_flexi_requested", self.view_mode)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return requested Flexi view mode metadata."""
+        return {"view_mode": self.view_mode or "cycle"}

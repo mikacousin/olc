@@ -371,7 +371,7 @@ class Window(Gtk.ApplicationWindow):
                 return notebook.get_nth_page(idx)
         return None
 
-    def _get_active_channels_view(self) -> ChannelsView:
+    def get_active_channels_view(self) -> ChannelsView:
         """Return the ChannelsView of the focused notebook page, or live_view's."""
         page = self._get_active_page()
         if page is not None:
@@ -381,6 +381,10 @@ class Window(Gtk.ApplicationWindow):
             if hasattr(page, "toggle_view_mode") and hasattr(page, "select_all"):
                 return typing.cast("ChannelsView", page)
         return self.live_view.channels_view
+
+    def _get_active_channels_view(self) -> ChannelsView:
+        """Return the ChannelsView of the focused notebook page, or live_view's."""
+        return self.get_active_channels_view()
 
     def _is_editing_tab_focused(self) -> bool:
         """Return True if the active page is an editing tab."""
@@ -453,6 +457,21 @@ class Window(Gtk.ApplicationWindow):
         elif modifiers == int(Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.SHIFT_MASK):
             if keyval in (Gdk.KEY_p, Gdk.KEY_P):
                 self._append_console_keyword("POSITION", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_f, Gdk.KEY_F):
+                cv = self.get_active_channels_view()
+                cv.toggle_display_format()
+                cv.grab_focus()
+                return True
+            if keyval in (Gdk.KEY_d, Gdk.KEY_D):
+                cv = self.get_active_channels_view()
+                cv.toggle_data_mode()
+                cv.grab_focus()
+                return True
+            if keyval in (Gdk.KEY_l, Gdk.KEY_L):
+                cv = self.get_active_channels_view()
+                cv.toggle_show_labels()
+                cv.grab_focus()
                 return True
 
         # Alt-only shortcuts

@@ -291,6 +291,12 @@ class LiveParameterState:
                 for p in ch_manual
             )
 
+    def is_channel_manual(self, channel: int) -> bool:
+        """Return True if *channel* has any manual parameter or live palette ref."""
+        ch = int(channel)
+        with self._lock:
+            return bool(self._manual_params.get(ch) or self._palette_refs.get(ch))
+
     def get_manual_params(self, channel: int) -> set[str]:
         """Return a copy of manually modified parameter names for *channel*."""
         with self._lock:

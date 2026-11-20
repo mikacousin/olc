@@ -74,6 +74,7 @@ class ChannelWidget(Gtk.DrawingArea):
     next_level: int | float
     display_format: str
     readout_mode: str
+    show_labels: bool
     scale: float
     width: int
     height: int
@@ -108,6 +109,9 @@ class ChannelWidget(Gtk.DrawingArea):
         )
         self.readout_mode = (
             channels_view.readout_mode if channels_view is not None else "Auto"
+        )
+        self.show_labels = (
+            bool(channels_view.show_labels) if channels_view is not None else True
         )
         self.scale = 1.0
         base_w, base_h = self.get_base_dimensions()
@@ -200,6 +204,11 @@ class ChannelWidget(Gtk.DrawingArea):
     def set_readout_mode(self, mode: str) -> None:
         """Switch parameter readout mode and redraw."""
         self.readout_mode = str(mode)
+        self.queue_draw()
+
+    def set_show_labels(self, show: bool) -> None:
+        """Show or hide fixture label in tile header and redraw."""
+        self.show_labels = bool(show)
         self.queue_draw()
 
     def set_scale(self, scale: float) -> None:
@@ -435,12 +444,13 @@ class ChannelWidget(Gtk.DrawingArea):
 
         # Header center: fixture label or fixture model name
         label = ""
-        if snap is not None:
-            label = snap.device_label or snap.fixture_name
-        else:
-            dev = self.get_patched_device()
-            if dev is not None:
-                label = str(dev.label or dev.fixture_name)
+        if self.show_labels:
+            if snap is not None:
+                label = snap.device_label or snap.fixture_name
+            else:
+                dev = self.get_patched_device()
+                if dev is not None:
+                    label = str(dev.label or dev.fixture_name)
         if label:
             cr.set_source_rgb(0.78, 0.80, 0.82)
             self._draw_ellipsized_text(

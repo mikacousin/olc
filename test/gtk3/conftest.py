@@ -152,9 +152,11 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     if app.window:
         app.window.show_all()
         live_cv = app.window.live_view.channels_view
+        live_cv.sync_selection_to_gui([])
         live_cv.combo.set_active(0)
         live_cv.set_display_format("Compact")
         live_cv.set_readout_mode("Auto")
+        live_cv.set_show_labels(True)
         live_cv.set_family_expanded("focus", False)
         live_cv.set_family_expanded("color", False)
         live_cv.set_family_expanded("beam", False)

@@ -430,6 +430,42 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                                 "ACCESS": ACCESS_READ_ONLY,
                                 "TYPE": "s",
                             },
+                            "format": {
+                                "DESCRIPTION": (
+                                    "Cycle or set display format "
+                                    "(Compact / Summary+ / Table)"
+                                ),
+                                "FULL_PATH": "/olc/channels/format",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "s",
+                            },
+                            "data": {
+                                "DESCRIPTION": (
+                                    "Toggle or set readout mode "
+                                    "(Auto / Label / Ref / Percent / DMX)"
+                                ),
+                                "FULL_PATH": "/olc/channels/data",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "s",
+                            },
+                            "labels": {
+                                "DESCRIPTION": (
+                                    "Toggle or set fixture label visibility"
+                                ),
+                                "FULL_PATH": "/olc/channels/labels",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "i",
+                                "RANGE": [{"MIN": 0, "MAX": 1}],
+                            },
+                            "flexi": {
+                                "DESCRIPTION": (
+                                    "Cycle or set Flexi filter mode "
+                                    "(All/Patched/Active/Devices/Selected/Manual)"
+                                ),
+                                "FULL_PATH": "/olc/channels/flexi",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "s",
+                            },
                         },
                     },
                     "cell": {

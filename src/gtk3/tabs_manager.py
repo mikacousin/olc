@@ -277,10 +277,14 @@ class Tabs:
         tab_settings = lightshow.workspace.setdefault("tab_settings", {})
         current = tab_settings.setdefault(tab_name, {})
 
-        # ChannelsView / view_mode
+        # ChannelsView / view_mode & Lot 2-4 display settings
         channels_view = getattr(widget, "channels_view", widget)
         if isinstance(channels_view, ChannelsView):
             current["view_mode"] = channels_view.get_view_mode_name()
+            current["display_format"] = channels_view.get_display_format()
+            current["readout_mode"] = channels_view.get_readout_mode()
+            current["show_labels"] = channels_view.get_show_labels()
+            current["expanded_families"] = channels_view.get_expanded_families()
 
         # CurvesTab / selected_curve, sidebar visibility & paned position
         if tab_name == "curves":
@@ -312,12 +316,25 @@ class Tabs:
         if not settings or not isinstance(settings, dict):
             return
 
-        # ChannelsView / view_mode
-        view_mode_name = settings.get("view_mode")
-        if view_mode_name and isinstance(view_mode_name, str):
-            channels_view = getattr(widget, "channels_view", widget)
-            if isinstance(channels_view, ChannelsView):
+        # ChannelsView / view_mode & Lot 2-4 display settings
+        channels_view = getattr(widget, "channels_view", widget)
+        if isinstance(channels_view, ChannelsView):
+            view_mode_name = settings.get("view_mode")
+            if view_mode_name and isinstance(view_mode_name, str):
                 channels_view.set_view_mode_by_name(view_mode_name)
+            channels_view.set_show_labels(bool(settings.get("show_labels", True)))
+            readout_mode = settings.get("readout_mode", "Auto")
+            if isinstance(readout_mode, str):
+                channels_view.set_readout_mode(readout_mode)
+            expanded_raw = settings.get("expanded_families")
+            expanded_map = expanded_raw if isinstance(expanded_raw, dict) else {}
+            for fam in ("focus", "color", "beam"):
+                channels_view.set_family_expanded(
+                    fam, bool(expanded_map.get(fam, False))
+                )
+            display_format = settings.get("display_format", "Compact")
+            if isinstance(display_format, str):
+                channels_view.set_display_format(display_format)
 
         # CurvesTab / selected_curve, sidebar visibility & paned position
         if tab_name == "curves":

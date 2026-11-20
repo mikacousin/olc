@@ -105,6 +105,20 @@ class GroupChannelsView(ChannelsView):
             # Display patched channels
             if self.view_mode == VIEW_MODES["Patched"]:
                 return self.__filter_patched(group, child)
+            channel = child.get_index() + 1
+            if self.view_mode == VIEW_MODES["Devices"] and not self.is_device_channel(
+                channel
+            ):
+                child.set_visible(False)
+                return False
+            if self.view_mode == VIEW_MODES[
+                "Selected"
+            ] and not self.is_selected_channel(channel, child):
+                child.set_visible(False)
+                return False
+            if self.view_mode == VIEW_MODES["Manual"]:
+                child.set_visible(False)
+                return False
             # Display all channels by default
             return self.__filter_all(group, child)
         child.set_visible(False)

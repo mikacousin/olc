@@ -619,6 +619,20 @@ class CueChannelsView(ChannelsView):
                 "cue.set_temp_channels", cue.number, cue.sequence, channels_dict
             )
 
+    def is_manual_channel(self, channel: int) -> bool:
+        """Return True if *channel* has an uncommitted edit in the selected cue."""
+        if self.lightshow is None or not 1 <= channel <= MAX_CHANNELS:
+            return False
+        cue = self._get_selected_cue()
+        if cue is None:
+            return False
+        return (
+            self.lightshow.cues.cue_editor.get_levels(cue.number, cue.sequence)[
+                channel - 1
+            ]
+            >= 0.0
+        )
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
@@ -651,6 +665,22 @@ class CueChannelsView(ChannelsView):
             visible = self.__filter_patched(cue, child)
             child.set_visible(visible)
             return visible
+        channel = child.get_index() + 1
+        if self.view_mode == VIEW_MODES["Devices"] and not self.is_device_channel(
+            channel
+        ):
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Selected"] and not self.is_selected_channel(
+            channel, child
+        ):
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Manual"] and not self.is_manual_channel(
+            channel
+        ):
+            child.set_visible(False)
+            return False
         self.__filter_all(cue, child)
         child.set_visible(True)
         return True

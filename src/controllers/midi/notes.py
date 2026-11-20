@@ -72,6 +72,10 @@ SIMPLE_ACTION_MAPPING = {
     "color": ("color", None, " COLOR "),
     "beam": ("beam", None, " BEAM "),
     "channel.sneak": (None, "channel.sneak", None),
+    "gui.channels_format": ("channels_format", "gui.channels_format", None),
+    "gui.channels_data": ("channels_data", "gui.channels_data", None),
+    "gui.channels_labels": ("channels_labels", "gui.channels_labels", None),
+    "gui.channels_flexi": ("channels_flexi", "gui.channels_flexi", None),
 }
 
 
@@ -112,6 +116,10 @@ class MidiNotes:
             "color": [0, -1],
             "beam": [0, -1],
             "channel.sneak": [0, -1],
+            "gui.channels_format": [0, -1],
+            "gui.channels_data": [0, -1],
+            "gui.channels_labels": [0, -1],
+            "gui.channels_flexi": [0, -1],
             "clear": [0, -1],
             "dot": [0, -1],
             "slash": [0, -1],

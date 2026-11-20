@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from olc.define import MAX_CHANNELS
+from olc.gtk3.widgets.channels_view import VIEW_MODES
 
 from .base import BaseEventBridgeHandler
 
@@ -129,6 +130,10 @@ class CueBridgeHandler(BaseEventBridgeHandler):
 
         # Update Live View if the modified cue is active
         self._update_live_view_active_cue(sequence, number)
+        if self.app.window and self.app.window.live_view:
+            live_cv = self.app.window.live_view.channels_view
+            if live_cv.view_mode == VIEW_MODES["Manual"]:
+                live_cv.refresh_filter()
         return False
 
     def _safe_refresh_cue_editor(self, sequence: int, number: float) -> bool:

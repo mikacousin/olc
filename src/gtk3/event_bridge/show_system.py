@@ -169,6 +169,22 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 self._on_default_time_changed, default_time
             ),
         )
+        self.app.core.subscribe(
+            "gui.channels_format_requested",
+            lambda fmt=None: self._run_idle(self._on_channels_format_requested, fmt),
+        )
+        self.app.core.subscribe(
+            "gui.channels_data_requested",
+            lambda mode=None: self._run_idle(self._on_channels_data_requested, mode),
+        )
+        self.app.core.subscribe(
+            "gui.channels_labels_requested",
+            lambda show=None: self._run_idle(self._on_channels_labels_requested, show),
+        )
+        self.app.core.subscribe(
+            "gui.channels_flexi_requested",
+            lambda mode=None: self._run_idle(self._on_channels_flexi_requested, mode),
+        )
 
     def _on_show_before_save(self) -> None:
         """Capture GUI workspace state into lightshow.workspace before saving."""
@@ -644,4 +660,46 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
     def _on_backend_notification(self, title: str, body: str) -> bool:
         """Dispatch backend notification to GTK Application safely in UI thread."""
         self.app.on_backend_notification(title, body)
+        return False
+
+    def _on_channels_format_requested(self, fmt: str | None = None) -> bool:
+        """Cycle or set the active ChannelsView display format on the UI thread."""
+        if self.app.window:
+            cv = self.app.window.get_active_channels_view()
+            if fmt is None:
+                cv.toggle_display_format()
+            else:
+                cv.set_display_format(fmt)
+        return False
+
+    def _on_channels_data_requested(self, mode: str | None = None) -> bool:
+        """Toggle, cycle, or set the active ChannelsView readout mode on UI thread."""
+        if self.app.window:
+            cv = self.app.window.get_active_channels_view()
+            if mode is None or mode == "toggle":
+                cv.toggle_data_mode()
+            elif mode == "cycle":
+                cv.toggle_readout_mode()
+            else:
+                cv.set_readout_mode(mode)
+        return False
+
+    def _on_channels_labels_requested(self, show: bool | None = None) -> bool:
+        """Toggle or set fixture label visibility on the active ChannelsView."""
+        if self.app.window:
+            cv = self.app.window.get_active_channels_view()
+            if show is None:
+                cv.toggle_show_labels()
+            else:
+                cv.set_show_labels(bool(show))
+        return False
+
+    def _on_channels_flexi_requested(self, mode: str | None = None) -> bool:
+        """Cycle or set Flexi filter mode on the active ChannelsView."""
+        if self.app.window:
+            cv = self.app.window.get_active_channels_view()
+            if mode is None:
+                cv.toggle_view_mode()
+            else:
+                cv.set_view_mode_by_name(mode)
         return False

@@ -18,7 +18,7 @@ import typing
 
 from gi.repository import Gdk, Gtk
 
-from olc.gtk3.widgets.channels_view import ChannelsView
+from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -322,6 +322,26 @@ class CTChannelsView(ChannelsView):
             return False
         channel_widget = typing.cast("ChannelWidget", widget)
         channel_index = child.get_index()
+        channel_num = channel_index + 1
+        if self.view_mode == VIEW_MODES["Devices"] and not self.is_device_channel(
+            channel_num
+        ):
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Selected"] and not self.is_selected_channel(
+            channel_num, child
+        ):
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            child.set_visible(False)
+            return False
+        if self.view_mode == VIEW_MODES["Manual"]:
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            child.set_visible(False)
+            return False
         step = typing.cast(ChanneltimeTab, self.tabs.tabs["channel_time"]).step
         cue = step.cue
         channels = cue.channels if cue is not None else {}
