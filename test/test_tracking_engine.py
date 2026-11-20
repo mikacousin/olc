@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for Stage 4: TrackingEngine, cues tracking, and fixture exchange."""
+"""Unit tests for TrackingEngine, cues tracking, and fixture exchange."""
 # pylint: disable=too-few-public-methods, missing-class-docstring, missing-function-docstring
 
 import typing

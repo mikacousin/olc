@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Lot 1 unit tests: palette refs, IFCB tracking, transition events, CMY, snapshots."""
+"""Unit tests for palette refs, IFCB tracking, transition events, CMY, snapshots."""
 
 # pylint: disable=protected-access, missing-function-docstring
 

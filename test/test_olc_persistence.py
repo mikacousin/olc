@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Unit and integration tests for Stage 7 (.olc show serialization & persistence)."""
+"""Unit and integration tests for .olc show serialization and persistence."""
 
 from __future__ import annotations
 

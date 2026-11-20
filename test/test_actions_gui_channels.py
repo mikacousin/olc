@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Headless unit tests for Lot 4: Flexi state, GUI channel actions, MIDI & OSC."""
+"""Headless unit tests for Flexi state, GUI channel actions, MIDI & OSC."""
 
 # pylint: disable=protected-access, missing-function-docstring
 
@@ -131,7 +131,7 @@ def test_gui_channels_actions_ignore_invalid_arguments() -> None:
     assert captured == []
 
 
-def test_midi_learn_dispatch_and_persistence_for_lot4_actions() -> None:
+def test_midi_learn_dispatch_and_persistence_for_channel_controls() -> None:
     """Verify MIDI notes, CC, learn, and dict serialization for channel controls."""
     midi_stub = MagicMock()
     app = MagicMock()
@@ -200,7 +200,7 @@ def test_midi_learn_dispatch_and_persistence_for_lot4_actions() -> None:
     assert restored_notes.cc_notes["gui.channels_flexi"] == [3, 41]
 
 
-def test_osc_routes_and_oscquery_for_lot4_controls() -> None:
+def test_osc_routes_and_oscquery_for_channel_controls() -> None:
     """Verify OSC routes and OSCQuery nodes for Format, Data, Labels, and Flexi."""
     app = _make_app()
     mock_exec = MagicMock()

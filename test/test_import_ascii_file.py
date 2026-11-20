@@ -320,7 +320,7 @@ Cue 1 1
 EndData
 """
     assert isinstance(tmp_path, pathlib.Path)
-    asc_file = tmp_path / "eos_lot3.asc"
+    asc_file = tmp_path / "eos_curves_faders.asc"
     asc_file.write_text(asc_content, encoding="utf-8")
 
     lightshow = LightShow()
@@ -1013,7 +1013,7 @@ Cue 1 1
 EndData
 """
     assert isinstance(tmp_path, pathlib.Path)
-    asc_file = tmp_path / "eos_lot2.asc"
+    asc_file = tmp_path / "eos_personalities.asc"
     asc_file.write_text(asc_content, encoding="utf-8")
 
     lightshow = LightShow()

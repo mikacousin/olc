@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""GTK3 workflow tests for Lot 4: Flexi modes, controls, shortcuts, VC & persistence."""
+"""GTK3 workflow tests for Flexi modes, controls, shortcuts, VC & persistence."""
 
 # pylint: disable=protected-access, missing-function-docstring, too-many-locals, too-many-statements
 
@@ -297,7 +297,7 @@ def test_flexi_subclasses_and_filtered_navigation(app_gui: Application) -> None:
     assert grp_cv.get_visible_channels() == []
 
 
-def test_controls_shortcuts_vc_and_event_bridge_lot4(
+def test_channels_controls_shortcuts_vc_and_event_bridge(
     app_gui: Application,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -538,7 +538,7 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
     assert reopened_mem.channels_view.get_show_labels() is False
 
     # 3. Full save -> new -> open round-trip
-    save_path = str(tmp_path / "lot4_workspace.olc")
+    save_path = str(tmp_path / "channels_workspace.olc")
     app_gui.core.action_registry.execute("show.save", save_path)
     process_events()
 

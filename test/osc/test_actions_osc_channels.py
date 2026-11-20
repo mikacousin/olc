@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for Lot 2 OSC: paged channels grid, encoders, and color control."""
+"""Unit tests for OSC channels: paged channels grid, encoders, color control."""
 
 from __future__ import annotations
 

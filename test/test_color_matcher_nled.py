@@ -47,7 +47,7 @@ def _make_lustr_profile() -> FixtureColorProfile:
     return FixtureColorProfile(fixture_name="ETC Lustr 2", emitters=emitters)
 
 
-# ---- Phase 1: Channel Types & DIN SPEC 15800 Attributes --------------------
+# ---- Channel Types & DIN SPEC 15800 Attributes -----------------------------
 
 
 def test_channel_types_extended() -> None:
@@ -66,7 +66,7 @@ def test_channel_types_extended() -> None:
     assert GDTF_ATTRIBUTE_MAP["ColorAdd_Y"] == ChannelType.YELLOW
 
 
-# ---- Phase 2: Convex Hull & Gamut Polygon ----------------------------------
+# ---- Convex Hull & Gamut Polygon -------------------------------------------
 
 
 def test_convex_hull_and_gamut_area() -> None:
@@ -86,7 +86,7 @@ def test_convex_hull_and_gamut_area() -> None:
     assert prof.contains_xy(0.05, 0.05) is False
 
 
-# ---- Phase 3 & 4: Multi-LED Solver, 16/24-Bit & MatchResult ----------------
+# ---- Multi-LED Solver, 16/24-Bit & MatchResult -----------------------------
 
 
 def test_match_result_16_and_24_bit() -> None:

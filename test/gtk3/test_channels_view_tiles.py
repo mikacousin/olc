@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""GTK3 GUI tests for Lot 2: Compact/Summary+, Readout, coalescing, isolation."""
+"""GTK3 GUI tests for channels tiles: Compact/Summary+, Readout, coalescing."""
 
 # pylint: disable=protected-access, missing-function-docstring, too-many-locals
 
