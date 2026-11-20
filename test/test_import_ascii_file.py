@@ -13,7 +13,7 @@ from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.show.lightshow import LightShow  # noqa: E402
 
-FILE_PATH = "test/sample.asc"
+FILE_PATH = "test/fixtures/sample.asc"
 gfile = Gio.File.new_for_path(FILE_PATH)
 
 

@@ -158,7 +158,7 @@ def test_show_open_ascii() -> None:
     loaded_events: list[str] = []
     app.subscribe("show.loaded", loaded_events.append)
 
-    app.action_registry.execute("show.open", "test/sample.asc")
+    app.action_registry.execute("show.open", "test/fixtures/sample.asc")
 
     assert len(loaded_events) == 1
     assert app.lightshow.basename == "sample.asc"
@@ -283,7 +283,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     )
 
     # Import sample file
-    app.action_registry.execute("show.import", "test/sample.asc")
+    app.action_registry.execute("show.import", "test/fixtures/sample.asc")
 
     assert len(imported_events) == 1
     assert app.lightshow.modified is True
@@ -325,7 +325,7 @@ def test_show_import_partial_options() -> None:
         "faders": "IGNORE",
         "midi": "IGNORE",
     }
-    app.action_registry.execute("show.import", "test/sample.asc", options)
+    app.action_registry.execute("show.import", "test/fixtures/sample.asc", options)
 
     # Patch should NOT have changed because of IGNORE
     assert app.lightshow.patch.get_output_info(1, 47) == (42, 0)
