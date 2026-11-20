@@ -155,6 +155,9 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
         live_cv.combo.set_active(0)
         live_cv.set_display_format("Compact")
         live_cv.set_readout_mode("Auto")
+        live_cv.set_family_expanded("focus", False)
+        live_cv.set_family_expanded("color", False)
+        live_cv.set_family_expanded("beam", False)
         live_cv.flush_dirty_channels()
         live_cv.invalidate_all_snapshots()
 

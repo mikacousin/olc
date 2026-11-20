@@ -170,7 +170,7 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
                         if new_active != old_active:
                             filter_dirty = True
             if filter_dirty:
-                channels_view.flowbox.invalidate_filter()
+                channels_view.refresh_filter()
             if self.app.tabs and self.app.tabs.tabs.get("track_channels") is not None:
                 track_channels = typing.cast(
                     "TrackChannelsTab", self.app.tabs.tabs["track_channels"]

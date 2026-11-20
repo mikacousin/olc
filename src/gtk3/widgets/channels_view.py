@@ -30,6 +30,10 @@ from olc.core.selection import (
 )
 from olc.define import MAX_CHANNELS, is_int, is_non_nul_int
 from olc.gtk3.widgets.channel import ChannelWidget
+from olc.gtk3.widgets.channels_table_view import (
+    ChannelsTableView,
+    normalize_expand_family,
+)
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -42,7 +46,7 @@ if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
 
 VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
-DISPLAY_FORMATS: tuple[str, ...] = ("Compact", "Summary+")
+DISPLAY_FORMATS: tuple[str, ...] = ("Compact", "Summary+", "Table")
 READOUT_MODES: tuple[str, ...] = ("Auto", "Label", "Ref", "Percent", "DMX")
 REDRAW_COALESCE_INTERVAL_MS: int = 33
 
@@ -63,9 +67,15 @@ class ChannelsView(Gtk.Box):
     header: Gtk.HeaderBar
     format_combo: Gtk.ComboBoxText
     readout_combo: Gtk.ComboBoxText
+    expand_box: Gtk.Box
+    expand_focus_btn: Gtk.ToggleButton
+    expand_color_btn: Gtk.ToggleButton
+    expand_beam_btn: Gtk.ToggleButton
     combo: Gtk.ComboBoxText
+    content_stack: Gtk.Stack
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
+    table_view: ChannelsTableView
     app: Application
     window: Window | None
     commandline: CoreCommandLine
@@ -97,6 +107,7 @@ class ChannelsView(Gtk.Box):
         self.readout_mode = READOUT_MODES[0]
         self.last_selected_channel = ""
         self.updating_selection = False
+        self._updating_expand_btn = False
         self._snapshot_cache: dict[int, ChannelDisplaySnapshot] = {}
         self._dirty_channels: set[int] = set()
         self._dirty_all: bool = False
@@ -120,7 +131,9 @@ class ChannelsView(Gtk.Box):
         for fmt in DISPLAY_FORMATS:
             self.format_combo.append_text(fmt)
         self.format_combo.set_active(0)
-        self.format_combo.set_tooltip_text("Tile format (Compact / Summary+)")
+        self.format_combo.set_tooltip_text(
+            "Display format (Compact / Summary+ / Table)"
+        )
         self.format_combo.connect("changed", self._on_display_format_changed)
         self.header.pack_start(self.format_combo)
 
@@ -134,6 +147,26 @@ class ChannelsView(Gtk.Box):
         )
         self.readout_combo.connect("changed", self._on_readout_mode_changed)
         self.header.pack_start(self.readout_combo)
+
+        self.expand_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.expand_box.get_style_context().add_class("linked")
+        self.expand_focus_btn = Gtk.ToggleButton(label="F")
+        self.expand_focus_btn.set_tooltip_text("Expand Focus columns (Pan / Tilt)")
+        self.expand_focus_btn.connect("toggled", self._on_expand_btn_toggled, "focus")
+        self.expand_color_btn = Gtk.ToggleButton(label="C")
+        self.expand_color_btn.set_tooltip_text("Expand Color columns (R/G/B/C/M/Y/…)")
+        self.expand_color_btn.connect("toggled", self._on_expand_btn_toggled, "color")
+        self.expand_beam_btn = Gtk.ToggleButton(label="B")
+        self.expand_beam_btn.set_tooltip_text(
+            "Expand Beam columns (Zoom / Gobo / Shutter / …)"
+        )
+        self.expand_beam_btn.connect("toggled", self._on_expand_btn_toggled, "beam")
+        self.expand_box.pack_start(self.expand_focus_btn, False, False, 0)
+        self.expand_box.pack_start(self.expand_color_btn, False, False, 0)
+        self.expand_box.pack_start(self.expand_beam_btn, False, False, 0)
+        self.expand_box.set_no_show_all(True)
+        self.expand_box.set_visible(False)
+        self.header.pack_start(self.expand_box)
 
         self.combo = Gtk.ComboBoxText()
         self.combo.set_entry_text_column(0)
@@ -167,7 +200,14 @@ class ChannelsView(Gtk.Box):
                 )
         self.scrolled.add(self.flowbox)
 
-        self.pack_start(self.scrolled, True, True, 0)
+        self.table_view = ChannelsTableView(channels_view=typing.cast(typing.Any, self))
+        self.content_stack = Gtk.Stack()
+        self.content_stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        self.content_stack.add_named(self.scrolled, "tiles")
+        self.content_stack.add_named(self.table_view, "table")
+        self.content_stack.set_visible_child_name("tiles")
+
+        self.pack_start(self.content_stack, True, True, 0)
         self.combo.set_active(0)
         self.connect("destroy", self._on_destroy_cleanup)
 
@@ -257,26 +297,29 @@ class ChannelsView(Gtk.Box):
         if not dirty_all and not dirty:
             return 0
 
+        is_table = self.display_format == "Table"
         drawn = 0
         if dirty_all:
             self._snapshot_cache.clear()
             self._invalidate_step_cache()
-            for child in self.flowbox.get_children():
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                if fb_child.get_visible():
-                    widget = fb_child.get_child()
-                    if widget is not None:
-                        widget.queue_draw()
-                        drawn += 1
+            if not is_table:
+                for child in self.flowbox.get_children():
+                    fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                    if fb_child.get_visible():
+                        widget = fb_child.get_child()
+                        if widget is not None:
+                            widget.queue_draw()
+                            drawn += 1
         else:
             for ch in dirty:
                 self._snapshot_cache.pop(ch, None)
-                fb_child = self.flowbox.get_child_at_index(ch - 1)
-                if fb_child is not None and fb_child.get_visible():
-                    widget = fb_child.get_child()
-                    if widget is not None:
-                        widget.queue_draw()
-                        drawn += 1
+                if not is_table:
+                    fb_child = self.flowbox.get_child_at_index(ch - 1)
+                    if fb_child is not None and fb_child.get_visible():
+                        widget = fb_child.get_child()
+                        if widget is not None:
+                            widget.queue_draw()
+                            drawn += 1
 
         flushed_arg: set[int] | None = None if dirty_all else dirty
         for callback in list(self._on_dirty_flushed_callbacks):
@@ -284,11 +327,11 @@ class ChannelsView(Gtk.Box):
         return drawn
 
     def get_display_format(self) -> str:
-        """Return active tile format ('Compact' or 'Summary+')."""
+        """Return active format ('Compact', 'Summary+', or 'Table')."""
         return self.display_format
 
     def set_display_format(self, fmt: str) -> None:
-        """Set tile display format ('Compact' or 'Summary+') case-insensitively."""
+        """Set display format ('Compact', 'Summary+', 'Table') case-insensitively."""
         target = str(fmt).strip().lower()
         matched_idx: int | None = None
         for idx, candidate in enumerate(DISPLAY_FORMATS):
@@ -304,7 +347,7 @@ class ChannelsView(Gtk.Box):
             self._apply_display_format(matched)
 
     def toggle_display_format(self) -> None:
-        """Cycle to the next tile display format."""
+        """Cycle to the next display format."""
         cur = self.format_combo.get_active()
         nxt = (cur + 1) % len(DISPLAY_FORMATS)
         self.format_combo.set_active(nxt)
@@ -315,17 +358,86 @@ class ChannelsView(Gtk.Box):
             self._apply_display_format(text)
         self.grab_focus()
 
+    def _expand_button_for_family(self, family: str) -> Gtk.ToggleButton | None:
+        if family == "focus":
+            return self.expand_focus_btn
+        if family == "color":
+            return self.expand_color_btn
+        if family == "beam":
+            return self.expand_beam_btn
+        return None
+
+    def get_expanded_families(self) -> dict[str, bool]:
+        """Return copy of {'focus': bool, 'color': bool, 'beam': bool} state."""
+        return dict(self.table_view.expanded_families)
+
+    def set_family_expanded(self, family: str, expanded: bool) -> None:
+        """Expand or collapse dynamic Table sub-columns for *family*."""
+        norm = normalize_expand_family(family)
+        btn = self._expand_button_for_family(norm)
+        target = bool(expanded)
+        if btn is not None and btn.get_active() != target:
+            self._updating_expand_btn = True
+            try:
+                btn.set_active(target)
+            finally:
+                self._updating_expand_btn = False
+        self.table_view.set_family_expanded(norm, target)
+
+    def toggle_family_expanded(self, family: str) -> bool:
+        """Toggle Table column expansion for *family* and return the new state."""
+        norm = normalize_expand_family(family)
+        new_state = not self.table_view.expanded_families.get(norm, False)
+        self.set_family_expanded(norm, new_state)
+        return new_state
+
+    def _on_expand_btn_toggled(self, btn: Gtk.ToggleButton, family: str) -> None:
+        if not self._updating_expand_btn:
+            self.table_view.set_family_expanded(family, btn.get_active())
+        self.grab_focus()
+
+    def get_visible_channels(self) -> list[int]:
+        """Evaluate filter_channels across children and return visible channel IDs."""
+        visible: list[int] = []
+        for idx, child in enumerate(self.flowbox.get_children()):
+            fb_child = typing.cast(Gtk.FlowBoxChild, child)
+            try:
+                is_vis = bool(self.filter_channels(fb_child, None))
+            except NotImplementedError:
+                is_vis = fb_child.get_visible()
+            if is_vis:
+                visible.append(idx + 1)
+        return visible
+
+    def refresh_filter(self) -> None:
+        """Invalidate channel filter and keep Table rows synced when visible."""
+        self.flowbox.invalidate_filter()
+        if self.display_format == "Table":
+            self.table_view.rebuild_rows()
+
     def _apply_display_format(self, fmt: str) -> None:
         self.display_format = fmt
         self._snapshot_cache.clear()
-        for child in self.flowbox.get_children():
-            fb_child = typing.cast(Gtk.FlowBoxChild, child)
-            widget = fb_child.get_child()
-            if widget is not None and isinstance(widget, ChannelWidget):
-                widget.set_display_format(fmt)
-        self.flowbox.queue_resize()
+        if fmt == "Table":
+            self.expand_box.set_visible(True)
+            self.expand_focus_btn.show()
+            self.expand_color_btn.show()
+            self.expand_beam_btn.show()
+            self.table_view.show_all()
+            self.content_stack.set_visible_child_name("table")
+            self.table_view.rebuild_rows(force=True)
+        else:
+            self.expand_box.set_visible(False)
+            for child in self.flowbox.get_children():
+                fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                widget = fb_child.get_child()
+                if widget is not None and isinstance(widget, ChannelWidget):
+                    widget.set_display_format(fmt)
+            self.content_stack.set_visible_child_name("tiles")
+            self.flowbox.queue_resize()
         for callback in list(self._on_dirty_flushed_callbacks):
-            callback(None)
+            if fmt != "Table":
+                callback(None)
 
     def get_readout_mode(self) -> str:
         """Return active readout mode ('Auto', 'Label', 'Ref', 'Percent', 'DMX')."""
@@ -361,11 +473,15 @@ class ChannelsView(Gtk.Box):
 
     def _apply_readout_mode(self, mode: str) -> None:
         self.readout_mode = mode
+        is_table = self.display_format == "Table"
         for child in self.flowbox.get_children():
             fb_child = typing.cast(Gtk.FlowBoxChild, child)
             widget = fb_child.get_child()
             if widget is not None and isinstance(widget, ChannelWidget):
-                widget.set_readout_mode(mode)
+                if is_table or not fb_child.get_visible():
+                    widget.readout_mode = mode
+                else:
+                    widget.set_readout_mode(mode)
         for callback in list(self._on_dirty_flushed_callbacks):
             callback(None)
 
@@ -375,7 +491,7 @@ class ChannelsView(Gtk.Box):
         return widget.level if widget else 0
 
     def sync_selection_to_gui(self, selected_channels: list[int]) -> None:
-        """Synchronize the logical selection state from selection_manager to FlowBox."""
+        """Synchronize logical selection from selection_manager to tiles & table."""
         self.updating_selection = True
         try:
             self.flowbox.unselect_all()
@@ -391,6 +507,10 @@ class ChannelsView(Gtk.Box):
             else:
                 self.last_selected_channel = ""
             self.flowbox.invalidate_filter()
+            if self.display_format == "Table":
+                if self.view_mode == VIEW_MODES["Active"]:
+                    self.table_view.rebuild_rows()
+                self.table_view.sync_selection(selected_channels)
         finally:
             self.updating_selection = False
 
@@ -433,7 +553,10 @@ class ChannelsView(Gtk.Box):
         """Update channels display."""
         self.invalidate_all_snapshots()
         self.flowbox.invalidate_filter()
-        self.flowbox.queue_draw()
+        if self.display_format == "Table":
+            self.table_view.rebuild_rows(force=True)
+        else:
+            self.flowbox.queue_draw()
 
     def get_channel_widget(self, channel: int) -> Optional[ChannelWidget]:
         """Get ChannelWidget of channel number
@@ -486,6 +609,8 @@ class ChannelsView(Gtk.Box):
             index = VIEW_MODES.get(text, 0)
             self.view_mode = index
             self.flowbox.invalidate_filter()
+            if self.display_format == "Table":
+                self.table_view.rebuild_rows(force=True)
             tab_name = self.get_tab_name()
             if tab_name and self.lightshow and hasattr(self.lightshow, "workspace"):
                 tab_settings = self.lightshow.workspace.setdefault("tab_settings", {})
@@ -499,6 +624,16 @@ class ChannelsView(Gtk.Box):
             index = 0
         self.combo.set_active(index)
 
+    def _focus_channel(self, channel: int) -> None:
+        """Focus or scroll to *channel* in the active view (tiles or table)."""
+        if not self.window:
+            return
+        if self.display_format == "Table":
+            self.table_view.scroll_to_channel(channel)
+            return
+        if flowboxchild := self.flowbox.get_child_at_index(channel - 1):
+            self.window.set_focus(flowboxchild)
+
     def select_channel(self) -> None:
         """Select one channel, or clear selection if commandline is empty or zero."""
         if not self.window or not self.commandline:
@@ -509,9 +644,7 @@ class ChannelsView(Gtk.Box):
             return
         self.selection_manager.execute_action(SelectActiveAction)
         if self.selection_manager.last_selected_channel:
-            ch = self.selection_manager.last_selected_channel
-            if flowboxchild := self.flowbox.get_child_at_index(ch - 1):
-                self.window.set_focus(flowboxchild)
+            self._focus_channel(self.selection_manager.last_selected_channel)
 
     def select_plus(self) -> None:
         """Add channel to selection"""
@@ -520,9 +653,7 @@ class ChannelsView(Gtk.Box):
 
         self.selection_manager.execute_action(SelectAddAction)
         if self.selection_manager.last_selected_channel:
-            ch = self.selection_manager.last_selected_channel
-            if flowboxchild := self.flowbox.get_child_at_index(ch - 1):
-                self.window.set_focus(flowboxchild)
+            self._focus_channel(self.selection_manager.last_selected_channel)
 
     def select_minus(self) -> None:
         """Remove channel from selection"""
@@ -531,9 +662,7 @@ class ChannelsView(Gtk.Box):
 
         self.selection_manager.execute_action(SelectRemoveAction)
         if self.selection_manager.last_selected_channel:
-            ch = self.selection_manager.last_selected_channel
-            if flowboxchild := self.flowbox.get_child_at_index(ch - 1):
-                self.window.set_focus(flowboxchild)
+            self._focus_channel(self.selection_manager.last_selected_channel)
 
     def select_next(self) -> None:
         """Select next channel"""
@@ -557,8 +686,7 @@ class ChannelsView(Gtk.Box):
         target_channel = channel_index + 1
 
         self.selection_manager.execute_action(SelectActiveAction, target_channel)
-        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
-            self.window.set_focus(flowboxchild)
+        self._focus_channel(target_channel)
 
     def _get_next_active_index(self) -> int:
         """Get next active channel index"""
@@ -623,8 +751,7 @@ class ChannelsView(Gtk.Box):
         target_channel = channel_index + 1
 
         self.selection_manager.execute_action(SelectActiveAction, target_channel)
-        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
-            self.window.set_focus(flowboxchild)
+        self._focus_channel(target_channel)
 
     def _get_previous_active_index(self) -> int:
         """Get previous active channel index"""
@@ -680,9 +807,7 @@ class ChannelsView(Gtk.Box):
 
         self.selection_manager.execute_action(SelectThruAction)
         if self.selection_manager.last_selected_channel:
-            ch = self.selection_manager.last_selected_channel
-            if flowboxchild := self.flowbox.get_child_at_index(ch - 1):
-                self.window.set_focus(flowboxchild)
+            self._focus_channel(self.selection_manager.last_selected_channel)
 
     def at_level(self) -> None:
         """Channels at level"""

@@ -196,7 +196,11 @@ def test_channels_view_compact_and_summary_plus_rendering(
     _draw_to_surface(w2)
     _draw_to_surface(w3)
 
-    # Toggle back to Compact
+    # Cycle Summary+ -> Table -> Compact
+    live_cv.toggle_display_format()
+    process_events()
+    assert live_cv.get_display_format() == "Table"
+
     live_cv.toggle_display_format()
     process_events()
     assert live_cv.get_display_format() == "Compact"

@@ -107,6 +107,8 @@ class AttributeFamilySnapshot:
     parameter_refs: dict[str, PaletteRefDisplay] = field(default_factory=dict)
     percent_summary: str = ""
     dmx_summary: str = ""
+    parameter_dmx: dict[str, int] = field(default_factory=dict)
+    parameter_percent: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -189,6 +191,71 @@ def format_family_readout(
         return family_snap.dmx_summary or family_snap.summary_value
 
     return family_snap.summary_value
+
+
+def _format_single_param_value(param_key: str, val: Any) -> str:  # noqa: ANN401
+    """Format a single physical/normalized parameter value concisely."""
+    p_low = str(param_key).strip().lower()
+    if p_low in ("pan", "tilt", "zoom"):
+        return f"{round(float(val))}°" if isinstance(val, (int, float)) else ""
+    if p_low == "focus":
+        return f"{float(val):.1f}m" if isinstance(val, (int, float)) else ""
+    if p_low == "cct":
+        return f"{round(float(val))}K" if isinstance(val, (int, float)) else ""
+    if p_low == "strobe":
+        if not isinstance(val, (int, float)):
+            return str(val)
+        return f"{float(val):.1f}Hz" if float(val) > 0.0 else "Open"
+    if p_low == "iris":
+        if not isinstance(val, (int, float)):
+            return str(val)
+        fval = float(val)
+        return f"{round(fval * 100)}%" if fval <= 1.0 else f"{round(fval)}%"
+    if p_low == "gobo":
+        return "Open" if val in (None, 0, "") else str(val)
+    if p_low in _COLOR_EMITTER_NAMES or p_low in ("color_wheel", "frost", "prism"):
+        return (
+            f"{round(float(val) * 100)}%" if isinstance(val, (int, float)) else str(val)
+        )
+    return "" if val is None else str(val)
+
+
+def format_parameter_readout(
+    family_snap: AttributeFamilySnapshot,
+    param_key: str,
+    readout: str = "auto",
+) -> str:
+    """Format one parameter cell per *readout* mode.
+
+    Args:
+        family_snap: Snapshot for the Focus, Color, or Beam family.
+        param_key: Canonical parameter key (e.g. ``"pan"``, ``"cyan"``, ``"zoom"``).
+        readout: One of ``"auto"``, ``"label"``, ``"ref"``, ``"percent"``,
+            ``"dmx"``, or ``"value"``.
+    """
+    if param_key not in family_snap.parameters:
+        return ""
+    pref = family_snap.parameter_refs.get(param_key)
+    mode = str(readout).strip().lower()
+    val_txt = _format_single_param_value(param_key, family_snap.parameters[param_key])
+
+    if mode in ("auto", "label"):
+        if pref is not None:
+            return pref.label or pref.short_ref
+        return val_txt
+    if mode == "ref":
+        if pref is not None:
+            return pref.short_ref
+        return val_txt
+    if mode == "percent":
+        if param_key in family_snap.parameter_percent:
+            return f"{round(family_snap.parameter_percent[param_key])}%"
+        return val_txt
+    if mode == "dmx":
+        if param_key in family_snap.parameter_dmx:
+            return str(family_snap.parameter_dmx[param_key])
+        return val_txt
+    return val_txt
 
 
 def _make_palette_ref_display(
@@ -372,6 +439,8 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     focus_params: dict[str, Any] = {}
     focus_dmx: list[str] = []
     focus_pct: list[str] = []
+    focus_param_dmx: dict[str, int] = {}
+    focus_param_pct: dict[str, float] = {}
     if dev is not None:
         pan_ch = dev.get_channel(ChannelType.PAN)
         tilt_ch = dev.get_channel(ChannelType.TILT)
@@ -383,9 +452,10 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
             p_norm = dev.get_parameter_normalized(ChannelType.PAN)
             if is_live:
                 focus_dmx.append(str(pan_ch.value))
-                focus_pct.append(
-                    f"{round((p_norm if p_norm is not None else 0.0) * 100)}%"
-                )
+                pct_val = (p_norm if p_norm is not None else 0.0) * 100.0
+                focus_pct.append(f"{round(pct_val)}%")
+                focus_param_dmx["pan"] = int(pan_ch.value)
+                focus_param_pct["pan"] = pct_val
         if tilt_ch is not None:
             tilt_val = (
                 dev.tilt_degrees if is_live else float(step_dev_vals.get("tilt", 0.0))
@@ -394,9 +464,10 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
             t_norm = dev.get_parameter_normalized(ChannelType.TILT)
             if is_live:
                 focus_dmx.append(str(tilt_ch.value))
-                focus_pct.append(
-                    f"{round((t_norm if t_norm is not None else 0.0) * 100)}%"
-                )
+                pct_val = (t_norm if t_norm is not None else 0.0) * 100.0
+                focus_pct.append(f"{round(pct_val)}%")
+                focus_param_dmx["tilt"] = int(tilt_ch.value)
+                focus_param_pct["tilt"] = pct_val
     else:
         for pk in ("pan", "tilt"):
             if pk in step_dev_vals:
@@ -431,6 +502,8 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_refs=f_prefs,
         percent_summary="/".join(focus_pct) if focus_pct else focus_summary,
         dmx_summary="/".join(focus_dmx) if focus_dmx else focus_summary,
+        parameter_dmx=focus_param_dmx,
+        parameter_percent=focus_param_pct,
     )
 
     # --- COLOR ---
@@ -439,6 +512,8 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     color_params: dict[str, Any] = {}
     color_dmx: list[str] = []
     color_pct: list[str] = []
+    color_param_dmx: dict[str, int] = {}
+    color_param_pct: dict[str, float] = {}
     if dev is not None:
         has_color = dev.has_color_capability
         if has_color:
@@ -461,6 +536,11 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
                     if is_live:
                         color_dmx.append(str(c_ch.value))
                         color_pct.append(f"{round(norm_f * 100)}%")
+                        color_param_dmx[ctype.value] = int(c_ch.value)
+                        color_param_pct[ctype.value] = norm_f * 100.0
+                    else:
+                        color_param_dmx[ctype.value] = round(norm_f * 255.0)
+                        color_param_pct[ctype.value] = norm_f * 100.0
         cct_ch = dev.get_channel(ChannelType.COLOR_TEMP)
         if cct_ch is not None:
             has_color = True
@@ -475,6 +555,10 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
                 color_params["cct"] = 3200.0
             if is_live:
                 color_dmx.append(str(cct_ch.value))
+                color_param_dmx["cct"] = int(cct_ch.value)
+                n_cct = dev.get_parameter_normalized(ChannelType.COLOR_TEMP)
+                if n_cct is not None:
+                    color_param_pct["cct"] = float(n_cct) * 100.0
         cw_ch = dev.get_channel(ChannelType.COLOR_WHEEL)
         if cw_ch is not None:
             has_color = True
@@ -483,9 +567,15 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
                 if is_live
                 else step_dev_vals.get("color_wheel")
             )
-            color_params["color_wheel"] = float(cw_val) if cw_val is not None else 0.0
+            cw_norm = _normalize_lvl(float(cw_val)) if cw_val is not None else 0.0
+            color_params["color_wheel"] = cw_norm
             if is_live:
                 color_dmx.append(str(cw_ch.value))
+                color_param_dmx["color_wheel"] = int(cw_ch.value)
+                color_param_pct["color_wheel"] = cw_norm * 100.0
+            else:
+                color_param_dmx["color_wheel"] = round(cw_norm * 255.0)
+                color_param_pct["color_wheel"] = cw_norm * 100.0
     elif "color" in step_dev_vals or any(
         k in step_dev_vals for k in _COLOR_EMITTER_NAMES
     ):
@@ -540,12 +630,16 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_refs=c_prefs,
         percent_summary=" ".join(color_pct[:3]) if color_pct else color_summary,
         dmx_summary=" ".join(color_dmx[:4]) if color_dmx else color_summary,
+        parameter_dmx=color_param_dmx,
+        parameter_percent=color_param_pct,
     )
 
     # --- BEAM ---
     beam_params: dict[str, Any] = {}
     beam_dmx: list[str] = []
     beam_pct: list[str] = []
+    beam_param_dmx: dict[str, int] = {}
+    beam_param_pct: dict[str, float] = {}
     beam_parts: list[str] = []
 
     if dev is not None:
@@ -557,9 +651,15 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
             beam_params[p_key] = val
             if is_live:
                 beam_dmx.append(str(b_ch.value))
+                beam_param_dmx[p_key] = int(b_ch.value)
                 n_b = dev.get_parameter_normalized(ctype)
                 if n_b is not None:
                     beam_pct.append(f"{round(n_b * 100)}%")
+                    beam_param_pct[p_key] = float(n_b) * 100.0
+            elif p_key in ("frost", "prism") and isinstance(val, (int, float)):
+                n_b = _normalize_lvl(float(val))
+                beam_param_dmx[p_key] = round(n_b * 255.0)
+                beam_param_pct[p_key] = n_b * 100.0
     else:
         for p_key, _ in _BEAM_PARAM_TYPES:
             if p_key in step_dev_vals:
@@ -588,6 +688,8 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_refs=b_prefs,
         percent_summary=" ".join(beam_pct[:2]) if beam_pct else beam_summary,
         dmx_summary=" ".join(beam_dmx[:2]) if beam_dmx else beam_summary,
+        parameter_dmx=beam_param_dmx,
+        parameter_percent=beam_param_pct,
     )
 
     return focus_snap, color_snap, beam_snap, has_color, preview_rgb
@@ -1099,5 +1201,6 @@ __all__ = [
     "build_live_channel_snapshot",
     "build_step_channel_snapshot",
     "format_family_readout",
+    "format_parameter_readout",
     "format_short_palette_ref",
 ]
