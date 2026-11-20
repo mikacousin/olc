@@ -16,14 +16,36 @@ from __future__ import annotations
 
 import typing
 
+from gi.repository import Gtk
+
 from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gtk
-
     from olc.gtk3.window import Window
+
+
+def resolve_zoom_target(
+    window: Window | None,
+) -> ChannelsView | DMXOutputsTab | None:
+    """Resolve the active zoomable ChannelsView or DMXOutputsTab for *window*."""
+    if window is None:
+        return None
+    tab = window.get_active_tab()
+    if tab is None and hasattr(window, "_get_active_page"):
+        tab = window._get_active_page()  # pylint: disable=protected-access
+    if tab is not None:
+        if isinstance(tab, (ChannelsView, DMXOutputsTab)):
+            return tab
+        if isinstance(tab, Gtk.Container):
+            for chld in tab.get_children():
+                if isinstance(chld, ChannelsView):
+                    return chld
+    live_view = getattr(window, "live_view", None)
+    if live_view is not None:
+        return getattr(live_view, "channels_view", None)
+    return None
 
 
 def zoom(direction: str, window: Window | None) -> None:
@@ -32,27 +54,15 @@ def zoom(direction: str, window: Window | None) -> None:
 
     Args:
         direction: "in" or "out"
+        window: Main application window.
     """
-    if window is None:
-        return
-    tab = window.get_active_tab()
-    if tab is None:
-        return
-    children = tab.get_children()
-
-    view = None
-    if isinstance(tab, (ChannelsView, DMXOutputsTab)):
-        view = tab
-    else:
-        for chld in children:
-            if isinstance(chld, ChannelsView):
-                view = chld
+    view = resolve_zoom_target(window)
     if view:
         for flowboxchild in view.flowbox.get_children():
             child = typing.cast("Gtk.FlowBoxChild", flowboxchild).get_child()
             if child and isinstance(child, ChannelWidget):
-                if direction == "in" and child.scale < 2:
-                    child.scale += 0.01
-                elif direction == "out" and child.scale >= 1:
-                    child.scale -= 0.01
+                if direction == "in" and child.scale < 2.0:
+                    child.set_scale(child.scale + 0.05)
+                elif direction == "out" and child.scale > 0.5:
+                    child.set_scale(child.scale - 0.05)
                 flowboxchild.queue_draw()

@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 from olc.core.selection import (
     SelectActiveAction,
@@ -34,6 +34,7 @@ from olc.gtk3.widgets.channel import ChannelWidget
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
+    from olc.core.channel_snapshot import ChannelDisplaySnapshot
     from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
@@ -41,9 +42,12 @@ if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
 
 VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
+DISPLAY_FORMATS: tuple[str, ...] = ("Compact", "Summary+")
+READOUT_MODES: tuple[str, ...] = ("Auto", "Label", "Ref", "Percent", "DMX")
+REDRAW_COALESCE_INTERVAL_MS: int = 33
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes, too-many-public-methods
 class ChannelsView(Gtk.Box):
     """Channels view
 
@@ -51,8 +55,15 @@ class ChannelsView(Gtk.Box):
     implemented
     """
 
+    is_live_view: bool = False
     view_mode: int
+    display_format: str
+    readout_mode: str
     last_selected_channel: str
+    header: Gtk.HeaderBar
+    format_combo: Gtk.ComboBoxText
+    readout_combo: Gtk.ComboBoxText
+    combo: Gtk.ComboBoxText
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
     app: Application
@@ -82,8 +93,16 @@ class ChannelsView(Gtk.Box):
         self.tabs = tabs if tabs is not None else app.tabs
 
         self.view_mode = VIEW_MODES.get("All", 0)
+        self.display_format = DISPLAY_FORMATS[0]
+        self.readout_mode = READOUT_MODES[0]
         self.last_selected_channel = ""
         self.updating_selection = False
+        self._snapshot_cache: dict[int, ChannelDisplaySnapshot] = {}
+        self._dirty_channels: set[int] = set()
+        self._dirty_all: bool = False
+        self._redraw_timer_id: int | None = None
+        self._redraw_interval_ms: int = REDRAW_COALESCE_INTERVAL_MS
+        self._on_dirty_flushed_callbacks: list[Callable[[set[int] | None], None]] = []
 
         if self.__class__.__name__ == "LiveChannelsView":
             self.selection_manager = app.core.live_selection
@@ -95,15 +114,35 @@ class ChannelsView(Gtk.Box):
                 get_level_callback=self._get_channel_level_for_select,
             )
 
-        header = Gtk.HeaderBar()
+        self.header = Gtk.HeaderBar()
+        self.format_combo = Gtk.ComboBoxText()
+        self.format_combo.set_entry_text_column(0)
+        for fmt in DISPLAY_FORMATS:
+            self.format_combo.append_text(fmt)
+        self.format_combo.set_active(0)
+        self.format_combo.set_tooltip_text("Tile format (Compact / Summary+)")
+        self.format_combo.connect("changed", self._on_display_format_changed)
+        self.header.pack_start(self.format_combo)
+
+        self.readout_combo = Gtk.ComboBoxText()
+        self.readout_combo.set_entry_text_column(0)
+        for readout in READOUT_MODES:
+            self.readout_combo.append_text(readout)
+        self.readout_combo.set_active(0)
+        self.readout_combo.set_tooltip_text(
+            "Parameter readout (Auto / Label / Ref / Percent / DMX)"
+        )
+        self.readout_combo.connect("changed", self._on_readout_mode_changed)
+        self.header.pack_start(self.readout_combo)
+
         self.combo = Gtk.ComboBoxText()
         self.combo.set_entry_text_column(0)
         for mode in VIEW_MODES:
             self.combo.append_text(mode)
         self.combo.set_active(0)
         self.combo.connect("changed", self._on_view_mode_changed)
-        header.pack_end(self.combo)
-        self.pack_start(header, False, False, 0)
+        self.header.pack_end(self.combo)
+        self.pack_start(self.header, False, False, 0)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -123,12 +162,212 @@ class ChannelsView(Gtk.Box):
                         self.app,
                         window=self.window,
                         tabs=self.tabs,
+                        channels_view=typing.cast(typing.Any, self),
                     )
                 )
         self.scrolled.add(self.flowbox)
 
         self.pack_start(self.scrolled, True, True, 0)
         self.combo.set_active(0)
+        self.connect("destroy", self._on_destroy_cleanup)
+
+    def _on_destroy_cleanup(self, *_args: object) -> None:
+        """Cancel any pending coalesced redraw timer on widget destruction."""
+        if self._redraw_timer_id is not None:
+            GLib.source_remove(self._redraw_timer_id)
+            self._redraw_timer_id = None
+        self._dirty_channels.clear()
+        self._dirty_all = False
+
+    def get_channel_snapshot(self, channel: int) -> ChannelDisplaySnapshot | None:
+        """Return consolidated ChannelDisplaySnapshot for *channel*, if supported."""
+        _ = channel
+        return None
+
+    def invalidate_channel_snapshot(self, channel: int) -> None:
+        """Invalidate the cached display snapshot for a single *channel*."""
+        self._snapshot_cache.pop(int(channel), None)
+
+    def _invalidate_step_cache(self) -> None:
+        """Invalidate any step/cue-level resolved tracking cache in subclasses."""
+
+    def invalidate_all_snapshots(self) -> None:
+        """Invalidate all cached channel snapshots and step resolution caches."""
+        self._snapshot_cache.clear()
+        self._invalidate_step_cache()
+
+    def register_dirty_flush_listener(
+        self, callback: Callable[[set[int] | None], None]
+    ) -> None:
+        """Register a listener notified whenever coalesced dirty channels flush."""
+        if callback not in self._on_dirty_flushed_callbacks:
+            self._on_dirty_flushed_callbacks.append(callback)
+
+    def unregister_dirty_flush_listener(
+        self, callback: Callable[[set[int] | None], None]
+    ) -> None:
+        """Unregister a dirty-flush listener."""
+        if callback in self._on_dirty_flushed_callbacks:
+            self._on_dirty_flushed_callbacks.remove(callback)
+
+    def mark_channels_dirty(
+        self,
+        channels: Iterable[int] | None = None,
+        *,
+        invalidate_step: bool = False,
+    ) -> None:
+        """Queue *channels* (or all channels when None) for coalesced ~30 fps redraw."""
+        if invalidate_step:
+            self._invalidate_step_cache()
+        if channels is None:
+            self._dirty_all = True
+            self._snapshot_cache.clear()
+        else:
+            added = False
+            for raw_ch in channels:
+                ch = int(raw_ch)
+                if 1 <= ch <= MAX_CHANNELS:
+                    self._dirty_channels.add(ch)
+                    self._snapshot_cache.pop(ch, None)
+                    added = True
+            if not added and not self._dirty_all:
+                return
+        if self._redraw_timer_id is None:
+            self._redraw_timer_id = GLib.timeout_add(
+                self._redraw_interval_ms, self._on_redraw_timer
+            )
+
+    def _on_redraw_timer(self) -> bool:
+        """One-shot GLib timer callback flushing queued channel redraws."""
+        self._redraw_timer_id = None
+        self.flush_dirty_channels()
+        return False
+
+    def flush_dirty_channels(self) -> int:
+        """Invalidate snapshots and trigger targeted queue_draw on visible widgets."""
+        if self._redraw_timer_id is not None:
+            GLib.source_remove(self._redraw_timer_id)
+            self._redraw_timer_id = None
+
+        dirty_all = self._dirty_all
+        dirty = set(self._dirty_channels)
+        self._dirty_all = False
+        self._dirty_channels.clear()
+
+        if not dirty_all and not dirty:
+            return 0
+
+        drawn = 0
+        if dirty_all:
+            self._snapshot_cache.clear()
+            self._invalidate_step_cache()
+            for child in self.flowbox.get_children():
+                fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                if fb_child.get_visible():
+                    widget = fb_child.get_child()
+                    if widget is not None:
+                        widget.queue_draw()
+                        drawn += 1
+        else:
+            for ch in dirty:
+                self._snapshot_cache.pop(ch, None)
+                fb_child = self.flowbox.get_child_at_index(ch - 1)
+                if fb_child is not None and fb_child.get_visible():
+                    widget = fb_child.get_child()
+                    if widget is not None:
+                        widget.queue_draw()
+                        drawn += 1
+
+        flushed_arg: set[int] | None = None if dirty_all else dirty
+        for callback in list(self._on_dirty_flushed_callbacks):
+            callback(flushed_arg)
+        return drawn
+
+    def get_display_format(self) -> str:
+        """Return active tile format ('Compact' or 'Summary+')."""
+        return self.display_format
+
+    def set_display_format(self, fmt: str) -> None:
+        """Set tile display format ('Compact' or 'Summary+') case-insensitively."""
+        target = str(fmt).strip().lower()
+        matched_idx: int | None = None
+        for idx, candidate in enumerate(DISPLAY_FORMATS):
+            if candidate.lower() == target:
+                matched_idx = idx
+                break
+        if matched_idx is None:
+            return
+        matched = DISPLAY_FORMATS[matched_idx]
+        if self.format_combo.get_active() != matched_idx:
+            self.format_combo.set_active(matched_idx)
+        elif self.display_format != matched:
+            self._apply_display_format(matched)
+
+    def toggle_display_format(self) -> None:
+        """Cycle to the next tile display format."""
+        cur = self.format_combo.get_active()
+        nxt = (cur + 1) % len(DISPLAY_FORMATS)
+        self.format_combo.set_active(nxt)
+
+    def _on_display_format_changed(self, combo: Gtk.ComboBoxText) -> None:
+        text = combo.get_active_text()
+        if text in DISPLAY_FORMATS:
+            self._apply_display_format(text)
+        self.grab_focus()
+
+    def _apply_display_format(self, fmt: str) -> None:
+        self.display_format = fmt
+        self._snapshot_cache.clear()
+        for child in self.flowbox.get_children():
+            fb_child = typing.cast(Gtk.FlowBoxChild, child)
+            widget = fb_child.get_child()
+            if widget is not None and isinstance(widget, ChannelWidget):
+                widget.set_display_format(fmt)
+        self.flowbox.queue_resize()
+        for callback in list(self._on_dirty_flushed_callbacks):
+            callback(None)
+
+    def get_readout_mode(self) -> str:
+        """Return active readout mode ('Auto', 'Label', 'Ref', 'Percent', 'DMX')."""
+        return self.readout_mode
+
+    def set_readout_mode(self, mode: str) -> None:
+        """Set parameter readout mode case-insensitively."""
+        target = str(mode).strip().lower()
+        matched_idx: int | None = None
+        for idx, candidate in enumerate(READOUT_MODES):
+            if candidate.lower() == target:
+                matched_idx = idx
+                break
+        if matched_idx is None:
+            return
+        matched = READOUT_MODES[matched_idx]
+        if self.readout_combo.get_active() != matched_idx:
+            self.readout_combo.set_active(matched_idx)
+        elif self.readout_mode != matched:
+            self._apply_readout_mode(matched)
+
+    def toggle_readout_mode(self) -> None:
+        """Cycle to the next readout mode."""
+        cur = self.readout_combo.get_active()
+        nxt = (cur + 1) % len(READOUT_MODES)
+        self.readout_combo.set_active(nxt)
+
+    def _on_readout_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
+        text = combo.get_active_text()
+        if text in READOUT_MODES:
+            self._apply_readout_mode(text)
+        self.grab_focus()
+
+    def _apply_readout_mode(self, mode: str) -> None:
+        self.readout_mode = mode
+        for child in self.flowbox.get_children():
+            fb_child = typing.cast(Gtk.FlowBoxChild, child)
+            widget = fb_child.get_child()
+            if widget is not None and isinstance(widget, ChannelWidget):
+                widget.set_readout_mode(mode)
+        for callback in list(self._on_dirty_flushed_callbacks):
+            callback(None)
 
     def _get_channel_level_for_select(self, channel: int) -> int | float:
         """Helper callback to read the level from a ChannelWidget."""
@@ -191,7 +430,8 @@ class ChannelsView(Gtk.Box):
         raise NotImplementedError
 
     def update(self) -> None:
-        """Update channels display"""
+        """Update channels display."""
+        self.invalidate_all_snapshots()
         self.flowbox.invalidate_filter()
         self.flowbox.queue_draw()
 

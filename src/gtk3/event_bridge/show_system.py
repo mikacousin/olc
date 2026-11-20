@@ -20,10 +20,9 @@ import typing
 
 from gi.repository import Gio, Gtk
 
-from olc.gtk3.dmx_outputs import DMXOutputsTab
 from olc.gtk3.history import HistoryTab
 from olc.gtk3.widgets.channel import ChannelWidget
-from olc.gtk3.widgets.channels_view import ChannelsView
+from olc.gtk3.zoom import resolve_zoom_target
 from olc.show.lightshow import default_workspace
 
 from .base import BaseEventBridgeHandler
@@ -264,26 +263,13 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        if not self.app.window:
-            return False
-        tab = self.app.window.get_active_tab()
-        if not tab:
-            return False
-
-        view = None
-        if isinstance(tab, (ChannelsView, DMXOutputsTab)):
-            view = tab
-        else:
-            for child in tab.get_children():
-                if isinstance(child, ChannelsView):
-                    view = child
-
-        if view:
+        view = resolve_zoom_target(self.app.window)
+        if view is not None:
             for flowboxchild in view.flowbox.get_children():
                 flowbox_child = typing.cast(Gtk.FlowBoxChild, flowboxchild)
                 child_widget = flowbox_child.get_child()
                 if child_widget and isinstance(child_widget, ChannelWidget):
-                    child_widget.scale = level
+                    child_widget.set_scale(level)
                     flowboxchild.queue_draw()
         return False
 

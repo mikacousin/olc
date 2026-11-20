@@ -18,11 +18,14 @@ import typing
 
 from gi.repository import Gdk, Gtk
 
-from olc.core.tracking import classify_channel_tracking_state
-from olc.define import is_int
+from olc.core.channel_snapshot import build_live_channel_snapshot
+from olc.core.tracking import TrackingEngine, classify_channel_tracking_state
+from olc.define import MAX_CHANNELS, is_int
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    from olc.core.channel_snapshot import ChannelDisplaySnapshot
+    from olc.core.tracking import ResolvedState
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
@@ -30,6 +33,8 @@ if typing.TYPE_CHECKING:
 
 class LiveView(Gtk.Notebook):
     """Live Channels View"""
+
+    channels_view: LiveChannelsView
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
         self.window = window
@@ -49,13 +54,26 @@ class LiveView(Gtk.Notebook):
         return self.window.app
 
     def update_channel_widget(
-        self, channel: int, next_level: float | None = None
+        self,
+        channel: int,
+        next_level: float | None = None,
+        *,
+        coalesce: bool = True,
+        resolved_step: ResolvedState | None = None,
+        prev_resolved: ResolvedState | None = None,
     ) -> None:
-        """Update display of channel widget
+        """Update display state of one channel widget.
+
+        Widget ``level``, ``color_level``, and ``next_level`` are updated
+        synchronously; Cairo redraws and snapshot rebuilds are coalesced via
+        ``mark_channels_dirty`` unless ``coalesce=False``.
 
         Args:
-            channel: Index of channel (from 1 to MAX_CHANNELS)
-            next_level: Channel next normalized level (0.0-1.0, or None to auto-query)
+            channel: Channel number (from 1 to MAX_CHANNELS).
+            next_level: Normalized level in next cue, or None to query core.
+            coalesce: Queue redraw through ~30 fps coalescer when True.
+            resolved_step: Optional pre-resolved current step state.
+            prev_resolved: Optional pre-resolved previous step state.
         """
         widget = self.channels_view.get_channel_widget(channel)
         if not widget:
@@ -65,40 +83,184 @@ class LiveView(Gtk.Notebook):
         channel_idx = channel - 1
         level, color_level = self.app.core.get_channel_composite_level(channel_idx)
 
-        # Apply Main Fader for visual display
         main_fader_val = self.app.core.get_main_fader_value()
         level = level * main_fader_val
         if next_level is None:
             main_pb = getattr(self.app.core.lightshow, "main_playback", None)
             if main_pb is not None and hasattr(main_pb, "get_next_channel_level"):
                 _, seq_lvl = classify_channel_tracking_state(
-                    main_pb, getattr(main_pb, "position", 0), channel
+                    main_pb,
+                    getattr(main_pb, "position", 0),
+                    channel,
+                    curr_resolved=resolved_step,
+                    prev_resolved=prev_resolved,
                 )
                 next_level = main_pb.get_next_channel_level(channel, seq_lvl)
             else:
-                next_level = 0
-        next_level = round(next_level * main_fader_val)
+                next_level = 0.0
+        next_level = float(next_level) * main_fader_val
 
         widget.color_level = color_level
         widget.level = level
         widget.next_level = next_level
-        widget.queue_draw()
+        self.channels_view.invalidate_channel_snapshot(channel)
+        if coalesce:
+            self.channels_view.mark_channels_dirty([channel])
+        else:
+            widget.queue_draw()
+
+    def refresh_all_channels(self, step: int | None = None) -> None:
+        """Synchronize all channel widgets using one shared step resolution."""
+        from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
+            get_tracking_color,
+        )
+
+        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+        if main_pb is None:
+            return
+        patch = getattr(self.app.core.lightshow, "patch", None)
+        pos = getattr(main_pb, "position", 0)
+        target_step = pos if step is None else int(step)
+        steps = getattr(main_pb, "steps", ())
+        tracking_mode = bool(getattr(main_pb, "tracking_mode", False))
+
+        curr_resolved: ResolvedState | None = None
+        prev_resolved: ResolvedState | None = None
+        if isinstance(steps, list) and 0 <= target_step < len(steps):
+            curr_resolved = TrackingEngine.resolve_step_state(
+                main_pb, target_step, tracking_mode=tracking_mode, patch=patch
+            )
+        if isinstance(steps, list) and target_step > 1 and target_step - 1 < len(steps):
+            prev_resolved = TrackingEngine.resolve_step_state(
+                main_pb, target_step - 1, tracking_mode=tracking_mode, patch=patch
+            )
+
+        all_next_levels: list[float] | None = None
+        if hasattr(main_pb, "get_all_next_channel_levels"):
+            all_next_levels = main_pb.get_all_next_channel_levels()
+
+        main_fader_val = self.app.core.get_main_fader_value()
+        has_backend = self.app.core.backend is not None
+
+        for channel in range(1, MAX_CHANNELS + 1):
+            state, level = classify_channel_tracking_state(
+                main_pb,
+                target_step,
+                channel,
+                curr_resolved=curr_resolved,
+                prev_resolved=prev_resolved,
+            )
+            color_level = get_tracking_color(state)
+            if (step is None or target_step == pos) and has_backend:
+                comp_level, comp_color = self.app.core.get_channel_composite_level(
+                    channel - 1
+                )
+                if (
+                    step is None
+                    or comp_level > 0.0
+                    or self.app.core.get_user_channel_level(channel - 1) >= 0.0
+                ):
+                    level = comp_level
+                    color_level = comp_color
+            level = float(level) * main_fader_val
+            if all_next_levels is not None and 1 <= channel <= len(all_next_levels):
+                next_lvl = float(all_next_levels[channel - 1]) * main_fader_val
+            else:
+                next_lvl = float(level)
+
+            widget = self.channels_view.get_channel_widget(channel)
+            if widget is not None:
+                widget.color_level = color_level
+                widget.level = level
+                widget.next_level = next_lvl
+
+        self.channels_view.mark_channels_dirty(None, invalidate_step=True)
 
 
 class LiveChannelsView(ChannelsView):
-    """Channels View"""
+    """Live Channels View with frame-level snapshot cache."""
 
-    _batch_next_levels: list[int] | None = None
+    is_live_view: bool = True
+    _batch_next_levels: list[float] | None = None
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
         self._batch_next_levels = None
+        self._frame_step_key: tuple[int, bool, bool, int] | None = None
+        self._frame_resolved_step: ResolvedState | None = None
+        self._frame_prev_resolved: ResolvedState | None = None
+        self._frame_next_levels: list[float] | None = None
         super().__init__(app=window.app, window=window, tabs=tabs)
+
+    def _invalidate_step_cache(self) -> None:
+        self._frame_step_key = None
+        self._frame_resolved_step = None
+        self._frame_prev_resolved = None
+        self._frame_next_levels = None
+        self._batch_next_levels = None
+
+    def get_frame_tracking_context(
+        self,
+    ) -> tuple[ResolvedState | None, ResolvedState | None, list[float] | None]:
+        """Resolve and cache step states once per frame across all visible channels."""
+        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+        if main_pb is None:
+            return None, None, None
+        steps = getattr(main_pb, "steps", None)
+        if not isinstance(steps, list) or not steps:
+            return None, None, None
+        pos = int(getattr(main_pb, "position", 0))
+        tracking_mode = bool(getattr(main_pb, "tracking_mode", False))
+        mib_enabled = bool(getattr(main_pb, "mib_enabled", True))
+        key = (pos, tracking_mode, mib_enabled, len(steps))
+        if self._frame_step_key != key:
+            patch = getattr(self.app.core.lightshow, "patch", None)
+            if 0 <= pos < len(steps):
+                self._frame_resolved_step = TrackingEngine.resolve_step_state(
+                    main_pb, pos, tracking_mode=tracking_mode, patch=patch
+                )
+            else:
+                self._frame_resolved_step = None
+            if pos > 1 and pos - 1 < len(steps):
+                self._frame_prev_resolved = TrackingEngine.resolve_step_state(
+                    main_pb, pos - 1, tracking_mode=tracking_mode, patch=patch
+                )
+            else:
+                self._frame_prev_resolved = None
+            self._frame_next_levels = (
+                main_pb.get_all_next_channel_levels()
+                if hasattr(main_pb, "get_all_next_channel_levels")
+                else None
+            )
+            self._frame_step_key = key
+        return (
+            self._frame_resolved_step,
+            self._frame_prev_resolved,
+            self._frame_next_levels,
+        )
+
+    def get_channel_snapshot(self, channel: int) -> ChannelDisplaySnapshot | None:
+        """Return cached or freshly built live ChannelDisplaySnapshot for *channel*."""
+        if not 1 <= channel <= MAX_CHANNELS:
+            return None
+        cached = self._snapshot_cache.get(channel)
+        if cached is not None:
+            return cached
+        curr_res, prev_res, next_lvls = self.get_frame_tracking_context()
+        snap = build_live_channel_snapshot(
+            self.app.core,
+            channel,
+            resolved_step=curr_res,
+            prev_resolved=prev_res,
+            next_levels=next_lvls,
+        )
+        self._snapshot_cache[channel] = snap
+        return snap
 
     def update(self) -> None:
         """Update channels display with batched next cue levels."""
-        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
-        if main_pb is not None and hasattr(main_pb, "get_all_next_channel_levels"):
-            self._batch_next_levels = main_pb.get_all_next_channel_levels()
+        self.invalidate_all_snapshots()
+        _, _, next_lvls = self.get_frame_tracking_context()
+        self._batch_next_levels = next_lvls
         try:
             super().update()
         finally:

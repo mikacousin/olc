@@ -121,8 +121,11 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.chasers.clear()
     app.core.lightshow.groups.clear()
     app.core.lightshow.cues.clear()
+    app.core.lightshow.palettes.clear()
+    app.core.lightshow.park.clear()
     app.core.lightshow.patch.patch_empty()
     app.core.lightshow.curves.reset()
+    app.core.live_state.clear_all()
     app.core.commandline.set_string("")
     app.core.selected_channels = []
     if app.core.midi is not None:
@@ -148,7 +151,12 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
 
     if app.window:
         app.window.show_all()
-        app.window.live_view.channels_view.combo.set_active(0)
+        live_cv = app.window.live_view.channels_view
+        live_cv.combo.set_active(0)
+        live_cv.set_display_format("Compact")
+        live_cv.set_readout_mode("Auto")
+        live_cv.flush_dirty_channels()
+        live_cv.invalidate_all_snapshots()
 
     process_events()
 

@@ -20,7 +20,6 @@ import typing
 
 from gi.repository import GLib, Pango
 
-from olc.define import MAX_CHANNELS
 from olc.gtk3.channel_time import ChanneltimeTab
 
 from .base import BaseEventBridgeHandler
@@ -49,21 +48,9 @@ def update_ui(subtitle: str, app: Application | None = None) -> None:
         # Update Main Window's Subtitle
         app.window.header.set_subtitle(subtitle)
 
-        # Update Channels display
+        # Update Channels display via single shared step resolution & coalesced redraw
         if app.window.live_view:
-            from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
-                classify_channel_tracking_state,
-            )
-
-            main_playback = app.core.lightshow.main_playback
-            for channel in range(1, MAX_CHANNELS + 1):
-                _, seq_level = classify_channel_tracking_state(
-                    main_playback, main_playback.position, channel
-                )
-                seq_next_level = main_playback.get_next_channel_level(
-                    channel, seq_level
-                )
-                app.window.live_view.update_channel_widget(channel, seq_next_level)
+            app.window.live_view.refresh_all_channels()
     # Virtual Console crossfade
     if app.virtual_console and app.virtual_console.props.visible:
         app.virtual_console.update_crossfade_display(0, 0, toggle_inverted=True)

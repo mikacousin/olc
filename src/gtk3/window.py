@@ -20,7 +20,7 @@ import typing
 from gi.repository import Gdk, Gio, GLib, Gtk
 
 from olc.core.commandline import toggle_patch_keyword
-from olc.define import MAX_CHANNELS, string_to_time, time_to_string
+from olc.define import string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.commandline import CommandLineWidget
 from olc.gtk3.widgets.main_fader import MainFaderWidget
@@ -342,33 +342,8 @@ class Window(Gtk.ApplicationWindow):
         Args:
             step: Step
         """
-        from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
-            classify_channel_tracking_state,
-            get_tracking_color,
-        )
-
-        main_pb = self.app.core.lightshow.main_playback
-
-        for channel in range(1, MAX_CHANNELS + 1):
-            state, level = classify_channel_tracking_state(main_pb, step, channel)
-            color_level = get_tracking_color(state)
-            if step == main_pb.position and self.app.core.backend is not None:
-                comp_level, comp_color = self.app.core.get_channel_composite_level(
-                    channel - 1
-                )
-                if (
-                    comp_level > 0.0
-                    or self.app.core.get_user_channel_level(channel - 1) >= 0.0
-                ):
-                    level = comp_level
-                    color_level = comp_color
-            next_level = main_pb.get_next_channel_level(channel, level)
-            widget = self.live_view.channels_view.get_channel_widget(channel)
-            if widget is not None:
-                widget.color_level = color_level
-                widget.level = level
-                widget.next_level = next_level
-                widget.queue_draw()
+        if self.live_view is not None:
+            self.live_view.refresh_all_channels(step=step)
 
     def _get_active_page(self) -> Gtk.Widget | None:
         """Return the currently active notebook page widget."""

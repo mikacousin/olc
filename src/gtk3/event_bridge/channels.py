@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import typing
 
+from olc.gtk3.widgets.channels_view import VIEW_MODES
+
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
@@ -62,16 +64,64 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
                 self._on_device_changed_ui, channels
             ),
         )
+        self.app.core.subscribe(
+            "palette.applied",
+            lambda _cat, _num, channels: self._run_idle(
+                self._on_device_changed_ui, channels
+            ),
+        )
+        self.app.core.subscribe(
+            "palette.renamed",
+            lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
+        )
+        self.app.core.subscribe(
+            "palette.updated",
+            lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
+        )
+        self.app.core.subscribe(
+            "palette.deleted",
+            lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
+        )
+        self.app.core.subscribe(
+            "palettes.changed",
+            lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
+        )
+        self.app.core.subscribe(
+            "park.channel_parked",
+            lambda ch, _lvl=None: self._run_idle(self._on_channel_level_ui, ch),
+        )
+        self.app.core.subscribe(
+            "park.channel_unparked",
+            lambda ch: self._run_idle(self._on_channel_level_ui, ch),
+        )
+        self.app.core.subscribe(
+            "park.changed",
+            lambda *_args: self._run_idle(self._on_park_changed_ui),
+        )
 
     def _on_device_changed_ui(self, channels: list[int]) -> bool:
-        """Redraw affected channel widgets when fixture parameters or colors change."""
+        """Queue affected channel widgets for ~30 fps coalesced redraw."""
         if self.app.window and self.app.window.live_view:
-            channels_view = self.app.window.live_view.channels_view
-            for ch in channels or []:
-                widget = channels_view.get_channel_widget(ch)
-                if widget is not None:
-                    widget.queue_draw()
-            channels_view.flowbox.queue_draw()
+            self.app.window.live_view.channels_view.mark_channels_dirty(channels or [])
+        return False
+
+    def _on_palette_metadata_changed_ui(self) -> bool:
+        """Invalidate snapshots and coalesce redraw on palette label/edit."""
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.mark_channels_dirty(None)
+        if self.app.tabs:
+            for tab_key in ("memories", "sequences"):
+                tab_obj = self.app.tabs.tabs.get(tab_key)
+                if tab_obj is not None:
+                    cv = getattr(tab_obj, "channels_view", None)
+                    if cv is not None and hasattr(cv, "mark_channels_dirty"):
+                        cv.mark_channels_dirty(None)
+        return False
+
+    def _on_park_changed_ui(self) -> bool:
+        """Invalidate snapshots and coalesce redraw on bulk park/unpark."""
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.mark_channels_dirty(None)
         return False
 
     def _on_channel_level_ui(self, channel: int) -> bool:
@@ -84,15 +134,43 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
             Always False (required for GLib.idle_add to remove the callback).
         """
         if self.app.window and self.app.window.live_view:
-            self.app.window.live_view.update_channel_widget(channel)
+            self.app.window.live_view.update_channel_widget(channel, coalesce=True)
         return False
 
     def _on_channels_updated_ui(self, channels: list[int]) -> bool:
         """Batch update channel widgets in the GTK main thread."""
         if self.app.window and self.app.window.live_view:
             live_view = self.app.window.live_view
+            channels_view = live_view.channels_view
+            curr_res, prev_res, next_lvls = channels_view.get_frame_tracking_context()
+            is_active_mode = channels_view.view_mode == VIEW_MODES["Active"]
+            filter_dirty = False
             for ch in channels or []:
-                live_view.update_channel_widget(ch)
+                old_active = False
+                if is_active_mode:
+                    w_old = channels_view.get_channel_widget(ch)
+                    if w_old is not None:
+                        old_active = bool(w_old.level or w_old.next_level)
+                next_lvl = (
+                    float(next_lvls[ch - 1])
+                    if next_lvls is not None and 1 <= ch <= len(next_lvls)
+                    else None
+                )
+                live_view.update_channel_widget(
+                    ch,
+                    next_level=next_lvl,
+                    coalesce=True,
+                    resolved_step=curr_res,
+                    prev_resolved=prev_res,
+                )
+                if is_active_mode:
+                    w_new = channels_view.get_channel_widget(ch)
+                    if w_new is not None:
+                        new_active = bool(w_new.level or w_new.next_level)
+                        if new_active != old_active:
+                            filter_dirty = True
+            if filter_dirty:
+                channels_view.flowbox.invalidate_filter()
             if self.app.tabs and self.app.tabs.tabs.get("track_channels") is not None:
                 track_channels = typing.cast(
                     "TrackChannelsTab", self.app.tabs.tabs["track_channels"]

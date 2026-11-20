@@ -20,6 +20,9 @@ import typing
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+import numpy as np
+
+from olc.core.live_state import LiveParameterState
 from olc.core.tracking import (
     ResolvedState,
     TrackingDisplayState,
@@ -29,10 +32,10 @@ from olc.core.tracking import (
 )
 from olc.define import MAX_CHANNELS
 from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
+from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.core.live_state import LiveParameterState
     from olc.devices.device import LightingDevice
     from olc.show.lightshow import LightShow
     from olc.show.palette import PaletteManager, PaletteRef
@@ -501,8 +504,8 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         color_summary = ""
 
     color_ref_keys = list(color_params.keys())
-    if has_color and "color" not in color_ref_keys:
-        color_ref_keys = ["color", *color_ref_keys]
+    if has_color and not color_ref_keys:
+        color_ref_keys = ["color"]
     c_state, c_manual, c_ref, c_prefs = _resolve_family_palette_and_states(
         "color",
         color_ref_keys if color_params or has_color else [],
@@ -516,11 +519,14 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         c_manual
         and live_state is not None
         and any(
-            k in _COLOR_EMITTER_NAMES for k in live_state.get_manual_params(channel)
+            k in _COLOR_EMITTER_NAMES
+            and live_state.get_palette_ref(channel, k) is None
+            and live_state.get_palette_ref(channel, "color") is None
+            for k in live_state.get_manual_params(channel)
         )
         and c_ref is not None
     ):
-        # Safety check: emitter edits always clear color refs.
+        # Safety check: unlinked manual emitter edits clear color refs.
         c_ref = None
 
     color_snap = AttributeFamilySnapshot(
@@ -717,7 +723,7 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
     *,
     resolved_step: Optional[ResolvedState] = None,
     prev_resolved: Optional[ResolvedState] = None,
-    next_levels: Optional[list[int]] = None,
+    next_levels: Optional[typing.Sequence[float]] = None,
 ) -> ChannelDisplaySnapshot:
     """Build a consolidated ChannelDisplaySnapshot from live CoreApplication state."""
     ch = int(channel)
@@ -894,47 +900,38 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
     )
 
 
-def build_step_channel_snapshot(  # pylint: disable=too-many-locals
+def _build_static_snapshot_from_state(  # pylint: disable=too-many-locals, too-many-arguments
     lightshow: LightShow,
-    sequence: Any,  # noqa: ANN401
-    step_index: int,
-    channel: int,
+    ch: int,
     *,
-    resolved_step: Optional[ResolvedState] = None,
-    prev_resolved: Optional[ResolvedState] = None,
+    int_state: TrackingDisplayState,
+    raw_lvl: float,
+    resolved_step: ResolvedState,
+    override_level: Optional[float] = None,
 ) -> ChannelDisplaySnapshot:
-    """Build a ChannelDisplaySnapshot for a static Cue or Sequence step."""
-    ch = int(channel)
+    """Assemble a static Cue or Sequence step ChannelDisplaySnapshot."""
     patch = getattr(lightshow, "patch", None)
     dev = patch.devices.get(ch) if patch is not None else None
     is_patched = dev is not None and bool(getattr(dev, "channels", ()))
     palettes = getattr(lightshow, "palettes", None)
-    tracking_mode = bool(getattr(sequence, "tracking_mode", False))
 
-    if resolved_step is None:
-        resolved_step = TrackingEngine.resolve_step_state(
-            sequence, step_index, tracking_mode=tracking_mode, patch=patch
+    if override_level is not None and float(override_level) >= 0.0:
+        intensity_norm = _normalize_lvl(float(override_level))
+        eff_int_state = TrackingDisplayState.MANUAL
+        intensity_color = get_tracking_color(TrackingDisplayState.MANUAL)
+        intensity_source = "manual"
+        is_manual = True
+    else:
+        intensity_norm = _normalize_lvl(float(raw_lvl))
+        eff_int_state = int_state
+        intensity_color = get_tracking_color(int_state)
+        intensity_source = (
+            "cue" if int_state is not TrackingDisplayState.INACTIVE else "none"
         )
-    if prev_resolved is None and step_index > 1:
-        prev_resolved = TrackingEngine.resolve_step_state(
-            sequence, step_index - 1, tracking_mode=tracking_mode, patch=patch
-        )
-
-    int_state, raw_lvl = classify_channel_tracking_state(
-        sequence,
-        step_index,
-        ch,
-        curr_resolved=resolved_step,
-        prev_resolved=prev_resolved,
-    )
-    intensity_norm = _normalize_lvl(float(raw_lvl))
-    intensity_color = get_tracking_color(int_state)
-    intensity_source = (
-        "cue" if int_state is not TrackingDisplayState.INACTIVE else "none"
-    )
+        is_manual = False
 
     int_ref_display: Optional[PaletteRefDisplay] = None
-    if int_state is not TrackingDisplayState.INACTIVE:
+    if eff_int_state is not TrackingDisplayState.INACTIVE and not is_manual:
         int_ref = _lookup_step_param_ref(resolved_step, ch, "intensity")
         if int_ref is not None:
             int_ref_display = _make_palette_ref_display(palettes, int_ref)
@@ -964,10 +961,10 @@ def build_step_channel_snapshot(  # pylint: disable=too-many-locals
         is_patched=is_patched,
         is_selected=False,
         is_parked=False,
-        is_manual=False,
+        is_manual=is_manual,
         intensity=intensity_norm,
         next_intensity=None,
-        intensity_state=int_state,
+        intensity_state=eff_int_state,
         intensity_source=intensity_source,
         intensity_color=intensity_color,
         intensity_ref=int_ref_display,
@@ -986,10 +983,119 @@ def build_step_channel_snapshot(  # pylint: disable=too-many-locals
     )
 
 
+def build_step_channel_snapshot(  # pylint: disable=too-many-locals
+    lightshow: LightShow,
+    sequence: Any,  # noqa: ANN401
+    step_index: int,
+    channel: int,
+    *,
+    resolved_step: Optional[ResolvedState] = None,
+    prev_resolved: Optional[ResolvedState] = None,
+    override_level: Optional[float] = None,
+) -> ChannelDisplaySnapshot:
+    """Build a ChannelDisplaySnapshot for a static Sequence step."""
+    ch = int(channel)
+    patch = getattr(lightshow, "patch", None)
+    tracking_mode = bool(getattr(sequence, "tracking_mode", False))
+
+    if resolved_step is None:
+        resolved_step = TrackingEngine.resolve_step_state(
+            sequence, step_index, tracking_mode=tracking_mode, patch=patch
+        )
+    if prev_resolved is None and step_index > 1:
+        prev_resolved = TrackingEngine.resolve_step_state(
+            sequence, step_index - 1, tracking_mode=tracking_mode, patch=patch
+        )
+
+    int_state, raw_lvl = classify_channel_tracking_state(
+        sequence,
+        step_index,
+        ch,
+        curr_resolved=resolved_step,
+        prev_resolved=prev_resolved,
+    )
+    return _build_static_snapshot_from_state(
+        lightshow,
+        ch,
+        int_state=int_state,
+        raw_lvl=float(raw_lvl),
+        resolved_step=resolved_step,
+        override_level=override_level,
+    )
+
+
+def build_cue_channel_snapshot(
+    lightshow: LightShow,
+    cue: Any,  # noqa: ANN401
+    channel: int,
+    *,
+    override_level: Optional[float] = None,
+) -> ChannelDisplaySnapshot:
+    """Build an isolated ChannelDisplaySnapshot for a standalone Cue."""
+    ch = int(channel)
+    raw_lvl = float(cue.get_level(ch)) if hasattr(cue, "get_level") else 0.0
+    if 1 <= ch <= MAX_CHANNELS:
+        ch_arr = np.zeros(MAX_CHANNELS, dtype=np.float64)
+        ch_arr[ch - 1] = raw_lvl
+    else:
+        ch_arr = np.zeros(MAX_CHANNELS, dtype=np.float64)
+
+    cue_dev_vals = getattr(cue, "device_values", {})
+    ch_dev_vals = (
+        dict(cue_dev_vals.get(ch, {})) if isinstance(cue_dev_vals, dict) else {}
+    )
+
+    cue_refs = getattr(cue, "palette_refs", {})
+    ch_refs = dict(cue_refs.get(ch, {})) if isinstance(cue_refs, dict) else {}
+
+    active_families: set[str] = set()
+    for p_name in ch_dev_vals:
+        fam = LiveParameterState.normalize_family(get_parameter_family(str(p_name)))
+        if fam in ("position", "color", "beam"):
+            active_families.add(fam)
+    for r_key, r_val in ch_refs.items():
+        if str(r_key) == "*" and isinstance(r_val, (tuple, list)) and r_val:
+            fam = LiveParameterState.normalize_family(str(r_val[0]))
+        else:
+            fam = LiveParameterState.normalize_family(get_parameter_family(str(r_key)))
+        if fam in ("position", "color", "beam"):
+            active_families.add(fam)
+
+    fam_states: dict[str, TrackingDisplayState] = {
+        fam: (
+            TrackingDisplayState.HARD_VALUE
+            if fam in active_families
+            else TrackingDisplayState.INACTIVE
+        )
+        for fam in ("position", "color", "beam")
+    }
+
+    cue_resolved = ResolvedState(
+        channels=ch_arr,
+        device_values={ch: ch_dev_vals} if ch_dev_vals else {},
+        palette_refs={ch: ch_refs} if ch_refs else {},
+        family_states={ch: fam_states},
+    )
+    int_state = (
+        TrackingDisplayState.HARD_VALUE
+        if raw_lvl > 0.0
+        else TrackingDisplayState.INACTIVE
+    )
+    return _build_static_snapshot_from_state(
+        lightshow,
+        ch,
+        int_state=int_state,
+        raw_lvl=raw_lvl,
+        resolved_step=cue_resolved,
+        override_level=override_level,
+    )
+
+
 __all__ = [
     "AttributeFamilySnapshot",
     "ChannelDisplaySnapshot",
     "PaletteRefDisplay",
+    "build_cue_channel_snapshot",
     "build_live_channel_snapshot",
     "build_step_channel_snapshot",
     "format_family_readout",

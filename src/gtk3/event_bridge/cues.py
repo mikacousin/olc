@@ -178,11 +178,12 @@ class CueBridgeHandler(BaseEventBridgeHandler):
         ):
             return
 
+        channels_view = self.app.window.live_view.channels_view
         for channel in range(1, MAX_CHANNELS + 1):
-            widget = self.app.window.live_view.channels_view.get_channel_widget(channel)
+            widget = channels_view.get_channel_widget(channel)
             if widget:
                 widget.next_level = active_cue.get_level(channel)
-                widget.queue_draw()
+        channels_view.mark_channels_dirty(None, invalidate_step=True)
 
     def _on_cue_selected_changed(self, cue_id: tuple[float, int] | None) -> bool:
         """Synchronize the logical cue selection to the GUI.

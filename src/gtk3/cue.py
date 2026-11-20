@@ -18,6 +18,7 @@ import typing
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.channel_snapshot import build_cue_channel_snapshot
 from olc.core.tracking import TrackingDisplayState, get_tracking_color
 from olc.define import MAX_CHANNELS, is_float, is_int
 from olc.gtk3.dialog import ConfirmationDialog
@@ -26,6 +27,7 @@ from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
+    from olc.core.channel_snapshot import ChannelDisplaySnapshot
     from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
@@ -413,12 +415,47 @@ class CuesEditionTab(Gtk.Paned):
 
 
 class CueChannelsView(ChannelsView):
-    """Channels View"""
+    """Channels View isolated to the currently selected Cue in Memories tab."""
+
+    is_live_view: bool = False
 
     def __init__(self, app: Application) -> None:
         self._cache_time: float = 0.0
         self._cached_cue: Cue | None = None
+        self._snapshot_cue_key: tuple[float, int] | None = None
         super().__init__(app=app)
+
+    def _invalidate_step_cache(self) -> None:
+        self._cache_time = 0.0
+        self._cached_cue = None
+        self._snapshot_cue_key = None
+
+    def get_channel_snapshot(self, channel: int) -> ChannelDisplaySnapshot | None:
+        """Build or retrieve an isolated snapshot for *channel* from selected Cue."""
+        if self.lightshow is None or not 1 <= channel <= MAX_CHANNELS:
+            return None
+        cue = self._get_selected_cue()
+        if cue is None:
+            self._snapshot_cue_key = None
+            return None
+        cue_key = (float(cue.number), int(cue.sequence))
+        if self._snapshot_cue_key != cue_key:
+            self._snapshot_cache.clear()
+            self._snapshot_cue_key = cue_key
+        cached = self._snapshot_cache.get(channel)
+        if cached is not None:
+            return cached
+        user_lvl = self.lightshow.cues.cue_editor.get_levels(cue.number, cue.sequence)[
+            channel - 1
+        ]
+        snap = build_cue_channel_snapshot(
+            self.lightshow,
+            cue,
+            channel,
+            override_level=float(user_lvl) if user_lvl >= 0.0 else None,
+        )
+        self._snapshot_cache[channel] = snap
+        return snap
 
     def _get_selected_cue(self) -> Cue | None:
         """Retrieve the logically selected Cue from the Core.

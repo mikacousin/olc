@@ -22,14 +22,18 @@ from typing import Optional
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.channel_snapshot import build_step_channel_snapshot
 from olc.core.tracking import (
+    TrackingEngine,
     classify_channel_tracking_state,
     get_tracking_color,
 )
-from olc.define import is_int
+from olc.define import MAX_CHANNELS, is_int
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    from olc.core.channel_snapshot import ChannelDisplaySnapshot
+    from olc.core.tracking import ResolvedState
     from olc.gtk3.application import Application
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.widgets.channel import ChannelWidget
@@ -37,13 +41,24 @@ if typing.TYPE_CHECKING:
 
 
 class SeqChannelsView(ChannelsView):
-    """Channels View for Sequence playback."""
+    """Channels View isolated to the selected Sequence step."""
+
+    is_live_view: bool = False
 
     def __init__(self, app: Application) -> None:
         self._cache_time: float = 0.0
         self._cached_sequence: Sequence | None = None
         self._cached_step: int | None = None
+        self._cached_resolved_step: ResolvedState | None = None
+        self._cached_prev_resolved: ResolvedState | None = None
+        self._snapshot_step_key: tuple[float, int, bool, bool, int] | None = None
         super().__init__(app=app)
+
+    def _invalidate_step_cache(self) -> None:
+        self._cache_time = 0.0
+        self._cached_resolved_step = None
+        self._cached_prev_resolved = None
+        self._snapshot_step_key = None
 
     def _get_cached_selection(self) -> tuple[Optional[Sequence], Optional[int]]:
         """Get cached selected sequence and step to avoid heavy GTK calls."""
@@ -51,13 +66,85 @@ class SeqChannelsView(ChannelsView):
         if now - self._cache_time > 0.05:
             if self.tabs is not None and self.tabs.tabs.get("sequences") is not None:
                 tab = typing.cast("SequenceTab", self.tabs.tabs["sequences"])
-                self._cached_sequence = tab.get_selected_sequence()
-                self._cached_step = tab.get_selected_step()
+                seq = tab.get_selected_sequence()
+                step = tab.get_selected_step()
             else:
-                self._cached_sequence = None
-                self._cached_step = None
+                seq = None
+                step = None
+            self._cached_sequence = seq
+            self._cached_step = step
             self._cache_time = now
+            self._refresh_resolved_step_cache(seq, step)
         return self._cached_sequence, self._cached_step
+
+    def _refresh_resolved_step_cache(
+        self, seq: Optional[Sequence], step: Optional[int]
+    ) -> tuple[ResolvedState | None, ResolvedState | None]:
+        """Resolve step states once when selection or tracking flags change."""
+        if (
+            seq is None
+            or step is None
+            or step < 0
+            or step >= len(getattr(seq, "steps", ()))
+            or self.lightshow is None
+        ):
+            self._cached_resolved_step = None
+            self._cached_prev_resolved = None
+            self._snapshot_step_key = None
+            return None, None
+        key = (
+            float(seq.index),
+            int(step),
+            bool(getattr(seq, "tracking_mode", False)),
+            bool(getattr(seq, "mib_enabled", True)),
+            len(seq.steps),
+        )
+        if self._snapshot_step_key != key:
+            patch = getattr(self.lightshow, "patch", None)
+            tracking_mode = bool(getattr(seq, "tracking_mode", False))
+            self._cached_resolved_step = TrackingEngine.resolve_step_state(
+                seq, step, tracking_mode=tracking_mode, patch=patch
+            )
+            if step > 1:
+                self._cached_prev_resolved = TrackingEngine.resolve_step_state(
+                    seq, step - 1, tracking_mode=tracking_mode, patch=patch
+                )
+            else:
+                self._cached_prev_resolved = None
+            self._snapshot_cache.clear()
+            self._snapshot_step_key = key
+        return self._cached_resolved_step, self._cached_prev_resolved
+
+    def get_channel_snapshot(self, channel: int) -> ChannelDisplaySnapshot | None:
+        """Build or retrieve an isolated snapshot for *channel* at selected step."""
+        if self.lightshow is None or not 1 <= channel <= MAX_CHANNELS:
+            return None
+        sequence, step = self._get_cached_selection()
+        if sequence is None or step is None or step < 0 or step >= len(sequence.steps):
+            return None
+        curr_res, prev_res = self._refresh_resolved_step_cache(sequence, step)
+        cached = self._snapshot_cache.get(channel)
+        if cached is not None:
+            return cached
+        cue = sequence.steps[step].cue
+        override_level: float | None = None
+        if cue is not None:
+            raw_override = self.lightshow.cues.cue_editor.get_levels(
+                cue.number, cue.sequence
+            )[channel - 1]
+            if raw_override >= 0.0:
+                override_level = float(raw_override)
+        snap = build_step_channel_snapshot(
+            self.lightshow,
+            sequence,
+            step,
+            channel,
+            resolved_step=curr_res,
+            prev_resolved=prev_res,
+            override_level=override_level,
+        )
+        self._snapshot_cache[channel] = snap
+        return snap
 
     def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level"""
@@ -231,8 +318,13 @@ class SeqChannelsView(ChannelsView):
             child.set_visible(False)
             return False
         channel = child.get_index() + 1
+        curr_res, prev_res = self._refresh_resolved_step_cache(sequence, step)
         tracking_state, resolved_level = classify_channel_tracking_state(
-            sequence, step, channel
+            sequence,
+            step,
+            channel,
+            curr_resolved=curr_res,
+            prev_resolved=prev_res,
         )
         widget = child.get_child()
         if widget is not None:
