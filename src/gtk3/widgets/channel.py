@@ -22,7 +22,12 @@ from gi.repository import Gdk, Gtk, Pango
 from olc.core.channel_snapshot import AttributeFamilySnapshot, format_family_readout
 from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
 from olc.core.tracking import TrackingDisplayState, get_tracking_color
-from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
+from olc.devices.device import (
+    COLOR_CHANNEL_TYPES,
+    POSITION_CHANNEL_TYPES,
+    ChannelType,
+    FixtureType,
+)
 from olc.gtk3.widgets.common import (
     TextAnchor,
     create_pango_layout_for_widget,
@@ -55,6 +60,21 @@ _MANUAL_CORAL: tuple[float, float, float] = (0.95, 0.35, 0.35)
 _MIB_AMBER: tuple[float, float, float] = (1.0, 0.65, 0.15)
 _PARK_AMBER: tuple[float, float, float] = (1.0, 0.7, 0.0)
 _MUTED_GREY: tuple[float, float, float] = (0.50, 0.54, 0.57)
+
+_COMPACT_COLOR_TYPES: frozenset[ChannelType] = COLOR_CHANNEL_TYPES | frozenset(
+    {ChannelType.COLOR_TEMP, ChannelType.COLOR_WHEEL}
+)
+_COMPACT_BEAM_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.ZOOM,
+        ChannelType.FOCUS,
+        ChannelType.IRIS,
+        ChannelType.STROBE,
+        ChannelType.GOBO_WHEEL,
+        ChannelType.FROST,
+        ChannelType.PRISM,
+    }
+)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -390,7 +410,7 @@ class ChannelWidget(Gtk.DrawingArea):
         )
         ch_right_x = 7 * s + max(14 * s, float(ch_draw[2])) + 5 * s
 
-        # Header right badges: Park / Manual / MIB / ML
+        # Header right badges: Park / Manual / MIB
         is_parked = self._is_parked(snap)
         badge_right_x = alloc_w - 6 * s
         if is_parked:
@@ -429,18 +449,6 @@ class ChannelWidget(Gtk.DrawingArea):
                 anchor=TextAnchor.BASELINE_RIGHT,
             )
             badge_right_x -= max(18 * s, float(res[2])) + 3 * s
-        elif self.is_moving_head():
-            cr.set_source_rgb(0.3, 0.85, 0.95)
-            res = draw_cached_numeric_text(
-                cr,
-                badge_right_x,
-                16.5 * s,
-                "ML",
-                7.5 * s,
-                weight=Pango.Weight.BOLD,
-                anchor=TextAnchor.BASELINE_RIGHT,
-            )
-            badge_right_x -= max(15 * s, float(res[2])) + 3 * s
 
         # Header center: fixture label or fixture model name
         label = ""
@@ -652,11 +660,44 @@ class ChannelWidget(Gtk.DrawingArea):
         snap: ChannelDisplaySnapshot | None,
     ) -> None:
         """Draw compact right-edge F/C/B status letters for device tiles."""
-        if snap is None or not snap.has_device:
-            return
         s = self.scale
         alloc_w = max(self.width, allocation.width)
         x_pos = alloc_w - 13 * s
+        if snap is None:
+            dev = self.get_patched_device()
+            if dev is None:
+                return
+            has_focus = any(
+                ch.channel_type in POSITION_CHANNEL_TYPES for ch in dev.channels
+            )
+            has_color = bool(getattr(dev, "has_color_capability", False)) or any(
+                ch.channel_type in _COMPACT_COLOR_TYPES for ch in dev.channels
+            )
+            has_beam = any(
+                ch.channel_type in _COMPACT_BEAM_TYPES for ch in dev.channels
+            )
+            fallback_slots = (
+                ("F", has_focus, 33 * s),
+                ("C", has_color, 45 * s),
+                ("B", has_beam, 57 * s),
+            )
+            for tag, available, y_pos in fallback_slots:
+                if not available:
+                    continue
+                cr.set_source_rgb(*_MUTED_GREY)
+                draw_cached_numeric_text(
+                    cr,
+                    x_pos,
+                    y_pos,
+                    tag,
+                    7.5 * s,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_RIGHT,
+                )
+            return
+
+        if not snap.has_device:
+            return
         slots = (
             ("F", snap.focus, 33 * s),
             ("C", snap.color, 45 * s),
@@ -684,13 +725,12 @@ class ChannelWidget(Gtk.DrawingArea):
         allocation: Gdk.Rectangle,
         snap: ChannelDisplaySnapshot | None = None,
     ) -> None:
-        """Draw color preview dot/strip and moving-head badge if applicable."""
+        """Draw color preview dot and bottom strip if applicable."""
         rgb = (
             snap.preview_rgb
             if self._uses_non_live_snapshot() and snap is not None
             else self.get_preview_rgb()
         )
-        has_color = rgb is not None
         is_parked = self._is_parked(snap)
         has_col_ref = snap is not None and snap.color.palette_ref is not None
         cx = (20 if is_parked else 11) * self.scale
@@ -724,24 +764,6 @@ class ChannelWidget(Gtk.DrawingArea):
                 cr.move_to(4, strip_y)
                 cr.line_to(4 + strip_w, strip_y)
                 cr.stroke()
-
-        if self.is_moving_head():
-            cr.set_source_rgb(0.3, 0.85, 0.95)
-            if has_color:
-                x_pos = cx + 9 * self.scale
-            elif is_parked:
-                x_pos = 18 * self.scale
-            else:
-                x_pos = 7 * self.scale
-            draw_cached_numeric_text(
-                cr,
-                x_pos,
-                15 * self.scale,
-                "ML",
-                9 * self.scale,
-                weight=Pango.Weight.BOLD,
-                anchor=TextAnchor.BASELINE_LEFT,
-            )
 
     def _draw_background(
         self,

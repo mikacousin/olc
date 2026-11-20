@@ -26,7 +26,7 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gtk, Pango  # noqa: E402
 
 from olc.core.channel_snapshot import format_family_readout  # noqa: E402
 from olc.devices.channel import Channel, ChannelType, FixtureType  # noqa: E402
@@ -34,7 +34,9 @@ from olc.devices.device import LightingDevice  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402
+from olc.gtk3.widgets import channel as channel_widget_mod  # noqa: E402
 from olc.gtk3.widgets.channel import ChannelWidget  # noqa: E402
+from olc.gtk3.widgets.common import TextAnchor  # noqa: E402
 from olc.gtk3.zoom import zoom  # noqa: E402
 from olc.show.cue import Cue  # noqa: E402
 from olc.show.palette import Palette, PaletteCategory  # noqa: E402
@@ -410,3 +412,107 @@ def test_zoom_scales_compact_and_summary_plus(app_gui: Application) -> None:
     live_cv.set_display_format("Compact")
     process_events()
     assert (w1.width, w1.height) == (80, 80)
+
+
+def test_no_ml_badge_and_compact_ifcb_fallback(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify ML badge removal, Compact F/C/B fallback without snapshot, and API."""
+    _add_dimmer(app_gui, 1, 1)
+    _add_cmy_spot(app_gui, 3, 20)
+
+    macro_only = LightingDevice(
+        fixture_id=4,
+        fixture_type=FixtureType.MOVING_HEAD,
+        label="Macro Only 4",
+        manufacturer="ACME",
+        model="Macro Control",
+    )
+    macro_only.add_channel(
+        Channel(universe=1, address=40, channel_type=ChannelType.INTENSITY)
+    )
+    macro_only.add_channel(
+        Channel(universe=1, address=41, channel_type=ChannelType.MACRO)
+    )
+    macro_only.add_channel(
+        Channel(universe=1, address=42, channel_type=ChannelType.RESET)
+    )
+    app_gui.core.lightshow.patch.restore_device(macro_only)
+    app_gui.core.emit("patch.changed")
+    process_events()
+
+    assert app_gui.window is not None
+    live_cv = app_gui.window.live_view.channels_view
+    w1 = live_cv.get_channel_widget(1)
+    w3 = live_cv.get_channel_widget(3)
+    assert w1 is not None and w3 is not None
+
+    # API backward compatibility
+    assert w3.is_moving_head() is True
+    assert w1.is_moving_head() is False
+
+    drawn_texts: list[str] = []
+    real_draw = channel_widget_mod.draw_cached_numeric_text
+
+    def _spy_draw(
+        cr: cairo.Context,
+        x: float,
+        y: float,
+        text: str,
+        font_size_pt: float,
+        weight: Pango.Weight = Pango.Weight.NORMAL,
+        anchor: TextAnchor = TextAnchor.CENTER,
+        family: str | None = None,
+    ) -> tuple[float, float, int, int]:
+        drawn_texts.append(str(text))
+        return real_draw(
+            cr,
+            x,
+            y,
+            text,
+            font_size_pt,
+            weight=weight,
+            anchor=anchor,
+            family=family,
+        )
+
+    monkeypatch.setattr(channel_widget_mod, "draw_cached_numeric_text", _spy_draw)
+
+    # 1. LiveChannelsView Compact (with snapshot)
+    live_cv.set_display_format("Compact")
+    process_events()
+
+    drawn_texts.clear()
+    _draw_to_surface(w3)
+    assert "ML" not in drawn_texts
+    assert {"F", "C", "B"}.issubset(set(drawn_texts))
+
+    drawn_texts.clear()
+    _draw_to_surface(w1)
+    assert not ({"F", "C", "B", "ML"} & set(drawn_texts))
+
+    # 2. LiveChannelsView Summary+ (with snapshot)
+    live_cv.set_display_format("Summary+")
+    process_events()
+
+    drawn_texts.clear()
+    _draw_to_surface(w3)
+    assert "ML" not in drawn_texts
+
+    live_cv.set_display_format("Compact")
+    process_events()
+
+    # 3. Standalone ChannelWidget (snap is None fallback, e.g. Group/Inde/CT views)
+    standalone_spot = ChannelWidget(3, 0, 0, app_gui, channels_view=None)
+    assert standalone_spot.get_snapshot() is None
+    drawn_texts.clear()
+    _draw_to_surface(standalone_spot)
+    assert "ML" not in drawn_texts
+    assert {"F", "C", "B"}.issubset(set(drawn_texts))
+
+    # 4. Macro/Reset-only fixture should not produce a false-positive B marker
+    standalone_macro = ChannelWidget(4, 0, 0, app_gui, channels_view=None)
+    assert standalone_macro.get_snapshot() is None
+    drawn_texts.clear()
+    _draw_to_surface(standalone_macro)
+    assert not ({"F", "C", "B", "ML"} & set(drawn_texts))
