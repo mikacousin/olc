@@ -56,6 +56,7 @@ SUMMARY_BASE_HEIGHT: int = 124
 
 _PALETTE_CYAN: tuple[float, float, float] = (0.20, 0.88, 0.96)
 _PALETTE_CYAN_TEXT: tuple[float, float, float] = (0.35, 0.92, 0.98)
+_EFFECT_MAGENTA: tuple[float, float, float] = (0.85, 0.35, 0.95)
 _MANUAL_CORAL: tuple[float, float, float] = (0.95, 0.35, 0.35)
 _MIB_AMBER: tuple[float, float, float] = (1.0, 0.65, 0.15)
 _PARK_AMBER: tuple[float, float, float] = (1.0, 0.7, 0.0)
@@ -313,6 +314,8 @@ class ChannelWidget(Gtk.DrawingArea):
         *,
         is_mib_channel: bool = False,
     ) -> tuple[float, float, float]:
+        if family_snap.effect_ref is not None:
+            return _EFFECT_MAGENTA
         if family_snap.palette_ref is not None:
             return _PALETTE_CYAN
         if family_snap.is_manual:
@@ -425,6 +428,18 @@ class ChannelWidget(Gtk.DrawingArea):
                 anchor=TextAnchor.BASELINE_RIGHT,
             )
             badge_right_x -= max(9 * s, float(res[2])) + 3 * s
+        if snap is not None and snap.effect_ref is not None:
+            cr.set_source_rgb(*_EFFECT_MAGENTA)
+            res = draw_cached_numeric_text(
+                cr,
+                badge_right_x,
+                16.5 * s,
+                "FX",
+                8.0 * s,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_RIGHT,
+            )
+            badge_right_x -= max(14 * s, float(res[2])) + 3 * s
         if snap is not None and snap.is_manual:
             cr.set_source_rgb(*_MANUAL_CORAL)
             res = draw_cached_numeric_text(
@@ -501,11 +516,29 @@ class ChannelWidget(Gtk.DrawingArea):
             elif self.next_level > self.level:
                 self._draw_summary_next_indicator(cr, percent_level, up=True)
 
-        if snap is not None and snap.intensity_ref is not None:
-            cr.set_source_rgb(*_PALETTE_CYAN_TEXT)
-            ref_txt = snap.intensity_ref.label or snap.intensity_ref.short_ref
+        if snap is not None and (
+            snap.intensity_ref is not None or snap.intensity_effect_ref is not None
+        ):
+            mode_low = self.readout_mode.strip().lower()
+            parts: list[str] = []
+            if snap.intensity_ref is not None:
+                parts.append(
+                    snap.intensity_ref.short_ref
+                    if mode_low == "ref"
+                    else (snap.intensity_ref.label or snap.intensity_ref.short_ref)
+                )
+            if snap.intensity_effect_ref is not None:
+                parts.append(
+                    snap.intensity_effect_ref.label
+                    if (mode_low == "label" and snap.intensity_effect_ref.label)
+                    else snap.intensity_effect_ref.short_ref
+                )
+            if snap.intensity_effect_ref is not None:
+                cr.set_source_rgb(*_EFFECT_MAGENTA)
+            else:
+                cr.set_source_rgb(*_PALETTE_CYAN_TEXT)
             self._draw_ellipsized_text(
-                cr, 8 * s, 58 * s, alloc_w - 22 * s, ref_txt, 7.5 * s
+                cr, 8 * s, 58 * s, alloc_w - 22 * s, " + ".join(parts), 7.5 * s
             )
         elif snap is not None and snap.intensity_source in (
             "park",
@@ -588,7 +621,13 @@ class ChannelWidget(Gtk.DrawingArea):
 
                 val_txt = format_family_readout(fam, self.readout_mode)
                 if val_txt:
-                    if fam.palette_ref is not None and mode_low in (
+                    if fam.effect_ref is not None and mode_low in (
+                        "auto",
+                        "label",
+                        "ref",
+                    ):
+                        cr.set_source_rgb(*_EFFECT_MAGENTA)
+                    elif fam.palette_ref is not None and mode_low in (
                         "auto",
                         "label",
                         "ref",

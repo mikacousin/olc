@@ -312,6 +312,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "sequences": app.open_sequences,
                 "groups": app.open_groups,
                 "palettes": app.open_palettes,
+                "effects": getattr(app, "open_effects", lambda: None),
                 "indes": app.open_independents,
                 "device_inspector": app.open_device_inspector,
                 "fixtures": getattr(app, "open_fixtures", lambda: None),

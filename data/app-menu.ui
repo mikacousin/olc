@@ -60,6 +60,10 @@
       <attribute name="action">app.palettes</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Effects</attribute>
+      <attribute name="action">app.effects</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">Sequences</attribute>
       <attribute name="action">app.sequences</attribute>
     </item>

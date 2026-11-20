@@ -87,6 +87,24 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
             lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
         )
         self.app.core.subscribe(
+            "effect.applied",
+            lambda _num, channels: self._run_idle(self._on_device_changed_ui, channels),
+        )
+        self.app.core.subscribe(
+            "effect.stopped",
+            lambda _num, channels: self._run_idle(self._on_device_changed_ui, channels),
+        )
+        self.app.core.subscribe(
+            "effect.changed",
+            lambda *_args: self._run_idle(self._on_palette_metadata_changed_ui),
+        )
+        self.app.core.subscribe(
+            "live.state_changed",
+            lambda channels=None: self._run_idle(
+                self._on_device_changed_ui, channels or []
+            ),
+        )
+        self.app.core.subscribe(
             "park.channel_parked",
             lambda ch, _lvl=None: self._run_idle(self._on_channel_level_ui, ch),
         )

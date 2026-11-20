@@ -37,6 +37,7 @@ from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
 from olc.gtk3.dialogs.import_dialog import DialogData  # noqa: E402
 from olc.gtk3.dmx_outputs import DMXOutputsTab  # noqa: E402
+from olc.gtk3.effects import EffectsTab  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
 from olc.gtk3.fixture_library import FixtureLibraryTab  # noqa: E402
@@ -129,6 +130,7 @@ class Application(Gtk.Application):
         lightshow = GtkLightShow()
         self.core = CoreApplication(self.settings, lightshow=lightshow)
         self.core.sneak_controller._scheduler = _GLibScheduler()
+        self.core.effects_engine.scheduler = _GLibScheduler()
 
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)
@@ -206,6 +208,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.dmx_outputs", ["<Control>d"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.palettes", ["<Shift><Control>l"])
+        self.set_accels_for_action("app.effects", ["<Alt>e", "<Shift><Control>e"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.faders", ["<Shift><Control>f"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
@@ -308,6 +311,7 @@ class Application(Gtk.Application):
             "memories": "memories_cb",
             "groups": "groups_cb",
             "palettes": "palettes_cb",
+            "effects": "effects_cb",
             "sequences": "sequences",
             "faders": "faders",
             "track_channels": "track_channels",
@@ -576,6 +580,17 @@ class Application(Gtk.Application):
         """Open Palettes tab UI."""
         if self.tabs:
             self.tabs.open("palettes", PalettesTab, _("Palettes"), self)
+
+    def effects_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Create Effects Tab"""
+        self.core.action_registry.execute("gui.tab_open", "effects")
+
+    def open_effects(self) -> None:
+        """Open Effects tab UI."""
+        if self.tabs:
+            self.tabs.open("effects", EffectsTab, _("Effects"), self)
 
     def sequences(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

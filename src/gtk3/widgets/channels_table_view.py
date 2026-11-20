@@ -63,6 +63,7 @@ COL_CH_FG = 17
 _ALL_COL_INDICES: list[int] = list(range(18))
 
 PALETTE_CYAN_HEX = "#59EBFA"
+EFFECT_MAGENTA_HEX = "#D959F2"
 MANUAL_CORAL_HEX = "#F25959"
 PARK_AMBER_HEX = "#FFB200"
 MIB_AMBER_HEX = "#FFA626"
@@ -151,6 +152,12 @@ def _family_cell_fg_hex(
 ) -> str:
     """Resolve foreground hex color for a family summary or sub-parameter cell."""
     mode_low = str(readout).strip().lower()
+    if (
+        param_key is None
+        and family_snap.effect_ref is not None
+        and mode_low in ("auto", "label", "ref")
+    ):
+        return EFFECT_MAGENTA_HEX
     has_ref = (
         param_key in family_snap.parameter_refs
         if param_key is not None
@@ -643,17 +650,32 @@ class ChannelsTableView(Gtk.ScrolledWindow):
             else:
                 fg_hex = DEFAULT_TEXT_HEX
 
-            if snap.intensity_ref is not None and readout_low in (
+            if (
+                snap.intensity_ref is not None or snap.intensity_effect_ref is not None
+            ) and readout_low in (
                 "auto",
                 "label",
                 "ref",
             ):
-                txt = (
-                    snap.intensity_ref.label or snap.intensity_ref.short_ref
-                    if readout_low in ("auto", "label")
-                    else snap.intensity_ref.short_ref
+                parts: list[str] = []
+                if snap.intensity_ref is not None:
+                    parts.append(
+                        snap.intensity_ref.label or snap.intensity_ref.short_ref
+                        if readout_low in ("auto", "label")
+                        else snap.intensity_ref.short_ref
+                    )
+                if snap.intensity_effect_ref is not None:
+                    parts.append(
+                        snap.intensity_effect_ref.label
+                        if (readout_low == "label" and snap.intensity_effect_ref.label)
+                        else snap.intensity_effect_ref.short_ref
+                    )
+                return (
+                    " + ".join(parts),
+                    EFFECT_MAGENTA_HEX
+                    if snap.intensity_effect_ref is not None
+                    else PALETTE_CYAN_HEX,
                 )
-                return txt, PALETTE_CYAN_HEX
 
             if (
                 snap.intensity <= 0.0

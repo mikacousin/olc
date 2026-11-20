@@ -36,7 +36,9 @@ from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.core.effects_engine import EffectsEngine
     from olc.devices.device import LightingDevice
+    from olc.show.effect import EffectManager
     from olc.show.lightshow import LightShow
     from olc.show.palette import PaletteManager, PaletteRef
 
@@ -51,6 +53,8 @@ _SHORT_PREFIX_MAP: dict[str, str] = {
     "colour": "CP",
     "beam": "BP",
     "preset": "P",
+    "effect": "FX",
+    "fx": "FX",
 }
 
 _COLOR_EMITTER_NAMES: frozenset[str] = frozenset(ct.value for ct in COLOR_CHANNEL_TYPES)
@@ -109,6 +113,7 @@ class AttributeFamilySnapshot:
     dmx_summary: str = ""
     parameter_dmx: dict[str, int] = field(default_factory=dict)
     parameter_percent: dict[str, float] = field(default_factory=dict)
+    effect_ref: Optional[PaletteRefDisplay] = None
 
 
 @dataclass(frozen=True)
@@ -138,6 +143,8 @@ class ChannelDisplaySnapshot:
     beam: AttributeFamilySnapshot
     has_fcb_move: bool
     is_mib: bool
+    intensity_effect_ref: Optional[PaletteRefDisplay] = None
+    effect_ref: Optional[PaletteRefDisplay] = None
 
 
 def _format_palette_num(number: float) -> str:
@@ -166,22 +173,35 @@ def format_family_readout(
         readout: One of ``"auto"``, ``"label"``, ``"ref"``, ``"percent"``,
             ``"dmx"``, or ``"value"``.
     """
-    if not family_snap.available:
+    if not family_snap.available and family_snap.effect_ref is None:
         return ""
     mode = str(readout).strip().lower()
     ref = family_snap.palette_ref
+    fx_ref = family_snap.effect_ref
     suffix = "+" if (ref is not None and ref.is_partial) else ""
 
     if mode in ("auto", "label"):
+        parts: list[str] = []
         if ref is not None:
-            if ref.label:
-                return f"{ref.label}{suffix}"
-            return f"{ref.short_ref}{suffix}"
+            parts.append(
+                f"{ref.label}{suffix}" if ref.label else f"{ref.short_ref}{suffix}"
+            )
+        if fx_ref is not None:
+            parts.append(
+                fx_ref.label if (mode == "label" and fx_ref.label) else fx_ref.short_ref
+            )
+        if parts:
+            return " + ".join(parts)
         return family_snap.summary_value
 
     if mode == "ref":
+        parts = []
         if ref is not None:
-            return f"{ref.short_ref}{suffix}"
+            parts.append(f"{ref.short_ref}{suffix}")
+        if fx_ref is not None:
+            parts.append(fx_ref.short_ref)
+        if parts:
+            return " + ".join(parts)
         return family_snap.summary_value
 
     if mode == "percent":
@@ -276,6 +296,80 @@ def _make_palette_ref_display(
         label=label,
         is_partial=is_partial,
     )
+
+
+def _make_effect_ref_display(
+    effects: Optional[EffectManager],
+    effect_number: float,
+) -> PaletteRefDisplay:
+    num_val = float(effect_number)
+    eff = effects.get(num_val) if effects is not None else None
+    label = (
+        str(eff.label).strip()
+        if eff is not None and getattr(eff, "label", None)
+        else ""
+    )
+    return PaletteRefDisplay(
+        category="effect",
+        number=num_val,
+        short_ref=f"FX {_format_palette_num(num_val)}",
+        label=label,
+        is_partial=False,
+    )
+
+
+def _resolve_channel_effect_refs_by_family(
+    channel: int,
+    *,
+    effects: Optional[EffectManager],
+    effects_engine: Optional[EffectsEngine],
+    live_state: Optional[LiveParameterState],
+    resolved_step: Optional[ResolvedState],
+    is_live: bool,
+) -> dict[str, PaletteRefDisplay]:
+    """Resolve active Effect references per IFCB family on *channel*."""
+    if effects is None:
+        return {}
+
+    effect_numbers: list[float] = []
+    if is_live:
+        if effects_engine is not None and hasattr(
+            effects_engine, "get_channel_effects"
+        ):
+            for inst in effects_engine.get_channel_effects(channel):
+                if not getattr(inst, "remove_on_fade_end", False):
+                    effect_numbers.append(float(inst.effect_number))
+        if (
+            not effect_numbers
+            and live_state is not None
+            and hasattr(live_state, "get_effect_ref")
+        ):
+            lfx = live_state.get_effect_ref(channel)
+            if isinstance(lfx, dict) and not lfx.get("stop"):
+                fx_num = lfx.get("effect", lfx.get("effect_number"))
+                if fx_num is not None:
+                    effect_numbers.append(float(fx_num))
+    elif resolved_step is not None:
+        rfx = getattr(resolved_step, "effect_refs", {}).get(channel)
+        if isinstance(rfx, dict) and not rfx.get("stop"):
+            fx_num = rfx.get("effect", rfx.get("effect_number"))
+            if fx_num is not None:
+                effect_numbers.append(float(fx_num))
+
+    result: dict[str, PaletteRefDisplay] = {}
+    for fx_num in effect_numbers:
+        disp = _make_effect_ref_display(effects, fx_num)
+        result.setdefault("any", disp)
+        eff = effects.get(fx_num)
+        if eff is not None and getattr(eff, "layers", None):
+            for layer in eff.layers:
+                fam = LiveParameterState.normalize_family(
+                    get_parameter_family(str(layer.parameter))
+                )
+                result[fam] = disp
+        else:
+            result.setdefault("intensity", disp)
+    return result
 
 
 def _lookup_step_param_ref(
@@ -421,6 +515,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     live_state: Optional[LiveParameterState],
     resolved_step: Optional[ResolvedState],
     is_live: bool,
+    family_effect_refs: Optional[dict[str, PaletteRefDisplay]] = None,
 ) -> tuple[
     AttributeFamilySnapshot,
     AttributeFamilySnapshot,
@@ -429,6 +524,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     Optional[tuple[float, float, float]],
 ]:
     """Build Focus, Color, and Beam snapshots along with preview_rgb."""
+    fx_map = family_effect_refs or {}
     step_dev_vals = (
         dict(resolved_step.device_values.get(channel, {}))
         if resolved_step is not None
@@ -504,6 +600,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         dmx_summary="/".join(focus_dmx) if focus_dmx else focus_summary,
         parameter_dmx=focus_param_dmx,
         parameter_percent=focus_param_pct,
+        effect_ref=fx_map.get("position"),
     )
 
     # --- COLOR ---
@@ -632,6 +729,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         dmx_summary=" ".join(color_dmx[:4]) if color_dmx else color_summary,
         parameter_dmx=color_param_dmx,
         parameter_percent=color_param_pct,
+        effect_ref=fx_map.get("color"),
     )
 
     # --- BEAM ---
@@ -690,6 +788,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         dmx_summary=" ".join(beam_dmx[:2]) if beam_dmx else beam_summary,
         parameter_dmx=beam_param_dmx,
         parameter_percent=beam_param_pct,
+        effect_ref=fx_map.get("beam"),
     )
 
     return focus_snap, color_snap, beam_snap, has_color, preview_rgb
@@ -941,6 +1040,17 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
     if next_levels is not None and 1 <= ch <= len(next_levels):
         next_intensity = _normalize_lvl(float(next_levels[ch - 1]) * main_fader_val)
 
+    effects = getattr(lightshow, "effects", None)
+    eff_eng = getattr(app, "effects_engine", None)
+    fx_by_fam = _resolve_channel_effect_refs_by_family(
+        ch,
+        effects=effects,
+        effects_engine=eff_eng,
+        live_state=live_state,
+        resolved_step=resolved_step,
+        is_live=True,
+    )
+
     focus_snap, color_snap, beam_snap, has_color, preview_rgb = (
         _build_device_family_snapshots(
             dev,
@@ -949,11 +1059,18 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
             live_state=live_state,
             resolved_step=resolved_step,
             is_live=True,
+            family_effect_refs=fx_by_fam,
         )
     )
 
+    has_live_fx = bool(
+        live_state is not None
+        and hasattr(live_state, "get_effect_ref")
+        and live_state.get_effect_ref(ch) is not None
+    )
     is_manual = (
         raw_user >= 0.0
+        or has_live_fx
         or focus_snap.is_manual
         or color_snap.is_manual
         or beam_snap.is_manual
@@ -999,6 +1116,8 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         beam=beam_snap,
         has_fcb_move=has_fcb_move,
         is_mib=is_mib,
+        intensity_effect_ref=fx_by_fam.get("intensity"),
+        effect_ref=fx_by_fam.get("any"),
     )
 
 
@@ -1038,6 +1157,16 @@ def _build_static_snapshot_from_state(  # pylint: disable=too-many-locals, too-m
         if int_ref is not None:
             int_ref_display = _make_palette_ref_display(palettes, int_ref)
 
+    effects = getattr(lightshow, "effects", None)
+    fx_by_fam = _resolve_channel_effect_refs_by_family(
+        ch,
+        effects=effects,
+        effects_engine=None,
+        live_state=None,
+        resolved_step=resolved_step,
+        is_live=False,
+    )
+
     focus_snap, color_snap, beam_snap, has_color, preview_rgb = (
         _build_device_family_snapshots(
             dev,
@@ -1046,6 +1175,7 @@ def _build_static_snapshot_from_state(  # pylint: disable=too-many-locals, too-m
             live_state=None,
             resolved_step=resolved_step,
             is_live=False,
+            family_effect_refs=fx_by_fam,
         )
     )
 
@@ -1082,6 +1212,8 @@ def _build_static_snapshot_from_state(  # pylint: disable=too-many-locals, too-m
         beam=beam_snap,
         has_fcb_move=resolved_step.has_fcb_move(ch),
         is_mib=resolved_step.is_mib(ch),
+        intensity_effect_ref=fx_by_fam.get("intensity"),
+        effect_ref=fx_by_fam.get("any"),
     )
 
 
@@ -1150,6 +1282,13 @@ def build_cue_channel_snapshot(
     cue_refs = getattr(cue, "palette_refs", {})
     ch_refs = dict(cue_refs.get(ch, {})) if isinstance(cue_refs, dict) else {}
 
+    cue_fx_refs = getattr(cue, "effect_refs", {})
+    ch_fx_ref = (
+        dict(cue_fx_refs[ch])
+        if isinstance(cue_fx_refs, dict) and isinstance(cue_fx_refs.get(ch), dict)
+        else None
+    )
+
     active_families: set[str] = set()
     for p_name in ch_dev_vals:
         fam = LiveParameterState.normalize_family(get_parameter_family(str(p_name)))
@@ -1176,6 +1315,7 @@ def build_cue_channel_snapshot(
         channels=ch_arr,
         device_values={ch: ch_dev_vals} if ch_dev_vals else {},
         palette_refs={ch: ch_refs} if ch_refs else {},
+        effect_refs={ch: ch_fx_ref} if ch_fx_ref else {},
         family_states={ch: fam_states},
     )
     int_state = (

@@ -58,6 +58,18 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
             lambda *_args: self._run_idle(self._safe_refresh_palettes),
         )
         self.app.core.subscribe(
+            "effect.changed",
+            lambda *_args: self._run_idle(self._safe_refresh_effects),
+        )
+        self.app.core.subscribe(
+            "effect.applied",
+            lambda *_args: self._run_idle(self._safe_refresh_effects),
+        )
+        self.app.core.subscribe(
+            "effect.stopped",
+            lambda *_args: self._run_idle(self._safe_refresh_effects),
+        )
+        self.app.core.subscribe(
             "curve.changed",
             lambda curve_nb: self._run_idle(self._safe_refresh_curves, curve_nb),
         )
@@ -102,6 +114,13 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("palettes") is not None:
             palettes_tab = typing.cast("PalettesTab", self.app.tabs.tabs["palettes"])
             palettes_tab.refresh()
+        return False
+
+    def _safe_refresh_effects(self) -> bool:
+        """Refresh the effects tab UI safely in the GTK thread."""
+        if self.app.tabs and self.app.tabs.tabs.get("effects") is not None:
+            effects_tab = typing.cast(typing.Any, self.app.tabs.tabs["effects"])
+            effects_tab.refresh()
         return False
 
     def _on_group_updated(self, group: Group) -> bool:

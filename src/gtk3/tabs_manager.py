@@ -29,6 +29,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.device_inspector import DeviceInspectorWidget
     from olc.gtk3.dmx_outputs import DMXOutputsTab
+    from olc.gtk3.effects import EffectsTab
     from olc.gtk3.fader import FaderTab
     from olc.gtk3.fixture_library import FixtureLibraryTab
     from olc.gtk3.group import GroupTab
@@ -47,6 +48,7 @@ if typing.TYPE_CHECKING:
         | CurvesTab
         | DeviceInspectorWidget
         | DMXOutputsTab
+        | EffectsTab
         | FaderTab
         | FixtureLibraryTab
         | GroupTab
@@ -82,6 +84,7 @@ class Tabs:
             "channel_time": None,
             "curves": None,
             "device_inspector": None,
+            "effects": None,
             "faders": None,
             "fixtures": None,
             "groups": None,
@@ -304,6 +307,12 @@ class Tabs:
             if cur_cat is not None:
                 current["active_category"] = getattr(cur_cat, "value", str(cur_cat))
 
+        # EffectsTab / selected_effect
+        if tab_name == "effects":
+            sel_eff = getattr(widget, "selected_number", None)
+            if sel_eff is not None:
+                current["selected_effect"] = float(sel_eff)
+
     def _apply_tab_settings(self, tab_name: str, widget: Gtk.Widget | None) -> None:
         """Apply saved settings from lightshow.workspace to a tab widget."""
         if not widget or not getattr(self.app, "core", None):
@@ -362,6 +371,13 @@ class Tabs:
                     set_cat_fn(str(active_cat))
                 except ValueError:
                     pass
+
+        # EffectsTab / selected_effect
+        if tab_name == "effects":
+            sel_eff = settings.get("selected_effect")
+            sel_fn = getattr(widget, "select_effect", None)
+            if isinstance(sel_eff, (int, float)) and callable(sel_fn):
+                sel_fn(float(sel_eff))
 
     def get_workspace_state(self) -> dict[str, typing.Any]:
         """Capture the full GUI workspace state."""
@@ -487,6 +503,7 @@ class Tabs:
             "sequences": app_any.open_sequences,
             "groups": app_any.open_groups,
             "palettes": app_any.open_palettes,
+            "effects": getattr(app_any, "open_effects", lambda: None),
             "indes": app_any.open_independents,
             "device_inspector": app_any.open_device_inspector,
             "fixtures": getattr(app_any, "open_fixtures", lambda: None),
