@@ -20,7 +20,13 @@ from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
 from olc.show.cue import Cue
-from olc.show.fader import FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.fader import (
+    FaderEffect,
+    FaderMain,
+    FaderPreset,
+    FaderSequence,
+    FaderType,
+)
 from olc.show.palette import Palette, PaletteCategory
 from olc.show.sequence import Sequence
 
@@ -243,3 +249,54 @@ def test_fader_flash() -> None:
     assert received == [(1, True), (1, False)]
     action = app.action_registry.get("fader.flash")
     assert action.get_feedback_state() == {"active": False, "index": 1}
+
+
+def test_fader_assign_effect_starts_scales_and_stops() -> None:
+    """FaderEffect starts, scales size/rate, flashes, and stops an effect cleanly."""
+    import pytest
+
+    app = CoreApplication(MagicMock())
+    eff = app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.selected_channels = [1, 2, 3, 4]
+
+    # Assign Effect 1 to Fader 1 on Page 1
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.EFFECT
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.contents is eff
+    assert fader.effect_channels == [1, 2, 3, 4]
+
+    # Move fader to 50% -> starts effect with size_scale = 0.5
+    app.action_registry.execute("fader.set_level", 1, 1, 0.5)
+    active = app.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].effect_number == 1.0
+    assert active[0].channels == [1, 2, 3, 4]
+    assert active[0].size_scale == pytest.approx(0.5)
+
+    # Flash ON -> pushes size_scale to 1.0
+    app.action_registry.execute("fader.flash", 1, 1, True)
+    active = app.effects_engine.get_active_instances()
+    assert active[0].size_scale == pytest.approx(1.0)
+
+    # Flash OFF -> restores 0.5
+    app.action_registry.execute("fader.flash", 1, 1, False)
+    active = app.effects_engine.get_active_instances()
+    assert active[0].size_scale == pytest.approx(0.5)
+
+    # Switch to rate control mode and move fader to 75% (rate_scale = 1.5)
+    fader.control_mode = "rate"
+    app.action_registry.execute("fader.set_level", 1, 1, 0.75)
+    active = app.effects_engine.get_active_instances()
+    assert active[0].rate_scale == pytest.approx(1.5)
+
+    # Bring fader to 0% -> stops effect
+    app.action_registry.execute("fader.set_level", 1, 1, 0.0)
+    assert len(app.effects_engine.get_active_instances()) == 0
+
+    # Undo fader assignment -> back to NONE
+    app.history.undo()
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE

@@ -14,14 +14,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import threading
-import time
 import typing
 from enum import IntEnum
 
 import numpy as np
 
 from olc.define import MAX_CHANNELS
+from olc.show.effect import EffectDefinition
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -42,6 +41,7 @@ class FaderType(IntEnum):
     PRESET = 1
     CHANNELS = 2
     SEQUENCE = 3
+    EFFECT = 4
     MAIN = 99
 
 
@@ -270,130 +270,136 @@ class FaderSequence(Fader):
 
     def level_changed(self) -> None:
         """Fader level has changed"""
+        self.dmx.fill(0.0)
         if self.contents is None:
             return
-        chaser = typing.cast(typing.Any, self.contents)
-        # If it was not running and fader > 0
-        if self.level and chaser.run is False:
-            # Start chaser
-            chaser.run = True
-            chaser.thread = ThreadChaser(self)
-            chaser.thread.start()
-        # If it was running and fader > 0
-        elif self.level and chaser.run is True:
-            # Update max level
-            chaser.thread.level_scale = self.level
-        # If it was running and fader go to 0
-        elif self.level == 0 and chaser.run is True:
-            # Stop chaser
-            chaser.run = False
-            chaser.thread.stop()
-            chaser.thread.join()
-            for channel in self.channels:
-                self.dmx[channel - 1] = 0
-            self.fader_bank.update_levels()
-            if self.app and hasattr(self.app, "backend") and self.app.backend:
-                self.app.backend.dmx.set_levels()
+        sequence = self.contents
+        if self.level > 0.0:
+            pos = max(1, min(sequence.position or 1, len(sequence.steps) - 1))
+            if 0 <= pos < len(sequence.steps):
+                cue = sequence.steps[pos].cue
+                if cue is not None:
+                    for channel, lvl in cue.channels.items():
+                        if 1 <= channel <= MAX_CHANNELS:
+                            self.dmx[channel - 1] = float(lvl) * self.level
+        self.fader_bank.update_levels()
+        if self.app and hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
 
 
-class ThreadChaser(threading.Thread):
-    """Thread for chasers"""
+class FaderEffect(Fader):
+    """Fader controlling a procedural EffectDefinition (Size or Rate)."""
 
-    def __init__(self, fader: FaderSequence) -> None:
-        super().__init__()
-        self.fader = fader
-        self._stopevent = threading.Event()
+    contents: EffectDefinition | None
+    dmx: np.ndarray
+    channels: set[int]
+    effect_channels: list[int]
+    control_mode: str
 
-    def run(self) -> None:
-        position = 0
-        chaser = typing.cast(typing.Any, self.fader.contents)
-        if chaser is None:
-            return
-        while chaser.run:
-            if position != chaser.last - 1:
-                t_in = chaser.steps[position + 1].time_in
-                t_out = chaser.steps[position + 1].time_out
-            else:
-                t_in = chaser.steps[1].time_in
-                t_out = chaser.steps[1].time_out
-            t_max = max([t_in, t_out])
-
-            start_time = time.time() * 1000
-            delay = t_max * 1000
-            delay_in = t_in * 1000
-            delay_out = t_out * 1000
-            i = (time.time() * 1000) - start_time
-
-            while i < delay and chaser.run:
-                self.update_levels(delay_in, delay_out, i, position)
-                time.sleep(0.025)
-                i = (time.time() * 1000) - start_time
-
-            position += 1
-            if position == chaser.last:
-                position = 1
-
-    def stop(self) -> None:
-        """Stop thread"""
-        self._stopevent.set()
-
-    def update_levels(
-        self, delay_in: float, delay_out: float, i: float, position: int
+    def __init__(
+        self,
+        index: int,
+        fader_bank: FaderBank,
+        effect: EffectDefinition | None = None,
+        effect_channels: list[int] | None = None,
+        control_mode: str = "size",
     ) -> None:
-        """Update levels
+        super().__init__(index, fader_bank)
+        self.contents = effect
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
+        self.channels = set()
+        self.effect_channels = list(effect_channels or [])
+        self.control_mode = control_mode if control_mode in ("size", "rate") else "size"
+        if effect is not None:
+            self.text = effect.label or f"Effect {effect.number:g}"
+            self.update_channels()
 
-        Args:
-            delay_in: Time In
-            delay_out: Time Out
-            i: Time spent
-            position: Step
-        """
-        chaser = typing.cast(typing.Any, self.fader.contents)
-        if chaser is None:
-            return
-        # Only fader channels
-        for channel in self.fader.channels:
-            cue = chaser.steps[position].cue
-            old_level = cue.channels.get(channel, 0) if cue else 0
-            lightshow = self.fader.fader_bank.lightshow
-            if lightshow and lightshow.main_playback:
-                step_obj = lightshow.main_playback.steps[
-                    lightshow.main_playback.position
-                ]
-                if step_obj and step_obj.cue:
-                    seq_level = step_obj.cue.channels.get(channel, 0)
-                else:
-                    seq_level = 0
-            else:
-                seq_level = 0
-            old_level = max(old_level, seq_level)
-            # Loop on cues
-            if position < chaser.last - 1:
-                next_cue = chaser.steps[position + 1].cue
-                next_level = next_cue.channels.get(channel, 0) if next_cue else 0
-                next_level = max(next_level, seq_level)
-            else:
-                next_cue = chaser.steps[1].cue
-                next_level = next_cue.channels.get(channel, 0) if next_cue else 0
-                next_level = max(next_level, seq_level)
-                chaser.position = 1
-            # If level increases, use time in
-            if next_level > old_level and i < delay_in:
-                level = ((next_level - old_level) / delay_in) * i + old_level
-            # If level decreases, use time out
-            elif next_level < old_level and i < delay_out:
-                level = old_level - abs(((next_level - old_level) / delay_out) * i)
-            # Else, level is already good
-            else:
-                level = next_level
-            # Apply fader level
-            level = level * self.fader.level
-            # Update fader level
-            self.fader.dmx[channel - 1] = level
-        self.fader.fader_bank.update_levels()
+    def get_target_channels(self) -> list[int]:
+        """Resolve target channels for this effect fader."""
+        if self.effect_channels:
+            return list(self.effect_channels)
+        if self.app is not None:
+            selected = list(getattr(self.app, "selected_channels", []))
+            if selected:
+                return selected
+        lightshow = self.fader_bank.lightshow
+        if lightshow is not None and hasattr(lightshow, "patch"):
+            patch = lightshow.patch
+            patched = set(patch.devices.keys())
+            if patched:
+                return sorted(patched)
+        return [1]
+
+    def update_channels(self) -> None:
+        """Update channels tracked by this fader."""
+        self.channels.clear()
+        if self.contents is not None:
+            for ch in self.get_target_channels():
+                self.channels.add(int(ch))
+        self.fader_bank.update_active_faders()
+
+    def set_contents(
+        self,
+        effect: EffectDefinition | None,
+        effect_channels: list[int] | None = None,
+    ) -> None:
+        """Assign an EffectDefinition to this fader."""
         if (
-            self.fader.app
-            and hasattr(self.fader.app, "backend")
-            and self.fader.app.backend
+            self.contents is not None
+            and self.app is not None
+            and hasattr(self.app, "effects_engine")
         ):
-            self.fader.app.backend.dmx.set_levels()
+            self.app.effects_engine.stop_effect(effect_number=self.contents.number)
+        self.contents = effect
+        if effect_channels is not None:
+            self.effect_channels = list(effect_channels)
+        elif self.app is not None:
+            selected = list(getattr(self.app, "selected_channels", []))
+            if selected:
+                self.effect_channels = selected
+        if effect is not None:
+            self.text = effect.label or f"Effect {effect.number:g}"
+            self.update_channels()
+        else:
+            self.text = ""
+            self.channels.clear()
+            self.dmx.fill(0.0)
+            self.fader_bank.update_active_faders()
+
+    def level_changed(self) -> None:
+        """Start, modulate, or stop the assigned effect when the fader moves."""
+        if self.contents is None or self.app is None:
+            return
+        engine = getattr(self.app, "effects_engine", None)
+        if engine is None:
+            return
+        if self.level > 0.0:
+            target_channels = self.get_target_channels()
+            if not self.effect_channels and target_channels:
+                self.effect_channels = list(target_channels)
+            self.channels = set(target_channels)
+            if self.control_mode == "rate":
+                size_scale = 1.0
+                rate_scale = max(0.05, float(self.level) * 2.0)
+            else:
+                size_scale = float(self.level)
+                rate_scale = 1.0
+            engine.start_effect(
+                self.contents.number,
+                target_channels,
+                rate_scale=rate_scale,
+                size_scale=size_scale,
+            )
+            engine.tick()
+            self.app.emit("effect.applied", self.contents.number, list(target_channels))
+        else:
+            stopped = engine.stop_effect(effect_number=self.contents.number)
+            engine.tick()
+            if stopped:
+                self.app.emit(
+                    "effect.stopped",
+                    self.contents.number,
+                    list(self.get_target_channels()),
+                )
+        if hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()

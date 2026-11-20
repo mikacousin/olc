@@ -222,6 +222,24 @@ class OlcWriter(WriteFile):
                         "contents": contents_val,
                         "text": fader.text,
                     }
+                elif content_type == FaderType.EFFECT:
+                    contents_val = (
+                        fader.contents.number if fader.contents is not None else None
+                    )
+                    fader_entry: dict[str, typing.Any] = {
+                        "page": page,
+                        "number": index,
+                        "type": int(content_type),
+                        "contents": contents_val,
+                        "text": fader.text,
+                    }
+                    eff_chs = getattr(fader, "effect_channels", None)
+                    if eff_chs:
+                        fader_entry["effect_channels"] = list(eff_chs)
+                    ctrl_mode = getattr(fader, "control_mode", "size")
+                    if ctrl_mode and ctrl_mode != "size":
+                        fader_entry["control_mode"] = ctrl_mode
+                    self.data["faders"][number] = fader_entry
                 elif content_type == FaderType.MAIN:
                     self.data["faders"][number] = {
                         "page": page,

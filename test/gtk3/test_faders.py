@@ -336,3 +336,66 @@ def test_virtual_console_normal_key_delegates_to_live_view(
 
     vc.close()
     process_events()
+
+
+def test_fader_tab_effect_assignment_and_virtual_console_effect_key(
+    app_gui: Application,
+) -> None:
+    """Test FaderType.EFFECT in FaderTab and the Effect key in VirtualConsole."""
+    app_gui.core.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app_gui.core.selected_channels = [1, 2]
+    process_events()
+
+    # 1. Open Faders tab and assign Fader 2 on Page 1 to EFFECT 1.0
+    app_gui.activate_action("faders", None)
+    process_events()
+    assert app_gui.tabs is not None
+    fader_tab = app_gui.tabs.tabs.get("faders")
+    assert isinstance(fader_tab, FaderTab)
+
+    fader_edit = fader_tab.fader_widgets.get((1, 2))
+    assert fader_edit is not None
+
+    fader_edit._on_type_changed(Gtk.ModelButton(), FaderType.EFFECT)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 2) == FaderType.EFFECT
+
+    btn = Gtk.ModelButton()
+    btn.set_label("1 : Sine Wave")
+    fader_edit._on_contents_changed(btn, FaderType.EFFECT, 1.0)
+    process_events()
+    fader2 = app_gui.core.lightshow.fader_bank.faders[1][2]
+    assert fader2.contents is not None
+    assert fader2.contents.number == 1.0
+
+    # Move fader 2 to 60% -> starts effect
+    app_gui.core.action_registry.execute("fader.set_level", 1, 2, 0.6)
+    process_events()
+    active = app_gui.core.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].size_scale == pytest.approx(0.6)
+
+    # Bring fader 2 back to 0% -> stops effect
+    app_gui.core.action_registry.execute("fader.set_level", 1, 2, 0.0)
+    process_events()
+    assert len(app_gui.core.effects_engine.get_active_instances()) == 0
+
+    # 2. Verify Virtual Console Effect button
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+    assert hasattr(vc, "effect")
+    assert vc.effect.text == "effect"
+    assert vc.effect.shortcut_text == "Alt+E"
+
+    app_gui.core.action_registry.execute("commandline.clear")
+    vc._on_effect(vc.effect)
+    process_events()
+    assert app_gui.core.commandline.get_string() == "EFFECT "
+
+    app_gui.core.action_registry.execute("commandline.clear")
+    vc.close()
+    process_events()

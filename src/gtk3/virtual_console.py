@@ -336,6 +336,8 @@ class VirtualConsoleWindow(Gtk.Window):
             label="Intensity", text="intensity", shortcut_text="Alt+I"
         )
         self.intensity.connect("clicked", self._on_intensity)
+        self.effect = ButtonWidget(label="Effect", text="effect", shortcut_text="Alt+E")
+        self.effect.connect("clicked", self._on_effect)
 
         # Attach Zone 3
         self.tools_pad.attach(self.home, 0, 0, 1, 1)
@@ -349,6 +351,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.tools_pad.attach(self.odd, 0, 4, 1, 1)
         self.tools_pad.attach(self.even, 1, 4, 1, 1)
         self.tools_pad.attach(self.intensity, 0, 5, 1, 1)
+        self.tools_pad.attach(self.effect, 1, 5, 1, 1)
 
         # Navigation Pad (Up, Down, Left, Right)
         self.modify_pad = Gtk.Grid()
@@ -696,6 +699,7 @@ class VirtualConsoleWindow(Gtk.Window):
         ("focus", TokenType.FOCUS),
         ("color", TokenType.COLOR),
         ("beam", TokenType.BEAM),
+        ("effect", TokenType.EFFECT),
         ("all", TokenType.ALL),
         ("odd", TokenType.ODD),
         ("even", TokenType.EVEN),
@@ -1111,6 +1115,17 @@ class VirtualConsoleWindow(Gtk.Window):
             prefix = " " if (curr and not curr.endswith(" ")) else ""
             self.app.core.action_registry.execute(
                 "commandline.append_char", f"{prefix}INTENSITY "
+            )
+
+    def _on_effect(self, _widget: Gtk.Widget) -> None:
+        """Effect button"""
+        if self.is_learning_midi:
+            self._select_midi_learn_target("effect")
+        else:
+            curr = self.app.core.commandline.get_string()
+            prefix = " " if (curr and not curr.endswith(" ")) else ""
+            self.app.core.action_registry.execute(
+                "commandline.append_char", f"{prefix}EFFECT "
             )
 
     def _on_palette(self, _widget: Gtk.Widget) -> None:

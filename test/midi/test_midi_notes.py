@@ -209,6 +209,7 @@ def test_midi_notes_palette_and_preset_command_injection() -> None:
         "focus": " FOCUS ",
         "color": " COLOR ",
         "beam": " BEAM ",
+        "effect": " EFFECT ",
         "delete": " DELETE ",
     }
     for key, text in expected_strings.items():
@@ -226,3 +227,12 @@ def test_midi_notes_palette_and_preset_command_injection() -> None:
     msg_tab = mido.Message("note_on", channel=0, note=10, velocity=127)
     notes._dispatch("preset", msg_tab)
     app.action_registry.execute.assert_called_once_with("gui.tab_open", "memories")
+
+    # effect.tap_tempo and effect.stop MIDI note actions
+    app.action_registry.execute.reset_mock()
+    notes._dispatch("effect.tap_tempo", msg_tab)
+    app.action_registry.execute.assert_called_once_with("effect.tap_tempo")
+
+    app.action_registry.execute.reset_mock()
+    notes._dispatch("effect.stop", msg_tab)
+    app.action_registry.execute.assert_called_once_with("effect.stop")

@@ -257,6 +257,73 @@ def build_oscquery_tree(osc_port: int = 9000) -> dict[str, typing.Any]:
                                 "ACCESS": ACCESS_WRITE_ONLY,
                                 "TYPE": "",
                             },
+                            "effect": {
+                                "DESCRIPTION": "Append EFFECT keyword to command line",
+                                "FULL_PATH": "/olc/key/effect",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
+                        },
+                    },
+                    "effect": {
+                        "DESCRIPTION": "Parametric effects controls",
+                        "FULL_PATH": "/olc/effect",
+                        "ACCESS": ACCESS_CONTAINER,
+                        "CONTENTS": {
+                            "stop_all": {
+                                "DESCRIPTION": "Stop all running effects",
+                                "FULL_PATH": "/olc/effect/stop_all",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
+                            "tap_tempo": {
+                                "DESCRIPTION": "Tap tempo for active effects",
+                                "FULL_PATH": "/olc/effect/tap_tempo",
+                                "ACCESS": ACCESS_WRITE_ONLY,
+                                "TYPE": "",
+                            },
+                            **{
+                                str(i): {
+                                    "DESCRIPTION": f"Effect {i} controls",
+                                    "FULL_PATH": f"/olc/effect/{i}",
+                                    "ACCESS": ACCESS_CONTAINER,
+                                    "CONTENTS": {
+                                        "start": {
+                                            "DESCRIPTION": (
+                                                f"Start effect {i} on selected channels"
+                                            ),
+                                            "FULL_PATH": f"/olc/effect/{i}/start",
+                                            "ACCESS": ACCESS_WRITE_ONLY,
+                                            "TYPE": "",
+                                        },
+                                        "stop": {
+                                            "DESCRIPTION": f"Stop effect {i}",
+                                            "FULL_PATH": f"/olc/effect/{i}/stop",
+                                            "ACCESS": ACCESS_WRITE_ONLY,
+                                            "TYPE": "",
+                                        },
+                                        "rate": {
+                                            "DESCRIPTION": (
+                                                f"Modulate rate scale of effect {i}"
+                                            ),
+                                            "FULL_PATH": f"/olc/effect/{i}/rate",
+                                            "ACCESS": ACCESS_WRITE_ONLY,
+                                            "TYPE": "f",
+                                            "RANGE": [{"MIN": 0.0, "MAX": 4.0}],
+                                        },
+                                        "size": {
+                                            "DESCRIPTION": (
+                                                f"Modulate size scale of effect {i}"
+                                            ),
+                                            "FULL_PATH": f"/olc/effect/{i}/size",
+                                            "ACCESS": ACCESS_WRITE_ONLY,
+                                            "TYPE": "f",
+                                            "RANGE": [{"MIN": 0.0, "MAX": 2.0}],
+                                        },
+                                    },
+                                }
+                                for i in range(1, 11)
+                            },
                         },
                     },
                     "playback": {

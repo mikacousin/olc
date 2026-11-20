@@ -117,10 +117,13 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         return False
 
     def _safe_refresh_effects(self) -> bool:
-        """Refresh the effects tab UI safely in the GTK thread."""
+        """Refresh the effects tab UI and faders tab safely in the GTK thread."""
         if self.app.tabs and self.app.tabs.tabs.get("effects") is not None:
             effects_tab = typing.cast(typing.Any, self.app.tabs.tabs["effects"])
             effects_tab.refresh()
+        if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
+            faders_tab = typing.cast(typing.Any, self.app.tabs.tabs["faders"])
+            faders_tab.refresh()
         return False
 
     def _on_group_updated(self, group: Group) -> bool:

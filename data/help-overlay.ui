@@ -131,6 +131,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="effects">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;E</property>
+                <property name="title" translatable="yes" context="shortcut window">Effects</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="edit_sequence">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;T</property>
@@ -675,6 +682,13 @@
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;alt&gt;R</property>
                 <property name="title" translatable="yes" context="shortcut window">PRESET</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="alt_syntax_e">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;alt&gt;E</property>
+                <property name="title" translatable="yes" context="shortcut window">EFFECT</property>
               </object>
             </child>
             <child>

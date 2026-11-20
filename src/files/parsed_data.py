@@ -326,8 +326,27 @@ class ParsedData:
                 and actions["sequences"].get(1) is Action.IGNORE
             ):
                 continue
+            if (
+                fader_type == FaderType.EFFECT
+                and actions.get("effects", Action.REPLACE) is Action.IGNORE
+            ):
+                continue
             if number <= MAX_FADER_PER_PAGE:
                 self.lightshow.fader_bank.set_fader(page, number, fader_type, contents)
+                if fader_type == FaderType.EFFECT:
+                    fader_obj = self.lightshow.fader_bank.faders[page][number]
+                    eff_chs = values.get("effect_channels")
+                    if isinstance(eff_chs, list) and hasattr(
+                        fader_obj, "effect_channels"
+                    ):
+                        fader_obj.effect_channels = [int(c) for c in eff_chs]
+                        if hasattr(fader_obj, "update_channels"):
+                            fader_obj.update_channels()
+                    ctrl_mode = values.get("control_mode")
+                    if ctrl_mode in ("size", "rate") and hasattr(
+                        fader_obj, "control_mode"
+                    ):
+                        fader_obj.control_mode = str(ctrl_mode)
 
     def import_independents(self) -> None:
         """Import independents data"""

@@ -53,6 +53,8 @@ class MidiControlChanges:
             "inde_led_6": [0, 53],
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
+            "effect_rate": [0, -1],
+            "effect_size": [0, -1],
         }
         for i in range(1, 101):
             self.control_change[f"fader_{i}"] = [0, -1]
@@ -187,6 +189,28 @@ class MidiControlChanges:
         step, direction = self.__get_step(msg, port)
         dir_val = 1 if direction >= 0 else -1
         self.app.action_registry.execute("channel.wheel_adjust", step, dir_val)
+
+    def _function_effect_rate(self, _port: str, msg: mido.Message) -> None:
+        """Modulate rate_scale of active effects via MIDI CC (0..127 -> 0.05..2.0)."""
+        engine = getattr(self.app, "effects_engine", None)
+        if engine is None:
+            return
+        scale = max(0.05, (msg.value / 127.0) * 2.0)
+        for inst in engine.get_active_instances():
+            inst.rate_scale = scale
+        if engine.has_active_effects:
+            engine.tick()
+
+    def _function_effect_size(self, _port: str, msg: mido.Message) -> None:
+        """Modulate size_scale of active effects via MIDI CC (0..127 -> 0.0..1.0)."""
+        engine = getattr(self.app, "effects_engine", None)
+        if engine is None:
+            return
+        scale = max(0.0, msg.value / 127.0)
+        for inst in engine.get_active_instances():
+            inst.size_scale = scale
+        if engine.has_active_effects:
+            engine.tick()
 
     def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
         """Faders

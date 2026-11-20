@@ -89,3 +89,24 @@ def test_midi_xfade_executes_action() -> None:
     mock_app.action_registry.execute.assert_called_once_with(
         "playback.manual_xfade", "a", 200
     )
+
+
+def test_control_change_effect_rate_and_size() -> None:
+    """Test that effect_rate and effect_size MIDI CC modulate active effects."""
+    mock_midi = MagicMock()
+    mock_app = MagicMock()
+    mock_inst = MagicMock()
+    mock_inst.rate_scale = 1.0
+    mock_inst.size_scale = 1.0
+    mock_app.effects_engine.get_active_instances.return_value = [mock_inst]
+    mock_app.effects_engine.has_active_effects = True
+
+    cc = MidiControlChanges(mock_midi, mock_app)
+
+    msg_rate = mido.Message("control_change", channel=0, control=70, value=127)
+    cc._function_effect_rate("test_port", msg_rate)
+    assert mock_inst.rate_scale == 2.0
+
+    msg_size = mido.Message("control_change", channel=0, control=71, value=0)
+    cc._function_effect_size("test_port", msg_size)
+    assert mock_inst.size_scale == 0.0

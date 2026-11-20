@@ -18,7 +18,13 @@ import typing
 
 from gi.repository import Gtk
 
-from olc.show.fader import FaderMain, FaderPreset, FaderSequence, FaderType
+from olc.show.fader import (
+    FaderEffect,
+    FaderMain,
+    FaderPreset,
+    FaderSequence,
+    FaderType,
+)
 from olc.show.palette import PaletteCategory
 
 if typing.TYPE_CHECKING:
@@ -66,6 +72,7 @@ class FaderEdit(Gtk.Box):
             (FaderType.NONE, ""),
             (FaderType.PRESET, "Preset"),
             (FaderType.SEQUENCE, "Sequence"),
+            (FaderType.EFFECT, "Effect"),
             (FaderType.MAIN, "Main Fader"),
         ]
         self.type_button = Gtk.MenuButton()
@@ -86,6 +93,8 @@ class FaderEdit(Gtk.Box):
             self._fader_preset()
         elif isinstance(fader, FaderSequence):
             self._fader_sequence()
+        elif isinstance(fader, FaderEffect):
+            self._fader_effect()
         elif isinstance(fader, FaderMain):
             self._fader_main()
         else:
@@ -129,6 +138,30 @@ class FaderEdit(Gtk.Box):
             vbox.add(button)
             if chaser is fader.contents:
                 self.contents_button.set_label(f"{chaser.index:g} : {chaser.text}")
+        self._contents_popup(vbox)
+
+    def _fader_effect(self) -> None:
+        """Create edition of procedural Effect fader."""
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
+        self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
+        self.get_style_context().remove_class("empty")
+        self.type_button.set_label("Effect")
+        self.contents_button = Gtk.MenuButton()
+        vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
+        vbox.set_border_width(5)
+        effects = (
+            self.lightshow.effects.all() if hasattr(self.lightshow, "effects") else []
+        )
+        for eff in effects:
+            button = Gtk.ModelButton()
+            lbl = f"{eff.number:g} : {eff.label or f'Effect {eff.number:g}'}"
+            button.set_label(lbl)
+            button.connect(
+                "clicked", self._on_contents_changed, FaderType.EFFECT, eff.number
+            )
+            vbox.add(button)
+            if eff is fader.contents:
+                self.contents_button.set_label(lbl)
         self._contents_popup(vbox)
 
     def _fader_preset(self) -> None:
@@ -218,6 +251,8 @@ class FaderEdit(Gtk.Box):
             self._fader_preset()
         elif fader_type == FaderType.SEQUENCE:
             self._fader_sequence()
+        elif fader_type == FaderType.EFFECT:
+            self._fader_effect()
         self.add(self.contents_button)
         self.show_all()
 

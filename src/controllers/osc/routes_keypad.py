@@ -240,6 +240,87 @@ class KeypadRoutesMixin:
         if self._is_momentary_press(args):
             self._execute_action("commandline.append_char", " BEAM ")
 
+    @make_method("/olc/key/effect")
+    def _effect_key(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("commandline.append_char", " EFFECT ")
+
+    @make_method("/olc/effect/stop_all")
+    def _effect_stop_all(self, _address: str, args: list) -> None:
+        if self._is_momentary_press(args):
+            self._execute_action("effect.stop")
+
+    @make_method("/olc/effect/tap_tempo")
+    def _effect_tap_tempo(self, _address: str, args: list) -> None:
+        if not self._is_momentary_press(args):
+            return
+        eff_num: float | None = None
+        if args and isinstance(args[0], (int, float)) and not isinstance(args[0], bool):
+            val = float(args[0])
+            if val not in (0.0, 1.0):
+                eff_num = val
+        self._execute_action("effect.tap_tempo", eff_num)
+
+    @make_method("/olc/effect/*/*")
+    def _direct_effect(self, address: str, args: list) -> None:
+        parts = address.strip("/").split("/")
+        if len(parts) < 4:
+            return
+        try:
+            number = float(parts[2])
+        except ValueError:
+            return
+        subcmd = parts[3].lower()
+        if subcmd == "start":
+            if self._is_momentary_press(args):
+                self._execute_action("effect.apply", number)
+        elif subcmd == "stop":
+            if self._is_momentary_press(args):
+                self._execute_action("effect.stop", number=number)
+        elif subcmd == "rate" and args:
+            try:
+                raw_rate = float(args[0])
+            except (TypeError, ValueError):
+                return
+            scale = raw_rate / 100.0 if raw_rate > 10.0 else max(0.01, raw_rate)
+            app = getattr(self, "app", None)
+            engine = getattr(app, "effects_engine", None) if app is not None else None
+            if engine is not None:
+                matched = False
+                for inst in engine.get_active_instances():
+                    if inst.effect_number == round(number, 3):
+                        inst.rate_scale = scale
+                        matched = True
+                if matched:
+                    engine.tick()
+                else:
+                    self._execute_action(
+                        "effect.update", number, rate=round(scale * 100.0, 2)
+                    )
+        elif subcmd == "size" and args:
+            try:
+                raw_size = float(args[0])
+            except (TypeError, ValueError):
+                return
+            scale = raw_size / 100.0 if raw_size > 10.0 else max(0.0, raw_size)
+            app = getattr(self, "app", None)
+            engine = getattr(app, "effects_engine", None) if app is not None else None
+            if engine is not None:
+                matched = False
+                for inst in engine.get_active_instances():
+                    if inst.effect_number == round(number, 3):
+                        inst.size_scale = scale
+                        matched = True
+                if matched:
+                    engine.tick()
+                else:
+                    self._execute_action(
+                        "effect.update", number, size=round(scale * 100.0, 2)
+                    )
+        elif subcmd == "tap_tempo":
+            if self._is_momentary_press(args):
+                self._execute_action("effect.tap_tempo", number)
+
     @make_method("/olc/palette/*/*")
     def _direct_palette(self, address: str, args: list) -> None:
         if not self._is_momentary_press(args):

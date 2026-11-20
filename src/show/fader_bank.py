@@ -22,6 +22,7 @@ from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.show.fader import (
     Fader,
     FaderChannels,
+    FaderEffect,
     FaderMain,
     FaderPreset,
     FaderSequence,
@@ -33,6 +34,7 @@ if typing.TYPE_CHECKING:
     import olc.show.fader_bank
     from olc.core.app import CoreApplication
     from olc.show.cue import Cue
+    from olc.show.effect import EffectDefinition
     from olc.show.lightshow import LightShow
     from olc.show.palette import Palette
 
@@ -112,6 +114,8 @@ class FaderBank:
             return FaderType.PRESET
         if isinstance(self.faders[page][index], FaderSequence):
             return FaderType.SEQUENCE
+        if isinstance(self.faders[page][index], FaderEffect):
+            return FaderType.EFFECT
         if isinstance(self.faders[page][index], FaderMain):
             return FaderType.MAIN
         return FaderType.NONE
@@ -163,6 +167,18 @@ class FaderBank:
             return self.lightshow.get_cue(target_num)
         return None
 
+    def _resolve_effect_contents(
+        self, contents: dict[int, int] | float | None
+    ) -> EffectDefinition | None:
+        """Resolve an EffectDefinition from its effect number."""
+        if (
+            self.lightshow
+            and isinstance(contents, (int, float))
+            and hasattr(self.lightshow, "effects")
+        ):
+            return self.lightshow.effects.get(float(contents))
+        return None
+
     def _set_fader_type(
         self,
         page: int,
@@ -194,6 +210,17 @@ class FaderBank:
             else:
                 self.faders[page][index] = FaderSequence(index, fader_bank_type)
             self.faders[page][index].set_level(0)
+        elif fader_type == FaderType.EFFECT:
+            eff_obj = self._resolve_effect_contents(contents)
+            sel_chs = (
+                list(getattr(self.app, "selected_channels", []))
+                if self.app is not None
+                else []
+            )
+            self.faders[page][index] = FaderEffect(
+                index, fader_bank_type, eff_obj, effect_channels=sel_chs
+            )
+            self.faders[page][index].set_level(0)
         self.update_active_faders()
         self.update_levels()
 
@@ -212,13 +239,18 @@ class FaderBank:
             if self.lightshow and isinstance(contents, (int, float)):
                 chaser = self.lightshow.get_chaser(contents)
             self.faders[page][index].set_contents(chaser)
+        elif fader_type == FaderType.EFFECT:
+            eff_obj = self._resolve_effect_contents(contents)
+            self.faders[page][index].set_contents(eff_obj)
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""
         self.active_faders = set()
         for page in self.faders.values():
             for fader in page.values():
-                if isinstance(fader, (FaderPreset, FaderChannels, FaderSequence)):
+                if isinstance(
+                    fader, (FaderPreset, FaderChannels, FaderSequence, FaderEffect)
+                ):
                     self.active_faders.add(fader)
                     self.channels = self.channels | fader.channels
 

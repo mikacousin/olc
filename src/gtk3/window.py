@@ -500,6 +500,9 @@ class Window(Gtk.ApplicationWindow):
             if keyval in (Gdk.KEY_r, Gdk.KEY_R):
                 self._append_console_keyword("PRESET", trailing_space=True)
                 return True
+            if keyval in (Gdk.KEY_e, Gdk.KEY_E):
+                self._append_console_keyword("EFFECT", trailing_space=True)
+                return True
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():
                     page = self._get_active_page()
