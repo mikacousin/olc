@@ -245,6 +245,7 @@ class SneakController:
                             changed_devs.add(ch)
                             if col_moved:
                                 color_devs.add(ch)
+                self._sneak_channel_effects(ch, fade_time=0.0)
                 if live_state is not None:
                     live_state.clear_channel(ch)
             dmx.set_levels()
@@ -254,6 +255,7 @@ class SneakController:
 
         dev_start_states = _capture_device_states(patch) if patch is not None else {}
         for ch in target_channels:
+            self._sneak_channel_effects(ch, fade_time=duration)
             current_lvl = float(user_levels[ch - 1])
             if current_lvl >= 0.0:
                 bg_lvl = self.get_channel_background_level(ch)
@@ -277,9 +279,66 @@ class SneakController:
                             duration=duration,
                             start_time=now,
                         )
+            elif (
+                live_state is not None
+                and ch not in self._channel_fades
+                and ch not in self._device_fades
+            ):
+                live_state.clear_channel(ch)
+            if (
+                live_state is not None
+                and ch not in self._channel_fades
+                and ch not in self._device_fades
+            ):
+                live_state.clear_channel(ch)
 
         self._ensure_timer()
         return target_channels
+
+    def _sneak_channel_effects(self, channel: int, fade_time: float) -> None:
+        """Sneak manual effect overrides on *channel* back to cue background or off."""
+        live_state = getattr(self.app, "live_state", None)
+        eff_eng = getattr(self.app, "effects_engine", None)
+        if live_state is None or eff_eng is None:
+            return
+        if not hasattr(live_state, "get_effect_ref"):
+            return
+        live_fx = live_state.get_effect_ref(channel)
+        if live_fx is None:
+            return
+
+        lightshow = getattr(self.app, "lightshow", None)
+        main_pb = (
+            getattr(lightshow, "main_playback", None) if lightshow is not None else None
+        )
+        steps = getattr(main_pb, "steps", None) if main_pb is not None else None
+        pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
+        bg_fx: dict[str, typing.Any] | None = None
+        if isinstance(steps, list) and 0 <= pos < len(steps):
+            resolved = TrackingEngine.resolve_step_state(
+                main_pb,
+                pos,
+                tracking_mode=bool(getattr(main_pb, "tracking_mode", False)),
+                patch=getattr(lightshow, "patch", None),
+            )
+            bg_fx = getattr(resolved, "effect_refs", {}).get(channel)
+
+        if bg_fx is not None and not bg_fx.get("stop"):
+            fx_num = bg_fx.get("effect", bg_fx.get("effect_number"))
+            if fx_num is not None:
+                eff_eng.start_effect(
+                    float(fx_num),
+                    [channel],
+                    fade_in=max(0.0, fade_time),
+                    rate_scale=float(bg_fx.get("rate_scale", 1.0)),
+                    size_scale=float(bg_fx.get("size_scale", 1.0)),
+                    groups_override=bg_fx.get("groups", bg_fx.get("groups_override")),
+                    blocks_override=bg_fx.get("blocks", bg_fx.get("blocks_override")),
+                    wings_override=bg_fx.get("wings", bg_fx.get("wings_override")),
+                )
+                return
+
+        eff_eng.stop_effect(channels=[channel], fade_out=max(0.0, fade_time))
 
     def _resolve_device_sneak_targets(
         self,

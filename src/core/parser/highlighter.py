@@ -74,6 +74,11 @@ COMMAND_KEYWORDS = frozenset(
         "FP",
         "CP",
         "BP",
+        "EFFECT",
+        "FX",
+        "STOP",
+        "STOMP",
+        "LABEL",
     }
 )
 
@@ -101,6 +106,11 @@ ATTRIBUTE_KEYWORDS = frozenset(
         "GOBOWHEEL",
         "TIME",
         "DELAY",
+        "RATE",
+        "SIZE",
+        "GROUPS",
+        "BLOCKS",
+        "WINGS",
     }
 )
 

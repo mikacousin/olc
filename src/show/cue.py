@@ -74,6 +74,7 @@ class Cue:
     _channels_array: np.ndarray | None
     device_values: dict[int, dict[str, typing.Any]]
     palette_refs: dict[int, dict[str, PaletteRef]]
+    effect_refs: dict[int, dict[str, typing.Any]]
     is_block: bool
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -85,6 +86,7 @@ class Cue:
         device_values: dict[int, dict[str, typing.Any]] | None = None,
         is_block: bool = False,
         palette_refs: dict[int, dict[str, PaletteRef]] | None = None,
+        effect_refs: dict[int, dict[str, typing.Any]] | None = None,
     ) -> None:
         self.sequence = sequence
         self.number = number
@@ -93,6 +95,7 @@ class Cue:
         self.text = text
         self.device_values = device_values if device_values is not None else {}
         self.palette_refs = palette_refs if palette_refs is not None else {}
+        self.effect_refs = effect_refs if effect_refs is not None else {}
         self.is_block = is_block
 
     @property

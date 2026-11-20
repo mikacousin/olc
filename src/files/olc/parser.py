@@ -54,6 +54,7 @@ class OlcParser(ReadFile):
         self.data["cues"] = contents.get("cues") or {}
         self.data["groups"] = contents.get("groups") or {}
         self.data["palettes"] = contents.get("palettes") or {}
+        self.data["effects"] = contents.get("effects") or []
         self.data["faders"] = contents.get("faders") or {}
         self.data["independents"] = contents.get("independents") or {}
         self.data["midi"] = contents.get("midi_mapping") or {}

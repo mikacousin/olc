@@ -108,6 +108,7 @@ class ImportFile:
             "sequences": {},
             "groups": Action.REPLACE,
             "palettes": Action.REPLACE,
+            "effects": Action.REPLACE,
             "independents": Action.REPLACE,
             "faders": Action.REPLACE,
             "midi": Action.REPLACE,
@@ -170,6 +171,7 @@ class ImportFile:
             self._do_import_universes()
         self._do_import_patch()
         self._do_import_palettes()
+        self._do_import_effects()
         self._do_import_sequences()
         self._do_import_groups()
         self._do_import_independents()
@@ -219,6 +221,14 @@ class ImportFile:
         if palettes_action is Action.REPLACE and hasattr(self.lightshow, "palettes"):
             self.lightshow.palettes.clear()
         self.data.import_palettes()
+
+    def _do_import_effects(self) -> None:
+        effects_action = self.actions.get("effects", Action.REPLACE)
+        if effects_action is Action.IGNORE:
+            return
+        if effects_action is Action.REPLACE and hasattr(self.lightshow, "effects"):
+            self.lightshow.effects.clear()
+        self.data.import_effects()
 
     def _do_import_faders(self) -> None:
         if self.actions["faders"] is Action.IGNORE:

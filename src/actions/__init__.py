@@ -84,6 +84,15 @@ from olc.actions.dmx import (
     UniverseSetProtocolAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
+from olc.actions.effect import (
+    EffectApplyAction,
+    EffectCreateAction,
+    EffectDeleteAction,
+    EffectRenameAction,
+    EffectStopAction,
+    EffectTapTempoAction,
+    EffectUpdateAction,
+)
 from olc.actions.fader import (
     FaderAssignAction,
     FaderClearAction,
@@ -353,6 +362,13 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PaletteUpdateAction,
         PaletteDeleteAction,
         PaletteRenameAction,
+        EffectCreateAction,
+        EffectDeleteAction,
+        EffectRenameAction,
+        EffectUpdateAction,
+        EffectApplyAction,
+        EffectStopAction,
+        EffectTapTempoAction,
     ]
 
     for action_class in actions_to_register:

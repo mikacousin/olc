@@ -88,6 +88,7 @@ class LiveParameterState:
         self._lock = threading.RLock()
         self._palette_refs: dict[int, dict[str, PaletteRef]] = {}
         self._manual_params: dict[int, set[str]] = {}
+        self._effect_refs: dict[int, dict[str, typing.Any]] = {}
 
     @staticmethod
     def normalize_family(family: str) -> str:
@@ -256,12 +257,113 @@ class LiveParameterState:
     def clear_channel(self, channel: int) -> None:
         """Clear all live manual states and palette references for *channel*."""
         self.clear_params(channel, None)
+        with self._lock:
+            self._effect_refs.pop(int(channel), None)
 
     def clear_all(self) -> None:
         """Reset all live manual states and palette references across all channels."""
         with self._lock:
             self._palette_refs.clear()
             self._manual_params.clear()
+            self._effect_refs.clear()
+
+    # pylint: disable=too-many-arguments
+    def set_effect_ref(
+        self,
+        channels: Iterable[int],
+        effect_number: float,
+        *,
+        rate_scale: float = 1.0,
+        size_scale: float = 1.0,
+        groups: int | None = None,
+        blocks: int | None = None,
+        wings: int | None = None,
+        direction: str | None = None,
+    ) -> None:
+        """Record an active live effect override across ordered *channels*."""
+        ordered = list(dict.fromkeys(int(c) for c in channels))
+        if not ordered:
+            return
+        eff_num = round(float(effect_number), 3)
+        with self._lock:
+            for idx, ch in enumerate(ordered):
+                entry: dict[str, typing.Any] = {
+                    "effect": eff_num,
+                    "order_index": idx,
+                    "channels": list(ordered),
+                    "rate_scale": float(rate_scale),
+                    "size_scale": float(size_scale),
+                }
+                if groups is not None:
+                    entry["groups"] = int(groups)
+                if blocks is not None:
+                    entry["blocks"] = int(blocks)
+                if wings is not None:
+                    entry["wings"] = int(wings)
+                if direction is not None:
+                    entry["direction"] = str(direction)
+                self._effect_refs[ch] = entry
+
+    def set_effect_stopped(
+        self,
+        channels: Iterable[int],
+        effect_number: float | None = None,
+    ) -> None:
+        """Record an explicit live effect stop (stomp) for *channels*."""
+        eff_num = round(float(effect_number), 3) if effect_number is not None else None
+        with self._lock:
+            for ch in channels:
+                ch_int = int(ch)
+                entry: dict[str, typing.Any] = {"stop": True}
+                if eff_num is not None:
+                    entry["effect"] = eff_num
+                self._effect_refs[ch_int] = entry
+
+    def clear_effect_refs(self, channels: Iterable[int] | None = None) -> None:
+        """Clear live effect overrides for *channels* (or all channels if None)."""
+        with self._lock:
+            if channels is None:
+                self._effect_refs.clear()
+                return
+            for ch in channels:
+                self._effect_refs.pop(int(ch), None)
+
+    def get_effect_ref(self, channel: int) -> dict[str, typing.Any] | None:
+        """Return a shallow copy of the live effect override for *channel*, or None."""
+        with self._lock:
+            entry = self._effect_refs.get(int(channel))
+            return dict(entry) if entry is not None else None
+
+    def get_all_effect_refs(self) -> dict[int, dict[str, typing.Any]]:
+        """Return a copy of all active live effect overrides keyed by channel."""
+        with self._lock:
+            return {ch: dict(entry) for ch, entry in self._effect_refs.items()}
+
+    def snapshot_effect_refs(
+        self, channels: Iterable[int] | None = None
+    ) -> dict[int, dict[str, typing.Any] | None]:
+        """Snapshot live effect overrides for *channels* (or all active channels)."""
+        with self._lock:
+            targets = (
+                [int(c) for c in channels]
+                if channels is not None
+                else list(self._effect_refs.keys())
+            )
+            return {
+                ch: (dict(self._effect_refs[ch]) if ch in self._effect_refs else None)
+                for ch in targets
+            }
+
+    def restore_effect_refs(
+        self, snap: Mapping[int, dict[str, typing.Any] | None]
+    ) -> None:
+        """Restore live effect overrides from *snap*."""
+        with self._lock:
+            for ch, entry in snap.items():
+                if entry is None:
+                    self._effect_refs.pop(int(ch), None)
+                else:
+                    self._effect_refs[int(ch)] = dict(entry)
 
     def is_param_manual(self, channel: int, param_name: str) -> bool:
         """Return True if *param_name* (or its alias) is marked manual on *channel*."""
@@ -292,10 +394,14 @@ class LiveParameterState:
             )
 
     def is_channel_manual(self, channel: int) -> bool:
-        """Return True if *channel* has any manual parameter or live palette ref."""
+        """Return True if *channel* has any manual parameter, palette, or effect ref."""
         ch = int(channel)
         with self._lock:
-            return bool(self._manual_params.get(ch) or self._palette_refs.get(ch))
+            return bool(
+                self._manual_params.get(ch)
+                or self._palette_refs.get(ch)
+                or self._effect_refs.get(ch)
+            )
 
     def get_manual_params(self, channel: int) -> set[str]:
         """Return a copy of manually modified parameter names for *channel*."""
@@ -303,11 +409,13 @@ class LiveParameterState:
             return set(self._manual_params.get(int(channel), set()))
 
     def get_manual_channels(self) -> set[int]:
-        """Return channels currently carrying any manual parameter or palette ref."""
+        """Return channels carrying any manual parameter, palette, or effect."""
         with self._lock:
-            return {ch for ch, params in self._manual_params.items() if params} | {
-                ch for ch, refs in self._palette_refs.items() if refs
-            }
+            return (
+                {ch for ch, params in self._manual_params.items() if params}
+                | {ch for ch, refs in self._palette_refs.items() if refs}
+                | {ch for ch, eff in self._effect_refs.items() if eff}
+            )
 
     def snapshot_channel(self, channel: int) -> ChannelLiveSnapshot:
         """Capture an undoable snapshot of live refs and manual params for *channel*."""

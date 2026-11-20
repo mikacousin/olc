@@ -63,6 +63,14 @@ TOKEN_TO_KEYWORD: dict[TokenType, str] = {
     TokenType.PATCH: "PATCH",
     TokenType.UNPATCH: "UNPATCH",
     TokenType.CHECK: "CHECK",
+    TokenType.EFFECT: "EFFECT",
+    TokenType.STOP: "STOP",
+    TokenType.RATE: "RATE",
+    TokenType.SIZE: "SIZE",
+    TokenType.GROUPS: "GROUPS",
+    TokenType.BLOCKS: "BLOCKS",
+    TokenType.WINGS: "WINGS",
+    TokenType.LABEL: "LABEL",
     TokenType.PLUS: "+",
     TokenType.MINUS: "-",
     TokenType.SLASH: "/",
@@ -109,6 +117,14 @@ KEYWORD_PRIORITY: list[str] = [
     "PATCH",
     "UNPATCH",
     "CHECK",
+    "EFFECT",
+    "STOP",
+    "RATE",
+    "SIZE",
+    "GROUPS",
+    "BLOCKS",
+    "WINGS",
+    "LABEL",
     "PALETTE",
     "PRESET",
     "INTENSITY",
@@ -282,6 +298,14 @@ class CommandCompleter:
                 TokenType.FP,
                 TokenType.CP,
                 TokenType.BP,
+                TokenType.EFFECT,
+                TokenType.STOP,
+                TokenType.RATE,
+                TokenType.SIZE,
+                TokenType.GROUPS,
+                TokenType.BLOCKS,
+                TokenType.WINGS,
+                TokenType.LABEL,
             )
         except LexerError:
             return False
@@ -313,6 +337,14 @@ class CommandCompleter:
         if TokenType.NUMBER in expected and self.lightshow:
             palettes = self._get_show_palette_candidates(context_upper)
             candidates.extend(palettes)
+
+        # Contextual show entities: Effects
+        if (
+            TokenType.NUMBER in expected
+            and last_keyword in ("EFFECT", "FX")
+            and self.lightshow
+        ):
+            candidates.extend(self._get_show_effect_candidates())
 
         # Contextual presets: Colors
         if TokenType.HEX_COLOR in expected and last_keyword in ("COLOR", "COLOUR"):
@@ -401,6 +433,23 @@ class CommandCompleter:
         res: list[str] = []
         for pal in palettes_mgr.list_by_category(category):
             num = getattr(pal, "number", None)
+            if not isinstance(num, (int, float)):
+                continue
+            formatted = str(int(num)) if float(num).is_integer() else str(num)
+            if formatted not in res:
+                res.append(formatted)
+        return res
+
+    def _get_show_effect_candidates(self) -> list[str]:
+        """Extract existing effect identifiers from the active LightShow."""
+        if not self.lightshow or not hasattr(self.lightshow, "effects"):
+            return []
+        effects_mgr = self.lightshow.effects
+        if not hasattr(effects_mgr, "all"):
+            return []
+        res: list[str] = []
+        for eff in effects_mgr.all():
+            num = getattr(eff, "number", None)
             if not isinstance(num, (int, float)):
                 continue
             formatted = str(int(num)) if float(num).is_integer() else str(num)

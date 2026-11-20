@@ -243,6 +243,7 @@ class ResolvedState:
     device_values: dict[int, dict[str, Any]] = field(default_factory=dict)
     mib_parameters: dict[int, set[str]] = field(default_factory=dict)
     palette_refs: dict[int, dict[str, PaletteRef]] = field(default_factory=dict)
+    effect_refs: dict[int, dict[str, Any]] = field(default_factory=dict)
     parameter_states: dict[int, dict[str, TrackingDisplayState]] = field(
         default_factory=dict
     )
@@ -424,14 +425,56 @@ class TrackingEngine:
             )
 
         family_states = cls._compute_family_states(parameter_states)
+        effect_refs = cls._resolve_effect_refs(sequence, step_index, tracking_mode)
         return ResolvedState(
             channels=channels,
             device_values=device_values,
             mib_parameters=mib_parameters,
             palette_refs=palette_refs,
+            effect_refs=effect_refs,
             parameter_states=parameter_states,
             family_states=family_states,
         )
+
+    @staticmethod
+    def _resolve_effect_refs(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        tracking_mode: bool,
+    ) -> dict[int, dict[str, Any]]:
+        """Resolve active effect references at *step_index* (Cue-Only or Tracking)."""
+        target_cue = sequence.steps[step_index].cue
+        if target_cue is None or getattr(target_cue, "number", 0) == 0:
+            return {}
+
+        if not tracking_mode:
+            raw_refs = getattr(target_cue, "effect_refs", None)
+            if not isinstance(raw_refs, dict):
+                return {}
+            return {
+                int(ch): dict(spec)
+                for ch, spec in raw_refs.items()
+                if isinstance(spec, dict) and not spec.get("stop")
+            }
+
+        resolved: dict[int, dict[str, Any]] = {}
+        decided: set[int] = set()
+        for idx in range(step_index, -1, -1):
+            cue = sequence.steps[idx].cue
+            if cue is None:
+                continue
+            raw_refs = getattr(cue, "effect_refs", None)
+            if isinstance(raw_refs, dict):
+                for ch_raw, spec in raw_refs.items():
+                    ch = int(ch_raw)
+                    if ch in decided or not isinstance(spec, dict):
+                        continue
+                    decided.add(ch)
+                    if not spec.get("stop"):
+                        resolved[ch] = dict(spec)
+            if getattr(cue, "is_block", False):
+                break
+        return resolved
 
     @staticmethod
     def _compute_family_states(

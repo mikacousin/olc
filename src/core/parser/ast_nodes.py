@@ -325,3 +325,47 @@ class DeletePaletteCommandNode(CommandNode):
 
     category: str
     palette_id: float
+
+
+# --- Effect Command Nodes ---
+
+
+@dataclasses.dataclass
+class ApplyEffectCommandNode(CommandNode):
+    """Command to apply an effect to a channel selection."""
+
+    selection: SelectionNode | None
+    effect_id: float
+    rate: float | None = None
+    size: float | None = None
+    groups: int | None = None
+    blocks: int | None = None
+    wings: int | None = None
+
+
+@dataclasses.dataclass
+class StopEffectCommandNode(CommandNode):
+    """Command to stop/stomp running effect(s) on a selection or globally."""
+
+    selection: SelectionNode | None = None
+    effect_id: float | None = None
+
+
+@dataclasses.dataclass
+class EditEffectCommandNode(CommandNode):
+    """Command to edit an effect's definition or label (e.g. EFFECT 1 RATE 120)."""
+
+    effect_id: float
+    rate: float | None = None
+    size: float | None = None
+    groups: int | None = None
+    blocks: int | None = None
+    wings: int | None = None
+    label: str | None = None
+
+
+@dataclasses.dataclass
+class DeleteEffectCommandNode(CommandNode):
+    """Command to delete an effect from the show pool (e.g. DELETE EFFECT 1)."""
+
+    effect_id: float

@@ -348,6 +348,7 @@ def _copy_cue(cue: Cue | None) -> Cue | None:
     )
     copied.device_values = copy.deepcopy(cue.device_values)
     copied.palette_refs = copy.deepcopy(cue.palette_refs)
+    copied.effect_refs = copy.deepcopy(getattr(cue, "effect_refs", {}))
     copied.is_block = bool(cue.is_block)
     return copied
 

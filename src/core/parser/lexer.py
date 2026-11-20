@@ -65,6 +65,17 @@ KEYWORDS: dict[str, TokenType] = {
     "UNPARK": TokenType.UNPARK,
     "PATCH": TokenType.PATCH,
     "UNPATCH": TokenType.UNPATCH,
+    # Effects Engine
+    "EFFECT": TokenType.EFFECT,
+    "FX": TokenType.EFFECT,
+    "STOP": TokenType.STOP,
+    "STOMP": TokenType.STOP,
+    "RATE": TokenType.RATE,
+    "SIZE": TokenType.SIZE,
+    "GROUPS": TokenType.GROUPS,
+    "BLOCKS": TokenType.BLOCKS,
+    "WINGS": TokenType.WINGS,
+    "LABEL": TokenType.LABEL,
     # ML Attributes & Families / Palettes & Presets
     "INTENSITY": TokenType.INTENSITY,
     "INTENS": TokenType.INTENSITY,

@@ -24,6 +24,7 @@ from olc.files.import_types import Action
 from olc.show.channel_time import ChannelTime
 from olc.show.cue import Cue
 from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.show.effect import deserialize_effect_refs
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.group import Group
 from olc.show.independent import IndependentType
@@ -56,6 +57,7 @@ class ParsedData:
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
             "palettes": {},
+            "effects": [],
             "independents": {},
             "cues": {},
             "faders": {},
@@ -292,6 +294,13 @@ class ParsedData:
             return
         self.lightshow.palettes.from_dict(palettes_data, clear=False)
 
+    def import_effects(self) -> None:
+        """Import procedural Effects data."""
+        effects_data = self.data.get("effects")
+        if not effects_data or not hasattr(self.lightshow, "effects"):
+            return
+        self.lightshow.effects.from_list(effects_data)
+
     def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data
 
@@ -346,6 +355,7 @@ class ParsedData:
         else:
             cue.device_values = {}
         cue.palette_refs = deserialize_palette_refs(cue_dict.get("palette_refs"))
+        cue.effect_refs = deserialize_effect_refs(cue_dict.get("effect_refs"))
         cue.is_block = bool(cue_dict.get("is_block", False))
 
     @staticmethod

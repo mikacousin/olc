@@ -784,3 +784,33 @@ class EffectManager:
         for item in items:
             if isinstance(item, dict):
                 self.add(EffectDefinition.from_dict(item))
+
+
+def serialize_effect_refs(
+    refs: dict[int, dict[str, typing.Any]],
+) -> dict[int, dict[str, typing.Any]]:
+    """Serialize cue effect_refs mapping to JSON-friendly dictionaries."""
+    result: dict[int, dict[str, typing.Any]] = {}
+    for ch, entry in refs.items():
+        if not isinstance(entry, dict) or not entry:
+            continue
+        result[int(ch)] = copy.deepcopy(entry)
+    return result
+
+
+def deserialize_effect_refs(
+    raw: typing.Any,  # noqa: ANN401
+) -> dict[int, dict[str, typing.Any]]:
+    """Deserialize JSON effect_refs payload into integer-keyed mappings."""
+    if not isinstance(raw, dict):
+        return {}
+    result: dict[int, dict[str, typing.Any]] = {}
+    for ch_key, entry in raw.items():
+        if not isinstance(entry, dict) or not entry:
+            continue
+        try:
+            ch = int(ch_key)
+        except (TypeError, ValueError):
+            continue
+        result[ch] = copy.deepcopy(entry)
+    return result

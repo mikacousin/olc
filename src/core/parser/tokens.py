@@ -94,6 +94,16 @@ class TokenType(Enum):
     UNPATCH = auto()
     CHECK = auto()
 
+    # Effects Engine keywords
+    EFFECT = auto()
+    STOP = auto()
+    RATE = auto()
+    SIZE = auto()
+    GROUPS = auto()
+    BLOCKS = auto()
+    WINGS = auto()
+    LABEL = auto()
+
     # Identifiers (unrecognized words / custom labels)
     IDENT = auto()
 

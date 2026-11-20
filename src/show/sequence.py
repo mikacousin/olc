@@ -29,6 +29,7 @@ from olc.show.sequence_threads import (
     _interpolate_device_states,
     _next_step,
     _parse_rgb_norm,
+    _sync_resolved_effects,
     get_cue,
 )
 from olc.show.step import Step
@@ -112,7 +113,14 @@ class Sequence:
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
             if self.patch is not None:
                 _apply_resolved_device_values(self.patch, resolved, self.app)
+            _sync_resolved_effects(
+                self.app, resolved, fade_time=0.0, clear_live_state=True
+            )
             self.backend.dmx.set_levels()
+        else:
+            _sync_resolved_effects(
+                self.app, resolved, fade_time=0.0, clear_live_state=True
+            )
         self.update_channels()
 
     @property

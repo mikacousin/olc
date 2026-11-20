@@ -27,6 +27,7 @@ from olc.core.parser.ast_nodes import (
     AddressSelectionNode,
     AddressUnparkCommandNode,
     AllSelectionNode,
+    ApplyEffectCommandNode,
     ApplyPaletteCommandNode,
     AttributeCommandNode,
     BlockCueCommandNode,
@@ -37,7 +38,9 @@ from olc.core.parser.ast_nodes import (
     ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
+    DeleteEffectCommandNode,
     DeletePaletteCommandNode,
+    EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
@@ -52,6 +55,7 @@ from olc.core.parser.ast_nodes import (
     SelectionNode,
     SelectOnlyCommandNode,
     SneakCommandNode,
+    StopEffectCommandNode,
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
@@ -228,6 +232,12 @@ class CommandParser:
 
         if self._peek_is(TokenType.SNEAK):
             return self._parse_sneak_command(selection=None)
+
+        if self._peek_is(TokenType.STOP):
+            return self._parse_stop_effect_command(selection=None)
+
+        if self._peek_is(TokenType.EFFECT):
+            return self._parse_effect_command(selection=None)
 
         if self._peek_is(TokenType.INDEPENDENT):
             return self._parse_independent_command()
@@ -413,6 +423,12 @@ class CommandParser:
 
         if self._peek_is(TokenType.SNEAK):
             return self._parse_sneak_command(selection=selection)
+
+        if self._peek_is(TokenType.STOP):
+            return self._parse_stop_effect_command(selection=selection)
+
+        if self._peek_is(TokenType.EFFECT):
+            return self._parse_effect_command(selection=selection)
 
         if self._peek_is(TokenType.LOCATE):
             self.advance()
@@ -802,8 +818,16 @@ class CommandParser:
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after UNBLOCK")
         return UnblockCueCommandNode(cue_id=float(tok_num.value))
 
-    def _parse_delete_cue(self) -> DeleteCueCommandNode | DeletePaletteCommandNode:
+    def _parse_delete_cue(
+        self,
+    ) -> DeleteCueCommandNode | DeletePaletteCommandNode | DeleteEffectCommandNode:
         self.advance()  # Consume DELETE
+        if self.match(TokenType.EFFECT):
+            tok_fx = self.expect(
+                TokenType.NUMBER, "Expected Effect number after DELETE EFFECT"
+            )
+            return DeleteEffectCommandNode(effect_id=float(tok_fx.value))
+
         spec = self._parse_palette_spec()
         if spec is not None:
             return DeletePaletteCommandNode(category=spec[0], palette_id=spec[1])
@@ -811,6 +835,119 @@ class CommandParser:
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after DELETE")
         return DeleteCueCommandNode(cue_id=float(tok_num.value))
+
+    # --- Effect Commands ---
+
+    def _parse_stop_effect_command(
+        self, selection: SelectionNode | None = None
+    ) -> StopEffectCommandNode:
+        """Parse `[<selection>] STOP [EFFECT [<num>]]`."""
+        self.advance()  # Consume STOP / STOMP
+        self.match(TokenType.EFFECT)  # Optional EFFECT after STOP / STOMP
+        effect_id: float | None = None
+        if self._peek_is(TokenType.NUMBER):
+            effect_id = float(self.advance().value)
+        return StopEffectCommandNode(selection=selection, effect_id=effect_id)
+
+    def _parse_effect_command(  # pylint: disable=too-many-branches
+        self, selection: SelectionNode | None = None
+    ) -> ApplyEffectCommandNode | StopEffectCommandNode | EditEffectCommandNode:
+        """Parse `[<selection>] EFFECT [<num>] [RATE <r>] [SIZE <s>] ...`."""
+        self.advance()  # Consume EFFECT / FX
+
+        # Eos stomp syntax: `<selection> EFFECT` or `<selection> EFFECT AT`
+        if self.peek().type == TokenType.EOF:
+            self._record_expected(TokenType.NUMBER, TokenType.AT)
+            if selection is not None:
+                return StopEffectCommandNode(selection=selection, effect_id=None)
+            tok = self.peek()
+            raise CommandSyntaxError(
+                "Expected effect number after EFFECT", tok.position, tok
+            )
+
+        if self.match(TokenType.AT):
+            if self.peek().type == TokenType.EOF:
+                self._record_expected(TokenType.NUMBER)
+                if selection is not None:
+                    return StopEffectCommandNode(selection=selection, effect_id=None)
+                tok = self.peek()
+                raise CommandSyntaxError(
+                    "Expected effect number after EFFECT AT", tok.position, tok
+                )
+
+        tok_num = self.expect(TokenType.NUMBER, "Expected effect number after EFFECT")
+        effect_id = float(tok_num.value)
+
+        rate: float | None = None
+        size: float | None = None
+        groups: int | None = None
+        blocks: int | None = None
+        wings: int | None = None
+        label: str | None = None
+
+        while self.peek().type != TokenType.EOF:
+            if self.match(TokenType.RATE):
+                tok_r = self.expect(TokenType.NUMBER, "Expected number after RATE")
+                rate = float(tok_r.value)
+            elif self.match(TokenType.SIZE):
+                tok_s = self.expect(TokenType.NUMBER, "Expected number after SIZE")
+                size = float(tok_s.value)
+            elif self.match(TokenType.GROUPS):
+                tok_g = self.expect(TokenType.NUMBER, "Expected integer after GROUPS")
+                groups = int(tok_g.value)
+            elif self.match(TokenType.BLOCKS):
+                tok_b = self.expect(TokenType.NUMBER, "Expected integer after BLOCKS")
+                blocks = int(tok_b.value)
+            elif self.match(TokenType.WINGS):
+                tok_w = self.expect(TokenType.NUMBER, "Expected integer after WINGS")
+                wings = int(tok_w.value)
+            elif self.match(TokenType.LABEL):
+                if self._peek_is(TokenType.STRING, TokenType.IDENT):
+                    label = str(self.advance().value)
+                else:
+                    tok = self.peek()
+                    raise CommandSyntaxError(
+                        f"Expected label string after LABEL, got {tok.raw_text!r}",
+                        tok.position,
+                        tok,
+                    )
+            elif selection is None and self._peek_is(TokenType.STRING):
+                label = str(self.advance().value)
+            else:
+                break
+
+        self._record_expected(
+            TokenType.RATE,
+            TokenType.SIZE,
+            TokenType.GROUPS,
+            TokenType.BLOCKS,
+            TokenType.WINGS,
+            TokenType.LABEL,
+        )
+
+        has_modifiers = any(
+            v is not None for v in (rate, size, groups, blocks, wings, label)
+        )
+        if selection is None and (label is not None or has_modifiers):
+            return EditEffectCommandNode(
+                effect_id=effect_id,
+                rate=rate,
+                size=size,
+                groups=groups,
+                blocks=blocks,
+                wings=wings,
+                label=label,
+            )
+
+        return ApplyEffectCommandNode(
+            selection=selection,
+            effect_id=effect_id,
+            rate=rate,
+            size=size,
+            groups=groups,
+            blocks=blocks,
+            wings=wings,
+        )
 
     # --- Address Selection Parsing ---
 

@@ -19,6 +19,14 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from olc.actions.effect import (
+    EffectApplyAction,
+    EffectDeleteAction,
+    EffectRenameAction,
+    EffectStopAction,
+    EffectUpdateAction,
+    format_effect_number,
+)
 from olc.actions.palette import (
     PaletteApplyAction,
     PaletteDeleteAction,
@@ -34,6 +42,7 @@ from olc.core.parser.ast_nodes import (
     AddressSelectionNode,
     AddressUnparkCommandNode,
     AllSelectionNode,
+    ApplyEffectCommandNode,
     ApplyPaletteCommandNode,
     AttributeCommandNode,
     BlockCueCommandNode,
@@ -44,7 +53,9 @@ from olc.core.parser.ast_nodes import (
     ChannelUnparkCommandNode,
     CommandNode,
     DeleteCueCommandNode,
+    DeleteEffectCommandNode,
     DeletePaletteCommandNode,
+    EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
@@ -59,6 +70,7 @@ from olc.core.parser.ast_nodes import (
     SelectionNode,
     SelectOnlyCommandNode,
     SneakCommandNode,
+    StopEffectCommandNode,
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
@@ -195,6 +207,18 @@ class CommandExecutor:
         if isinstance(node, DeletePaletteCommandNode):
             return self._execute_delete_palette(node)
 
+        if isinstance(node, ApplyEffectCommandNode):
+            return self._execute_apply_effect(node)
+
+        if isinstance(node, StopEffectCommandNode):
+            return self._execute_stop_effect(node)
+
+        if isinstance(node, EditEffectCommandNode):
+            return self._execute_edit_effect(node)
+
+        if isinstance(node, DeleteEffectCommandNode):
+            return self._execute_delete_effect(node)
+
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
     # --- Selection Resolution ---
@@ -226,6 +250,76 @@ class CommandExecutor:
             final_set = {ch for ch in final_set if ch % 2 == 0}
 
         return sorted(ch for ch in final_set if 1 <= ch <= MAX_CHANNELS)
+
+    def resolve_ordered_selection(self, selection: SelectionNode | None) -> list[int]:
+        """Resolve a SelectionNode preserving explicit channel order (for Effects)."""
+        if selection is None:
+            return list(getattr(self.app, "selected_channels", []))
+
+        ordered: list[int] = []
+        if selection.is_relative:
+            ordered.extend(getattr(self.app, "selected_channels", []))
+
+        for item in selection.items:
+            ordered.extend(self._resolve_ordered_selection_item(item))
+
+        excluded: set[int] = set()
+        for item in selection.exclusions:
+            excluded.update(self._resolve_selection_item(item))
+
+        result: list[int] = []
+        seen: set[int] = set()
+        for ch in ordered:
+            if ch in excluded or ch in seen or not 1 <= ch <= MAX_CHANNELS:
+                continue
+            if selection.filter_mode == "odd" and ch % 2 == 0:
+                continue
+            if selection.filter_mode == "even" and ch % 2 == 1:
+                continue
+            seen.add(ch)
+            result.append(ch)
+        return result
+
+    def _resolve_ordered_selection_item(self, item: SelectionItemNode) -> list[int]:
+        if isinstance(item, ChannelNumberNode):
+            return [item.channel] if 1 <= item.channel <= MAX_CHANNELS else []
+
+        if isinstance(item, ChannelRangeNode):
+            step = 1 if item.end >= item.start else -1
+            return [
+                ch
+                for ch in range(item.start, item.end + step, step)
+                if 1 <= ch <= MAX_CHANNELS
+            ]
+
+        if isinstance(item, RelativeThruNode):
+            last_sel = getattr(self.app, "last_selected_channel", None)
+            if last_sel is not None:
+                start_val = int(last_sel)
+            else:
+                active = getattr(self.app, "selected_channels", [])
+                start_val = int(active[-1]) if active else 1
+            step = 1 if item.end >= start_val else -1
+            return [
+                ch
+                for ch in range(start_val, item.end + step, step)
+                if 1 <= ch <= MAX_CHANNELS
+            ]
+
+        if isinstance(item, GroupSelectionNode):
+            if hasattr(self.app, "lightshow") and self.app.lightshow:
+                groups = getattr(self.app.lightshow, "groups", None)
+                grp = None
+                if isinstance(groups, dict):
+                    grp = groups.get(item.group_id) or groups.get(float(item.group_id))
+                elif groups is not None and hasattr(groups, "get"):
+                    grp = groups.get(float(item.group_id))
+                if grp is not None:
+                    channels = getattr(grp, "channels", [])
+                    return [int(ch) for ch in channels if 1 <= int(ch) <= MAX_CHANNELS]
+            return []
+
+        return sorted(self._resolve_selection_item(item))
 
     def _resolve_selection_item(  # pylint: disable=too-many-return-statements
         self, item: SelectionItemNode
@@ -801,6 +895,84 @@ class CommandExecutor:
                 result[ch] = ch_refs
         return result
 
+    def _capture_live_effect_refs(  # pylint: disable=too-many-locals,too-many-branches
+        self,
+        lightshow: LightShow,
+        *,
+        base_refs: dict[int, dict[str, typing.Any]] | None = None,
+    ) -> dict[int, dict[str, typing.Any]]:
+        """Build cue effect_refs by merging active/running effects with live state."""
+        if base_refs is not None:
+            source_base = {int(ch): dict(spec) for ch, spec in base_refs.items()}
+        else:
+            source_base = {}
+            main_pb = getattr(lightshow, "main_playback", None)
+            steps = getattr(main_pb, "steps", None) if main_pb is not None else None
+            pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
+            if isinstance(steps, list) and 0 <= pos < len(steps):
+                resolved = TrackingEngine.resolve_step_state(
+                    main_pb,
+                    pos,
+                    tracking_mode=bool(getattr(main_pb, "tracking_mode", False)),
+                    patch=getattr(lightshow, "patch", None),
+                )
+                raw_base = getattr(resolved, "effect_refs", {}) or {}
+                source_base = {int(ch): dict(spec) for ch, spec in raw_base.items()}
+
+        # Also include currently running engine instances so recording sequential cues
+        # before GO still captures running effects and stomps against earlier cues.
+        eff_eng = getattr(self.app, "effects_engine", None)
+        if eff_eng is not None and hasattr(eff_eng, "get_active_instances"):
+            for inst in eff_eng.get_active_instances():
+                if getattr(inst, "remove_on_fade_end", False):
+                    continue
+                for idx, ch in enumerate(inst.channels):
+                    ch_int = int(ch)
+                    if ch_int not in source_base:
+                        entry: dict[str, typing.Any] = {
+                            "effect": float(inst.effect_number),
+                            "order_index": idx,
+                            "channels": list(inst.channels),
+                            "rate_scale": float(inst.rate_scale),
+                            "size_scale": float(inst.size_scale),
+                        }
+                        if inst.groups_override is not None:
+                            entry["groups"] = int(inst.groups_override)
+                        if inst.blocks_override is not None:
+                            entry["blocks"] = int(inst.blocks_override)
+                        if inst.wings_override is not None:
+                            entry["wings"] = int(inst.wings_override)
+                        if inst.direction_override is not None:
+                            entry["direction"] = str(inst.direction_override.value)
+                        source_base[ch_int] = entry
+
+        tracking_mode = bool(
+            getattr(getattr(lightshow, "main_playback", None), "tracking_mode", False)
+        )
+        live_state = getattr(self.app, "live_state", None)
+        live_fx = (
+            live_state.get_all_effect_refs()
+            if live_state is not None and hasattr(live_state, "get_all_effect_refs")
+            else {}
+        )
+
+        result: dict[int, dict[str, typing.Any]] = {}
+        for ch, spec in source_base.items():
+            if not spec.get("stop"):
+                result[int(ch)] = dict(spec)
+
+        for ch, spec in live_fx.items():
+            ch_id = int(ch)
+            if spec.get("stop"):
+                if tracking_mode:
+                    result[ch_id] = {"stop": True}
+                else:
+                    result.pop(ch_id, None)
+            else:
+                result[ch_id] = dict(spec)
+
+        return result
+
     @staticmethod
     def _apply_record_node_timings(step: Step, node: RecordCueCommandNode) -> None:
         """Apply optional fade, delay, and IFCB family timings from node to step."""
@@ -835,6 +1007,7 @@ class CommandExecutor:
         palette_refs = self._capture_live_palette_refs(
             lightshow, channels_dict, device_values
         )
+        effect_refs = self._capture_live_effect_refs(lightshow)
 
         # Check if cue already exists in sequence
         existing_cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(
@@ -844,6 +1017,7 @@ class CommandExecutor:
             existing_cue.channels = channels_dict
             existing_cue.device_values = device_values
             existing_cue.palette_refs = palette_refs
+            existing_cue.effect_refs = effect_refs
             if node.is_block:
                 existing_cue.is_block = True
             cue = existing_cue
@@ -855,6 +1029,7 @@ class CommandExecutor:
                 device_values=device_values,
                 is_block=node.is_block,
                 palette_refs=palette_refs,
+                effect_refs=effect_refs,
             )
             lightshow.cues.add(cue)
 
@@ -913,8 +1088,12 @@ class CommandExecutor:
             self._release_manual_overrides(cue.channels)
             live_state = getattr(self.app, "live_state", None)
             if live_state is not None:
-                for ch in set(cue.channels) | set(cue.device_values):
+                for ch in (
+                    set(cue.channels) | set(cue.device_values) | set(cue.effect_refs)
+                ):
                     live_state.clear_channel(ch)
+                if hasattr(live_state, "clear_effect_refs"):
+                    live_state.clear_effect_refs()
 
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
 
@@ -1000,6 +1179,10 @@ class CommandExecutor:
             merged_device_values,
             base_refs=cue.palette_refs,
         )
+        updated_effect_refs = self._capture_live_effect_refs(
+            lightshow,
+            base_refs=cue.effect_refs,
+        )
 
         registry = self._get_registry()
         if registry is not None and "cue.update" in getattr(
@@ -1012,12 +1195,14 @@ class CommandExecutor:
                 new_channels,
                 device_values=new_device_values,
                 palette_refs=updated_refs,
+                effect_refs=updated_effect_refs,
             )
         else:
             cue.channels = new_channels
             for dev_id, vals in new_device_values.items():
                 cue.device_values.setdefault(dev_id, {}).update(vals)
             cue.palette_refs = updated_refs
+            cue.effect_refs = updated_effect_refs
             lightshow.main_playback.update_channels()
             lightshow.set_modified()
             self.app.emit("cue.updated", 1, cue_num)
@@ -1034,9 +1219,14 @@ class CommandExecutor:
             live_state = getattr(self.app, "live_state", None)
             if live_state is not None:
                 for ch in (
-                    set(cue.channels) | set(cue.device_values) | set(new_device_values)
+                    set(cue.channels)
+                    | set(cue.device_values)
+                    | set(new_device_values)
+                    | set(cue.effect_refs)
                 ):
                     live_state.clear_channel(ch)
+                if hasattr(live_state, "clear_effect_refs"):
+                    live_state.clear_effect_refs()
 
         return CommandResult(True, f"Updated Cue {cue_num}")
 
@@ -1124,42 +1314,66 @@ class CommandExecutor:
     ) -> dict[str, typing.Any]:
         """Extract active physical parameters from a device instance."""
         vals: dict[str, typing.Any] = {}
+        dev_id = getattr(dev, "fixture_id", None)
+        eff_eng = getattr(self.app, "effects_engine", None)
+
+        def _base_or(param: str, current_val: typing.Any) -> typing.Any:  # noqa: ANN401
+            if (
+                eff_eng is not None
+                and isinstance(dev_id, int)
+                and hasattr(eff_eng, "get_base_device_value")
+            ):
+                base_val = eff_eng.get_base_device_value(dev_id, param)
+                if base_val is not None:
+                    return base_val
+            return current_val
+
         if hasattr(dev, "channels"):
             if self._is_channel_modified(dev, "pan"):
-                vals["pan"] = dev.pan_degrees
+                vals["pan"] = float(_base_or("pan", dev.pan_degrees))
             if self._is_channel_modified(dev, "tilt"):
-                vals["tilt"] = dev.tilt_degrees
+                vals["tilt"] = float(_base_or("tilt", dev.tilt_degrees))
             if self._is_channel_modified(dev, "zoom") and dev.zoom_degrees is not None:
-                vals["zoom"] = dev.zoom_degrees
+                vals["zoom"] = float(_base_or("zoom", dev.zoom_degrees))
             if self._is_channel_modified(dev, "focus") and dev.focus_meters is not None:
-                vals["focus"] = dev.focus_meters
+                vals["focus"] = float(_base_or("focus", dev.focus_meters))
             if self._is_channel_modified(dev, "strobe") and dev.strobe_hz is not None:
-                vals["strobe"] = dev.strobe_hz
+                vals["strobe"] = float(_base_or("strobe", dev.strobe_hz))
             if (
                 self._is_channel_modified(dev, "color_temp")
                 and dev.color_temp_kelvin is not None
             ):
-                vals["cct"] = dev.color_temp_kelvin
+                vals["cct"] = float(_base_or("cct", dev.color_temp_kelvin))
             if (
                 self._is_channel_modified(dev, "iris")
                 and getattr(dev, "iris", None) is not None
             ):
-                vals["iris"] = dev.iris
+                vals["iris"] = float(_base_or("iris", dev.iris))
             if getattr(dev, "gobo", None) is not None:
                 vals["gobo"] = dev.gobo
-            base_emitters = getattr(dev, "_base_emitters", {})
-            if any(v > 0.0 for v in base_emitters.values()):
-                vals["color"] = dev.color_srgb.to_hex()
+            base_color = _base_or("color", None)
+            if isinstance(base_color, tuple) and len(base_color) == 3:
+                r, g, b = base_color
+                if any(v > 0.0 for v in (r, g, b)):
+                    vals["color"] = (
+                        f"#{int(round(r * 255)):02X}"
+                        f"{int(round(g * 255)):02X}"
+                        f"{int(round(b * 255)):02X}"
+                    )
+            else:
+                base_emitters = getattr(dev, "_base_emitters", {})
+                if any(v > 0.0 for v in base_emitters.values()):
+                    vals["color"] = dev.color_srgb.to_hex()
         else:
             if hasattr(dev, "pan_degrees") and getattr(dev, "pan_degrees", 0.0) != 0.0:
-                vals["pan"] = dev.pan_degrees
+                vals["pan"] = float(_base_or("pan", dev.pan_degrees))
             if (
                 hasattr(dev, "tilt_degrees")
                 and getattr(dev, "tilt_degrees", 0.0) != 0.0
             ):
-                vals["tilt"] = dev.tilt_degrees
+                vals["tilt"] = float(_base_or("tilt", dev.tilt_degrees))
             if hasattr(dev, "zoom_degrees") and dev.zoom_degrees is not None:
-                vals["zoom"] = dev.zoom_degrees
+                vals["zoom"] = float(_base_or("zoom", dev.zoom_degrees))
             if hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
                 vals["color"] = dev.color_srgb.to_hex()
         return vals
@@ -1646,3 +1860,209 @@ class CommandExecutor:
             action.execute()
 
         return CommandResult(True, f"Deleted {label}")
+
+    # --- Effect Commands ---
+
+    def _execute_apply_effect(self, node: ApplyEffectCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "effects"):
+            return CommandResult(False, "Effects store not available")
+
+        registry = self._get_registry()
+        if node.selection is not None:
+            ordered_channels = self.resolve_ordered_selection(node.selection)
+            sorted_channels = self.resolve_selection(node.selection)
+            last_sel = ordered_channels[-1] if ordered_channels else None
+            if registry is not None and "channel.select_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "channel.select_channels",
+                    channels=sorted_channels,
+                    last_selected=last_sel,
+                )
+            else:
+                self.app.selected_channels = list(sorted_channels)
+                self.app.last_selected_channel = last_sel
+                self.app.emit("channels.selected_changed", sorted_channels)
+            target_channels = ordered_channels
+        else:
+            target_channels = list(getattr(self.app, "selected_channels", []))
+
+        if not target_channels:
+            return CommandResult(False, "No channels selected for EFFECT")
+
+        effect = lightshow.effects.get(node.effect_id)
+        if effect is None:
+            return CommandResult(
+                False, f"Effect {format_effect_number(node.effect_id)} not found"
+            )
+
+        rate_scale = (node.rate / 100.0) if node.rate is not None else 1.0
+        size_scale = (node.size / 100.0) if node.size is not None else 1.0
+
+        if registry is not None and "effect.apply" in getattr(
+            registry, "_action_classes", {}
+        ):
+            affected = registry.execute(
+                "effect.apply",
+                node.effect_id,
+                channels=target_channels,
+                rate_scale=rate_scale,
+                size_scale=size_scale,
+                groups=node.groups,
+                blocks=node.blocks,
+                wings=node.wings,
+            )
+        else:
+            action = EffectApplyAction(self.app)
+            action.configure(
+                node.effect_id,
+                channels=target_channels,
+                rate_scale=rate_scale,
+                size_scale=size_scale,
+                groups=node.groups,
+                blocks=node.blocks,
+                wings=node.wings,
+            )
+            affected = action.execute()
+
+        affected_list = (
+            list(affected) if isinstance(affected, list) else list(target_channels)
+        )
+        num_str = format_effect_number(node.effect_id)
+        return CommandResult(
+            True,
+            f"Applied Effect {num_str} to {len(affected_list)} channel(s)",
+            affected_channels=affected_list,
+        )
+
+    def _execute_stop_effect(self, node: StopEffectCommandNode) -> CommandResult:
+        registry = self._get_registry()
+        target_channels: list[int] | None = None
+        if node.selection is not None:
+            target_channels = self.resolve_selection(node.selection)
+            last_sel = target_channels[-1] if target_channels else None
+            if registry is not None and "channel.select_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "channel.select_channels",
+                    channels=target_channels,
+                    last_selected=last_sel,
+                )
+            else:
+                self.app.selected_channels = list(target_channels)
+                self.app.last_selected_channel = last_sel
+                self.app.emit("channels.selected_changed", target_channels)
+            if not target_channels:
+                return CommandResult(False, "No channels selected to stop effect")
+
+        if registry is not None and "effect.stop" in getattr(
+            registry, "_action_classes", {}
+        ):
+            stopped = registry.execute(
+                "effect.stop",
+                number=node.effect_id,
+                channels=target_channels,
+            )
+        else:
+            action = EffectStopAction(self.app)
+            action.configure(number=node.effect_id, channels=target_channels)
+            stopped = action.execute()
+
+        stopped_list = list(stopped) if isinstance(stopped, list) else []
+        if node.effect_id is not None:
+            num_str = format_effect_number(node.effect_id)
+            return CommandResult(
+                True,
+                f"Stopped Effect {num_str}",
+                affected_channels=stopped_list,
+            )
+        if target_channels is not None:
+            return CommandResult(
+                True,
+                f"Stopped effects on {len(target_channels)} channel(s)",
+                affected_channels=target_channels,
+            )
+        return CommandResult(
+            True,
+            "Stopped all running effects",
+            affected_channels=stopped_list,
+        )
+
+    def _execute_edit_effect(self, node: EditEffectCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "effects"):
+            return CommandResult(False, "Effects store not available")
+
+        num_str = format_effect_number(node.effect_id)
+        if lightshow.effects.get(node.effect_id) is None:
+            return CommandResult(False, f"Effect {num_str} not found")
+
+        registry = self._get_registry()
+        has_param_changes = any(
+            v is not None
+            for v in (node.rate, node.size, node.groups, node.blocks, node.wings)
+        )
+        if has_param_changes:
+            if registry is not None and "effect.update" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "effect.update",
+                    node.effect_id,
+                    rate=node.rate,
+                    size=node.size,
+                    groups=node.groups,
+                    blocks=node.blocks,
+                    wings=node.wings,
+                    label=node.label,
+                )
+            else:
+                action = EffectUpdateAction(self.app)
+                action.configure(
+                    node.effect_id,
+                    rate=node.rate,
+                    size=node.size,
+                    groups=node.groups,
+                    blocks=node.blocks,
+                    wings=node.wings,
+                    label=node.label,
+                )
+                action.execute()
+            return CommandResult(True, f"Updated Effect {num_str}")
+
+        if node.label is not None:
+            if registry is not None and "effect.rename" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute("effect.rename", node.effect_id, node.label)
+            else:
+                action_ren = EffectRenameAction(self.app)
+                action_ren.configure(node.effect_id, node.label)
+                action_ren.execute()
+            return CommandResult(True, f"Labeled Effect {num_str} '{node.label}'")
+
+        return CommandResult(False, f"No changes specified for Effect {num_str}")
+
+    def _execute_delete_effect(self, node: DeleteEffectCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "effects"):
+            return CommandResult(False, "Effects store not available")
+
+        num_str = format_effect_number(node.effect_id)
+        if lightshow.effects.get(node.effect_id) is None:
+            return CommandResult(False, f"Effect {num_str} not found")
+
+        registry = self._get_registry()
+        if registry is not None and "effect.delete" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("effect.delete", node.effect_id)
+        else:
+            action = EffectDeleteAction(self.app)
+            action.configure(node.effect_id)
+            action.execute()
+
+        return CommandResult(True, f"Deleted Effect {num_str}")

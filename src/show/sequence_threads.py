@@ -212,6 +212,101 @@ def _apply_resolved_device_values(
     return changed_devices, color_changed
 
 
+def _sync_resolved_effects(  # pylint: disable=too-many-locals,too-many-branches
+    app: Optional[CoreApplication],
+    resolved: typing.Any,  # noqa: ANN401
+    *,
+    fade_time: float = 0.0,
+    clear_live_state: bool = True,
+) -> None:
+    """Synchronize the EffectsEngine with resolved cue effect_refs.
+
+    Ensures phase continuity across tracked cues and applies Fade-by-Size over
+    *fade_time* seconds when effects start or stop during a cue transition.
+    """
+    if app is None:
+        return
+    eff_eng = getattr(app, "effects_engine", None)
+    if eff_eng is None:
+        return
+
+    effect_refs = getattr(resolved, "effect_refs", None)
+    if not isinstance(effect_refs, dict):
+        effect_refs = {}
+
+    live_state = getattr(app, "live_state", None)
+    manual_effect_channels: set[int] = set()
+    if (
+        not clear_live_state
+        and live_state is not None
+        and hasattr(live_state, "get_all_effect_refs")
+    ):
+        manual_effect_channels = set(live_state.get_all_effect_refs().keys())
+
+    # Group resolved channel effect specs by effect_number while preserving order
+    grouped: dict[
+        float,
+        tuple[
+            list[tuple[int, int]],
+            dict[str, typing.Any],
+        ],
+    ] = {}
+    target_channels_by_fx: dict[float, set[int]] = {}
+    for ch_raw, spec in effect_refs.items():
+        ch = int(ch_raw)
+        if ch in manual_effect_channels:
+            continue
+        if not isinstance(spec, dict) or spec.get("stop"):
+            continue
+        fx_num = spec.get("effect")
+        if fx_num is None:
+            fx_num = spec.get("effect_number")
+        if fx_num is None:
+            continue
+        fx_id = float(fx_num)
+        sel_idx = int(spec.get("order_index", spec.get("selection_index", 0)))
+        if fx_id not in grouped:
+            grouped[fx_id] = ([], dict(spec))
+        grouped[fx_id][0].append((sel_idx, ch))
+        target_channels_by_fx.setdefault(fx_id, set()).add(ch)
+
+    # Stop any running effects (or channels) not present in target resolved state
+    if hasattr(eff_eng, "get_active_instances"):
+        for inst in eff_eng.get_active_instances():
+            fx_id = float(inst.effect_number)
+            keep_set = target_channels_by_fx.get(fx_id, set()) | (
+                set(inst.channels) & manual_effect_channels
+            )
+            drop_channels = [ch for ch in inst.channels if ch not in keep_set]
+            if drop_channels:
+                if len(drop_channels) == len(inst.channels):
+                    eff_eng.stop_effect(effect_number=fx_id, fade_out=fade_time)
+                else:
+                    eff_eng.stop_effect(channels=drop_channels, fade_out=fade_time)
+
+    # Start or update target resolved effects (preserving phase when already active)
+    for fx_id, (indexed_channels, first_spec) in grouped.items():
+        indexed_channels.sort(key=lambda item: (item[0], item[1]))
+        ordered_channels = [ch for _idx, ch in indexed_channels]
+        eff_eng.start_effect(
+            fx_id,
+            ordered_channels,
+            fade_in=fade_time,
+            rate_scale=float(first_spec.get("rate_scale", 1.0)),
+            size_scale=float(first_spec.get("size_scale", 1.0)),
+            groups_override=first_spec.get("groups", first_spec.get("groups_override")),
+            blocks_override=first_spec.get("blocks", first_spec.get("blocks_override")),
+            wings_override=first_spec.get("wings", first_spec.get("wings_override")),
+        )
+
+    if (
+        clear_live_state
+        and live_state is not None
+        and hasattr(live_state, "clear_effect_refs")
+    ):
+        live_state.clear_effect_refs()
+
+
 def _capture_device_states(
     patch: Optional[PatchManager],
 ) -> dict[int, dict[str, typing.Any]]:
@@ -563,6 +658,18 @@ class ThreadGo(threading.Thread):
                     t_dark_ms = self._get_device_dark_time_ms(step, dev_id)
                     self.total_time = max(self.total_time, t_dark_ms + mib_dur_ms)
 
+            fade_s = (
+                self.override_time
+                if self.override_time is not None
+                else float(step.time_in)
+            )
+            _sync_resolved_effects(
+                self.app,
+                resolved,
+                fade_time=max(0.0, fade_s),
+                clear_live_state=True,
+            )
+
     def _sync_dmx_levels(self) -> None:
         """Push final levels to DMX while preserving user overrides."""
         if (
@@ -600,6 +707,7 @@ class ThreadGo(threading.Thread):
         # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
             _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
+        _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -988,6 +1096,7 @@ class ThreadGoBack(threading.Thread):
         # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
             _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
+        _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -1034,6 +1143,19 @@ class ThreadGoBack(threading.Thread):
             go_back_time = (
                 typing.cast(typing.Any, self.app.settings).get_double("go-back-time")
                 * 1000
+            )
+        if 0 <= prev_step < len(self.sequence.steps):
+            prev_resolved = TrackingEngine.resolve_step_state(
+                self.sequence,
+                prev_step,
+                tracking_mode=self.sequence.tracking_mode,
+                patch=self.sequence.patch,
+            )
+            _sync_resolved_effects(
+                self.app,
+                prev_resolved,
+                fade_time=max(0.0, go_back_time / 1000.0),
+                clear_live_state=True,
             )
         pause_time = 0.0
         start_time = time.time() * 1000
