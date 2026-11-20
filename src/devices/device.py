@@ -40,6 +40,22 @@ if TYPE_CHECKING:
     from olc.show.curve import Curve
 
 
+_SUBTRACTIVE_CMY_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.CYAN,
+        ChannelType.MAGENTA,
+        ChannelType.YELLOW,
+    }
+)
+_ADDITIVE_RGB_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.RED,
+        ChannelType.GREEN,
+        ChannelType.BLUE,
+    }
+)
+
+
 class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-public-methods
     """Patched lighting fixture in the show."""
 
@@ -181,16 +197,29 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         return None
 
     def _init_base_emitters(self) -> None:
-        """Initialize base emitter levels to open white."""
-        for ch in self.channels:
-            if ch.channel_type in COLOR_CHANNEL_TYPES:
-                self._base_emitters[ch.channel_type] = 1.0
+        """Initialize emitter defaults (CMY default fraction or open white)."""
+        if self.is_subtractive_cmy:
+            for ch in self.channels:
+                if ch.channel_type in COLOR_CHANNEL_TYPES:
+                    self._base_emitters[ch.channel_type] = ch.default_value / 255.0
+            self._update_target_from_emitters()
+        else:
+            for ch in self.channels:
+                if ch.channel_type in COLOR_CHANNEL_TYPES:
+                    self._base_emitters[ch.channel_type] = 1.0
 
     def add_channel(self, channel: Channel) -> LightingDevice:
         """Add a Channel to this device."""
         self.channels.append(channel)
         if channel.channel_type in COLOR_CHANNEL_TYPES:
-            if channel.channel_type not in self._base_emitters:
+            if self.is_subtractive_cmy:
+                for ch in self.channels:
+                    if ch.channel_type in COLOR_CHANNEL_TYPES and (
+                        ch is channel or ch.channel_type not in self._base_emitters
+                    ):
+                        self._base_emitters[ch.channel_type] = ch.default_value / 255.0
+                self._update_target_from_emitters()
+            elif channel.channel_type not in self._base_emitters:
                 self._base_emitters[channel.channel_type] = 1.0
         if channel.channel_type == ChannelType.INTENSITY:
             self._intensity = 0.0
@@ -293,10 +322,25 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         )
 
     @property
+    def is_subtractive_cmy(self) -> bool:
+        """True if fixture uses subtractive CMY mixing without additive RGB."""
+        ctypes = {ch.channel_type for ch in self.channels}
+        return bool(ctypes & _SUBTRACTIVE_CMY_TYPES) and not bool(
+            ctypes & _ADDITIVE_RGB_TYPES
+        )
+
+    @property
+    def has_color_capability(self) -> bool:
+        """True if fixture has at least one color mixing channel."""
+        return any(ch.channel_type in COLOR_CHANNEL_TYPES for ch in self.channels)
+
+    @property
     def uses_virtual_dimmer(self) -> bool:
-        """True if fixture has color emitters but no physical INTENSITY channel."""
-        return not self.has_physical_dimmer and any(
-            ch.channel_type in COLOR_CHANNEL_TYPES for ch in self.channels
+        """True if fixture has additive color emitters without physical INTENSITY."""
+        return (
+            not self.has_physical_dimmer
+            and not self.is_subtractive_cmy
+            and any(ch.channel_type in COLOR_CHANNEL_TYPES for ch in self.channels)
         )
 
     # Intensity controls [0.0, 1.0]
@@ -417,6 +461,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 ch.set_value(f_byte)
             elif not ch.fine and not ch.ultra_fine:
                 ch.set_value(c_byte)
+        self._param_normalized.pop(channel_type, None)
+        self._param_last_raw.pop(channel_type, None)
 
     def _apply_virtual_dimmer(self, curve: Optional[Curve] = None) -> None:
         """Scale base emitter levels by current intensity (curved if assigned)."""
@@ -449,6 +495,24 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Return target color as CIE xyY chromaticity."""
         return self._target_cie
 
+    def get_preview_rgb(self) -> Optional[tuple[float, float, float]]:
+        """Return normalized (r, g, b) preview color for color-capable devices."""
+        if not self.has_color_capability:
+            return None
+        if self.is_subtractive_cmy:
+            c = self.get_parameter_normalized(ChannelType.CYAN)
+            m = self.get_parameter_normalized(ChannelType.MAGENTA)
+            y = self.get_parameter_normalized(ChannelType.YELLOW)
+            c_val = c if c is not None else 0.0
+            m_val = m if m is not None else 0.0
+            y_val = y if y is not None else 0.0
+            return (
+                max(0.0, min(1.0, 1.0 - c_val)),
+                max(0.0, min(1.0, 1.0 - m_val)),
+                max(0.0, min(1.0, 1.0 - y_val)),
+            )
+        return (self._target_color.r, self._target_color.g, self._target_color.b)
+
     def set_color_srgb(
         self,
         r: float,
@@ -477,6 +541,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self._apply_match_result(solved)
             else:
                 self._solve_emitters_from_cie(self._target_cie)
+        elif self.is_subtractive_cmy:
+            self._base_emitters[ChannelType.CYAN] = 1.0 - r_norm
+            self._base_emitters[ChannelType.MAGENTA] = 1.0 - g_norm
+            self._base_emitters[ChannelType.YELLOW] = 1.0 - b_norm
         else:
             self._base_emitters[ChannelType.RED] = r_norm
             self._base_emitters[ChannelType.GREEN] = g_norm
@@ -508,6 +576,16 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self._apply_match_result(solved)
             else:
                 self._solve_emitters_from_cie(self._target_cie)
+        elif self.is_subtractive_cmy:
+            self._base_emitters[ChannelType.CYAN] = max(
+                0.0, min(1.0, 1.0 - self._target_color.r)
+            )
+            self._base_emitters[ChannelType.MAGENTA] = max(
+                0.0, min(1.0, 1.0 - self._target_color.g)
+            )
+            self._base_emitters[ChannelType.YELLOW] = max(
+                0.0, min(1.0, 1.0 - self._target_color.b)
+            )
         else:
             self._base_emitters[ChannelType.RED] = self._target_color.r
             self._base_emitters[ChannelType.GREEN] = self._target_color.g
@@ -531,11 +609,16 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         w_norm = max(0, min(255, w)) / 255.0
         a_norm = max(0, min(255, a)) / 255.0
 
-        self._base_emitters[ChannelType.RED] = r_norm
-        self._base_emitters[ChannelType.GREEN] = g_norm
-        self._base_emitters[ChannelType.BLUE] = b_norm
-        self._base_emitters[ChannelType.WHITE] = w_norm
-        self._base_emitters[ChannelType.AMBER] = a_norm
+        if self.is_subtractive_cmy:
+            self._base_emitters[ChannelType.CYAN] = 1.0 - r_norm
+            self._base_emitters[ChannelType.MAGENTA] = 1.0 - g_norm
+            self._base_emitters[ChannelType.YELLOW] = 1.0 - b_norm
+        else:
+            self._base_emitters[ChannelType.RED] = r_norm
+            self._base_emitters[ChannelType.GREEN] = g_norm
+            self._base_emitters[ChannelType.BLUE] = b_norm
+            self._base_emitters[ChannelType.WHITE] = w_norm
+            self._base_emitters[ChannelType.AMBER] = a_norm
 
         self._target_color = sRGB(r_norm, g_norm, b_norm)
         self._target_cie = self._target_color.to_XYZ().to_xyY()
@@ -555,6 +638,17 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
     def _update_target_from_emitters(self) -> None:  # pylint: disable=too-many-locals
         """Synthesize target CIE xyY and sRGB from current _base_emitters levels."""
+        if self.is_subtractive_cmy:
+            c_val = float(self._base_emitters.get(ChannelType.CYAN, 0.0))
+            m_val = float(self._base_emitters.get(ChannelType.MAGENTA, 0.0))
+            y_val = float(self._base_emitters.get(ChannelType.YELLOW, 0.0))
+            self._target_color = sRGB(
+                max(0.0, min(1.0, 1.0 - c_val)),
+                max(0.0, min(1.0, 1.0 - m_val)),
+                max(0.0, min(1.0, 1.0 - y_val)),
+            )
+            self._target_cie = self._target_color.to_XYZ().to_xyY()
+            return
         default_cie: dict[ChannelType, CIExyY] = {
             ChannelType.RED: CIExyY(0.6400, 0.3300, 21.26),
             ChannelType.GREEN: CIExyY(0.3000, 0.6000, 71.52),
@@ -738,6 +832,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         else:
             coarse_ch.set_normalized(clamped_norm)
             self._param_last_raw[channel_type] = coarse_ch.value
+        if channel_type in COLOR_CHANNEL_TYPES:
+            self._base_emitters[channel_type] = clamped_norm
+            self._update_target_from_emitters()
 
     def set_parameter_percent(self, channel_type: ChannelType, percent: float) -> None:
         """Set parameter percent [0.0..100.0] across 8/16/24-bit channels."""
@@ -1105,25 +1202,31 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
         # Invalidate/update internal state caches
         if any(t in POSITION_CHANNEL_TYPES for t in target_types):
-            self._param_normalized.pop("pan", None)
-            self._param_normalized.pop("tilt", None)
-            self._param_last_raw.pop("pan", None)
-            self._param_last_raw.pop("tilt", None)
+            self._param_normalized.pop(ChannelType.PAN, None)
+            self._param_normalized.pop(ChannelType.TILT, None)
+            self._param_last_raw.pop(ChannelType.PAN, None)
+            self._param_last_raw.pop(ChannelType.TILT, None)
 
         if any(t in COLOR_CHANNEL_TYPES for t in target_types):
-            any_color_def_255 = any(
-                ch.channel_type in COLOR_CHANNEL_TYPES and ch.default_value > 0
-                for ch in self.channels
-            )
-            col_level = 1.0 if any_color_def_255 else 0.0
-            self._target_color = sRGB(col_level, col_level, col_level)
-            self._target_cie = CIExyY(0.3127, 0.3290, col_level)
-            for k in self._base_emitters:
-                self._base_emitters[k] = col_level
+            if self.is_subtractive_cmy:
+                for ch in self.channels:
+                    if ch.channel_type in COLOR_CHANNEL_TYPES:
+                        self._base_emitters[ch.channel_type] = ch.default_value / 255.0
+                self._update_target_from_emitters()
+            else:
+                any_color_def_255 = any(
+                    ch.channel_type in COLOR_CHANNEL_TYPES and ch.default_value > 0
+                    for ch in self.channels
+                )
+                col_level = 1.0 if any_color_def_255 else 0.0
+                self._target_color = sRGB(col_level, col_level, col_level)
+                self._target_cie = CIExyY(0.3127, 0.3290, col_level)
+                for k in self._base_emitters:
+                    self._base_emitters[k] = col_level
 
         for t in target_types:
-            self._param_normalized.pop(t.value, None)
-            self._param_last_raw.pop(t.value, None)
+            self._param_normalized.pop(t, None)
+            self._param_last_raw.pop(t, None)
 
     def locate(self) -> None:
         """Reset fixture to home values and bring intensity to full / open."""

@@ -33,6 +33,42 @@ def _update_dmx_and_send(app: CoreApplication) -> None:
         backend_dmx.set_levels()
 
 
+def _snapshot_live_state(
+    app: CoreApplication, ch: int, old_map: dict[int, typing.Any]
+) -> None:
+    """Capture channel live state snapshot once before modifying parameters."""
+    live_state = getattr(app, "live_state", None)
+    if live_state is not None and ch not in old_map:
+        old_map[ch] = live_state.snapshot_channel(ch)
+
+
+def _mark_live_manual(
+    app: CoreApplication,
+    ch: int,
+    params: typing.Iterable[str],
+    new_map: dict[int, typing.Any],
+) -> None:
+    """Mark *params* manual on *ch* (breaking palette refs) and save snapshot."""
+    live_state = getattr(app, "live_state", None)
+    if live_state is None:
+        return
+    param_list = [p for p in params if p]
+    if param_list:
+        live_state.mark_manual_params(ch, param_list, break_refs=True)
+    new_map[ch] = live_state.snapshot_channel(ch)
+
+
+def _restore_live_states(
+    app: CoreApplication, state_map: dict[int, typing.Any]
+) -> None:
+    """Restore per-channel live state snapshots."""
+    live_state = getattr(app, "live_state", None)
+    if live_state is None:
+        return
+    for ch, snap in state_map.items():
+        live_state.restore_channel(ch, snap)
+
+
 class DevicePanTiltAdjustAction(Action):
     """Action to adjust Pan and/or Tilt relatively on selected or target devices."""
 
@@ -46,6 +82,8 @@ class DevicePanTiltAdjustAction(Action):
         self.channels: list[int] | None = None
         self.old_positions: dict[int, tuple[float, float]] = {}
         self.new_positions: dict[int, tuple[float, float]] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -78,6 +116,8 @@ class DevicePanTiltAdjustAction(Action):
 
         self.old_positions = {}
         self.new_positions = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
 
         for ch in targets:
             dev = patch.devices.get(ch)
@@ -89,12 +129,17 @@ class DevicePanTiltAdjustAction(Action):
             if not has_pan and not has_tilt:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             self.old_positions[ch] = (dev.pan_degrees, dev.tilt_degrees)
+            changed_params: list[str] = []
             if self.pan_delta != 0.0 and has_pan:
                 dev.set_pan_degrees(dev.pan_degrees + self.pan_delta)
+                changed_params.append("pan")
             if self.tilt_delta != 0.0 and has_tilt:
                 dev.set_tilt_degrees(dev.tilt_degrees + self.tilt_delta)
+                changed_params.append("tilt")
             self.new_positions[ch] = (dev.pan_degrees, dev.tilt_degrees)
+            _mark_live_manual(self.app, ch, changed_params, self._new_live_states)
 
         if not self.new_positions:
             self.can_undo = False
@@ -117,6 +162,7 @@ class DevicePanTiltAdjustAction(Action):
                 if dev.get_channel(ChannelType.TILT) is not None:
                     dev.set_tilt_degrees(old_tilt)
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.old_positions.keys()))
 
@@ -134,6 +180,7 @@ class DevicePanTiltAdjustAction(Action):
                 if dev.get_channel(ChannelType.TILT) is not None:
                     dev.set_tilt_degrees(new_tilt)
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_positions.keys()))
 
@@ -151,6 +198,8 @@ class DeviceSetPanTiltAction(Action):
         self.channels: list[int] | None = None
         self.old_positions: dict[int, tuple[float, float]] = {}
         self.new_positions: dict[int, tuple[float, float]] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -183,6 +232,8 @@ class DeviceSetPanTiltAction(Action):
 
         self.old_positions = {}
         self.new_positions = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
 
         for ch in targets:
             dev = patch.devices.get(ch)
@@ -194,12 +245,17 @@ class DeviceSetPanTiltAction(Action):
             if not has_pan and not has_tilt:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             self.old_positions[ch] = (dev.pan_degrees, dev.tilt_degrees)
+            changed_params: list[str] = []
             if self.pan is not None and has_pan:
                 dev.set_pan_degrees(self.pan)
+                changed_params.append("pan")
             if self.tilt is not None and has_tilt:
                 dev.set_tilt_degrees(self.tilt)
+                changed_params.append("tilt")
             self.new_positions[ch] = (dev.pan_degrees, dev.tilt_degrees)
+            _mark_live_manual(self.app, ch, changed_params, self._new_live_states)
 
         if not self.new_positions:
             self.can_undo = False
@@ -222,6 +278,7 @@ class DeviceSetPanTiltAction(Action):
                 if dev.get_channel(ChannelType.TILT) is not None:
                     dev.set_tilt_degrees(old_tilt)
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.old_positions.keys()))
 
@@ -239,6 +296,7 @@ class DeviceSetPanTiltAction(Action):
                 if dev.get_channel(ChannelType.TILT) is not None:
                     dev.set_tilt_degrees(new_tilt)
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_positions.keys()))
 
@@ -257,6 +315,8 @@ class DeviceSetColorAction(Action):
         self.channels: list[int] | None = None
         self.old_colors: dict[int, tuple[float, float, float]] = {}
         self.new_colors: dict[int, tuple[float, float, float]] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -297,6 +357,8 @@ class DeviceSetColorAction(Action):
 
         self.old_colors = {}
         self.new_colors = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
 
         for ch in targets:
             dev = patch.devices.get(ch)
@@ -307,10 +369,12 @@ class DeviceSetColorAction(Action):
             if not has_color:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             srgb = dev.color_srgb
             self.old_colors[ch] = (srgb.r, srgb.g, srgb.b)
             dev.set_color_srgb(self.r, self.g, self.b)
             self.new_colors[ch] = (self.r, self.g, self.b)
+            _mark_live_manual(self.app, ch, ("color",), self._new_live_states)
 
         if not self.new_colors:
             self.can_undo = False
@@ -334,6 +398,7 @@ class DeviceSetColorAction(Action):
             if dev is not None:
                 dev.set_color_srgb(r, g, b)
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.color_changed", list(self.old_colors.keys()), None)
 
@@ -348,6 +413,7 @@ class DeviceSetColorAction(Action):
             if dev is not None:
                 dev.set_color_srgb(r, g, b)
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit(
             "device.color_changed",
@@ -408,6 +474,8 @@ class DeviceSetParameterAction(Action):
         self.channels: list[int] | None = None
         self.old_values: dict[int, float] = {}
         self.new_values: dict[int, float] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -448,12 +516,16 @@ class DeviceSetParameterAction(Action):
 
         self.old_values = {}
         self.new_values = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
+        param_key = self.ch_type.value
 
         for ch in targets:
             dev = patch.devices.get(ch)
             if dev is None or dev.get_channel(self.ch_type) is None:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             old_norm = dev.get_parameter_normalized(self.ch_type)
             self.old_values[ch] = old_norm if old_norm is not None else 0.0
 
@@ -474,6 +546,7 @@ class DeviceSetParameterAction(Action):
                 clamped = max(0.0, min(1.0, self.value))
                 dev.set_parameter_normalized(self.ch_type, clamped)
                 self.new_values[ch] = clamped
+            _mark_live_manual(self.app, ch, (param_key,), self._new_live_states)
 
         if not self.new_values:
             self.can_undo = False
@@ -496,6 +569,7 @@ class DeviceSetParameterAction(Action):
             if dev is not None:
                 dev.set_parameter_normalized(self.ch_type, old_val)
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.old_values.keys()))
 
@@ -513,6 +587,7 @@ class DeviceSetParameterAction(Action):
             if dev is not None:
                 dev.set_parameter_normalized(self.ch_type, new_val)
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_values.keys()))
 
@@ -539,6 +614,8 @@ class DeviceAdjustParameterAction(Action):
         self.channels: list[int] | None = None
         self.old_values: dict[int, float] = {}
         self.new_values: dict[int, float] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -576,12 +653,16 @@ class DeviceAdjustParameterAction(Action):
 
         self.old_values = {}
         self.new_values = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
+        param_key = self.ch_type.value
 
         for ch in targets:
             dev = patch.devices.get(ch)
             if dev is None or dev.get_channel(self.ch_type) is None:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             old_norm = dev.get_parameter_normalized(self.ch_type)
             cur_norm = old_norm if old_norm is not None else 0.0
             new_norm = max(0.0, min(1.0, cur_norm + self.delta))
@@ -589,6 +670,7 @@ class DeviceAdjustParameterAction(Action):
             self.old_values[ch] = cur_norm
             dev.set_parameter_normalized(self.ch_type, new_norm)
             self.new_values[ch] = new_norm
+            _mark_live_manual(self.app, ch, (param_key,), self._new_live_states)
 
         if not self.new_values:
             self.can_undo = False
@@ -611,6 +693,7 @@ class DeviceAdjustParameterAction(Action):
             if dev is not None:
                 dev.set_parameter_normalized(self.ch_type, old_val)
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.old_values.keys()))
 
@@ -628,6 +711,7 @@ class DeviceAdjustParameterAction(Action):
             if dev is not None:
                 dev.set_parameter_normalized(self.ch_type, new_val)
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_values.keys()))
 
@@ -654,6 +738,8 @@ class DeviceHomeAction(Action):
         self.new_states: dict[int, dict[int, int]] = {}
         self.old_intensities: dict[int, float] = {}
         self.new_intensities: dict[int, float] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
 
     def configure(
         self,
@@ -680,17 +766,29 @@ class DeviceHomeAction(Action):
         self.new_states = {}
         self.old_intensities = {}
         self.new_intensities = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
+        live_state = getattr(self.app, "live_state", None)
 
         for ch in targets:
             dev = patch.devices.get(ch)
             if dev is None:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             self.old_states[ch] = {c.address: c.value for c in dev.channels}
             self.old_intensities[ch] = dev.intensity
             dev.home(self.category)
             self.new_states[ch] = {c.address: c.value for c in dev.channels}
             self.new_intensities[ch] = dev.intensity
+            if live_state is not None:
+                live_state.break_family_refs(ch, self.category)
+                changed_params = [
+                    c.channel_type.value
+                    for c in dev.channels
+                    if c.value != self.old_states[ch].get(c.address)
+                ]
+                _mark_live_manual(self.app, ch, changed_params, self._new_live_states)
 
         if not self.new_states:
             self.can_undo = False
@@ -714,6 +812,7 @@ class DeviceHomeAction(Action):
                 if ch in self.old_intensities:
                     dev.set_intensity(self.old_intensities[ch])
 
+        _restore_live_states(self.app, self._old_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.old_states.keys()))
 
@@ -732,6 +831,7 @@ class DeviceHomeAction(Action):
                 if ch in self.new_intensities:
                     dev.set_intensity(self.new_intensities[ch])
 
+        _restore_live_states(self.app, self._new_live_states)
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_states.keys()))
 
@@ -749,6 +849,8 @@ class DeviceLocateAction(Action):
         self.new_states: dict[int, dict[int, int]] = {}
         self.old_intensities: dict[int, float] = {}
         self.new_intensities: dict[int, float] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
         self.old_user_levels: dict[int, int] = {}
 
     def configure(self, channels: list[int] | None = None) -> None:
@@ -771,27 +873,40 @@ class DeviceLocateAction(Action):
         self.new_states = {}
         self.old_intensities = {}
         self.new_intensities = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
         self.old_user_levels: dict[int, float] = {}
 
         backend = getattr(self.app, "backend", None)
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         user_levels = getattr(dmx, "levels", {}).get("user") if dmx else None
+        live_state = getattr(self.app, "live_state", None)
 
         for ch in targets:
             dev = patch.devices.get(ch)
             if dev is None:
                 continue
 
+            _snapshot_live_state(self.app, ch, self._old_live_states)
             self.old_states[ch] = {c.address: c.value for c in dev.channels}
             self.old_intensities[ch] = dev.intensity
             dev.locate()
             self.new_states[ch] = {c.address: c.value for c in dev.channels}
             self.new_intensities[ch] = dev.intensity
 
+            changed_params = [
+                c.channel_type.value
+                for c in dev.channels
+                if c.value != self.old_states[ch].get(c.address)
+            ]
             if user_levels is not None and 1 <= ch <= len(user_levels):
                 self.old_user_levels[ch] = float(user_levels[ch - 1])
                 user_levels[ch - 1] = 1.0
+                changed_params.append("intensity")
                 self.app.emit("channel.level_changed", ch, 1.0)
+            if live_state is not None:
+                live_state.break_family_refs(ch, None)
+                _mark_live_manual(self.app, ch, changed_params, self._new_live_states)
 
         if not self.new_states:
             self.can_undo = False
@@ -810,6 +925,7 @@ class DeviceLocateAction(Action):
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         user_levels = getattr(dmx, "levels", {}).get("user") if dmx else None
 
+        _restore_live_states(self.app, self._old_live_states)
         for ch, states in self.old_states.items():
             dev = patch.devices.get(ch)
             if dev is not None:
@@ -839,6 +955,7 @@ class DeviceLocateAction(Action):
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         user_levels = getattr(dmx, "levels", {}).get("user") if dmx else None
 
+        _restore_live_states(self.app, self._new_live_states)
         for ch, states in self.new_states.items():
             dev = patch.devices.get(ch)
             if dev is not None:

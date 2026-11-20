@@ -96,10 +96,12 @@ class ShowNewAction(Action):
         lightshow.main_playback.position = 0
         lightshow.main_playback.update_channels()
 
-        # Reset DMX levels
+        # Reset DMX levels and live parameter state
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             backend.dmx.reset_levels()
+        if hasattr(self.app, "live_state"):
+            self.app.live_state.clear_all()
 
         # Clear channel selection
         if hasattr(self.app, "live_selection"):
@@ -132,11 +134,15 @@ class ShowResetUserLevelsAction(Action):
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
-        self.old_levels: dict[int, int] = {}
+        self.old_levels: dict[int, float] = {}
+        self._old_live_state: dict[int, typing.Any] = {}
 
     def execute(self) -> None:
         """Reset all manual user channel overrides to -1.0."""
-        self.old_levels: dict[int, float] = {}
+        self.old_levels = {}
+        if hasattr(self.app, "live_state"):
+            self._old_live_state = self.app.live_state.snapshot_all()
+            self.app.live_state.clear_all()
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels["user"]
@@ -153,6 +159,8 @@ class ShowResetUserLevelsAction(Action):
 
     def undo(self) -> None:
         """Restore previous manual user channel levels."""
+        if hasattr(self.app, "live_state"):
+            self.app.live_state.restore_all(self._old_live_state)
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels["user"]
@@ -216,10 +224,12 @@ class ShowOpenAction(Action):
         )
         imported.parse_sync()
 
-        # Reset DMX levels
+        # Reset DMX levels and live parameter state
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             backend.dmx.reset_levels()
+        if hasattr(self.app, "live_state"):
+            self.app.live_state.clear_all()
 
         # Clear channel selection
         if hasattr(self.app, "live_selection"):

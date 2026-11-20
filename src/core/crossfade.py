@@ -20,7 +20,9 @@ import numpy as np
 
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, ResolvedState, TrackingEngine
 from olc.show.sequence import (
+    _apply_resolved_device_values,
     _capture_device_states,
+    _emit_device_changes,
     _interpolate_device_states,
     get_cue,
 )
@@ -193,10 +195,7 @@ class CrossFade:
             dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
         if main_pb.patch is not None:
-            for dev_id, params in resolved.device_values.items():
-                dev = main_pb.patch.get_device(dev_id)
-                if dev is not None:
-                    dev.apply_device_values(params)
+            _apply_resolved_device_values(main_pb.patch, resolved, self.app)
 
         if self.app.backend and self.app.backend.dmx:
             self.app.backend.dmx.set_levels()
@@ -368,7 +367,8 @@ class CrossFade:
                 else:
                     mib_factors[dev_id] = ltp_factor
 
-        _interpolate_device_states(
+        color_changed: set[int] = set()
+        changed = _interpolate_device_states(
             main_pb.patch,
             start_states,
             resolved.device_values,
@@ -378,7 +378,9 @@ class CrossFade:
             intensity_out_factors=intensity_out_factors,
             family_factors=family_factors,
             explicit_families=explicit_families,
+            color_changed_out=color_changed,
         )
+        _emit_device_changes(self.app, changed, color_changed)
 
     def _update_ui_transition(
         self, scale: Scale, position: float, total_time: float, step: int

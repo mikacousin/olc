@@ -31,11 +31,67 @@ from olc.define import MAX_CHANNELS
 from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
+    from olc.show.palette import PaletteRef
     from olc.show.patch import PatchManager
 
 HTP_PARAMETERS: frozenset[str] = frozenset({"intensity"})
 
 DEFAULT_MIB_FADE_TIME: float = 2.0
+
+_FAMILY_ALIASES: dict[str, str] = {
+    "focus": "position",
+    "pos": "position",
+    "position": "position",
+    "f": "position",
+    "color": "color",
+    "colour": "color",
+    "c": "color",
+    "intensity": "intensity",
+    "intens": "intensity",
+    "int": "intensity",
+    "i": "intensity",
+    "beam": "beam",
+    "b": "beam",
+}
+
+_PARAM_ALIASES: dict[str, tuple[str, ...]] = {
+    "color": ("color", "colour"),
+    "colour": ("color", "colour"),
+    "cct": ("cct", "color_temp", "colortemp"),
+    "color_temp": ("cct", "color_temp", "colortemp"),
+    "colortemp": ("cct", "color_temp", "colortemp"),
+    "strobe": ("strobe", "shutter"),
+    "shutter": ("strobe", "shutter"),
+    "gobo": ("gobo", "gobo_wheel"),
+    "gobo_wheel": ("gobo", "gobo_wheel"),
+}
+
+
+def _normalize_family(family: str) -> str:
+    """Normalize IFCB family name or alias to canonical family key."""
+    return _FAMILY_ALIASES.get(str(family).strip().lower(), str(family).strip().lower())
+
+
+def _lookup_cue_palette_ref(
+    cue: Any,  # noqa: ANN401
+    dev_id: int,
+    param_name: str,
+) -> Optional[PaletteRef]:
+    """Return PaletteRef tuple stored on *cue* for *(dev_id, param_name)*, if any."""
+    refs_map = getattr(cue, "palette_refs", None)
+    if not isinstance(refs_map, dict):
+        return None
+    dev_refs = refs_map.get(dev_id)
+    if not isinstance(dev_refs, dict) or not dev_refs:
+        return None
+    p_low = str(param_name).lower()
+    for cand in (param_name, p_low, *_PARAM_ALIASES.get(p_low, ()), "*"):
+        if cand in dev_refs:
+            raw = dev_refs[cand]
+            if isinstance(raw, (tuple, list)) and len(raw) >= 2:
+                return (str(raw[0]), float(raw[1]))
+    return None
+
 
 DEFAULT_PHYSICAL_VALUES: dict[str, Any] = {
     "intensity": 0.0,
@@ -73,6 +129,17 @@ TRACKING_COLORS: dict[TrackingDisplayState, dict[str, float]] = {
     TrackingDisplayState.INACTIVE: {"red": 0.6, "green": 0.6, "blue": 0.6},
 }
 
+_STATE_PRIORITY: dict[TrackingDisplayState, int] = {
+    TrackingDisplayState.INACTIVE: 0,
+    TrackingDisplayState.TRACKED_VALUE: 1,
+    TrackingDisplayState.HARD_VALUE: 2,
+    TrackingDisplayState.INTENSITY_UP: 2,
+    TrackingDisplayState.INTENSITY_DOWN: 2,
+    TrackingDisplayState.MIB: 3,
+    TrackingDisplayState.BLOCK: 4,
+    TrackingDisplayState.MANUAL: 5,
+}
+
 
 def get_tracking_color(state: TrackingDisplayState) -> dict[str, float]:
     """Return a copy of the RGB color dictionary for a TrackingDisplayState."""
@@ -85,6 +152,9 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
     sequence: Any,  # noqa: ANN401
     step_index: int,
     channel: int,
+    *,
+    curr_resolved: ResolvedState | None = None,
+    prev_resolved: ResolvedState | None = None,
 ) -> tuple[TrackingDisplayState, float]:
     """Classify a channel's tracking state and resolved level at a sequence step.
 
@@ -106,9 +176,10 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
         return TrackingDisplayState.INACTIVE, 0.0
 
     tracking_mode = getattr(sequence, "tracking_mode", False)
-    curr_resolved = TrackingEngine.resolve_step_state(
-        sequence, step_index, tracking_mode=tracking_mode
-    )
+    if curr_resolved is None:
+        curr_resolved = TrackingEngine.resolve_step_state(
+            sequence, step_index, tracking_mode=tracking_mode
+        )
     curr_level = float(curr_resolved.channels[channel - 1])
     if curr_level == 0.0 and channel in curr_resolved.device_values:
         dev_int = curr_resolved.device_values[channel].get("intensity")
@@ -117,9 +188,10 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
 
     prev_level = 0.0
     if step_index > 1:
-        prev_resolved = TrackingEngine.resolve_step_state(
-            sequence, step_index - 1, tracking_mode=tracking_mode
-        )
+        if prev_resolved is None:
+            prev_resolved = TrackingEngine.resolve_step_state(
+                sequence, step_index - 1, tracking_mode=tracking_mode
+            )
         prev_level = float(prev_resolved.channels[channel - 1])
         if prev_level == 0.0 and channel in prev_resolved.device_values:
             prev_int = prev_resolved.device_values[channel].get("intensity")
@@ -157,9 +229,12 @@ class ResolvedState:
     """Resolved playback state at a specific sequence step.
 
     Attributes:
-        channels: Conventional channels levels array of length MAX_CHANNELS (0-255).
+        channels: Conventional channels levels array of length MAX_CHANNELS.
         device_values: Mapping {device_id: {param_name: physical_or_norm_value}}.
         mib_parameters: Mapping {device_id: set of LTP param names set by MIB}.
+        palette_refs: Mapping {channel: {param_name: (category, number)}}.
+        parameter_states: Mapping {channel: {param_name: TrackingDisplayState}}.
+        family_states: Mapping {channel: {family_name: TrackingDisplayState}}.
     """
 
     channels: np.ndarray = field(
@@ -167,6 +242,90 @@ class ResolvedState:
     )
     device_values: dict[int, dict[str, Any]] = field(default_factory=dict)
     mib_parameters: dict[int, set[str]] = field(default_factory=dict)
+    palette_refs: dict[int, dict[str, PaletteRef]] = field(default_factory=dict)
+    parameter_states: dict[int, dict[str, TrackingDisplayState]] = field(
+        default_factory=dict
+    )
+    family_states: dict[int, dict[str, TrackingDisplayState]] = field(
+        default_factory=dict
+    )
+
+    def has_move_on_family(self, channel: int, family: str) -> bool:
+        """Return True if *family* on *channel* has an explicit move or block."""
+        norm_fam = _normalize_family(family)
+        state = self.family_states.get(int(channel), {}).get(norm_fam)
+        return state in (
+            TrackingDisplayState.HARD_VALUE,
+            TrackingDisplayState.INTENSITY_UP,
+            TrackingDisplayState.INTENSITY_DOWN,
+            TrackingDisplayState.BLOCK,
+        )
+
+    def has_fcb_move(self, channel: int) -> bool:
+        """Return True if Focus, Color, or Beam moved explicitly on *channel*."""
+        return any(
+            self.has_move_on_family(channel, fam)
+            for fam in ("position", "color", "beam")
+        )
+
+    def is_mib(self, channel: int) -> bool:
+        """Return True if any attribute on *channel* is pre-positioned via MIB."""
+        return bool(self.mib_parameters.get(int(channel)))
+
+    def get_family_palette_ref(
+        self, channel: int, family: str
+    ) -> tuple[Optional[PaletteRef], bool]:
+        """Return ``(palette_ref, is_partial)`` for *family* on *channel*.
+
+        When all resolved parameters of *family* share one palette reference,
+        ``is_partial`` is ``False``. If only a subset of parameters carry a
+        reference or multiple distinct references coexist, ``is_partial`` is
+        ``True``.
+        """
+        ch = int(channel)
+        norm_fam = _normalize_family(family)
+        ch_refs = self.palette_refs.get(ch, {})
+        if not ch_refs:
+            return None, False
+
+        if norm_fam == "intensity":
+            has_conv = (
+                1 <= ch <= len(self.channels) and float(self.channels[ch - 1]) > 0.0
+            )
+            has_dev_int = "intensity" in self.device_values.get(ch, {})
+            has_state = "intensity" in self.parameter_states.get(ch, {})
+            if not (has_conv or has_dev_int or has_state):
+                return None, False
+            ref = ch_refs.get("intensity") or ch_refs.get("*")
+            return (ref, False) if ref is not None else (None, False)
+
+        dev_params = self.device_values.get(ch, {})
+        param_names = [
+            p
+            for p in dev_params
+            if p.lower() not in HTP_PARAMETERS
+            and _normalize_family(get_parameter_family(p)) == norm_fam
+        ]
+        if not param_names:
+            return None, False
+
+        matched: list[Optional[PaletteRef]] = []
+        for param_name in param_names:
+            p_low = str(param_name).lower()
+            found: Optional[PaletteRef] = None
+            for cand in (param_name, p_low, *_PARAM_ALIASES.get(p_low, ()), "*"):
+                if cand in ch_refs:
+                    found = ch_refs[cand]
+                    break
+            matched.append(found)
+
+        non_null = [r for r in matched if r is not None]
+        if not non_null:
+            return None, False
+
+        unique_refs = list(dict.fromkeys((str(r[0]), float(r[1])) for r in non_null))
+        is_partial = len(unique_refs) > 1 or len(non_null) < len(param_names)
+        return unique_refs[0], is_partial
 
 
 # pylint: disable=too-few-public-methods
@@ -228,10 +387,25 @@ class TrackingEngine:
         if not sequence.steps or step_index < 0 or step_index >= len(sequence.steps):
             return ResolvedState()
 
-        channels = cls._resolve_conventional_channels(
+        channels, conv_states, conv_refs = cls._resolve_conventional_channels_with_meta(
             sequence, step_index, tracking_mode
         )
-        device_values = cls._resolve_devices(sequence, step_index, tracking_mode, patch)
+        device_values, palette_refs, parameter_states = cls._resolve_devices_with_meta(
+            sequence, step_index, tracking_mode, patch
+        )
+
+        for ch, state in conv_states.items():
+            ch_params = parameter_states.setdefault(ch, {})
+            existing = ch_params.get("intensity")
+            if existing is None or (
+                _STATE_PRIORITY.get(state, 0) >= _STATE_PRIORITY.get(existing, 0)
+            ):
+                ch_params["intensity"] = state
+        for ch, ref in conv_refs.items():
+            ch_refs = palette_refs.setdefault(ch, {})
+            if "intensity" not in ch_refs:
+                ch_refs["intensity"] = ref
+
         use_mib = (
             bool(getattr(sequence, "mib_enabled", True))
             if mib_enabled is None
@@ -240,28 +414,92 @@ class TrackingEngine:
         mib_parameters: dict[int, set[str]] = {}
         if use_mib:
             mib_parameters = cls._apply_mib_lookahead(
-                sequence, step_index, channels, device_values, patch
+                sequence,
+                step_index,
+                channels,
+                device_values,
+                patch,
+                palette_refs=palette_refs,
+                parameter_states=parameter_states,
             )
+
+        family_states = cls._compute_family_states(parameter_states)
         return ResolvedState(
             channels=channels,
             device_values=device_values,
             mib_parameters=mib_parameters,
+            palette_refs=palette_refs,
+            parameter_states=parameter_states,
+            family_states=family_states,
         )
 
     @staticmethod
+    def _compute_family_states(
+        parameter_states: dict[int, dict[str, TrackingDisplayState]],
+    ) -> dict[int, dict[str, TrackingDisplayState]]:
+        """Aggregate per-parameter tracking states into canonical IFCB families."""
+        result: dict[int, dict[str, TrackingDisplayState]] = {}
+        for ch, param_map in parameter_states.items():
+            fam_map: dict[str, TrackingDisplayState] = {}
+            for param_name, state in param_map.items():
+                fam = _normalize_family(get_parameter_family(param_name))
+                prev_state = fam_map.get(fam)
+                if prev_state is None or (
+                    _STATE_PRIORITY.get(state, 0) > _STATE_PRIORITY.get(prev_state, 0)
+                ):
+                    fam_map[fam] = state
+            if fam_map:
+                result[ch] = fam_map
+        return result
+
+    @classmethod
     def _resolve_conventional_channels(
+        cls,
         sequence: Any,  # noqa: ANN401
         step_index: int,
         tracking_mode: bool,
     ) -> np.ndarray:
         """Resolve conventional channel levels (0-255)."""
+        channels, _, _ = cls._resolve_conventional_channels_with_meta(
+            sequence, step_index, tracking_mode
+        )
+        return channels
+
+    @staticmethod
+    def _resolve_conventional_channels_with_meta(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        tracking_mode: bool,
+    ) -> tuple[
+        np.ndarray,
+        dict[int, TrackingDisplayState],
+        dict[int, PaletteRef],
+    ]:
+        """Resolve conventional levels along with tracking states and palette refs."""
+        target_cue = sequence.steps[step_index].cue
+        is_target_block = bool(
+            target_cue is not None and getattr(target_cue, "is_block", False)
+        )
+        conv_states: dict[int, TrackingDisplayState] = {}
+        conv_refs: dict[int, PaletteRef] = {}
+
         if not tracking_mode:
-            target_cue = sequence.steps[step_index].cue
-            return (
-                target_cue.channels_array.copy()
-                if target_cue is not None
-                else np.zeros(MAX_CHANNELS, dtype=np.float64)
-            )
+            if target_cue is None:
+                return np.zeros(MAX_CHANNELS, dtype=np.float64), conv_states, conv_refs
+            for ch_num, level in target_cue.channels.items():
+                ch_int = int(ch_num)
+                if not 1 <= ch_int <= MAX_CHANNELS:
+                    continue
+                conv_states[ch_int] = (
+                    TrackingDisplayState.BLOCK
+                    if is_target_block
+                    else TrackingDisplayState.HARD_VALUE
+                )
+                if float(level) > 0.0:
+                    ref = _lookup_cue_palette_ref(target_cue, ch_int, "intensity")
+                    if ref is not None:
+                        conv_refs[ch_int] = ref
+            return target_cue.channels_array.copy(), conv_states, conv_refs
 
         resolved_channels = np.zeros(MAX_CHANNELS, dtype=np.float64)
         resolved_mask = np.zeros(MAX_CHANNELS, dtype=bool)
@@ -274,13 +512,26 @@ class TrackingEngine:
             for ch_num, level in cue.channels.items():
                 ch_int = int(ch_num)
                 if 1 <= ch_int <= MAX_CHANNELS and not resolved_mask[ch_int - 1]:
-                    resolved_channels[ch_int - 1] = float(level)
+                    lvl_f = float(level)
+                    resolved_channels[ch_int - 1] = lvl_f
                     resolved_mask[ch_int - 1] = True
+                    if is_target_block:
+                        conv_states[ch_int] = TrackingDisplayState.BLOCK
+                    elif idx == step_index:
+                        conv_states[ch_int] = TrackingDisplayState.HARD_VALUE
+                    elif lvl_f > 0.0:
+                        conv_states[ch_int] = TrackingDisplayState.TRACKED_VALUE
+                    else:
+                        conv_states[ch_int] = TrackingDisplayState.INACTIVE
+                    if lvl_f > 0.0 or idx == step_index:
+                        ref = _lookup_cue_palette_ref(cue, ch_int, "intensity")
+                        if ref is not None:
+                            conv_refs[ch_int] = ref
 
             if cue.is_block or np.all(resolved_mask):
                 break
 
-        return resolved_channels
+        return resolved_channels, conv_states, conv_refs
 
     @classmethod
     def _resolve_devices(
@@ -291,6 +542,24 @@ class TrackingEngine:
         patch: Optional[PatchManager],
     ) -> dict[int, dict[str, Any]]:
         """Resolve all multi-parameter device states."""
+        device_values, _, _ = cls._resolve_devices_with_meta(
+            sequence, step_index, tracking_mode, patch
+        )
+        return device_values
+
+    @classmethod
+    def _resolve_devices_with_meta(
+        cls,
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        tracking_mode: bool,
+        patch: Optional[PatchManager],
+    ) -> tuple[
+        dict[int, dict[str, Any]],
+        dict[int, dict[str, PaletteRef]],
+        dict[int, dict[str, TrackingDisplayState]],
+    ]:
+        """Resolve multi-parameter values, palette references, and param states."""
         all_device_ids: set[int] = set()
         if patch is not None:
             all_device_ids.update(patch.devices.keys())
@@ -301,14 +570,21 @@ class TrackingEngine:
                 all_device_ids.update(c.device_values.keys())
 
         device_values: dict[int, dict[str, Any]] = {}
+        palette_refs: dict[int, dict[str, PaletteRef]] = {}
+        parameter_states: dict[int, dict[str, TrackingDisplayState]] = {}
+
         for dev_id in sorted(all_device_ids):
-            dev_state = cls._resolve_single_device(
+            dev_state, dev_refs, dev_pstates = cls._resolve_single_device_with_meta(
                 sequence, step_index, dev_id, tracking_mode
             )
             if dev_state:
                 device_values[dev_id] = dev_state
+            if dev_refs:
+                palette_refs[dev_id] = dev_refs
+            if dev_pstates:
+                parameter_states[dev_id] = dev_pstates
 
-        return device_values
+        return device_values, palette_refs, parameter_states
 
     @classmethod
     def _resolve_single_device(
@@ -319,27 +595,87 @@ class TrackingEngine:
         tracking_mode: bool,
     ) -> dict[str, Any]:
         """Resolve all touched parameters for a single device."""
+        dev_state, _, _ = cls._resolve_single_device_with_meta(
+            sequence, step_index, dev_id, tracking_mode
+        )
+        return dev_state
+
+    @classmethod
+    def _resolve_single_device_with_meta(  # pylint: disable=too-many-locals
+        cls,
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        dev_id: int,
+        tracking_mode: bool,
+    ) -> tuple[
+        dict[str, Any],
+        dict[str, PaletteRef],
+        dict[str, TrackingDisplayState],
+    ]:
+        """Resolve parameters, palette refs, and tracking states for one device."""
         touched_params: set[str] = set()
         for idx in range(0, step_index + 1):
             c = sequence.steps[idx].cue
             if c is not None and hasattr(c, "device_values"):
                 touched_params.update(c.device_values.get(dev_id, {}).keys())
 
+        target_cue = sequence.steps[step_index].cue
+        is_target_block = bool(
+            target_cue is not None and getattr(target_cue, "is_block", False)
+        )
+
         dev_state: dict[str, Any] = {}
+        dev_refs: dict[str, PaletteRef] = {}
+        dev_pstates: dict[str, TrackingDisplayState] = {}
+
         for param_name in sorted(touched_params):
             is_htp = param_name.lower() in HTP_PARAMETERS
             if is_htp:
-                dev_state[param_name] = cls._resolve_htp_parameter(
+                val, def_idx, def_cue = cls._resolve_htp_parameter_with_source(
                     sequence, step_index, dev_id, param_name, tracking_mode
                 )
+                dev_state[param_name] = val
+                if def_cue is None:
+                    dev_pstates[param_name] = TrackingDisplayState.INACTIVE
+                elif is_target_block:
+                    dev_pstates[param_name] = TrackingDisplayState.BLOCK
+                elif def_idx == step_index:
+                    dev_pstates[param_name] = TrackingDisplayState.HARD_VALUE
+                elif float(val) > 0.0:
+                    dev_pstates[param_name] = TrackingDisplayState.TRACKED_VALUE
+                else:
+                    dev_pstates[param_name] = TrackingDisplayState.INACTIVE
+
+                if def_cue is not None and (float(val) > 0.0 or def_idx == step_index):
+                    ref = _lookup_cue_palette_ref(def_cue, dev_id, param_name)
+                    if ref is not None:
+                        dev_refs[param_name] = ref
             else:
-                dev_state[param_name] = cls._resolve_ltp_parameter(
+                val, def_idx, def_cue = cls._resolve_ltp_parameter_with_source(
                     sequence, step_index, dev_id, param_name
                 )
-        return dev_state
+                dev_state[param_name] = val
+                if def_cue is None:
+                    dev_pstates[param_name] = TrackingDisplayState.INACTIVE
+                else:
+                    dev_pstates[param_name] = (
+                        TrackingDisplayState.BLOCK
+                        if is_target_block
+                        else (
+                            TrackingDisplayState.HARD_VALUE
+                            if def_idx == step_index
+                            else TrackingDisplayState.TRACKED_VALUE
+                        )
+                    )
+                    ref = _lookup_cue_palette_ref(def_cue, dev_id, param_name)
+                    if ref is not None:
+                        dev_refs[param_name] = ref
 
-    @staticmethod
+        return dev_state, dev_refs, dev_pstates
+
+    @classmethod
     def _resolve_htp_parameter(
+        cls,
         sequence: Any,  # noqa: ANN401
         step_index: int,
         dev_id: int,
@@ -347,13 +683,33 @@ class TrackingEngine:
         tracking_mode: bool,
     ) -> float:
         """Resolve HTP intensity parameter (Cue-Only or Tracking)."""
+        val, _, _ = cls._resolve_htp_parameter_with_source(
+            sequence, step_index, dev_id, param_name, tracking_mode
+        )
+        return val
+
+    @staticmethod
+    def _resolve_htp_parameter_with_source(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        dev_id: int,
+        param_name: str,
+        tracking_mode: bool,
+    ) -> tuple[float, int, Any]:
+        """Resolve HTP intensity along with its defining step index and Cue."""
         if not tracking_mode:
             target_cue = sequence.steps[step_index].cue
-            if target_cue is not None and hasattr(target_cue, "device_values"):
-                return float(
-                    target_cue.device_values.get(dev_id, {}).get(param_name, 0.0)
+            if (
+                target_cue is not None
+                and hasattr(target_cue, "device_values")
+                and param_name in target_cue.device_values.get(dev_id, {})
+            ):
+                return (
+                    float(target_cue.device_values[dev_id][param_name]),
+                    step_index,
+                    target_cue,
                 )
-            return 0.0
+            return 0.0, -1, None
 
         for idx in range(step_index, -1, -1):
             c = sequence.steps[idx].cue
@@ -364,19 +720,33 @@ class TrackingEngine:
                 and dev_id in c.device_values
                 and param_name in c.device_values[dev_id]
             ):
-                return float(c.device_values[dev_id][param_name])
+                return float(c.device_values[dev_id][param_name]), idx, c
             if c.is_block:
                 break
-        return 0.0
+        return 0.0, -1, None
 
-    @staticmethod
+    @classmethod
     def _resolve_ltp_parameter(
+        cls,
         sequence: Any,  # noqa: ANN401
         step_index: int,
         dev_id: int,
         param_name: str,
     ) -> Any:  # noqa: ANN401
         """Resolve LTP parameter (tracked backward until latest Move or Block)."""
+        val, _, _ = cls._resolve_ltp_parameter_with_source(
+            sequence, step_index, dev_id, param_name
+        )
+        return val
+
+    @staticmethod
+    def _resolve_ltp_parameter_with_source(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        dev_id: int,
+        param_name: str,
+    ) -> tuple[Any, int, Any]:
+        """Resolve LTP parameter along with its defining step index and Cue."""
         for idx in range(step_index, -1, -1):
             c = sequence.steps[idx].cue
             if c is None:
@@ -386,20 +756,23 @@ class TrackingEngine:
                 and dev_id in c.device_values
                 and param_name in c.device_values[dev_id]
             ):
-                return c.device_values[dev_id][param_name]
+                return c.device_values[dev_id][param_name], idx, c
             if c.is_block:
-                return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0)
+                return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0), -1, None
 
-        return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0)
+        return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0), -1, None
 
     @classmethod
-    def _apply_mib_lookahead(  # pylint: disable=too-many-locals
+    def _apply_mib_lookahead(  # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments
         cls,
         sequence: Any,  # noqa: ANN401
         step_index: int,
         channels: np.ndarray,
         device_values: dict[int, dict[str, Any]],
         patch: Optional[PatchManager],
+        *,
+        palette_refs: Optional[dict[int, dict[str, PaletteRef]]] = None,
+        parameter_states: Optional[dict[int, dict[str, TrackingDisplayState]]] = None,
     ) -> dict[int, set[str]]:
         """Apply Move In Black look-ahead for devices that are dark at step_index."""
         curr_cue = sequence.steps[step_index].cue
@@ -418,7 +791,7 @@ class TrackingEngine:
         for dev_id in sorted(candidate_ids):
             if not cls.is_device_dark(channels, device_values, dev_id):
                 continue
-            turn_on_idx, future_ltp = cls._find_mib_turn_on_step(
+            turn_on_idx, future_ltp, future_cues = cls._find_mib_turn_on_step_with_refs(
                 sequence, step_index, dev_id
             )
             if turn_on_idx is None or not future_ltp:
@@ -433,6 +806,21 @@ class TrackingEngine:
                 if param_name not in dev_state or current_val != target_val:
                     mib_set.add(param_name)
                 dev_state[param_name] = target_val
+                if parameter_states is not None and (param_name in mib_set):
+                    parameter_states.setdefault(dev_id, {})[param_name] = (
+                        TrackingDisplayState.MIB
+                    )
+                if palette_refs is not None:
+                    src_cue = future_cues.get(param_name)
+                    fut_ref = (
+                        _lookup_cue_palette_ref(src_cue, dev_id, param_name)
+                        if src_cue is not None
+                        else None
+                    )
+                    if fut_ref is not None:
+                        palette_refs.setdefault(dev_id, {})[param_name] = fut_ref
+                    elif param_name in mib_set and dev_id in palette_refs:
+                        palette_refs[dev_id].pop(param_name, None)
             if mib_set:
                 mib_parameters[dev_id] = mib_set
 
@@ -451,13 +839,26 @@ class TrackingEngine:
         step_index: int,
         dev_id: int,
     ) -> tuple[Optional[int], dict[str, Any]]:
-        """Find the first future step where dev_id lights up, collecting LTP moves.
+        """Find the first future step where dev_id lights up, collecting LTP moves."""
+        turn_on_idx, filtered_ltp, _ = cls._find_mib_turn_on_step_with_refs(
+            sequence, step_index, dev_id
+        )
+        return turn_on_idx, filtered_ltp
+
+    @classmethod
+    def _find_mib_turn_on_step_with_refs(
+        cls,
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        dev_id: int,
+    ) -> tuple[Optional[int], dict[str, Any], dict[str, Any]]:
+        """Find future MIB turn-on step, LTP values, and defining Cue per parameter.
 
         Stops immediately if a Block Cue or a Cue 0 sentinel is encountered.
         Excludes any parameter whose family has explicit timing on its move step
         or on the turn-on step.
         """
-        collected_ltp: dict[str, tuple[Any, bool]] = {}
+        collected_ltp: dict[str, tuple[Any, bool, Any]] = {}
         for future_idx in range(step_index + 1, len(sequence.steps)):
             future_step = sequence.steps[future_idx]
             cue = future_step.cue
@@ -476,6 +877,7 @@ class TrackingEngine:
                     collected_ltp[param_name] = (
                         val,
                         cls._step_has_explicit_family(future_step, param_name),
+                        cue,
                     )
 
             conv_level = (
@@ -492,11 +894,12 @@ class TrackingEngine:
                 0.0,
             )
             if conv_level > 0 or dev_intensity > 0.0:
-                filtered_ltp = {
-                    p: val
-                    for p, (val, move_exp) in collected_ltp.items()
-                    if not (move_exp or cls._step_has_explicit_family(future_step, p))
-                }
-                return future_idx, filtered_ltp
+                filtered_ltp: dict[str, Any] = {}
+                filtered_cues: dict[str, Any] = {}
+                for p, (val, move_exp, src_cue) in collected_ltp.items():
+                    if not (move_exp or cls._step_has_explicit_family(future_step, p)):
+                        filtered_ltp[p] = val
+                        filtered_cues[p] = src_cue
+                return future_idx, filtered_ltp, filtered_cues
 
-        return None, {}
+        return None, {}, {}

@@ -107,7 +107,22 @@ def _extract_device_palette_values(
 
     if category in (PaletteCategory.COLOR, PaletteCategory.PRESET):
         base_emitters = getattr(dev, "_base_emitters", {})
-        if base_emitters:
+        if getattr(dev, "is_subtractive_cmy", False):
+            ch_mod = _any_color_channel_modified(dev) if has_channels else False
+            force_color = category is PaletteCategory.COLOR and explicit_selection
+            if ch_mod or force_color:
+                preview = (
+                    dev.get_preview_rgb() if hasattr(dev, "get_preview_rgb") else None
+                )
+                if preview is not None:
+                    vals["color"] = (
+                        f"#{round(preview[0] * 255):02x}"
+                        f"{round(preview[1] * 255):02x}"
+                        f"{round(preview[2] * 255):02x}"
+                    )
+                elif hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
+                    vals["color"] = dev.color_srgb.to_hex()
+        elif base_emitters:
             emitters_altered = any(
                 abs(float(v) - 1.0) > 1e-4 for v in base_emitters.values()
             )
@@ -323,6 +338,8 @@ class PaletteApplyAction(Action):
         self._new_user_levels: dict[int, float] = {}
         self._old_device_states: dict[int, dict[str, typing.Any]] = {}
         self._new_device_states: dict[int, dict[str, typing.Any]] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
+        self._new_live_states: dict[int, typing.Any] = {}
         self._affected_channels: list[int] = []
 
     def configure(
@@ -385,8 +402,12 @@ class PaletteApplyAction(Action):
         self._new_user_levels = {}
         self._old_device_states = {}
         self._new_device_states = {}
+        self._old_live_states = {}
+        self._new_live_states = {}
         self._affected_channels = []
         device_changed: list[int] = []
+        live_state = getattr(self.app, "live_state", None)
+        pal_ref = (self.category.value, float(self.number))
 
         for ch in targets:
             dev = patch.devices.get(ch) if patch is not None else None
@@ -394,8 +415,11 @@ class PaletteApplyAction(Action):
                 self._old_user_levels[ch] = float(user_levels[ch - 1])
             if dev is not None:
                 self._old_device_states[ch] = _snapshot_device_state(dev)
+            if live_state is not None:
+                self._old_live_states[ch] = live_state.snapshot_channel(ch)
 
             changed = False
+            applied_refs: dict[str, tuple[str, float]] = {}
             target_intensity: float | None = None
             if (
                 self.category in (PaletteCategory.INTENSITY, PaletteCategory.PRESET)
@@ -420,6 +444,7 @@ class PaletteApplyAction(Action):
                     self._new_user_levels[ch] = target_intensity
                 if dev is not None and hasattr(dev, "set_intensity"):
                     dev.set_intensity(target_intensity)
+                applied_refs["intensity"] = pal_ref
                 changed = True
 
             if (
@@ -434,12 +459,17 @@ class PaletteApplyAction(Action):
                 }
                 if attrs and hasattr(dev, "apply_device_values"):
                     dev.apply_device_values(attrs)
+                    for attr_name in attrs:
+                        applied_refs[str(attr_name).lower()] = pal_ref
                     device_changed.append(ch)
                     changed = True
 
             if dev is not None:
                 self._new_device_states[ch] = _snapshot_device_state(dev)
             if changed:
+                if live_state is not None and applied_refs:
+                    live_state.set_palette_refs(ch, applied_refs, mark_manual=True)
+                    self._new_live_states[ch] = live_state.snapshot_channel(ch)
                 self._affected_channels.append(ch)
 
         if not self._affected_channels:
@@ -465,6 +495,7 @@ class PaletteApplyAction(Action):
         self,
         user_map: dict[int, float],
         device_map: dict[int, dict[str, typing.Any]],
+        live_map: dict[int, typing.Any] | None = None,
     ) -> None:
         lightshow = getattr(self.app, "lightshow", None)
         patch = getattr(lightshow, "patch", None) if lightshow is not None else None
@@ -488,6 +519,11 @@ class PaletteApplyAction(Action):
                 if dev is not None:
                     _restore_device_state(dev, snap)
 
+        live_state = getattr(self.app, "live_state", None)
+        if live_state is not None and live_map is not None:
+            for ch, snap in live_map.items():
+                live_state.restore_channel(ch, snap)
+
         _flush_dmx(self.app)
         for ch, lvl in user_map.items():
             self.app.emit("channel.level_changed", ch, lvl)
@@ -498,11 +534,15 @@ class PaletteApplyAction(Action):
 
     def undo(self) -> None:
         """Revert channels and devices to their pre-palette state."""
-        self._apply_saved_snapshots(self._old_user_levels, self._old_device_states)
+        self._apply_saved_snapshots(
+            self._old_user_levels, self._old_device_states, self._old_live_states
+        )
 
     def redo(self) -> None:
         """Reapply the palette state."""
-        self._apply_saved_snapshots(self._new_user_levels, self._new_device_states)
+        self._apply_saved_snapshots(
+            self._new_user_levels, self._new_device_states, self._new_live_states
+        )
 
     def get_history_details(self) -> str:
         """Return palette label and target channel count for Undo History."""
@@ -572,11 +612,37 @@ class PaletteRecordAction(Action):
             dev_vals = copy.deepcopy(self.device_values or {})
 
         text = self.label or (existing.text if existing is not None else "")
-        refs = (
-            copy.deepcopy(self.palette_refs)
-            if self.palette_refs is not None
-            else copy.deepcopy(existing.palette_refs if existing is not None else {})
-        )
+        if self.palette_refs is not None:
+            refs = copy.deepcopy(self.palette_refs)
+        elif (
+            self.category is PaletteCategory.PRESET
+            and self.channels_data is None
+            and self.device_values is None
+        ):
+            refs = {}
+            live_state = getattr(self.app, "live_state", None)
+            if live_state is not None:
+                all_chs = set(ch_data.keys()) | set(dev_vals.keys())
+                for ch in all_chs:
+                    ch_refs: dict[str, tuple[str, float]] = {}
+                    if ch in ch_data:
+                        int_ref = live_state.get_palette_ref(ch, "intensity")
+                        if (
+                            int_ref is not None
+                            and int_ref[0] != PaletteCategory.PRESET.value
+                        ):
+                            ch_refs["intensity"] = int_ref
+                    for param_name in dev_vals.get(ch, {}):
+                        p_ref = live_state.get_palette_ref(ch, param_name)
+                        if (
+                            p_ref is not None
+                            and p_ref[0] != PaletteCategory.PRESET.value
+                        ):
+                            ch_refs[str(param_name)] = p_ref
+                    if ch_refs:
+                        refs[ch] = ch_refs
+        else:
+            refs = copy.deepcopy(existing.palette_refs if existing is not None else {})
 
         new_palette = Palette(
             category=self.category,

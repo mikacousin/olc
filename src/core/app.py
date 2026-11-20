@@ -24,6 +24,7 @@ from olc.core.crossfade import CrossFade
 from olc.core.dmx_backend import DMXBackend
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
+from olc.core.live_state import LiveParameterState
 from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
 from olc.core.sneak import SneakController
@@ -54,6 +55,7 @@ class CoreApplication(EventDispatcher):
     live_selection: SelectionManager
     action_registry: ActionRegistry
     history: HistoryManager
+    live_state: LiveParameterState
     selected_cue: typing.Optional[tuple[float, int]]
     selected_group: typing.Optional[float]
     tabs: CoreTabs
@@ -99,6 +101,7 @@ class CoreApplication(EventDispatcher):
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))
         self.history = HistoryManager(typing.cast(typing.Any, self))
+        self.live_state = LiveParameterState()
         self.sneak_controller = SneakController(typing.cast(typing.Any, self))
 
         # Logical selection states

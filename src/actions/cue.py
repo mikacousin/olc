@@ -47,6 +47,8 @@ class CueUpdateAction(Action):
         self.old_channels: dict[int, int | float] = {}
         self.new_device_values: dict[int, dict[str, float]] | None = None
         self.old_device_values: dict[int, dict[str, float]] = {}
+        self.new_palette_refs: dict[int, dict[str, tuple[str, float]]] | None = None
+        self.old_palette_refs: dict[int, dict[str, tuple[str, float]]] = {}
 
     def configure(
         self,
@@ -54,6 +56,7 @@ class CueUpdateAction(Action):
         sequence: int,
         channels: Mapping[int, int | float],
         device_values: dict[int, dict[str, float]] | None = None,
+        palette_refs: dict[int, dict[str, tuple[str, float]]] | None = None,
     ) -> None:
         """Configure the action.
 
@@ -62,12 +65,16 @@ class CueUpdateAction(Action):
             sequence: Sequence number (0 = preset).
             channels: New channel levels to apply.
             device_values: Optional per-device parameter overrides to merge.
+            palette_refs: Optional per-channel palette references mapping.
         """
         self.number = number
         self.sequence = sequence
         self.new_channels = dict(channels)
         self.new_device_values = (
             copy.deepcopy(device_values) if device_values is not None else None
+        )
+        self.new_palette_refs = (
+            copy.deepcopy(palette_refs) if palette_refs is not None else None
         )
 
     def execute(self) -> None:
@@ -77,10 +84,13 @@ class CueUpdateAction(Action):
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
         self.old_channels = copy.deepcopy(dict(cue.channels))
         self.old_device_values = copy.deepcopy(dict(cue.device_values))
+        self.old_palette_refs = copy.deepcopy(dict(cue.palette_refs))
         cue.channels = self.new_channels
         if self.new_device_values is not None:
             for dev_id, vals in self.new_device_values.items():
                 cue.device_values.setdefault(dev_id, {}).update(vals)
+        if self.new_palette_refs is not None:
+            cue.palette_refs = copy.deepcopy(self.new_palette_refs)
         self.app.lightshow.main_playback.update_channels()
         self.app.lightshow.set_modified()
         self.app.lightshow.cues.cue_editor.clear(self.number, self.sequence)
@@ -93,6 +103,7 @@ class CueUpdateAction(Action):
             return
         cue.channels = copy.deepcopy(self.old_channels)
         cue.device_values = copy.deepcopy(self.old_device_values)
+        cue.palette_refs = copy.deepcopy(self.old_palette_refs)
         self.app.lightshow.main_playback.update_channels()
         self.app.lightshow.set_modified()
         self.app.emit("cue.updated", self.sequence, self.number)

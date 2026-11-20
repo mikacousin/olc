@@ -25,6 +25,7 @@ import numpy as np
 
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, TrackingEngine
 from olc.define import MAX_CHANNELS
+from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType
 from olc.show.step import Step, get_parameter_family
 
 if typing.TYPE_CHECKING:
@@ -38,6 +39,179 @@ def get_cue(step: Step) -> typing.Any:  # noqa: ANN401
     return step.cue
 
 
+_INTERPOLATABLE_NORM_CHANNEL_TYPES: tuple[ChannelType, ...] = (
+    ChannelType.RED,
+    ChannelType.GREEN,
+    ChannelType.BLUE,
+    ChannelType.WHITE,
+    ChannelType.AMBER,
+    ChannelType.LIME,
+    ChannelType.CYAN,
+    ChannelType.INDIGO,
+    ChannelType.MAGENTA,
+    ChannelType.YELLOW,
+    ChannelType.COLOR_WHEEL,
+    ChannelType.GOBO_WHEEL,
+    ChannelType.FROST,
+    ChannelType.PRISM,
+)
+_COLOR_PARAM_NAMES: frozenset[str] = frozenset(
+    {
+        "color",
+        "colour",
+        "red",
+        "green",
+        "blue",
+        "white",
+        "amber",
+        "lime",
+        "cyan",
+        "indigo",
+        "magenta",
+        "yellow",
+        "color_wheel",
+        "cct",
+        "color_temp",
+        "colortemp",
+    }
+)
+
+
+def _get_device_preview_rgb(
+    dev: typing.Any,  # noqa: ANN401
+) -> Optional[tuple[float, float, float]]:
+    """Return normalized (r, g, b) preview color from *dev* if color-capable."""
+    fn = getattr(dev, "get_preview_rgb", None)
+    if callable(fn):
+        preview = fn()
+        if preview is not None:
+            return (float(preview[0]), float(preview[1]), float(preview[2]))
+    return None
+
+
+def _snapshot_dev_diff_state(
+    dev: typing.Any,  # noqa: ANN401
+) -> tuple[
+    Optional[tuple[float, float, float]],
+    Optional[tuple[float, float, float]],
+    tuple[int, ...],
+    float,
+]:
+    """Capture lightweight device state for change detection during fades."""
+    preview = _get_device_preview_rgb(dev)
+    srgb = getattr(dev, "color_srgb", None)
+    srgb_t = (float(srgb.r), float(srgb.g), float(srgb.b)) if srgb is not None else None
+    dmx_vals = tuple(int(ch.value) for ch in getattr(dev, "channels", ()))
+    intensity = float(getattr(dev, "intensity", 0.0))
+    return (preview, srgb_t, dmx_vals, intensity)
+
+
+def _has_device_changed(
+    before: tuple[
+        Optional[tuple[float, float, float]],
+        Optional[tuple[float, float, float]],
+        tuple[int, ...],
+        float,
+    ],
+    dev: typing.Any,  # noqa: ANN401
+    *,
+    touched_color_param: bool = False,
+) -> tuple[bool, bool]:
+    """Compare device state against *before*; return (changed, color_changed)."""
+    after_preview, after_srgb, after_dmx, after_int = _snapshot_dev_diff_state(dev)
+    b_preview, b_srgb, b_dmx, b_int = before
+
+    rgb_moved = False
+    if b_preview is not None and after_preview is not None:
+        rgb_moved = any(
+            abs(a - b) > 1e-4 for a, b in zip(b_preview, after_preview, strict=False)
+        )
+    elif b_srgb is not None and after_srgb is not None:
+        rgb_moved = any(
+            abs(a - b) > 1e-4 for a, b in zip(b_srgb, after_srgb, strict=False)
+        )
+
+    dmx_moved = b_dmx != after_dmx
+    int_moved = abs(after_int - b_int) > 1e-5
+    color_moved = rgb_moved or (dmx_moved and touched_color_param)
+    any_moved = color_moved or dmx_moved or int_moved
+    return any_moved, color_moved
+
+
+def _emit_device_changes(
+    app: Optional[CoreApplication],
+    changed_devices: set[int],
+    color_changed: set[int],
+) -> None:
+    """Emit differential device color and parameter events onto *app*."""
+    if app is None or not changed_devices or not hasattr(app, "emit"):
+        return
+    if color_changed:
+        app.emit("device.color_changed", sorted(color_changed), None)
+    param_only = changed_devices - color_changed
+    if param_only:
+        app.emit("device.parameters_changed", sorted(param_only))
+
+
+def _has_user_intensity_override(app: Optional[CoreApplication], channel: int) -> bool:
+    """Return True if *channel* holds a manual intensity override in DMX levels."""
+    if app is None:
+        return False
+    backend = getattr(app, "backend", None)
+    dmx = getattr(backend, "dmx", None) if backend is not None else None
+    levels = getattr(dmx, "levels", None) if dmx is not None else None
+    if isinstance(levels, dict):
+        user_arr = levels.get("user")
+        if user_arr is not None and 1 <= channel <= len(user_arr):
+            return float(user_arr[channel - 1]) >= 0.0
+    return False
+
+
+def _apply_resolved_device_values(
+    patch: Optional[PatchManager],
+    resolved: typing.Any,  # noqa: ANN401
+    app: Optional[CoreApplication] = None,
+    *,
+    clear_live_state: bool = True,
+) -> tuple[set[int], set[int]]:
+    """Apply final resolved device values, emit events, and update live_state."""
+    changed_devices: set[int] = set()
+    color_changed: set[int] = set()
+    device_values = getattr(resolved, "device_values", None)
+    if patch is None or not device_values:
+        return changed_devices, color_changed
+
+    live_state = getattr(app, "live_state", None) if app is not None else None
+    for dev_id, params in device_values.items():
+        dev = patch.get_device(dev_id)
+        if dev is None:
+            continue
+        before = _snapshot_dev_diff_state(dev)
+        dev.apply_device_values(params)
+        touched_color = any(str(k).lower() in _COLOR_PARAM_NAMES for k in params)
+        any_moved, col_moved = _has_device_changed(
+            before, dev, touched_color_param=touched_color
+        )
+        if any_moved:
+            changed_devices.add(dev_id)
+            if col_moved:
+                color_changed.add(dev_id)
+        if clear_live_state and live_state is not None:
+            to_clear = [
+                k
+                for k in params
+                if not (
+                    str(k).lower() == "intensity"
+                    and _has_user_intensity_override(app, dev_id)
+                )
+            ]
+            if to_clear:
+                live_state.clear_params(dev_id, to_clear)
+
+    _emit_device_changes(app, changed_devices, color_changed)
+    return changed_devices, color_changed
+
+
 def _capture_device_states(
     patch: Optional[PatchManager],
 ) -> dict[int, dict[str, typing.Any]]:
@@ -46,8 +220,19 @@ def _capture_device_states(
     if patch is None:
         return states
     for dev_id, dev in getattr(patch, "devices", {}).items():
-        srgb = getattr(dev, "color_srgb", None)
-        rgb = (srgb.r, srgb.g, srgb.b) if srgb is not None else (0.0, 0.0, 0.0)
+        rgb = _get_device_preview_rgb(dev)
+        if rgb is None:
+            srgb = getattr(dev, "color_srgb", None)
+            rgb = (srgb.r, srgb.g, srgb.b) if srgb is not None else (0.0, 0.0, 0.0)
+        norm_params: dict[str, float] = {}
+        get_norm = getattr(dev, "get_parameter_normalized", None)
+        get_ch = getattr(dev, "get_channel", None)
+        if callable(get_norm) and callable(get_ch):
+            for ctype in _INTERPOLATABLE_NORM_CHANNEL_TYPES:
+                if get_ch(ctype) is not None:
+                    n_val = get_norm(ctype)
+                    if n_val is not None:
+                        norm_params[ctype.value] = float(n_val)
         states[dev_id] = {
             "intensity": getattr(dev, "intensity", 0.0),
             "pan": getattr(dev, "pan_degrees", 0.0),
@@ -58,6 +243,7 @@ def _capture_device_states(
             "cct": getattr(dev, "color_temp_kelvin", None),
             "iris": getattr(dev, "iris", None),
             "color_rgb": rgb,
+            "norm_params": norm_params,
         }
     return states
 
@@ -94,10 +280,16 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
     intensity_out_factors: Optional[dict[int, float]] = None,
     family_factors: Optional[dict[str, float]] = None,
     explicit_families: Optional[set[str]] = None,
-) -> None:
-    """Interpolate continuous physical device parameters at progress factor."""
+    color_changed_out: Optional[set[int]] = None,
+) -> set[int]:
+    """Interpolate continuous physical device parameters at progress factor.
+
+    Returns:
+        Set of 1-based device/channel IDs whose state actually changed on this tick.
+    """
+    changed_devices: set[int] = set()
     if patch is None or not target_values:
-        return
+        return changed_devices
     alpha = max(0.0, min(1.0, factor))
     scalar_map = {
         "pan": "pan",
@@ -110,11 +302,15 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
         "colortemp": "cct",
         "iris": "iris",
     }
+    norm_emitter_names = {ct.value for ct in COLOR_CHANNEL_TYPES}
     for dev_id, params in target_values.items():
         dev = patch.get_device(dev_id)
         if dev is None:
             continue
+        before = _snapshot_dev_diff_state(dev)
+        touched_color = False
         start = start_states.get(dev_id, {})
+        start_norm = start.get("norm_params", {})
         for param_name, target_val in params.items():
             p_lower = param_name.lower()
             if p_lower == "intensity":
@@ -150,6 +346,9 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
             ):
                 param_alpha = max(0.0, min(1.0, mib_factors[dev_id]))
 
+            if p_lower in _COLOR_PARAM_NAMES:
+                touched_color = True
+
             if p_lower in scalar_map:
                 s_key = scalar_map[p_lower]
                 s_opt = start.get(s_key)
@@ -171,8 +370,30 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
                     )
                 else:
                     dev.apply_device_parameter(p_lower, target_val)
+            elif p_lower in norm_emitter_names and isinstance(target_val, (int, float)):
+                t_norm = float(target_val)
+                if t_norm > 1.0:
+                    t_norm /= 255.0
+                t_norm = max(0.0, min(1.0, t_norm))
+                s_opt = (
+                    start_norm.get(p_lower) if isinstance(start_norm, dict) else None
+                )
+                if s_opt is not None:
+                    interp_norm = float(s_opt) + param_alpha * (t_norm - float(s_opt))
+                    dev.apply_device_parameter(p_lower, interp_norm)
+                elif param_alpha > 0.0:
+                    dev.apply_device_parameter(p_lower, t_norm)
             elif param_alpha > 0.0:
                 dev.apply_device_parameter(p_lower, target_val)
+
+        any_moved, col_moved = _has_device_changed(
+            before, dev, touched_color_param=touched_color
+        )
+        if any_moved:
+            changed_devices.add(dev_id)
+            if col_moved and color_changed_out is not None:
+                color_changed_out.add(dev_id)
+    return changed_devices
 
 
 def _next_step(sequence: Sequence) -> int:
@@ -376,12 +597,9 @@ class ThreadGo(threading.Thread):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
-        # Apply multi-parameter device values
+        # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
-            for dev_id, params in resolved.device_values.items():
-                dev = self.sequence.patch.get_device(dev_id)
-                if dev is not None:
-                    dev.apply_device_values(params)
+            _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -641,7 +859,8 @@ class ThreadGo(threading.Thread):
                 family_factors,
                 explicit_families,
             ) = self._compute_device_factors_go(i, step, resolved)
-            _interpolate_device_states(
+            color_changed: set[int] = set()
+            changed = _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
                 resolved.device_values,
@@ -651,7 +870,9 @@ class ThreadGo(threading.Thread):
                 intensity_out_factors=intensity_out_factors,
                 family_factors=family_factors,
                 explicit_families=explicit_families,
+                color_changed_out=color_changed,
             )
+            _emit_device_changes(self.app, changed, color_changed)
 
         return lvls
 
@@ -764,12 +985,9 @@ class ThreadGoBack(threading.Thread):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
-        # Apply multi-parameter device values
+        # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
-            for dev_id, params in resolved.device_values.items():
-                dev = self.sequence.patch.get_device(dev_id)
-                if dev is not None:
-                    dev.apply_device_values(params)
+            _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -882,12 +1100,15 @@ class ThreadGoBack(threading.Thread):
         lvls = old_levels + diff
 
         if resolved.device_values and self.sequence.patch is not None:
-            _interpolate_device_states(
+            color_changed: set[int] = set()
+            changed = _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
                 resolved.device_values,
                 factor,
+                color_changed_out=color_changed,
             )
+            _emit_device_changes(self.app, changed, color_changed)
 
         self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
         self.backend.dmx.set_levels()

@@ -33,8 +33,14 @@ class BaseChannelLevelAction(Action):
         super().__init__(app)
         self.old_levels: dict[int, int | float] = {}
         self.new_levels: dict[int, int | float] = {}
+        self._old_live_states: dict[int, typing.Any] = {}
 
-    def _apply_levels(self, levels_dict: dict[int, int | float]) -> None:
+    def _apply_levels(
+        self,
+        levels_dict: dict[int, int | float],
+        *,
+        live_states_override: dict[int, typing.Any] | None = None,
+    ) -> None:
         """Apply a dict of {channel: level} to user DMX levels and emit events.
 
         Accepts normalized float [0.0, 1.0], or -1.0 to release user override.
@@ -42,6 +48,7 @@ class BaseChannelLevelAction(Action):
         backend = getattr(self.app, "backend", None)
         dmx = getattr(backend, "dmx", None) if backend is not None else None
         patch = getattr(self.app.lightshow, "patch", None)
+        live_state = getattr(self.app, "live_state", None)
 
         processed_levels: dict[int, float] = {}
         for ch, lvl in levels_dict.items():
@@ -51,6 +58,23 @@ class BaseChannelLevelAction(Action):
                 processed_levels[ch] = -1.0
             else:
                 processed_levels[ch] = max(0.0, min(1.0, float(lvl)))
+
+        if live_state is not None:
+            if live_states_override is not None:
+                for ch in processed_levels:
+                    if ch in live_states_override:
+                        live_state.restore_channel(ch, live_states_override[ch])
+            else:
+                for ch, norm_lvl in processed_levels.items():
+                    self._old_live_states.setdefault(
+                        ch, live_state.snapshot_channel(ch)
+                    )
+                    if norm_lvl >= 0.0:
+                        live_state.mark_manual_params(
+                            ch, ("intensity",), break_refs=True
+                        )
+                    else:
+                        live_state.clear_params(ch, ("intensity",))
 
         if dmx is not None:
             sneak_ctrl = getattr(self.app, "sneak_controller", None)
@@ -84,7 +108,7 @@ class BaseChannelLevelAction(Action):
 
     def undo(self) -> None:
         """Undo the channel level changes."""
-        self._apply_levels(self.old_levels)
+        self._apply_levels(self.old_levels, live_states_override=self._old_live_states)
 
     def redo(self) -> None:
         """Redo the channel level changes."""

@@ -64,9 +64,11 @@ from olc.core.parser.ast_nodes import (
     UpdateCueCommandNode,
     UpdatePaletteCommandNode,
 )
+from olc.core.tracking import TrackingEngine
 from olc.define import MAX_CHANNELS
 from olc.devices.device import FixtureType
 from olc.show.cue import Cue
+from olc.show.palette import PaletteRef
 from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
@@ -450,16 +452,24 @@ class CommandExecutor:
                 )
             else:
                 patch = getattr(getattr(self.app, "lightshow", None), "patch", None)
+                live_state = getattr(self.app, "live_state", None)
                 if patch is not None:
                     for ch in channels:
                         dev = patch.get_device(ch)
                         if dev is not None:
+                            edited: list[str] = []
                             if pan_val is not None and hasattr(dev, "set_pan_degrees"):
                                 dev.set_pan_degrees(pan_val)
+                                edited.append("pan")
                             if tilt_val is not None and hasattr(
                                 dev, "set_tilt_degrees"
                             ):
                                 dev.set_tilt_degrees(tilt_val)
+                                edited.append("tilt")
+                            if live_state is not None and edited:
+                                live_state.mark_manual_params(
+                                    ch, edited, break_refs=True
+                                )
 
         # Handle Color via device.set_color
         if "color" in node.attributes:
@@ -536,20 +546,30 @@ class CommandExecutor:
         patch = getattr(getattr(self.app, "lightshow", None), "patch", None)
         if patch is None:
             return
+        live_state = getattr(self.app, "live_state", None)
+        attr_key = str(attr).lower()
         for ch in channels:
             dev = patch.get_device(ch)
             if dev is None:
                 continue
+            modified = False
             if hasattr(dev, "apply_device_parameter"):
                 dev.apply_device_parameter(attr, val)
+                modified = True
             elif attr == "zoom" and hasattr(dev, "set_zoom_degrees"):
                 dev.set_zoom_degrees(float(val))
+                modified = True
             elif attr == "focus" and hasattr(dev, "set_focus_meters"):
                 dev.set_focus_meters(float(val))
+                modified = True
             elif attr == "strobe" and hasattr(dev, "set_strobe_hz"):
                 dev.set_strobe_hz(float(val))
+                modified = True
             elif attr == "cct" and hasattr(dev, "set_color_temp_kelvin"):
                 dev.set_color_temp_kelvin(float(val))
+                modified = True
+            if modified and live_state is not None:
+                live_state.mark_manual_params(ch, (attr_key,), break_refs=True)
 
     def _apply_device_color(self, dev: typing.Any, color_str: str) -> None:  # noqa: ANN401
         color_hex = COLOR_PRESETS.get(color_str.upper(), color_str)
@@ -558,12 +578,20 @@ class CommandExecutor:
                 r = int(color_hex[1:3], 16) / 255.0
                 g = int(color_hex[3:5], 16) / 255.0
                 b = int(color_hex[5:7], 16) / 255.0
+                applied = False
                 if hasattr(dev, "set_color_srgb"):
                     dev.set_color_srgb(r, g, b)
+                    applied = True
                 elif hasattr(dev, "set_rgb"):
                     dev.set_rgb(r, g, b)
+                    applied = True
                 elif hasattr(dev, "apply_device_values"):
                     dev.apply_device_values({"color": color_hex})
+                    applied = True
+                live_state = getattr(self.app, "live_state", None)
+                dev_id = getattr(dev, "fixture_id", None)
+                if applied and live_state is not None and isinstance(dev_id, int):
+                    live_state.mark_manual_params(dev_id, ("color",), break_refs=True)
             except ValueError:
                 pass
 
@@ -694,6 +722,85 @@ class CommandExecutor:
 
         return channels_dict, device_values
 
+    def _capture_live_palette_refs(  # pylint: disable=too-many-locals,too-many-branches
+        self,
+        lightshow: LightShow,
+        channels_dict: dict[int, float],
+        device_values: dict[int, dict[str, typing.Any]],
+        *,
+        base_refs: dict[int, dict[str, PaletteRef]] | None = None,
+    ) -> dict[int, dict[str, PaletteRef]]:
+        """Build cue palette_refs by merging active base refs with live overrides."""
+        if base_refs is not None:
+            source_base = base_refs
+        else:
+            source_base = {}
+            main_pb = getattr(lightshow, "main_playback", None)
+            steps = getattr(main_pb, "steps", None) if main_pb is not None else None
+            pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
+            if isinstance(steps, list) and 0 <= pos < len(steps):
+                resolved = TrackingEngine.resolve_step_state(
+                    main_pb,
+                    pos,
+                    tracking_mode=bool(getattr(main_pb, "tracking_mode", False)),
+                    patch=getattr(lightshow, "patch", None),
+                )
+                source_base = getattr(resolved, "palette_refs", {}) or {}
+
+        live_state = getattr(self.app, "live_state", None)
+        alias_lookup: dict[str, tuple[str, ...]] = {
+            "color": ("color", "colour"),
+            "colour": ("color", "colour"),
+            "cct": ("cct", "color_temp", "colortemp"),
+            "color_temp": ("cct", "color_temp", "colortemp"),
+            "colortemp": ("cct", "color_temp", "colortemp"),
+            "strobe": ("strobe", "shutter"),
+            "shutter": ("strobe", "shutter"),
+            "gobo": ("gobo", "gobo_wheel"),
+            "gobo_wheel": ("gobo", "gobo_wheel"),
+        }
+
+        result: dict[int, dict[str, PaletteRef]] = {}
+        all_channels = set(channels_dict.keys()) | set(device_values.keys())
+        for ch in sorted(all_channels):
+            ch_base = source_base.get(ch, {})
+            wildcard_ref = ch_base.get("*")
+            ch_manual = (
+                live_state.get_manual_params(ch) if live_state is not None else set()
+            )
+            if wildcard_ref is not None and not ch_manual and len(ch_base) == 1:
+                result[ch] = {"*": (str(wildcard_ref[0]), float(wildcard_ref[1]))}
+                continue
+
+            recorded_params: list[str] = list(device_values.get(ch, {}).keys())
+            if ch in channels_dict and "intensity" not in recorded_params:
+                recorded_params.append("intensity")
+
+            ch_refs: dict[str, PaletteRef] = {}
+            for param_name in recorded_params:
+                if live_state is not None and live_state.is_param_manual(
+                    ch, param_name
+                ):
+                    live_ref = live_state.get_palette_ref(ch, param_name)
+                    if live_ref is not None:
+                        ch_refs[param_name] = (str(live_ref[0]), float(live_ref[1]))
+                    continue
+
+                p_low = str(param_name).lower()
+                found: PaletteRef | None = None
+                for cand in (param_name, p_low, *alias_lookup.get(p_low, ())):
+                    if cand in ch_base:
+                        found = ch_base[cand]
+                        break
+                if found is None and wildcard_ref is not None:
+                    found = wildcard_ref
+                if found is not None:
+                    ch_refs[param_name] = (str(found[0]), float(found[1]))
+
+            if ch_refs:
+                result[ch] = ch_refs
+        return result
+
     @staticmethod
     def _apply_record_node_timings(step: Step, node: RecordCueCommandNode) -> None:
         """Apply optional fade, delay, and IFCB family timings from node to step."""
@@ -725,6 +832,9 @@ class CommandExecutor:
 
         main_playback = lightshow.main_playback
         channels_dict, device_values = self._capture_live_cue_state(lightshow)
+        palette_refs = self._capture_live_palette_refs(
+            lightshow, channels_dict, device_values
+        )
 
         # Check if cue already exists in sequence
         existing_cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(
@@ -733,6 +843,7 @@ class CommandExecutor:
         if existing_cue is not None:
             existing_cue.channels = channels_dict
             existing_cue.device_values = device_values
+            existing_cue.palette_refs = palette_refs
             if node.is_block:
                 existing_cue.is_block = True
             cue = existing_cue
@@ -743,6 +854,7 @@ class CommandExecutor:
                 channels=channels_dict,
                 device_values=device_values,
                 is_block=node.is_block,
+                palette_refs=palette_refs,
             )
             lightshow.cues.add(cue)
 
@@ -799,6 +911,10 @@ class CommandExecutor:
                 current_cue_num = s.cue.number
         if current_cue_num is not None and current_cue_num == node.cue_id:
             self._release_manual_overrides(cue.channels)
+            live_state = getattr(self.app, "live_state", None)
+            if live_state is not None:
+                for ch in set(cue.channels) | set(cue.device_values):
+                    live_state.clear_channel(ch)
 
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
 
@@ -873,6 +989,18 @@ class CommandExecutor:
                 if vals:
                     new_device_values[dev_id] = vals
 
+        merged_device_values = {
+            int(dev_id): dict(vals) for dev_id, vals in cue.device_values.items()
+        }
+        for dev_id, vals in new_device_values.items():
+            merged_device_values.setdefault(int(dev_id), {}).update(vals)
+        updated_refs = self._capture_live_palette_refs(
+            lightshow,
+            new_channels,
+            merged_device_values,
+            base_refs=cue.palette_refs,
+        )
+
         registry = self._get_registry()
         if registry is not None and "cue.update" in getattr(
             registry, "_action_classes", {}
@@ -883,11 +1011,13 @@ class CommandExecutor:
                 cue.sequence,
                 new_channels,
                 device_values=new_device_values,
+                palette_refs=updated_refs,
             )
         else:
             cue.channels = new_channels
             for dev_id, vals in new_device_values.items():
                 cue.device_values.setdefault(dev_id, {}).update(vals)
+            cue.palette_refs = updated_refs
             lightshow.main_playback.update_channels()
             lightshow.set_modified()
             self.app.emit("cue.updated", 1, cue_num)
@@ -901,6 +1031,12 @@ class CommandExecutor:
                 current_cue_num = s.cue.number
         if current_cue_num is not None and current_cue_num == cue_num:
             self._release_manual_overrides(cue.channels)
+            live_state = getattr(self.app, "live_state", None)
+            if live_state is not None:
+                for ch in (
+                    set(cue.channels) | set(cue.device_values) | set(new_device_values)
+                ):
+                    live_state.clear_channel(ch)
 
         return CommandResult(True, f"Updated Cue {cue_num}")
 

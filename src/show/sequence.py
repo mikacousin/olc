@@ -23,7 +23,9 @@ from olc.show.cue import Cue
 from olc.show.sequence_threads import (
     ThreadGo,
     ThreadGoBack,
+    _apply_resolved_device_values,
     _capture_device_states,
+    _emit_device_changes,
     _interpolate_device_states,
     _next_step,
     _parse_rgb_norm,
@@ -109,10 +111,7 @@ class Sequence:
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
             if self.patch is not None:
-                for dev_id, params in resolved.device_values.items():
-                    dev = self.patch.get_device(dev_id)
-                    if dev is not None:
-                        dev.apply_device_values(params)
+                _apply_resolved_device_values(self.patch, resolved, self.app)
             self.backend.dmx.set_levels()
         self.update_channels()
 
@@ -597,7 +596,9 @@ __all__ = [
     "ThreadGo",
     "ThreadGoBack",
     "get_cue",
+    "_apply_resolved_device_values",
     "_capture_device_states",
+    "_emit_device_changes",
     "_interpolate_device_states",
     "_next_step",
     "_parse_rgb_norm",

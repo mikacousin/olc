@@ -22,7 +22,24 @@ if typing.TYPE_CHECKING:
 
 POSITION_PARAMETERS: frozenset[str] = frozenset({"pan", "tilt"})
 COLOR_PARAMETERS: frozenset[str] = frozenset(
-    {"color", "colour", "cct", "color_temp", "colortemp"}
+    {
+        "color",
+        "colour",
+        "cct",
+        "color_temp",
+        "colortemp",
+        "color_wheel",
+        "red",
+        "green",
+        "blue",
+        "white",
+        "amber",
+        "lime",
+        "cyan",
+        "indigo",
+        "magenta",
+        "yellow",
+    }
 )
 
 

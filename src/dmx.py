@@ -78,6 +78,7 @@ class Dmx:
         self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint16)
         self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
+        self._old_device_colors: dict[int, tuple[int, int, int]] = {}
         self.external_dmx = {}
         # To test outputs
         self.user_outputs = {}
@@ -386,6 +387,41 @@ class Dmx:
                 ]
                 self._old_user_mask[changed_indices] = user_mask[changed_indices]
                 changed_channels = (changed_indices + 1).tolist()
+
+            devices = getattr(self.patch, "devices", None)
+            if isinstance(devices, dict):
+                color_changed_channels: list[int] = []
+                stale_ids = [
+                    dev_id
+                    for dev_id in self._old_device_colors
+                    if dev_id not in devices
+                ]
+                for stale_id in stale_ids:
+                    self._old_device_colors.pop(stale_id, None)
+                for dev_id, dev in devices.items():
+                    preview_fn = getattr(dev, "get_preview_rgb", None)
+                    if not callable(preview_fn):
+                        continue
+                    preview = preview_fn()
+                    if preview is None:
+                        continue
+                    quant = (
+                        round(max(0.0, min(1.0, float(preview[0]))) * 255.0),
+                        round(max(0.0, min(1.0, float(preview[1]))) * 255.0),
+                        round(max(0.0, min(1.0, float(preview[2]))) * 255.0),
+                    )
+                    prev_quant = self._old_device_colors.get(dev_id)
+                    if prev_quant is None:
+                        self._old_device_colors[dev_id] = quant
+                        if quant != (255, 255, 255):
+                            color_changed_channels.append(int(dev_id))
+                    elif prev_quant != quant:
+                        self._old_device_colors[dev_id] = quant
+                        color_changed_channels.append(int(dev_id))
+                if color_changed_channels:
+                    changed_channels = sorted(
+                        set(changed_channels) | set(color_changed_channels)
+                    )
 
         for universe, changed_outputs in outputs_to_emit:
             self.trigger_output_callbacks(universe, changed_outputs)
