@@ -1,3 +1,5 @@
+"""Unit tests for UniverseConfig, Protocol settings, and UniverseMap."""
+
 import pytest
 
 from olc.dmx_engine.universe_config import (

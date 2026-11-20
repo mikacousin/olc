@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Tests for SystemFontManager and cached Pango numeric text rendering."""
+
 import cairo
 import pytest
 from gi.repository import Pango

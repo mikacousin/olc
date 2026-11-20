@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Unit tests for the Art-Net DMX output backend."""
+
 # pylint: disable=protected-access,unexpected-keyword-arg,import-outside-toplevel
 import asyncio
 import ipaddress

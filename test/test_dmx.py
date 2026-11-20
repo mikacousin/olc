@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Unit tests for DMX output computation and backend integration."""
+
 # pylint: disable=protected-access, comparison-with-callable
 from unittest.mock import MagicMock
 

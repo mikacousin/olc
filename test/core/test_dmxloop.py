@@ -1,3 +1,5 @@
+"""Unit tests for the fixed-rate DMXLoop timing engine."""
+
 import time
 from unittest.mock import MagicMock
 

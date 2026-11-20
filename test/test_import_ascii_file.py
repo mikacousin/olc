@@ -1,3 +1,5 @@
+"""Unit and integration tests for ASCII / EOS show file importation."""
+
 from unittest.mock import MagicMock
 
 import gi

@@ -1,3 +1,5 @@
+"""Unit tests for Art-Net and sACN packet builders and senders."""
+
 # pylint: disable=protected-access
 import struct
 import sys

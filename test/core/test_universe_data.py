@@ -1,3 +1,5 @@
+"""Unit tests for DMXUniverse buffer storage and channel clipping."""
+
 import numpy as np
 
 from olc.dmx_engine.universe_data import NUM_CHANNELS, DMXUniverse

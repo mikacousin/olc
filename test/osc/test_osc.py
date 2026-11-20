@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Unit tests for OSC server dispatch, routing, and client feedback."""
+
 from __future__ import annotations
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,too-few-public-methods

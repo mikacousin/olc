@@ -1,3 +1,5 @@
+"""Unit tests for CoreEngine universe routing and DMX loop lifecycle."""
+
 import json
 import time
 from unittest.mock import MagicMock, patch

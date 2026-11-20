@@ -1,3 +1,5 @@
+"""Unit tests for HTP and LTP DMX channel mergers."""
+
 import time
 
 import numpy as np
