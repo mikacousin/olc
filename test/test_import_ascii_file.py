@@ -302,7 +302,13 @@ $Curve 901
    Text IES Square
    $$Interpolated
    $$CurveData 0@0 128@130 255@255
-$Patch 1 51365 1 901 1
+$Curve 902
+   Text Stepped Full
+   $$CurveData 0@255 255@255
+$Patch 1 51365 1 1 1
+   $$Curve 901 1
+   $$Curve 902 2
+$Patch 2 51365 2 1 1
 $Group 2
    Text Ghibli
    $$ChanList 3 1 2
@@ -331,12 +337,15 @@ EndData
     )
     imported.parse_sync(auto_import=True)
 
-    # Curve 901 imported as InterpolateCurve and linked to channel 1
+    # Curve 901 linked via $$Curve 901 1; $$Curve 902 2 does not override intensity;
+    # dimmer with address_mode=1 and no $$Curve keeps LinearCurve (0).
     curve_901 = lightshow.curves.get_curve(901)
     assert isinstance(curve_901, InterpolateCurve)
     assert curve_901.name == "IES Square"
     dev1 = lightshow.patch.get_device(1)
     assert dev1 is not None and dev1.curve_id == 901
+    dev2 = lightshow.patch.get_device(2)
+    assert dev2 is not None and dev2.curve_id == 0
 
     # $Group 2 imported as ordered pure channel list [3, 1, 2]
     grp2 = lightshow.groups.get(2.0)
@@ -441,9 +450,22 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     assert grp2 is not None and grp2.channels == [3, 1, 2]
     assert not any(g.index >= 500 for g in lightshow.groups)
 
-    # $Curve 901 imported
+    # $Curve 901 imported and cp1252 curve names decoded properly (not cp1250 'ŕ')
     c901 = lightshow.curves.get_curve(901)
     assert c901 is not None and c901.name == "IES Square"
+    for cid, expected_name in (
+        (905, "Full à 1%"),
+        (906, "Out à 100%"),
+        (907, "Préchauffe à 5%"),
+        (909, "Tjrs à 100%"),
+    ):
+        curve = lightshow.curves.get_curve(cid)
+        assert curve is not None and curve.name == expected_name
+
+    # Eos address_mode=1 must NOT assign curve_id=1 (SquareRootCurve)
+    for ch in (1, 41, 52, 100):
+        dev = lightshow.patch.get_device(ch)
+        assert dev is not None and dev.curve_id == 0
 
     # $FaderDef 1 -> Sub 6 imported as Preset 6 with FaderType.PRESET
     assert lightshow.fader_bank.get_fader_type(1, 1) == FaderType.PRESET
@@ -1420,6 +1442,67 @@ def test_import_eos_base_nocturne_effects(monkeypatch: pytest.MonkeyPatch) -> No
     assert cue107 is not None
     assert cue107.effect_refs[1] == {"stop": True}
 
+    # Eos CueLists use Tracking mode so effects and $$ChanMove blackouts propagate
+    from olc.core.tracking import TrackingEngine
+
+    assert lightshow.main_playback.tracking_mode is True
+    assert all(seq.tracking_mode is True for seq in lightshow.sequences)
+
+    step_by_cue = {
+        step.cue.number: idx
+        for idx, step in enumerate(lightshow.main_playback.steps)
+        if step.cue is not None and step.cue.number != 0
+    }
+
+    res103 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback,
+        step_by_cue[103.0],
+        tracking_mode=True,
+        patch=lightshow.patch,
+    )
+    for ch in range(21, 41):
+        assert res103.channels[ch - 1] == pytest.approx(0.0)
+
+    res106 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback,
+        step_by_cue[106.0],
+        tracking_mode=True,
+        patch=lightshow.patch,
+    )
+    assert {spec["effect"] for spec in res106.effect_refs.values()} == {7.0, 11.0}
+
+    # Cue 107 stops ch 1..3 (FX 11) while FX 7 on ch 21..26 keeps tracking
+    res107 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback,
+        step_by_cue[107.0],
+        tracking_mode=True,
+        patch=lightshow.patch,
+    )
+    assert {spec["effect"] for spec in res107.effect_refs.values()} == {7.0}
+    assert sorted(res107.effect_refs.keys()) == [21, 22, 23, 24, 25, 26]
+
+    # Cue 110 stops FX 7 on ch 21..26
+    res110 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback,
+        step_by_cue[110.0],
+        tracking_mode=True,
+        patch=lightshow.patch,
+    )
+    assert res110.effect_refs == {}
+
+    # Cue 165 blacks out both moving heads (1..5) and LEDs (41..44) via $$ChanMove
+    res165 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback,
+        step_by_cue[165.0],
+        tracking_mode=True,
+        patch=lightshow.patch,
+    )
+    for ch in (1, 2, 3, 4, 5, 41, 42, 43, 44):
+        assert res165.channels[ch - 1] == pytest.approx(0.0)
+        assert res165.device_values.get(ch, {}).get("intensity", 0.0) == pytest.approx(
+            0.0
+        )
+
 
 def test_ascii_export_import_effects_round_trip(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
@@ -1576,3 +1659,117 @@ def test_ascii_export_import_effects_round_trip(
     assert re_fader1.contents is re_eff1
     assert re_fader1.control_mode == "both"
     assert re_fader1.effect_channels == [3, 1, 2]
+
+
+def test_import_eos_chanmove_tracking_blackouts_and_cp1252_decoding(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Test $$ChanMove 8/16-bit tracking blackouts, $$Block, effects, and cp1252."""
+    import pathlib
+
+    from olc.core.tracking import TrackingEngine
+    from olc.files.read import decode_file_bytes
+
+    # 1. decode_file_bytes prefers UTF-8 cleanly and resolves cp1252 vs cp1250 ties
+    cp1252_text = (
+        "Ident 3:0\n"
+        "$Curve 905\n   Text Full à 1%\n"
+        "$Curve 907\n   Text Préchauffe à 5%\n"
+        "$CueList 1\nCue 1 1\n   Text Entrée Public\nEndData\n"
+    )
+    decoded_cp1252 = decode_file_bytes(cp1252_text.encode("cp1252"))
+    assert "Full à 1%" in decoded_cp1252
+    assert "Préchauffe à 5%" in decoded_cp1252
+    assert "Entrée Public" in decoded_cp1252
+    assert "ŕ" not in decoded_cp1252
+
+    utf8_bytes = "Ident 3:0\n$$UText Top → Musique à vue\nEndData\n".encode("utf-8")
+    assert "Top → Musique à vue" in decode_file_bytes(utf8_bytes)
+
+    # 2. $$ChanMove 8/16-bit + blackouts + $$Block + tracked effect continuity
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$Personality 100
+   $$Manuf Generic
+   $$Model Spot_Test
+   $$Footprint 3
+   $$PersChan 1 1 1 0 0
+   $$PersChan 2 2 2 3 32768
+$Patch 1 100 1 1 1
+$Patch 21 51365 10 1 1
+$Effect 7
+   Text Dim Sin
+   $$Type 1 ! Linear
+   $$Scale 50
+$CueList 1
+Cue 1 1
+   $$ChanMove 1@Hffff 21@Hff
+   Chan 1@Hff 21@Hff
+   $$Param 1 1@255
+   $$EffectChan 7 21 1
+Cue 2 1
+   $$ChanMove 1@H0000 21@H33
+   Chan 21@H33
+Cue 3 1
+   $$ChanMove 21@H00
+   Chan
+Cue 4 1
+   $$Block
+   $$ChanMove 1@H8000
+   Chan 1@H80 21@H00
+   $$EffectChan 0 21 1
+EndData
+"""
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_tracking.asc"
+    asc_file.write_bytes(asc_content.encode("cp1252"))
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    dev1 = lightshow.patch.get_device(1)
+    assert dev1 is not None and dev1.curve_id == 0
+    assert lightshow.main_playback.tracking_mode is True
+
+    # Step 1 (Cue 1): moving head 1 @100%, dimmer 21 @100%, Effect 7 active
+    res1 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback, 1, tracking_mode=True, patch=lightshow.patch
+    )
+    assert res1.device_values[1]["intensity"] == pytest.approx(1.0)
+    assert res1.channels[20] == pytest.approx(1.0)
+    assert 21 in res1.effect_refs and res1.effect_refs[21]["effect"] == 7.0
+
+    # Step 2 (Cue 2): ch 1 blacks out via $$ChanMove 1@H0000 even without $$Param 1@0
+    # and Effect 7 continues tracking on dimmer 21 (moved to 0x33/255 via $$ChanMove)
+    res2 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback, 2, tracking_mode=True, patch=lightshow.patch
+    )
+    assert res2.device_values[1]["intensity"] == pytest.approx(0.0)
+    assert res2.channels[20] == pytest.approx(0x33 / 255.0)
+    assert 21 in res2.effect_refs and res2.effect_refs[21]["effect"] == 7.0
+
+    # Step 3 (Cue 3): blackout cue with ONLY $$ChanMove 21@H00 and empty Chan line
+    res3 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback, 3, tracking_mode=True, patch=lightshow.patch
+    )
+    assert res3.channels[20] == pytest.approx(0.0)
+    assert res3.device_values[1]["intensity"] == pytest.approx(0.0)
+    assert 21 in res3.effect_refs
+
+    # Step 4 (Cue 4): $$Block keeps explicit 50% (0x8000/65535) and stops Effect 7
+    res4 = TrackingEngine.resolve_step_state(
+        lightshow.main_playback, 4, tracking_mode=True, patch=lightshow.patch
+    )
+    assert res4.device_values[1]["intensity"] == pytest.approx(0x8000 / 65535.0)
+    assert res4.channels[20] == pytest.approx(0.0)
+    assert res4.effect_refs == {}

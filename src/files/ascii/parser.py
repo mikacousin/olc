@@ -190,6 +190,7 @@ class AsciiParser(ReadFile):
         self._raw_effects: dict[float, dict[str, typing.Any]] = {}
         self._cue_effects: dict[tuple[int, float], dict[str, typing.Any]] = {}
         self._sub_effects: dict[int, dict[str, typing.Any]] = {}
+        self._cue_chan_moves: dict[tuple[int, float], dict[int, float]] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -203,6 +204,7 @@ class AsciiParser(ReadFile):
             "fader": 0,
             "personality": 0,
             "patch_channel": 0,
+            "patch_output": None,
             "curve": 0,
             "sub": 0,
             "faderdef": -1,
@@ -222,6 +224,7 @@ class AsciiParser(ReadFile):
         self._finalize_effects()
         self._resolve_palettes_and_refs()
         self._resolve_effect_refs()
+        self._finalize_eos_tracking()
 
     def _do_parse(self, line: str) -> bool:
         """Parse line
@@ -545,6 +548,17 @@ class AsciiParser(ReadFile):
             )
         elif self.keyword == "$$block":
             cue["is_block"] = True
+        elif self.keyword == "$$chanmove":
+            cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
+            moves = self._cue_chan_moves.setdefault(cue_key, {})
+            for index in range(0, len(self.args) - 1, 2):
+                try:
+                    channel = int(self.args[index])
+                    level = self._get_level(self.args[index + 1])
+                except ValueError:
+                    continue
+                if 1 <= channel <= MAX_CHANNELS:
+                    moves[channel] = level
         elif self.keyword in ("$$effectchan", "$$effectdata"):
             cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
             self._record_effect_call(
@@ -778,8 +792,10 @@ class AsciiParser(ReadFile):
                 fader["control_mode"] = mode
 
     def _get_level(self, level: str) -> float:
-        if level[0] == "h":
-            return int(level[1:], 16) / 255.0
+        if level.startswith("h"):
+            hex_part = level[1:]
+            denom = 65535.0 if len(hex_part) > 2 else 255.0
+            return int(hex_part, 16) / denom
         return float(level) / 100.0
 
     def _new_personality(self) -> None:
@@ -908,7 +924,8 @@ class AsciiParser(ReadFile):
         channel = int(self.args[0])
         pers_id = int(self.args[1])
         dmx_addr = int(self.args[2])
-        curve_id = int(self.args[3]) if len(self.args) > 3 else 0
+        # args[3] in Eos $Patch is address_mode (1=port/offset, 0=edmx), not curve_id.
+        curve_id = 0
 
         if channel > MAX_CHANNELS or dmx_addr < 1:
             self.state = State.NO_PRIMARY
@@ -916,12 +933,21 @@ class AsciiParser(ReadFile):
 
         self.channel_personality[channel] = pers_id
         self.current["patch_channel"] = channel
+        self.current["patch_output"] = None
         pers = self.personalities.get(pers_id)
 
         if pers is None or is_dimmer_personality(pers, self.param_types):
-            self._add_patch(channel, dmx_addr, 1.0)
-            if curve_id and channel in self.data["patch"]:
-                self.data["patch"][channel][-1]["curve"] = curve_id
+            univ_index = (dmx_addr - 1) // 512
+            if univ_index < NB_UNIVERSES:
+                univ = UNIVERSES[univ_index]
+                address = dmx_addr - (512 * univ_index)
+                existing = self.data["patch"].get(channel, [])
+                if not any(
+                    out["output"] == address and out["universe"] == univ
+                    for out in existing
+                ):
+                    self._add_patch(channel, dmx_addr, 1.0)
+                self.current["patch_output"] = (address, univ)
         else:
             registered = self._register_personality_definition(pers_id)
             if registered is not None:
@@ -943,6 +969,25 @@ class AsciiParser(ReadFile):
                 model = self.args[0].strip()
                 dev["model"] = model
                 dev["label"] = f"{model} {ch}"
+        elif self.keyword == "$$curve" and self.args:
+            try:
+                curve_num = int(float(self.args[0]))
+                param_num = int(float(self.args[1])) if len(self.args) >= 2 else 1
+            except ValueError:
+                return
+            if param_num != 1:
+                return
+            if dev is not None:
+                dev["curve_id"] = curve_num
+            elif ch in self.data["patch"]:
+                target_out = self.current.get("patch_output")
+                for out in reversed(self.data["patch"][ch]):
+                    if (
+                        target_out is None
+                        or (out["output"], out["universe"]) == target_out
+                    ):
+                        out["curve"] = curve_num
+                        break
 
     def _new_curve(self) -> None:
         if not self.args:
@@ -1133,6 +1178,62 @@ class AsciiParser(ReadFile):
                 refs = self._build_effect_refs(store, running)
                 if refs:
                     seq["cues"][cue_num]["effect_refs"] = refs
+
+    def _finalize_eos_tracking(self) -> None:
+        """Apply Eos $$ChanMove transitions and enable tracking on Eos CueLists."""
+        if not self._is_console("etc", "eos"):
+            return
+        devices = self.data.get("devices", {})
+        for seq_num, seq in self.data.get("sequences", {}).items():
+            steps = seq.get("steps", {})
+            cues = seq.get("cues", {})
+            seq_int = int(seq_num)
+            seq_has_moves = any(
+                bool(
+                    self._cue_chan_moves.get(
+                        (seq_int, float(step_data.get("cue", 0.0)))
+                    )
+                )
+                for step_data in steps.values()
+            )
+            seq_has_effects = any(
+                bool(cues.get(step_data.get("cue"), {}).get("effect_refs"))
+                for step_data in steps.values()
+            )
+            if seq_has_moves or seq_has_effects:
+                seq["tracking_mode"] = True
+            if not seq_has_moves:
+                continue
+
+            tracked_dev_chans: set[int] = set(devices.keys())
+            for step_nb in sorted(steps):
+                cue_num = steps[step_nb].get("cue")
+                cue = cues.get(cue_num)
+                if not isinstance(cue, dict):
+                    continue
+                for ch, dvals in cue.get("device_values", {}).items():
+                    if isinstance(dvals, dict) and "intensity" in dvals:
+                        tracked_dev_chans.add(int(ch))
+                moves = self._cue_chan_moves.get((seq_int, float(cue_num)), {})
+                if cue.get("is_block"):
+                    channels = cue.setdefault("channels", {})
+                    channels.update(moves)
+                else:
+                    new_channels = dict(moves)
+                    for ch, dvals in cue.get("device_values", {}).items():
+                        if (
+                            isinstance(dvals, dict)
+                            and "intensity" in dvals
+                            and ch not in new_channels
+                        ):
+                            new_channels[ch] = float(dvals["intensity"])
+                    cue["channels"] = new_channels
+
+                for ch, lvl in cue["channels"].items():
+                    if ch in tracked_dev_chans:
+                        cue.setdefault("device_values", {}).setdefault(ch, {})[
+                            "intensity"
+                        ] = float(lvl)
 
     def _new_faderdef(self) -> None:
         if not self.args:

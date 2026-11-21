@@ -27,6 +27,32 @@ if typing.TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
+_AMBIGUOUS_SINGLE_BYTE_ENCODINGS = frozenset({"cp1250", "cp1257", "cp775", "iso8859_2"})
+
+
+def decode_file_bytes(data: bytes) -> str:
+    """Decode text bytes, preferring UTF-8 and tie-breaking single-byte to cp1252."""
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+
+    matches = from_bytes(data)
+    best = matches.best()
+    if best is None:
+        return data.decode("cp1252", errors="replace")
+
+    if best.encoding.lower() in _AMBIGUOUS_SINGLE_BYTE_ENCODINGS:
+        for candidate in matches:
+            if (
+                candidate.encoding.lower() == "cp1252"
+                and abs(candidate.chaos - best.chaos) <= 0.001
+                and abs(candidate.coherence - best.coherence) <= 0.01
+            ):
+                return str(candidate)
+
+    return str(best)
+
 
 def _read_file_bytes(file: pathlib.Path | str | typing.Any) -> bytes:  # noqa: ANN401
     if isinstance(file, (pathlib.Path, str)):
@@ -74,7 +100,7 @@ class ReadFile:
             except gzip.BadGzipFile:
                 self._error_dialog("Input file is not a valid file: BadGzipFile")
                 return
-        self.contents = str(from_bytes(data).best())
+        self.contents = decode_file_bytes(data)
         self.parse()
         self.imported.data.clean()
         if not auto_import:
