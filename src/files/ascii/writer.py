@@ -96,11 +96,11 @@ class AsciiWriter(WriteFile):
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
         self.stream.write(bytes("! Additional Sequences\n\n", "ascii"))
-        for chaser in self.lightshow.chasers:
-            self.stream.write(bytes(f"$SEQUENCE {chaser.index}\n", "ascii"))
-            self._ascii_text(chaser.text)
-            self.stream.write(bytes(f"$$TEXT {chaser.text}\n\n", "utf8"))
-            for step in chaser.steps:
+        for seq in self.lightshow.sequences:
+            self.stream.write(bytes(f"$SEQUENCE {seq.index}\n", "ascii"))
+            self._ascii_text(seq.text)
+            self.stream.write(bytes(f"$$TEXT {seq.text}\n\n", "utf8"))
+            for step in seq.steps:
                 if not step.cue or step.cue.number == 0:
                     continue
                 # Save integers as integers
@@ -110,7 +110,7 @@ class AsciiWriter(WriteFile):
                 delay_in = self._float_to_str(step.delay_in)
                 wait = self._float_to_str(step.wait)
                 self.stream.write(
-                    bytes(f"$CUE {chaser.index} {step.cue.number}\n", "ascii")
+                    bytes(f"$CUE {seq.index} {step.cue.number}\n", "ascii")
                 )
                 self.stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "ascii"))
                 self.stream.write(bytes(f"UP {time_in} {delay_in}\n", "ascii"))

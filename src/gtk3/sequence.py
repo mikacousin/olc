@@ -103,11 +103,6 @@ class SequenceTab(Gtk.Grid):
         self.mib_btn.connect("toggled", self._on_mib_toggled)
         self.header_box.pack_start(self.mib_btn, False, False, 0)
 
-        self.type_seq_btn = Gtk.ToggleButton(label="Type: Normal")
-        self.type_seq_btn.set_sensitive(False)
-        self.type_seq_btn.connect("toggled", self._on_type_seq_toggled)
-        self.header_box.pack_start(self.type_seq_btn, False, False, 0)
-
     def _on_tracking_mode_toggled(self, button: Gtk.ToggleButton) -> None:
         self.set_tracking_mode(button.get_active())
 
@@ -154,57 +149,23 @@ class SequenceTab(Gtk.Grid):
         self.set_mib_enabled(new_state)
         return new_state
 
-    def _on_type_seq_toggled(self, button: Gtk.ToggleButton) -> None:
-        self.set_sequence_type("Chaser" if button.get_active() else "Normal")
-
-    def set_sequence_type(self, type_seq: str) -> None:
-        """Set selected secondary sequence type ('Normal' or 'Chaser')."""
-        seq = self.get_selected_sequence()
-        if seq is None or seq.index == 1:
-            return
-        seq.type_seq = "Chaser" if type_seq == "Chaser" else "Normal"
-        is_chaser = seq.type_seq == "Chaser"
-        if self.type_seq_btn.get_active() != is_chaser:
-            self.type_seq_btn.set_active(is_chaser)
-        self.type_seq_btn.set_label(f"Type: {seq.type_seq}")
-        for row in self.liststore1:
-            if row[0] == seq.index:
-                row[1] = seq.type_seq
-                break
-
-    def _sync_type_seq_button(self) -> None:
-        """Update Type toggle button sensitivity and state for active sequence."""
-        seq = self.get_selected_sequence()
-        is_secondary = seq is not None and seq.index != 1
-        self.type_seq_btn.set_sensitive(is_secondary)
-        if seq is None:
-            self.type_seq_btn.set_label("Type: Normal")
-            if self.type_seq_btn.get_active():
-                self.type_seq_btn.set_active(False)
-            return
-        is_chaser = getattr(seq, "type_seq", "Normal") == "Chaser"
-        self.type_seq_btn.set_label(f"Type: {seq.type_seq}")
-        if self.type_seq_btn.get_active() != is_chaser:
-            self.type_seq_btn.set_active(is_chaser)
-
     def _setup_sequences_list(self) -> None:
         """Setup the sequence selection list"""
-        self.liststore1 = Gtk.ListStore(int, str, str)
+        self.liststore1 = Gtk.ListStore(int, str)
         self.liststore1.append(
             [
                 self.lightshow.main_playback.index,
-                self.lightshow.main_playback.type_seq,
                 self.lightshow.main_playback.text,
             ]
         )
-        for chaser in self.lightshow.chasers:
-            self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
+        for seq in self.lightshow.sequences:
+            self.liststore1.append([seq.index, seq.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
         self.treeview1.get_selection().connect("changed", self.on_sequence_changed)
 
-        for i, column_title in enumerate(["Seq", "Type", "Name"]):
+        for i, column_title in enumerate(["Seq", "Name"]):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(column_title, renderer)
             column.add_attribute(renderer, "text", i)
@@ -291,12 +252,11 @@ class SequenceTab(Gtk.Grid):
         self.liststore1.append(
             [
                 self.lightshow.main_playback.index,
-                self.lightshow.main_playback.type_seq,
                 self.lightshow.main_playback.text,
             ]
         )
-        for chaser in self.lightshow.chasers:
-            self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
+        for seq in self.lightshow.sequences:
+            self.liststore1.append([seq.index, seq.text])
         self.treeview1.set_model(self.liststore1)
 
         selected_iter = None
@@ -328,9 +288,7 @@ class SequenceTab(Gtk.Grid):
             if sequence_number == 1:
                 sequence = self.lightshow.main_playback
             else:
-                for chaser in self.lightshow.chasers:
-                    if sequence_number == chaser.index:
-                        sequence = chaser
+                sequence = self.lightshow.get_sequence(sequence_number)
         return sequence
 
     def get_selected_step(self) -> Optional[int]:
@@ -519,7 +477,6 @@ class SequenceTab(Gtk.Grid):
         if step_idx is None:
             step_idx = 1
         # Display Sequence
-        self._sync_type_seq_button()
         self.populate_liststore(step_idx)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
@@ -630,10 +587,10 @@ class SequenceTab(Gtk.Grid):
         self.rename_selected()
 
     def _keypress_n(self) -> None:
-        """New Chaser"""
+        """New secondary Sequence."""
         index_seq = (
-            self.lightshow.chasers[-1].index + 1
-            if len(self.lightshow.chasers) > 0
+            self.lightshow.sequences[-1].index + 1
+            if len(self.lightshow.sequences) > 0
             else 2
         )
         self.window.app.core.action_registry.execute("sequence.new", index_seq)

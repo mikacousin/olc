@@ -20,7 +20,7 @@ import typing
 
 from olc.core.action import Action
 from olc.define import MAX_FADER_PAGE
-from olc.show.fader import FaderType
+from olc.show.fader import FaderEffect, FaderType
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -77,6 +77,8 @@ class FaderAssignAction(Action):
         self.new_contents: float | None = None
         self.old_type: FaderType = FaderType.NONE
         self.old_contents: float | None = None
+        self.old_control_mode: str = "size"
+        self.old_effect_channels: list[int] = []
 
     def configure(
         self,
@@ -92,7 +94,7 @@ class FaderAssignAction(Action):
             index: Fader index within the page.
             fader_type: Target FaderType to assign.
             contents: Optional numeric identifier for the fader contents
-                (preset/cue number or chaser index).
+                (preset/cue number or sequence index).
         """
         self.page = page
         self.index = index
@@ -105,6 +107,13 @@ class FaderAssignAction(Action):
             self.page, self.index
         )
         self.old_contents = _get_fader_contents_number(self.app, self.page, self.index)
+        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if isinstance(old_fader, FaderEffect):
+            self.old_control_mode = old_fader.control_mode
+            self.old_effect_channels = list(old_fader.effect_channels)
+        else:
+            self.old_control_mode = "size"
+            self.old_effect_channels = []
 
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.new_type, self.new_contents
@@ -117,6 +126,10 @@ class FaderAssignAction(Action):
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.old_type, self.old_contents
         )
+        restored = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if isinstance(restored, FaderEffect):
+            restored.set_control_mode(self.old_control_mode)
+            restored.set_effect_channels(self.old_effect_channels)
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
 
@@ -150,6 +163,8 @@ class FaderClearAction(Action):
         self.index: int = 1
         self.old_type: FaderType = FaderType.NONE
         self.old_contents: float | None = None
+        self.old_control_mode: str = "size"
+        self.old_effect_channels: list[int] = []
 
     def configure(self, page: int, index: int) -> None:
         """Configure the fader to clear.
@@ -167,6 +182,13 @@ class FaderClearAction(Action):
             self.page, self.index
         )
         self.old_contents = _get_fader_contents_number(self.app, self.page, self.index)
+        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if isinstance(old_fader, FaderEffect):
+            self.old_control_mode = old_fader.control_mode
+            self.old_effect_channels = list(old_fader.effect_channels)
+        else:
+            self.old_control_mode = "size"
+            self.old_effect_channels = []
 
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, FaderType.NONE, None
@@ -179,6 +201,10 @@ class FaderClearAction(Action):
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.old_type, self.old_contents
         )
+        restored = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if isinstance(restored, FaderEffect):
+            restored.set_control_mode(self.old_control_mode)
+            restored.set_effect_channels(self.old_effect_channels)
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
 
@@ -189,6 +215,72 @@ class FaderClearAction(Action):
         )
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
+
+
+# pylint: disable=too-many-instance-attributes
+class FaderConfigureEffectAction(Action):
+    """Action to configure control mode and target channels of a FaderEffect."""
+
+    name = "fader.configure_effect"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.page: int = 1
+        self.index: int = 1
+        self.new_mode: str | None = None
+        self.new_channels: list[int] | None = None
+        self._old_mode: str = "size"
+        self._old_channels: list[int] = []
+
+    def configure(
+        self,
+        page: int,
+        index: int,
+        *,
+        control_mode: str | None = None,
+        effect_channels: list[int] | None = None,
+    ) -> None:
+        """Configure control_mode and/or effect_channels on a FaderEffect."""
+        self.page = int(page)
+        self.index = int(index)
+        self.new_mode = str(control_mode) if control_mode is not None else None
+        self.new_channels = (
+            list(dict.fromkeys(int(c) for c in effect_channels))
+            if effect_channels is not None
+            else None
+        )
+
+    def _apply(self, mode: str | None, channels: list[int] | None) -> None:
+        fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if not isinstance(fader, FaderEffect):
+            return
+        if mode is not None:
+            fader.set_control_mode(mode)
+        if channels is not None:
+            fader.set_effect_channels(channels)
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.changed", self.page, self.index)
+
+    def execute(self) -> None:
+        """Snapshot current effect fader settings and apply new ones."""
+        fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if not isinstance(fader, FaderEffect):
+            return
+        self._old_mode = fader.control_mode
+        self._old_channels = list(fader.effect_channels)
+        self._apply(self.new_mode, self.new_channels)
+
+    def undo(self) -> None:
+        """Restore previous control mode and target channels."""
+        self._apply(
+            self._old_mode if self.new_mode is not None else None,
+            self._old_channels if self.new_channels is not None else None,
+        )
+
+    def redo(self) -> None:
+        """Re-apply new control mode and target channels."""
+        self._apply(self.new_mode, self.new_channels)
 
 
 class FaderSetLevelAction(Action):

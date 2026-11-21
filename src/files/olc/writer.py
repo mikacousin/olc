@@ -91,8 +91,8 @@ class OlcWriter(WriteFile):
     def _sequences(self) -> None:
         self.data["sequences"] = {}
         self._do_sequence(self.lightshow.main_playback)
-        for chaser in self.lightshow.chasers:
-            self._do_sequence(chaser)
+        for seq in self.lightshow.sequences:
+            self._do_sequence(seq)
 
     def _do_sequence(self, sequence: Sequence) -> None:
         seq_index = sequence.index

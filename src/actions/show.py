@@ -583,8 +583,8 @@ class ShowImportAction(Action):
         )
 
         # 6. Secondary sequences and effects
-        snapshot["chasers"] = [
-            _copy_sequence(c, lightshow) for c in lightshow.sequences
+        snapshot["sequences"] = [
+            _copy_sequence(s, lightshow) for s in lightshow.sequences
         ]
         if hasattr(lightshow, "effects"):
             snapshot["effects"] = lightshow.effects.to_list()
@@ -692,8 +692,8 @@ class ShowImportAction(Action):
                 thread.stop()
                 thread.join()
         del lightshow.sequences[:]
-        for c in snapshot["chasers"]:
-            lightshow.sequences.append(_copy_sequence(c, lightshow))
+        for seq in snapshot["sequences"]:
+            lightshow.sequences.append(_copy_sequence(seq, lightshow))
         if "effects" in snapshot and hasattr(lightshow, "effects"):
             lightshow.effects.from_list(snapshot["effects"])
 

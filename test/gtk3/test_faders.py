@@ -370,6 +370,33 @@ def test_fader_tab_effect_assignment_and_virtual_console_effect_key(
     assert fader2.contents is not None
     assert fader2.contents.number == 1.0
 
+    # Verify FaderEdit effect controls (Mode + Target Channels)
+    assert fader_edit.effect_controls_box is not None
+    assert fader_edit.effect_mode_button is not None
+    assert fader_edit.effect_channels_button is not None
+
+    fader_edit._on_effect_mode_changed(Gtk.ModelButton(), "both")
+    process_events()
+    assert fader2.control_mode == "both"
+    assert fader_edit.effect_mode_button.get_label() == "Mode: Size+Rate"
+
+    app_gui.core.selected_channels = [5, 6, 7]
+    fader_edit._on_effect_channels_from_selection(Gtk.ModelButton())
+    process_events()
+    assert fader2.effect_channels == [5, 6, 7]
+    assert fader_edit.effect_channels_button.get_label() == "Ch 5..7"
+
+    fader_edit._on_effect_channels_clear(Gtk.ModelButton())
+    process_events()
+    assert fader2.effect_channels == []
+    assert fader_edit.effect_channels_button.get_label() == "Auto (Sel)"
+
+    # Restore channels & mode to keep size scaling check clean
+    fader_edit._on_effect_mode_changed(Gtk.ModelButton(), "size")
+    app_gui.core.selected_channels = [1, 2]
+    fader_edit._on_effect_channels_from_selection(Gtk.ModelButton())
+    process_events()
+
     # Move fader 2 to 60% -> starts effect
     app_gui.core.action_registry.execute("fader.set_level", 1, 2, 0.6)
     process_events()
@@ -381,6 +408,11 @@ def test_fader_tab_effect_assignment_and_virtual_console_effect_key(
     app_gui.core.action_registry.execute("fader.set_level", 1, 2, 0.0)
     process_events()
     assert len(app_gui.core.effects_engine.get_active_instances()) == 0
+
+    # Switching back to FaderType.NONE removes effect_controls_box
+    fader_edit._on_type_changed(Gtk.ModelButton(), FaderType.NONE)
+    process_events()
+    assert fader_edit.effect_controls_box is None
 
     # 2. Verify Virtual Console Effect button
     app_gui.activate_action("virtual_console", None)

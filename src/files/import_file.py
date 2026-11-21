@@ -275,13 +275,13 @@ class ImportFile:
             self.lightshow.cues.clear()
             del self.lightshow.main_playback.steps[1:]
         else:
-            chaser = None
-            for chsr in self.lightshow.chasers:
-                if chsr.index == sequence:
-                    chaser = chsr
+            target_seq = None
+            for seq_obj in self.lightshow.sequences:
+                if seq_obj.index == sequence:
+                    target_seq = seq_obj
                     break
-            if chaser:
-                self.lightshow.chasers.remove(chaser)
+            if target_seq:
+                self.lightshow.sequences.remove(target_seq)
 
     def _do_import_midi(self) -> None:
         if self.actions["midi"] is Action.IGNORE:

@@ -346,7 +346,7 @@ class ParsedData:
                         if hasattr(fader_obj, "update_channels"):
                             fader_obj.update_channels()
                     ctrl_mode = values.get("control_mode")
-                    if ctrl_mode in ("size", "rate") and hasattr(
+                    if ctrl_mode in ("size", "rate", "both") and hasattr(
                         fader_obj, "control_mode"
                     ):
                         fader_obj.control_mode = str(ctrl_mode)
@@ -561,7 +561,7 @@ class ParsedData:
             self.lightshow.main_playback.last = len(self.lightshow.main_playback.steps)
 
     def import_chaser(self, sequence: int, action: Action) -> None:
-        """Import Chaser
+        """Import Secondary Sequence.
 
         Args:
             sequence: Sequence number
@@ -570,13 +570,13 @@ class ParsedData:
         seq_data = self.data["sequences"][sequence]
         label = seq_data["label"]
         type_seq = "Chaser" if seq_data.get("mode") == "chaser" else "Normal"
-        for index, chsr in enumerate(self.lightshow.chasers):
-            if chsr.index == sequence:
-                self.lightshow.chasers[index].text = label
-                self.lightshow.chasers[index].type_seq = type_seq
+        for index, seq_obj in enumerate(self.lightshow.sequences):
+            if seq_obj.index == sequence:
+                self.lightshow.sequences[index].text = label
+                self.lightshow.sequences[index].type_seq = type_seq
                 break
         else:
-            self.lightshow.chasers.append(
+            self.lightshow.sequences.append(
                 Sequence(
                     sequence,
                     type_seq=type_seq,
@@ -585,17 +585,17 @@ class ParsedData:
                 )
             )
             index = -1
-            del self.lightshow.chasers[index].steps[1:]
+            del self.lightshow.sequences[index].steps[1:]
         if "tracking_mode" in seq_data or action is Action.REPLACE:
-            self.lightshow.chasers[index].tracking_mode = bool(
+            self.lightshow.sequences[index].tracking_mode = bool(
                 seq_data.get("tracking_mode", False)
             )
         if "mib_enabled" in seq_data or action is Action.REPLACE:
-            self.lightshow.chasers[index].mib_enabled = bool(
+            self.lightshow.sequences[index].mib_enabled = bool(
                 seq_data.get("mib_enabled", True)
             )
         if "mib_fade_time" in seq_data or action is Action.REPLACE:
-            self.lightshow.chasers[index].mib_fade_time = float(
+            self.lightshow.sequences[index].mib_fade_time = float(
                 seq_data.get("mib_fade_time", 2.0)
             )
         if action is Action.REPLACE:
@@ -609,17 +609,17 @@ class ParsedData:
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
             cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
-            chaser_seq = self.lightshow.chasers[index]
+            sec_seq = self.lightshow.sequences[index]
             existing_idx = next(
                 (
                     idx
-                    for idx, s in enumerate(chaser_seq.steps)
+                    for idx, s in enumerate(sec_seq.steps)
                     if s.cue is not None and s.cue.number == cue_number
                 ),
                 None,
             )
             if existing_idx is not None:
-                existing_step = chaser_seq.steps[existing_idx]
+                existing_step = sec_seq.steps[existing_idx]
                 cue = existing_step.cue
                 if cue:
                     cue.channels = cue_channels
@@ -628,12 +628,12 @@ class ParsedData:
                 existing_step.text = values.get("label", existing_step.text)
                 self._update_step_timings_from_dict(existing_step, values)
             else:
-                _found, step_nb = chaser_seq.get_step(cue_number)
+                _found, step_nb = sec_seq.get_step(cue_number)
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
-                chaser_seq.cues.add(cue)
+                sec_seq.cues.add(cue)
                 self._apply_cue_metadata(cue, cue_dict)
                 step = self._build_step_from_dict(sequence, cue, values)
-                chaser_seq.insert_step(step_nb, step)
+                sec_seq.insert_step(step_nb, step)
 
     def _replace_chaser(self, sequence: int, index: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
@@ -641,7 +641,7 @@ class ParsedData:
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
             cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
-            for cue in self.lightshow.chasers[index].cues:
+            for cue in self.lightshow.sequences[index].cues:
                 if cue.number == cue_number:
                     # If cue exist, update it
                     cue.channels = cue_channels
@@ -651,7 +651,7 @@ class ParsedData:
             else:
                 # Else, create it
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
-                self.lightshow.chasers[index].cues.add(cue)
+                self.lightshow.sequences[index].cues.add(cue)
                 self._apply_cue_metadata(cue, cue_dict)
             step = self._build_step_from_dict(sequence, cue, values)
-            self.lightshow.chasers[index].add_step(step)
+            self.lightshow.sequences[index].add_step(step)

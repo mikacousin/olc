@@ -35,6 +35,13 @@ if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
 
 
+_EFFECT_MODE_LABELS: dict[str, str] = {
+    "size": "Mode: Size",
+    "rate": "Mode: Rate",
+    "both": "Mode: Size+Rate",
+}
+
+
 # pylint: disable=too-many-instance-attributes
 class FaderEdit(Gtk.Box):
     """Fader edition widget"""
@@ -44,6 +51,9 @@ class FaderEdit(Gtk.Box):
     label: Gtk.Label
     type_button: Gtk.MenuButton
     contents_button: Gtk.MenuButton
+    effect_controls_box: Gtk.Box | None
+    effect_mode_button: Gtk.MenuButton | None
+    effect_channels_button: Gtk.MenuButton | None
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
@@ -63,6 +73,9 @@ class FaderEdit(Gtk.Box):
         self.tabs = tabs
         self.window = window
         self.settings = settings
+        self.effect_controls_box = None
+        self.effect_mode_button = None
+        self.effect_channels_button = None
 
         fader = self.lightshow.fader_bank.faders[page][index]
 
@@ -103,6 +116,8 @@ class FaderEdit(Gtk.Box):
         self.add(self.label)
         self.add(self.type_button)
         self.add(self.contents_button)
+        if self.effect_controls_box is not None:
+            self.add(self.effect_controls_box)
 
     def _fader_none(self) -> None:
         """Create edition of not defined fader"""
@@ -129,15 +144,15 @@ class FaderEdit(Gtk.Box):
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
-        for chaser in self.lightshow.chasers:
+        for seq in self.lightshow.sequences:
             button = Gtk.ModelButton()
-            button.set_label(f"{chaser.index:g} : {chaser.text}")
+            button.set_label(f"{seq.index:g} : {seq.text}")
             button.connect(
-                "clicked", self._on_contents_changed, FaderType.SEQUENCE, chaser.index
+                "clicked", self._on_contents_changed, FaderType.SEQUENCE, seq.index
             )
             vbox.add(button)
-            if chaser is fader.contents:
-                self.contents_button.set_label(f"{chaser.index:g} : {chaser.text}")
+            if seq is fader.contents:
+                self.contents_button.set_label(f"{seq.index:g} : {seq.text}")
         self._contents_popup(vbox)
 
     def _fader_effect(self) -> None:
@@ -163,6 +178,62 @@ class FaderEdit(Gtk.Box):
             if eff is fader.contents:
                 self.contents_button.set_label(lbl)
         self._contents_popup(vbox)
+
+        # Control mode selector (Size / Rate / Size+Rate) & Target channels binding
+        self.effect_controls_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=4
+        )
+
+        current_mode = getattr(fader, "control_mode", "size")
+        self.effect_mode_button = Gtk.MenuButton()
+        self.effect_mode_button.set_label(
+            _EFFECT_MODE_LABELS.get(current_mode, "Mode: Size")
+        )
+        mode_popover = Gtk.Popover()
+        mode_vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
+        mode_vbox.set_border_width(5)
+        for mode_key, mode_text in (
+            ("size", "Size"),
+            ("rate", "Rate"),
+            ("both", "Size + Rate"),
+        ):
+            m_btn = Gtk.ModelButton()
+            m_btn.set_label(mode_text)
+            m_btn.connect("clicked", self._on_effect_mode_changed, mode_key)
+            mode_vbox.add(m_btn)
+        mode_vbox.show_all()
+        mode_popover.add(mode_vbox)
+        mode_popover.set_position(Gtk.PositionType.BOTTOM)
+        self.effect_mode_button.set_popover(mode_popover)
+
+        ch_label = (
+            fader.format_target_channels()
+            if isinstance(fader, FaderEffect)
+            else "Auto (Sel)"
+        )
+        self.effect_channels_button = Gtk.MenuButton()
+        self.effect_channels_button.set_label(ch_label)
+        ch_popover = Gtk.Popover()
+        ch_vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
+        ch_vbox.set_border_width(5)
+
+        btn_sel = Gtk.ModelButton()
+        btn_sel.set_label("Set from Selection")
+        btn_sel.connect("clicked", self._on_effect_channels_from_selection)
+        ch_vbox.add(btn_sel)
+
+        btn_clear = Gtk.ModelButton()
+        btn_clear.set_label("Clear (Auto / Selection)")
+        btn_clear.connect("clicked", self._on_effect_channels_clear)
+        ch_vbox.add(btn_clear)
+
+        ch_vbox.show_all()
+        ch_popover.add(ch_vbox)
+        ch_popover.set_position(Gtk.PositionType.BOTTOM)
+        self.effect_channels_button.set_popover(ch_popover)
+
+        self.effect_controls_box.add(self.effect_mode_button)
+        self.effect_controls_box.add(self.effect_channels_button)
 
     def _fader_preset(self) -> None:
         """Create edition of preset fader (Preset palettes and Cues)."""
@@ -237,11 +308,42 @@ class FaderEdit(Gtk.Box):
                 "fader.assign", self.page, self.index, fader_type, contents
             )
 
+    def _on_effect_mode_changed(self, _widget: Gtk.ModelButton, mode: str) -> None:
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.configure_effect", self.page, self.index, control_mode=mode
+            )
+
+    def _on_effect_channels_from_selection(self, _widget: Gtk.ModelButton) -> None:
+        app = self.lightshow.app
+        if app is not None:
+            selected = list(getattr(app, "selected_channels", []))
+            if selected:
+                app.action_registry.execute(
+                    "fader.configure_effect",
+                    self.page,
+                    self.index,
+                    effect_channels=selected,
+                )
+
+    def _on_effect_channels_clear(self, _widget: Gtk.ModelButton) -> None:
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.configure_effect", self.page, self.index, effect_channels=[]
+            )
+
     def refresh(self) -> None:
         """Refresh this fader widget representation in place."""
         fader_type = self.lightshow.fader_bank.get_fader_type(self.page, self.index)
 
         self.remove(self.contents_button)
+        if self.effect_controls_box is not None:
+            self.remove(self.effect_controls_box)
+            self.effect_controls_box = None
+            self.effect_mode_button = None
+            self.effect_channels_button = None
 
         if fader_type == FaderType.NONE:
             self._fader_none()
@@ -254,6 +356,8 @@ class FaderEdit(Gtk.Box):
         elif fader_type == FaderType.EFFECT:
             self._fader_effect()
         self.add(self.contents_button)
+        if self.effect_controls_box is not None:
+            self.add(self.effect_controls_box)
         self.show_all()
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:

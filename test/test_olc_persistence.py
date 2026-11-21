@@ -762,3 +762,41 @@ def test_olc_legacy_group_dict_and_fader_group_migration(
 
     assert ls.fader_bank.get_fader_type(1, 2) == FaderType.PRESET
     assert ls.fader_bank.faders[1][2].contents is p2
+
+
+def test_olc_persistence_fader_effect_both_mode_and_channels(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Round-trip persistence preserves FaderEffect control_mode='both' and channels."""
+    from olc.show.fader import FaderEffect, FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.selected_channels = [3, 4, 5]
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    app.action_registry.execute(
+        "fader.configure_effect",
+        1,
+        1,
+        control_mode="both",
+        effect_channels=[3, 4, 5],
+    )
+
+    save_path = tmp_path / "fader_effect_both.olc"
+    app.action_registry.execute("show.save", str(save_path))
+    assert save_path.exists()
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    ls2 = app2.lightshow
+
+    assert ls2.fader_bank.get_fader_type(1, 1) == FaderType.EFFECT
+    fader = ls2.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.contents is not None
+    assert fader.contents.number == 1.0
+    assert fader.control_mode == "both"
+    assert fader.effect_channels == [3, 4, 5]

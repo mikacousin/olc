@@ -45,40 +45,40 @@ class SequenceNewAction(Action):
     def execute(self) -> None:
         lightshow = self.app.lightshow
         # Verify if sequence index already exists
-        for chaser in lightshow.chasers:
-            if chaser.index == self.index_seq:
+        for seq in lightshow.sequences:
+            if seq.index == self.index_seq:
                 raise ValueError(f"Chaser sequence {self.index_seq} already exists.")
         if self.index_seq == 1.0:
             raise ValueError(
                 "Chaser sequence cannot use index 1.0 (reserved for main playback)."
             )
 
-        chaser = Sequence(self.index_seq, type_seq="Chaser", lightshow=lightshow)
+        chaser = Sequence(self.index_seq, type_seq="Normal", lightshow=lightshow)
         # Clear step 1+ as in the original GUI flow
         del chaser.steps[1:]
         chaser.last = len(chaser.steps)
 
         self.created_chaser = chaser
-        lightshow.chasers.append(chaser)
+        lightshow.sequences.append(chaser)
         lightshow.set_modified()
 
         self.app.emit("sequence.created", chaser)
 
     def undo(self) -> None:
         if self.created_chaser:
-            self.app.lightshow.chasers.remove(self.created_chaser)
+            self.app.lightshow.sequences.remove(self.created_chaser)
             self.app.lightshow.set_modified()
             self.app.emit("sequence.deleted", self.created_chaser)
 
     def redo(self) -> None:
         if self.created_chaser:
-            self.app.lightshow.chasers.append(self.created_chaser)
+            self.app.lightshow.sequences.append(self.created_chaser)
             self.app.lightshow.set_modified()
             self.app.emit("sequence.created", self.created_chaser)
 
 
 class SequenceDeleteAction(Action):
-    """Action to delete a chaser sequence."""
+    """Action to delete a secondary sequence."""
 
     name = "sequence.delete"
     can_undo = True
@@ -95,27 +95,27 @@ class SequenceDeleteAction(Action):
 
     def execute(self) -> None:
         lightshow = self.app.lightshow
-        chaser = lightshow.get_chaser(self.index_seq)
+        chaser = lightshow.get_sequence(self.index_seq)
         if not chaser:
             raise ValueError(f"Chaser sequence {self.index_seq} does not exist.")
 
         self.deleted_chaser = chaser
-        self.deleted_index = lightshow.chasers.index(chaser)
+        self.deleted_index = lightshow.sequences.index(chaser)
 
-        lightshow.chasers.remove(chaser)
+        lightshow.sequences.remove(chaser)
         lightshow.set_modified()
 
         self.app.emit("sequence.deleted", chaser)
 
     def undo(self) -> None:
         if self.deleted_chaser and self.deleted_index != -1:
-            self.app.lightshow.chasers.insert(self.deleted_index, self.deleted_chaser)
+            self.app.lightshow.sequences.insert(self.deleted_index, self.deleted_chaser)
             self.app.lightshow.set_modified()
             self.app.emit("sequence.created", self.deleted_chaser)
 
     def redo(self) -> None:
         if self.deleted_chaser:
-            self.app.lightshow.chasers.remove(self.deleted_chaser)
+            self.app.lightshow.sequences.remove(self.deleted_chaser)
             self.app.lightshow.set_modified()
             self.app.emit("sequence.deleted", self.deleted_chaser)
 
@@ -154,7 +154,7 @@ class SequenceInsertStepAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
@@ -187,7 +187,7 @@ class SequenceInsertStepAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
 
         if sequence and self.created_step in sequence.steps:
             sequence.steps.remove(self.created_step)
@@ -209,7 +209,7 @@ class SequenceInsertStepAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 return
 
@@ -249,7 +249,7 @@ class SequenceDeleteStepAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
@@ -269,7 +269,7 @@ class SequenceDeleteStepAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
 
         if sequence and self.deleted_step:
             sequence.insert_step(self.step_index, self.deleted_step)
@@ -344,7 +344,7 @@ class StepUpdateTimesAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
@@ -399,7 +399,7 @@ class StepUpdateTimesAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
 
         if sequence:
             step = sequence.steps[self.step_index]
@@ -443,7 +443,7 @@ class StepUpdateTextAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
@@ -462,7 +462,7 @@ class StepUpdateTextAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
 
         if sequence:
             step = sequence.steps[self.step_index]
@@ -516,7 +516,7 @@ class StepUpdateChannelTimeAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
@@ -559,7 +559,7 @@ class StepUpdateChannelTimeAction(Action):
         if self.sequence_index == 1.0:
             sequence = lightshow.main_playback
         else:
-            sequence = lightshow.get_chaser(self.sequence_index)
+            sequence = lightshow.get_sequence(self.sequence_index)
 
         if sequence:
             step = sequence.steps[self.step_index]
@@ -599,7 +599,7 @@ class SequenceSetTrackingModeAction(Action):
         sequence = (
             lightshow.main_playback
             if self.sequence_index == 1.0
-            else lightshow.get_chaser(self.sequence_index)
+            else lightshow.get_sequence(self.sequence_index)
         )
         if sequence is None:
             return
@@ -614,7 +614,7 @@ class SequenceSetTrackingModeAction(Action):
         sequence = (
             lightshow.main_playback
             if self.sequence_index == 1.0
-            else lightshow.get_chaser(self.sequence_index)
+            else lightshow.get_sequence(self.sequence_index)
         )
         if sequence is not None:
             self.old_enabled = bool(getattr(sequence, "tracking_mode", False))
@@ -649,7 +649,7 @@ class SequenceSetMibEnabledAction(Action):
         sequence = (
             lightshow.main_playback
             if self.sequence_index == 1.0
-            else lightshow.get_chaser(self.sequence_index)
+            else lightshow.get_sequence(self.sequence_index)
         )
         if sequence is None:
             return
@@ -664,7 +664,7 @@ class SequenceSetMibEnabledAction(Action):
         sequence = (
             lightshow.main_playback
             if self.sequence_index == 1.0
-            else lightshow.get_chaser(self.sequence_index)
+            else lightshow.get_sequence(self.sequence_index)
         )
         if sequence is not None:
             self.old_enabled = bool(getattr(sequence, "mib_enabled", False))

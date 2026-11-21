@@ -300,3 +300,121 @@ def test_fader_assign_effect_starts_scales_and_stops() -> None:
     # Undo fader assignment -> back to NONE
     app.history.undo()
     assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
+
+
+def test_fader_effect_both_mode_and_format_target_channels() -> None:
+    """FaderEffect supports 'both' scaling mode and concise channel formatting."""
+    import pytest
+
+    app = CoreApplication(MagicMock())
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.selected_channels = [1, 2, 3, 4]
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+
+    assert fader.format_target_channels() == "Ch 1..4"
+    fader.set_effect_channels([])
+    assert fader.format_target_channels() == "Auto (Sel)"
+    fader.set_effect_channels([3])
+    assert fader.format_target_channels() == "Ch 3"
+    fader.set_effect_channels([4, 3, 2])
+    assert fader.format_target_channels() == "Ch 4..2"
+    fader.set_effect_channels([1, 3, 5])
+    assert fader.format_target_channels() == "Ch 1,3,5"
+    fader.set_effect_channels([1, 3, 5, 7])
+    assert fader.format_target_channels() == "Ch 1,3… (4)"
+
+    # 'both' mode scales size = level and rate = max(0.05, level * 2.0)
+    fader.set_effect_channels([1, 2])
+    fader.set_control_mode("both")
+    app.action_registry.execute("fader.set_level", 1, 1, 0.5)
+    active = app.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].size_scale == pytest.approx(0.5)
+    assert active[0].rate_scale == pytest.approx(1.0)
+
+    app.action_registry.execute("fader.set_level", 1, 1, 0.8)
+    active = app.effects_engine.get_active_instances()
+    assert active[0].size_scale == pytest.approx(0.8)
+    assert active[0].rate_scale == pytest.approx(1.6)
+
+
+def test_fader_configure_effect_and_assign_clear_undo_restore() -> None:
+    """fader.configure_effect supports undo/redo; assign/clear restore state."""
+    app = CoreApplication(MagicMock())
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.action_registry.execute(
+        "effect.create", 2.0, "Candle", template_id="candle_flicker"
+    )
+    app.selected_channels = [1, 2]
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.control_mode == "size"
+    assert fader.effect_channels == [1, 2]
+
+    # Configure mode + target channels via action
+    app.action_registry.execute(
+        "fader.configure_effect", 1, 1, control_mode="both", effect_channels=[5, 6, 7]
+    )
+    assert fader.control_mode == "both"
+    assert fader.effect_channels == [5, 6, 7]
+    assert fader.format_target_channels() == "Ch 5..7"
+
+    # Clear target channels -> Auto (Sel)
+    app.action_registry.execute("fader.configure_effect", 1, 1, effect_channels=[])
+    assert fader.effect_channels == []
+    assert fader.format_target_channels() == "Auto (Sel)"
+
+    # Undo clear channels
+    app.history.undo()
+    assert fader.effect_channels == [5, 6, 7]
+
+    # Undo configure_effect ("both", [5, 6, 7]) -> back to ("size", [1, 2])
+    app.history.undo()
+    assert fader.control_mode == "size"
+    assert fader.effect_channels == [1, 2]
+
+    # Redo configure_effect -> back to ("both", [5, 6, 7])
+    app.history.redo()
+    assert fader.control_mode == "both"
+    assert fader.effect_channels == [5, 6, 7]
+
+    # Switching content on same EFFECT type preserves configured mode & channels
+    app.selected_channels = [10]
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 2.0)
+    reassigned = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(reassigned, FaderEffect)
+    assert reassigned.contents is not None
+    assert reassigned.contents.number == 2.0
+    assert reassigned.control_mode == "both"
+    assert reassigned.effect_channels == [5, 6, 7]
+
+    app.history.undo()
+    assert app.lightshow.fader_bank.faders[1][1].contents.number == 1.0
+
+    # Overwrite with a different fader type, then undo -> restores mode & channels
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.MAIN)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.MAIN
+
+    app.history.undo()
+    restored = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(restored, FaderEffect)
+    assert restored.contents is not None
+    assert restored.contents.number == 1.0
+    assert restored.control_mode == "both"
+    assert restored.effect_channels == [5, 6, 7]
+
+    # Clear fader, then undo -> restores control_mode & effect_channels
+    app.action_registry.execute("fader.clear", 1, 1)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
+    app.history.undo()
+    restored_after_clear = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(restored_after_clear, FaderEffect)
+    assert restored_after_clear.control_mode == "both"
+    assert restored_after_clear.effect_channels == [5, 6, 7]

@@ -474,7 +474,7 @@ class PlaybackRecordCueAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if main_playback is None:
             return
@@ -528,7 +528,7 @@ class PlaybackRecordCueAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if main_playback is None or self.number is None or self.step is None:
             return
@@ -559,7 +559,7 @@ class PlaybackRecordCueAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if (
             main_playback is None
@@ -622,7 +622,7 @@ class PlaybackUpdateActiveStepAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if main_playback is None:
             return
@@ -676,7 +676,7 @@ class PlaybackUpdateActiveStepAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if main_playback:
             main_playback.update_channels()
@@ -695,7 +695,7 @@ class PlaybackUpdateActiveStepAction(Action):
         main_playback = (
             lightshow.main_playback
             if self.sequence == 1
-            else lightshow.get_chaser(self.sequence)
+            else lightshow.get_sequence(self.sequence)
         )
         if main_playback:
             main_playback.update_channels()
@@ -715,9 +715,9 @@ class PlaybackStopAction(Action):
         main_playback = self.app.lightshow.main_playback
         if main_playback:
             main_playback.stop()
-        for chaser in self.app.lightshow.chasers:
-            if chaser.run and chaser.thread:
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
+        for seq in self.app.lightshow.sequences:
+            if seq.run and seq.thread:
+                seq.run = False
+                seq.thread.stop()
+                seq.thread.join()
         self.app.emit("playback.stopped")

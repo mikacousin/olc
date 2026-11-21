@@ -96,6 +96,7 @@ from olc.actions.effect import (
 from olc.actions.fader import (
     FaderAssignAction,
     FaderClearAction,
+    FaderConfigureEffectAction,
     FaderFlashAction,
     FaderSetLevelAction,
     FaderSetPageAction,
@@ -272,6 +273,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         StepUpdateChannelTimeAction,
         FaderAssignAction,
         FaderClearAction,
+        FaderConfigureEffectAction,
         FaderSetLevelAction,
         FaderSetPageAction,
         SelectNoneChannelsAction,

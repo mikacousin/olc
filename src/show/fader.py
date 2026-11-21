@@ -287,8 +287,11 @@ class FaderSequence(Fader):
             self.app.backend.dmx.set_levels()
 
 
+VALID_EFFECT_CONTROL_MODES: tuple[str, ...] = ("size", "rate", "both")
+
+
 class FaderEffect(Fader):
-    """Fader controlling a procedural EffectDefinition (Size or Rate)."""
+    """Fader controlling a procedural EffectDefinition (Size, Rate, or Both)."""
 
     contents: EffectDefinition | None
     dmx: np.ndarray
@@ -309,10 +312,50 @@ class FaderEffect(Fader):
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         self.channels = set()
         self.effect_channels = list(effect_channels or [])
-        self.control_mode = control_mode if control_mode in ("size", "rate") else "size"
+        self.control_mode = (
+            control_mode if control_mode in VALID_EFFECT_CONTROL_MODES else "size"
+        )
         if effect is not None:
             self.text = effect.label or f"Effect {effect.number:g}"
             self.update_channels()
+
+    def format_target_channels(self) -> str:
+        """Return a concise human-readable summary of bound target channels."""
+        chs = self.effect_channels
+        if not chs:
+            return "Auto (Sel)"
+        if len(chs) == 1:
+            return f"Ch {chs[0]}"
+        if all(b == a + 1 for a, b in zip(chs, chs[1:], strict=False)) or all(
+            b == a - 1 for a, b in zip(chs, chs[1:], strict=False)
+        ):
+            return f"Ch {chs[0]}..{chs[-1]}"
+        if len(chs) <= 3:
+            return "Ch " + ",".join(str(c) for c in chs)
+        return f"Ch {chs[0]},{chs[1]}… ({len(chs)})"
+
+    def set_control_mode(self, mode: str) -> None:
+        """Set fader control mode ('size', 'rate', or 'both') and refresh if live."""
+        if mode not in VALID_EFFECT_CONTROL_MODES:
+            return
+        self.control_mode = mode
+        if self.level > 0.0:
+            self.level_changed()
+
+    def set_effect_channels(self, channels: list[int]) -> None:
+        """Update ordered target channels for this effect fader."""
+        ordered = list(dict.fromkeys(int(c) for c in channels))
+        if (
+            self.level > 0.0
+            and self.contents is not None
+            and self.app is not None
+            and hasattr(self.app, "effects_engine")
+        ):
+            self.app.effects_engine.stop_effect(effect_number=self.contents.number)
+        self.effect_channels = ordered
+        self.update_channels()
+        if self.level > 0.0 and self.contents is not None:
+            self.level_changed()
 
     def get_target_channels(self) -> list[int]:
         """Resolve target channels for this effect fader."""
@@ -353,7 +396,7 @@ class FaderEffect(Fader):
         self.contents = effect
         if effect_channels is not None:
             self.effect_channels = list(effect_channels)
-        elif self.app is not None:
+        elif not self.effect_channels and self.app is not None:
             selected = list(getattr(self.app, "selected_channels", []))
             if selected:
                 self.effect_channels = selected
@@ -380,6 +423,9 @@ class FaderEffect(Fader):
             self.channels = set(target_channels)
             if self.control_mode == "rate":
                 size_scale = 1.0
+                rate_scale = max(0.05, float(self.level) * 2.0)
+            elif self.control_mode == "both":
+                size_scale = float(self.level)
                 rate_scale = max(0.05, float(self.level) * 2.0)
             else:
                 size_scale = float(self.level)

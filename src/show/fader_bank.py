@@ -204,9 +204,11 @@ class FaderBank:
             if (
                 self.lightshow
                 and isinstance(contents, (int, float))
-                and (chaser := self.lightshow.get_chaser(contents))
+                and (seq_obj := self.lightshow.get_sequence(contents))
             ):
-                self.faders[page][index] = FaderSequence(index, fader_bank_type, chaser)
+                self.faders[page][index] = FaderSequence(
+                    index, fader_bank_type, seq_obj
+                )
             else:
                 self.faders[page][index] = FaderSequence(index, fader_bank_type)
             self.faders[page][index].set_level(0)
@@ -235,10 +237,10 @@ class FaderBank:
             preset_obj = self._resolve_preset_contents(contents)
             self.faders[page][index].set_contents(preset_obj)
         elif fader_type == FaderType.SEQUENCE:
-            chaser = None
+            seq_obj = None
             if self.lightshow and isinstance(contents, (int, float)):
-                chaser = self.lightshow.get_chaser(contents)
-            self.faders[page][index].set_contents(chaser)
+                seq_obj = self.lightshow.get_sequence(contents)
+            self.faders[page][index].set_contents(seq_obj)
         elif fader_type == FaderType.EFFECT:
             eff_obj = self._resolve_effect_contents(contents)
             self.faders[page][index].set_contents(eff_obj)
