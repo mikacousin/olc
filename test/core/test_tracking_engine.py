@@ -20,7 +20,7 @@ import typing
 import numpy as np
 import pytest
 
-from olc.core.tracking import TrackingEngine
+from olc.core.tracking import TrackingDisplayState, TrackingEngine
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
 from olc.show.cue import Cue
@@ -698,3 +698,75 @@ def test_sequence_get_next_channel_level_and_channels_tracking() -> None:
     assert seq.get_next_channel_level(1, 200) == 200
     assert seq.get_next_channel_level(2, 128) == 128
     assert seq.get_next_channel_level(3, 0) == 100
+
+
+def test_int_block_stops_intensity_but_tracks_ltp_and_effects() -> None:
+    """Verify $$IntBlock cuts intensity tracking while keeping LTP and effects."""
+    seq = create_mock_sequence()
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    cue1 = Cue(1, 1.0, channels={10: 0.8})
+    cue1.set_device_parameter(1, "intensity", 0.9)
+    cue1.set_device_parameter(1, "pan", 90.0)
+    cue1.set_device_parameter(2, "intensity", 0.8)
+    cue1.set_device_parameter(2, "pan", 45.0)
+    cue1.effect_refs = {1: {"effect": 1.0, "order_index": 0, "channels": [1]}}
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    cue2 = Cue(1, 2.0, is_int_block=True)
+    cue2.set_device_parameter(1, "intensity", 0.5)
+    seq.add_step(Step(sequence=1, cue=cue2))
+
+    res = TrackingEngine.resolve_step_state(seq, 2, tracking_mode=True)
+    assert res.channels[9] == pytest.approx(0.0)
+    assert res.device_values[1]["intensity"] == pytest.approx(0.5)
+    assert res.device_values[1]["pan"] == pytest.approx(90.0)
+    assert res.device_values[2]["intensity"] == pytest.approx(0.0)
+    assert res.device_values[2]["pan"] == pytest.approx(45.0)
+    assert res.effect_refs[1]["effect"] == 1.0
+    assert res.parameter_states[1]["intensity"] == TrackingDisplayState.BLOCK
+    assert res.parameter_states[1]["pan"] == TrackingDisplayState.TRACKED_VALUE
+    assert res.parameter_states[2]["intensity"] == TrackingDisplayState.INACTIVE
+    assert res.parameter_states[2]["pan"] == TrackingDisplayState.TRACKED_VALUE
+
+
+def test_is_assert_forces_ltp_reapplication() -> None:
+    """Verify force_assert re-applies and clears live overrides when unchanged."""
+    from unittest.mock import MagicMock
+
+    from olc.core.live_state import LiveParameterState
+    from olc.show.sequence_threads import _apply_resolved_device_values
+
+    patch = PatchManager()
+    patch.patch_device(1, create_moving_head_definition(), universe=1, address=1)
+    dev = patch.get_device(1)
+    assert dev is not None
+    dev.set_pan_degrees(45.0)
+
+    seq = create_mock_sequence()
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+    cue1 = Cue(1, 1.0, is_assert=True)
+    cue1.set_device_parameter(1, "pan", 45.0)
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    resolved = TrackingEngine.resolve_step_state(
+        seq, 1, tracking_mode=True, patch=patch
+    )
+    app = MagicMock()
+    app.live_state = LiveParameterState()
+    app.live_state.mark_manual_params(1, ["pan"])
+
+    # Without force_assert and clear_live_state=False, matching pan reports no change
+    changed, _ = _apply_resolved_device_values(
+        patch, resolved, app, clear_live_state=False, force_assert=False
+    )
+    assert 1 not in changed
+    assert app.live_state.is_param_manual(1, "pan")
+
+    # With force_assert=True, control is reclaimed and parameter_changed is emitted
+    changed_assert, _ = _apply_resolved_device_values(
+        patch, resolved, app, clear_live_state=False, force_assert=True
+    )
+    assert 1 in changed_assert
+    assert not app.live_state.is_param_manual(1, "pan")
+    app.emit.assert_any_call("device.parameters_changed", [1])

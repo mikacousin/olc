@@ -76,6 +76,10 @@ class Cue:
     palette_refs: dict[int, dict[str, PaletteRef]]
     effect_refs: dict[int, dict[str, typing.Any]]
     is_block: bool
+    is_assert: bool
+    is_int_block: bool
+    notes: str
+    execute_preset: float | None
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -87,6 +91,10 @@ class Cue:
         is_block: bool = False,
         palette_refs: dict[int, dict[str, PaletteRef]] | None = None,
         effect_refs: dict[int, dict[str, typing.Any]] | None = None,
+        is_assert: bool = False,
+        is_int_block: bool = False,
+        notes: str = "",
+        execute_preset: float | None = None,
     ) -> None:
         self.sequence = sequence
         self.number = number
@@ -97,6 +105,12 @@ class Cue:
         self.palette_refs = palette_refs if palette_refs is not None else {}
         self.effect_refs = effect_refs if effect_refs is not None else {}
         self.is_block = is_block
+        self.is_assert = bool(is_assert)
+        self.is_int_block = bool(is_int_block)
+        self.notes = str(notes)
+        self.execute_preset = (
+            float(execute_preset) if execute_preset is not None else None
+        )
 
     @property
     def channels(self) -> dict[int, int | float]:
@@ -210,6 +224,14 @@ class Cue:
             d["palette_refs"] = serialize_palette_refs(self.palette_refs)
         if self.is_block:
             d["is_block"] = self.is_block
+        if self.is_assert:
+            d["is_assert"] = self.is_assert
+        if self.is_int_block:
+            d["is_int_block"] = self.is_int_block
+        if self.notes:
+            d["notes"] = self.notes
+        if self.execute_preset is not None:
+            d["execute_preset"] = self.execute_preset
         return d
 
 

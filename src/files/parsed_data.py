@@ -60,6 +60,7 @@ class ParsedData:
             "fixture_definitions": [],
             "devices": {},
             "patch": {},
+            "show_metadata": {},
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
             "palettes": {},
@@ -356,8 +357,15 @@ class ParsedData:
                 continue
             if number <= MAX_FADER_PER_PAGE:
                 self.lightshow.fader_bank.set_fader(page, number, fader_type, contents)
+                fader_obj = self.lightshow.fader_bank.faders[page][number]
+                if fader_obj is not None:
+                    if values.get("exempt_grand_master"):
+                        fader_obj.exempt_grand_master = True
+                    if values.get("intensity_master") and hasattr(
+                        fader_obj, "intensity_master"
+                    ):
+                        fader_obj.intensity_master = True
                 if fader_type == FaderType.EFFECT:
-                    fader_obj = self.lightshow.fader_bank.faders[page][number]
                     eff_chs = values.get("effect_channels")
                     if isinstance(eff_chs, list) and hasattr(
                         fader_obj, "effect_channels"
@@ -396,9 +404,20 @@ class ParsedData:
                     self.lightshow.independents.update(inde)
                     break
 
+    def import_show_metadata(self) -> None:
+        """Apply show-level metadata (title, home_preset) to lightshow."""
+        meta = self.data.get("show_metadata")
+        if not isinstance(meta, dict):
+            return
+        if "title" in meta and meta["title"] is not None:
+            self.lightshow.title = str(meta["title"])
+        if "home_preset" in meta:
+            hp = meta["home_preset"]
+            self.lightshow.home_preset = float(hp) if hp is not None else None
+
     @staticmethod
     def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:
-        """Apply device_values and is_block metadata to a cue."""
+        """Apply device_values, block/assert flags, notes, and execute_preset."""
         dev_vals = cue_dict.get("device_values")
         if dev_vals:
             cue.device_values = {
@@ -410,6 +429,11 @@ class ParsedData:
         cue.palette_refs = deserialize_palette_refs(cue_dict.get("palette_refs"))
         cue.effect_refs = deserialize_effect_refs(cue_dict.get("effect_refs"))
         cue.is_block = bool(cue_dict.get("is_block", False))
+        cue.is_assert = bool(cue_dict.get("is_assert", False))
+        cue.is_int_block = bool(cue_dict.get("is_int_block", False))
+        cue.notes = str(cue_dict.get("notes", ""))
+        exec_preset = cue_dict.get("execute_preset")
+        cue.execute_preset = float(exec_preset) if exec_preset is not None else None
 
     @staticmethod
     def _build_step_from_dict(

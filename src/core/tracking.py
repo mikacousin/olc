@@ -203,7 +203,7 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
         and "intensity" in cue.device_values.get(channel, {})
     )
 
-    if getattr(cue, "is_block", False) and (
+    if (getattr(cue, "is_block", False) or getattr(cue, "is_int_block", False)) and (
         is_explicit_move or curr_level > 0 or channel in curr_resolved.device_values
     ):
         return TrackingDisplayState.BLOCK, curr_level
@@ -531,7 +531,11 @@ class TrackingEngine:
         """Resolve conventional levels along with tracking states and palette refs."""
         target_cue = sequence.steps[step_index].cue
         is_target_block = bool(
-            target_cue is not None and getattr(target_cue, "is_block", False)
+            target_cue is not None
+            and (
+                getattr(target_cue, "is_block", False)
+                or getattr(target_cue, "is_int_block", False)
+            )
         )
         conv_states: dict[int, TrackingDisplayState] = {}
         conv_refs: dict[int, PaletteRef] = {}
@@ -581,7 +585,11 @@ class TrackingEngine:
                         if ref is not None:
                             conv_refs[ch_int] = ref
 
-            if cue.is_block or np.all(resolved_mask):
+            if (
+                getattr(cue, "is_block", False)
+                or getattr(cue, "is_int_block", False)
+                or np.all(resolved_mask)
+            ):
                 break
 
         return resolved_channels, conv_states, conv_refs
@@ -676,6 +684,10 @@ class TrackingEngine:
         is_target_block = bool(
             target_cue is not None and getattr(target_cue, "is_block", False)
         )
+        is_target_int_block = bool(
+            is_target_block
+            or (target_cue is not None and getattr(target_cue, "is_int_block", False))
+        )
 
         dev_state: dict[str, Any] = {}
         dev_refs: dict[str, PaletteRef] = {}
@@ -690,7 +702,7 @@ class TrackingEngine:
                 dev_state[param_name] = val
                 if def_cue is None:
                     dev_pstates[param_name] = TrackingDisplayState.INACTIVE
-                elif is_target_block:
+                elif is_target_int_block:
                     dev_pstates[param_name] = TrackingDisplayState.BLOCK
                 elif def_idx == step_index:
                     dev_pstates[param_name] = TrackingDisplayState.HARD_VALUE
@@ -774,7 +786,7 @@ class TrackingEngine:
                 and param_name in c.device_values[dev_id]
             ):
                 return float(c.device_values[dev_id][param_name]), idx, c
-            if c.is_block:
+            if getattr(c, "is_block", False) or getattr(c, "is_int_block", False):
                 break
         return 0.0, -1, None
 

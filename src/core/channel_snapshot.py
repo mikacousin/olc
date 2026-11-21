@@ -980,17 +980,27 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         intensity_color = dict(_PARK_COLOR)
     else:
         raw_comp, raw_col = app.get_channel_composite_level(ch - 1)
-        intensity_norm = _normalize_lvl(float(raw_comp) * main_fader_val)
         seq_lvl = (
             float(dmx.levels["sequence"][ch - 1])
             if dmx is not None and isinstance(getattr(dmx, "levels", None), dict)
             else 0.0
         )
-        fader_lvl = (
+        regular_fader_lvl = (
             float(dmx.levels["faders"][ch - 1])
             if dmx is not None and isinstance(getattr(dmx, "levels", None), dict)
             else 0.0
         )
+        gm_exempt_lvl = (
+            float(dmx.levels["faders_gm_exempt"][ch - 1])
+            if dmx is not None
+            and isinstance(getattr(dmx, "levels", None), dict)
+            and "faders_gm_exempt" in dmx.levels
+            else 0.0
+        )
+        intensity_norm = _normalize_lvl(
+            max(float(raw_comp) * main_fader_val, gm_exempt_lvl)
+        )
+        fader_lvl = max(regular_fader_lvl, gm_exempt_lvl)
         inde_arr = getattr(getattr(lightshow, "independents", None), "dmx", ())
         inde_lvl = float(inde_arr[ch - 1]) if 1 <= ch <= len(inde_arr) else 0.0
 

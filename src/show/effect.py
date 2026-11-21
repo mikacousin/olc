@@ -21,6 +21,8 @@ import typing
 from dataclasses import dataclass, field
 from enum import Enum
 
+import numpy as np
+
 if typing.TYPE_CHECKING:
     from olc.show.lightshow import LightShow
     from olc.show.palette import PaletteRef
@@ -55,6 +57,15 @@ class DistributeDirection(str, Enum):
     BACKWARD = "backward"
     BOUNCE = "bounce"
     RANDOM = "random"
+
+
+class EffectEnvelopeMode(str, Enum):
+    """Entry/exit transition behavior mapped from Eos ``$$Entry`` / ``$$Exit``."""
+
+    IMMEDIATE = "immediate"
+    FADE_BY_SIZE = "fade_by_size"
+    FADE_BY_RATE = "fade_by_rate"
+    FADE_BY_SIZE_AND_RATE = "fade_by_size_and_rate"
 
 
 def _parse_palette_ref(
@@ -172,6 +183,9 @@ class EffectDefinition:
     phase_start_deg: float = 0.0
     phase_end_deg: float = 360.0
     template_id: str | None = None
+    entry_mode: EffectEnvelopeMode = EffectEnvelopeMode.FADE_BY_SIZE
+    exit_mode: EffectEnvelopeMode = EffectEnvelopeMode.FADE_BY_SIZE
+    cascade: bool = False
 
     def __post_init__(self) -> None:
         self.number = round(float(self.number), 3)
@@ -182,6 +196,11 @@ class EffectDefinition:
             self.cycle_time = max(0.05, 60.0 / self.bpm)
         if not isinstance(self.direction, DistributeDirection):
             self.direction = DistributeDirection(str(self.direction).strip().lower())
+        if not isinstance(self.entry_mode, EffectEnvelopeMode):
+            self.entry_mode = EffectEnvelopeMode(str(self.entry_mode).strip().lower())
+        if not isinstance(self.exit_mode, EffectEnvelopeMode):
+            self.exit_mode = EffectEnvelopeMode(str(self.exit_mode).strip().lower())
+        self.cascade = bool(self.cascade)
         self.groups = max(0, int(self.groups))
         self.blocks = max(1, int(self.blocks))
         self.wings = max(1, int(self.wings))
@@ -222,6 +241,12 @@ class EffectDefinition:
             data["bpm"] = self.bpm
         if self.template_id is not None:
             data["template_id"] = self.template_id
+        if self.entry_mode != EffectEnvelopeMode.FADE_BY_SIZE:
+            data["entry_mode"] = self.entry_mode.value
+        if self.exit_mode != EffectEnvelopeMode.FADE_BY_SIZE:
+            data["exit_mode"] = self.exit_mode.value
+        if self.cascade:
+            data["cascade"] = True
         return data
 
     @classmethod
@@ -232,6 +257,8 @@ class EffectDefinition:
             EffectLayer.from_dict(item) for item in raw_layers if isinstance(item, dict)
         ]
         bpm_raw = data.get("bpm")
+        entry_raw = data.get("entry_mode", EffectEnvelopeMode.FADE_BY_SIZE.value)
+        exit_raw = data.get("exit_mode", EffectEnvelopeMode.FADE_BY_SIZE.value)
         return cls(
             number=float(data.get("number", 1.0)),
             label=str(data.get("label", "")),
@@ -252,6 +279,9 @@ class EffectDefinition:
                 if data.get("template_id") is not None
                 else None
             ),
+            entry_mode=EffectEnvelopeMode(str(entry_raw).lower()),
+            exit_mode=EffectEnvelopeMode(str(exit_raw).lower()),
+            cascade=bool(data.get("cascade", False)),
         )
 
 
@@ -274,6 +304,11 @@ class ActiveEffectInstance:
     fade_target_size: float = 1.0
     fade_start_time: float = 0.0
     fade_duration: float = 0.0
+    fade_start_rate: float = 1.0
+    fade_target_rate: float = 1.0
+    rate_fade_start_time: float = 0.0
+    rate_fade_duration: float = 0.0
+    cascade_fade: bool = False
     remove_on_fade_end: bool = False
 
     def __post_init__(self) -> None:
@@ -303,6 +338,7 @@ class ActiveEffectInstance:
         if elapsed >= self.fade_duration:
             self.size_scale = self.fade_target_size
             self.fade_duration = 0.0
+            self.cascade_fade = False
             return self.size_scale
         progress = elapsed / self.fade_duration
         self.size_scale = (
@@ -311,11 +347,61 @@ class ActiveEffectInstance:
         )
         return max(0.0, self.size_scale)
 
+    def effective_rate_scale(self, now: float) -> float:
+        """Compute current rate_scale including any active rate fade envelope."""
+        if self.rate_fade_duration <= 0.0:
+            return max(0.01, self.rate_scale)
+        elapsed = max(0.0, now - self.rate_fade_start_time)
+        if elapsed >= self.rate_fade_duration:
+            self.rate_scale = max(0.01, self.fade_target_rate)
+            self.rate_fade_duration = 0.0
+            return self.rate_scale
+        progress = elapsed / self.rate_fade_duration
+        self.rate_scale = max(
+            0.01,
+            self.fade_start_rate
+            + (self.fade_target_rate - self.fade_start_rate) * progress,
+        )
+        return self.rate_scale
+
+    def effective_channel_size_scales(
+        self, now: float, thetas: np.ndarray
+    ) -> np.ndarray:
+        """Return per-channel size multipliers, staggered for cascade fade."""
+        if self.fade_duration <= 0.0 or not self.cascade_fade or len(thetas) <= 1:
+            return np.full(
+                len(thetas), max(0.0, self.effective_size_scale(now)), dtype=np.float64
+            )
+        elapsed = max(0.0, now - self.fade_start_time)
+        if elapsed >= self.fade_duration:
+            self.size_scale = self.fade_target_size
+            self.fade_duration = 0.0
+            self.cascade_fade = False
+            return np.full(len(thetas), max(0.0, self.size_scale), dtype=np.float64)
+        max_t = float(np.max(thetas))
+        order_norm = (
+            thetas / max_t if max_t > 1e-9 else np.linspace(0.0, 1.0, len(thetas))
+        )
+        win = 0.5 * self.fade_duration
+        start_offsets = 0.5 * self.fade_duration * order_norm
+        progress = np.clip((elapsed - start_offsets) / max(1e-6, win), 0.0, 1.0)
+        return np.maximum(
+            0.0,
+            self.fade_start_size
+            + (self.fade_target_size - self.fade_start_size) * progress,
+        )
+
     def is_fade_finished(self, now: float) -> bool:
-        """Return True if a scheduled fade has completed at timestamp *now*."""
-        if self.fade_duration <= 0.0:
-            return True
-        return (now - self.fade_start_time) >= self.fade_duration
+        """Return True if all scheduled size/rate fades have completed at *now*."""
+        size_done = (
+            self.fade_duration <= 0.0
+            or (now - self.fade_start_time) >= self.fade_duration
+        )
+        rate_done = (
+            self.rate_fade_duration <= 0.0
+            or (now - self.rate_fade_start_time) >= self.rate_fade_duration
+        )
+        return size_done and rate_done
 
     def to_dict(self) -> dict[str, typing.Any]:
         """Serialize instance configuration into a JSON-compatible dictionary."""

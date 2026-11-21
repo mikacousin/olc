@@ -53,6 +53,7 @@ class OlcWriter(WriteFile):
         }
 
     def export(self) -> None:
+        self._show_metadata()
         self._curves()
         self._fixture_definitions()
         self._devices()
@@ -72,6 +73,17 @@ class OlcWriter(WriteFile):
 
         if self.stream:
             self.stream.write(bytes(json_str, "utf-8"))
+
+    def _show_metadata(self) -> None:
+        title = getattr(self.lightshow, "title", "")
+        home_preset = getattr(self.lightshow, "home_preset", None)
+        meta: dict[str, typing.Any] = {}
+        if title:
+            meta["title"] = str(title)
+        if home_preset is not None:
+            meta["home_preset"] = float(home_preset)
+        if meta:
+            self.data["show_metadata"] = meta
 
     def _fixture_definitions(self) -> None:
         if not hasattr(self.lightshow, "fixture_library"):
@@ -143,36 +155,37 @@ class OlcWriter(WriteFile):
                     ] = {"delay": times.delay, "time": times.time}
             if step.text:
                 self.data["sequences"][seq_index]["steps"][index]["label"] = step.text
-            cue_dict: dict[str, typing.Any] = {
-                "label": step.cue.text,
-                "channels": step.cue.channels,
-            }
-            if step.cue.device_values:
-                cue_dict["device_values"] = step.cue.device_values
-            if step.cue.palette_refs:
-                cue_dict["palette_refs"] = serialize_palette_refs(step.cue.palette_refs)
-            if getattr(step.cue, "effect_refs", None):
-                cue_dict["effect_refs"] = serialize_effect_refs(step.cue.effect_refs)
-            if step.cue.is_block:
-                cue_dict["is_block"] = step.cue.is_block
+            cue_dict = self._build_cue_dict(step.cue)
             self.data["sequences"][seq_index]["cues"][step.cue.number] = cue_dict
+
+    @staticmethod
+    def _build_cue_dict(cue: typing.Any) -> dict[str, typing.Any]:  # noqa: ANN401
+        cue_dict: dict[str, typing.Any] = {
+            "label": cue.text,
+            "channels": cue.channels,
+        }
+        if cue.device_values:
+            cue_dict["device_values"] = cue.device_values
+        if cue.palette_refs:
+            cue_dict["palette_refs"] = serialize_palette_refs(cue.palette_refs)
+        if getattr(cue, "effect_refs", None):
+            cue_dict["effect_refs"] = serialize_effect_refs(cue.effect_refs)
+        if cue.is_block:
+            cue_dict["is_block"] = cue.is_block
+        if getattr(cue, "is_assert", False):
+            cue_dict["is_assert"] = True
+        if getattr(cue, "is_int_block", False):
+            cue_dict["is_int_block"] = True
+        if notes := getattr(cue, "notes", ""):
+            cue_dict["notes"] = notes
+        if (exec_preset := getattr(cue, "execute_preset", None)) is not None:
+            cue_dict["execute_preset"] = float(exec_preset)
+        return cue_dict
 
     def _cues(self) -> None:
         self.data["cues"] = {}
         for cue in self.lightshow.cues:
-            c_dict: dict[str, typing.Any] = {
-                "label": cue.text,
-                "channels": cue.channels,
-            }
-            if cue.device_values:
-                c_dict["device_values"] = cue.device_values
-            if cue.palette_refs:
-                c_dict["palette_refs"] = serialize_palette_refs(cue.palette_refs)
-            if getattr(cue, "effect_refs", None):
-                c_dict["effect_refs"] = serialize_effect_refs(cue.effect_refs)
-            if cue.is_block:
-                c_dict["is_block"] = cue.is_block
-            self.data["cues"][cue.number] = c_dict
+            self.data["cues"][cue.number] = self._build_cue_dict(cue)
 
     def _palettes(self) -> None:
         if not hasattr(self.lightshow, "palettes") or len(self.lightshow.palettes) == 0:
@@ -215,13 +228,16 @@ class OlcWriter(WriteFile):
                     contents_val = (
                         fader.contents.number if fader.contents is not None else None
                     )
-                    self.data["faders"][number] = {
+                    preset_entry: dict[str, typing.Any] = {
                         "page": page,
                         "number": index,
                         "type": int(content_type),
                         "contents": contents_val,
                         "text": fader.text,
                     }
+                    if getattr(fader, "intensity_master", False):
+                        preset_entry["intensity_master"] = True
+                    self.data["faders"][number] = preset_entry
                 elif content_type == FaderType.EFFECT:
                     contents_val = (
                         fader.contents.number if fader.contents is not None else None
@@ -250,6 +266,10 @@ class OlcWriter(WriteFile):
                         "type": int(content_type),
                         "text": fader.text,
                     }
+                if number in self.data["faders"] and getattr(
+                    fader, "exempt_grand_master", False
+                ):
+                    self.data["faders"][number]["exempt_grand_master"] = True
         if not self.data["faders"]:
             del self.data["faders"]
 

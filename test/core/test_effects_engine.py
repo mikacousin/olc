@@ -37,6 +37,8 @@ from olc.show.effect import (
     ActiveEffectInstance,
     DistributeDirection,
     EffectDefinition,
+    EffectEnvelopeMode,
+    EffectLayer,
     EffectMode,
     WaveformType,
 )
@@ -502,3 +504,93 @@ def test_tap_tempo_and_instance_serialization() -> None:
     assert bpm == pytest.approx(120.0, abs=0.1)
     assert eff.bpm == pytest.approx(120.0, abs=0.1)
     assert eff.cycle_time == pytest.approx(0.5, abs=0.01)
+
+
+def test_effect_envelope_modes_immediate_rate_and_cascade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify IMMEDIATE, FADE_BY_RATE, FADE_BY_SIZE_AND_RATE, and cascade envelopes."""
+    now_box = [0.0]
+    monkeypatch.setattr("olc.core.effects_engine.time.monotonic", lambda: now_box[0])
+    app, _ = _make_headless_app()
+
+    # 1. IMMEDIATE skips size/rate ramps on both start and stop
+    imm = EffectDefinition(
+        number=10.0,
+        label="Immediate",
+        layers=[EffectLayer(parameter="intensity", waveform=WaveformType.SQUARE)],
+        entry_mode=EffectEnvelopeMode.IMMEDIATE,
+        exit_mode=EffectEnvelopeMode.IMMEDIATE,
+    )
+    app.lightshow.effects.add(imm)
+    inst_imm = app.effects_engine.start_effect(
+        10.0, [1, 2], size_scale=1.0, fade_in=2.0, now=0.0
+    )
+    assert inst_imm is not None
+    assert inst_imm.effective_size_scale(0.0) == pytest.approx(1.0)
+    assert inst_imm.fade_duration == 0.0
+    now_box[0] = 1.0
+    app.effects_engine.stop_effect(10.0, fade_out=2.0, now=1.0)
+    assert app.effects_engine.get_active_instances() == []
+
+    # 2. FADE_BY_RATE & FADE_BY_SIZE_AND_RATE ramp rate_scale over fade duration
+    rated = EffectDefinition(
+        number=11.0,
+        label="RateRamp",
+        layers=[EffectLayer(parameter="intensity", waveform=WaveformType.SINE)],
+        entry_mode=EffectEnvelopeMode.FADE_BY_RATE,
+        exit_mode=EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE,
+    )
+    app.lightshow.effects.add(rated)
+    now_box[0] = 0.0
+    inst_rate = app.effects_engine.start_effect(
+        11.0, [3], rate_scale=2.0, size_scale=1.0, fade_in=2.0, now=0.0
+    )
+    assert inst_rate is not None
+    assert inst_rate.effective_size_scale(0.0) == pytest.approx(1.0)
+    assert 0.5 < inst_rate.effective_rate_scale(1.0) < 1.5
+    assert inst_rate.effective_rate_scale(2.0) == pytest.approx(2.0)
+
+    now_box[0] = 3.0
+    app.effects_engine.stop_effect(11.0, fade_out=2.0, now=3.0)
+    now_box[0] = 4.0
+    app.effects_engine.tick(now=4.0)
+    active = app.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].effective_size_scale(4.0) == pytest.approx(0.5, abs=0.01)
+    assert 0.8 < active[0].effective_rate_scale(4.0) < 1.2
+    now_box[0] = 5.1
+    app.effects_engine.tick(now=5.1)
+    assert app.effects_engine.get_active_instances() == []
+
+    # 3. cascade=True staggers channel envelopes across phase order
+    casc = EffectDefinition(
+        number=12.0,
+        label="Cascade",
+        layers=[EffectLayer(parameter="intensity", waveform=WaveformType.PULSE)],
+        entry_mode=EffectEnvelopeMode.FADE_BY_SIZE,
+        exit_mode=EffectEnvelopeMode.FADE_BY_SIZE,
+        cascade=True,
+    )
+    app.lightshow.effects.add(casc)
+    now_box[0] = 0.0
+    inst_c = app.effects_engine.start_effect(
+        12.0, [1, 2, 3, 4], size_scale=1.0, fade_in=2.0, now=0.0
+    )
+    assert inst_c is not None
+    thetas = app.effects_engine._compute_instance_thetas(casc, inst_c)
+    mid_scales = inst_c.effective_channel_size_scales(1.0, thetas)
+    assert mid_scales[0] == pytest.approx(1.0)
+    assert mid_scales[-1] == pytest.approx(0.0)
+    end_scales = inst_c.effective_channel_size_scales(2.0, thetas)
+    assert np.allclose(end_scales, 1.0)
+
+    now_box[0] = 3.0
+    app.effects_engine.stop_effect(12.0, fade_out=2.0, now=3.0)
+    now_box[0] = 4.0
+    mid_out = inst_c.effective_channel_size_scales(4.0, thetas)
+    assert mid_out[0] == pytest.approx(0.0)
+    assert mid_out[-1] == pytest.approx(1.0)
+    now_box[0] = 5.1
+    app.effects_engine.tick(now=5.1)
+    assert app.effects_engine.get_active_instances() == []

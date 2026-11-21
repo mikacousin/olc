@@ -849,3 +849,93 @@ def test_olc_persistence_stepped_curve_and_fader_effect_base_channels(
     re_fader.set_level(0.5)
     assert re_fader.dmx[20] == pytest.approx(0.5)
     assert re_fader.dmx[21] == pytest.approx(0.25)
+
+
+def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for 6.3 show metadata, cues, envelopes, and faders."""
+    from olc.show.cue import Cue
+    from olc.show.effect import EffectDefinition, EffectEnvelopeMode, EffectLayer
+    from olc.show.fader import FaderPreset, FaderType
+    from olc.show.palette import Palette, PaletteCategory
+    from olc.show.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    ls = app.lightshow
+    ls.title = "Spectacle Test 6.3"
+    ls.home_preset = 999.0
+
+    cue1 = Cue(
+        1,
+        1.0,
+        channels={1: 1.0},
+        text="Cue Assert",
+        is_assert=True,
+        notes="Check beam focus",
+        execute_preset=5.0,
+    )
+    cue2 = Cue(1, 2.0, channels={1: 0.0}, text="Cue IntBlock", is_int_block=True)
+    ls.cues.add(cue1)
+    ls.cues.add(cue2)
+    ls.main_playback.add_step(Step(sequence=1, cue=cue1))
+    ls.main_playback.add_step(Step(sequence=1, cue=cue2))
+
+    eff = EffectDefinition(
+        number=2.0,
+        label="Cascaded FX",
+        layers=[EffectLayer(parameter="intensity", duty_cycle=0.8)],
+        entry_mode=EffectEnvelopeMode.FADE_BY_RATE,
+        exit_mode=EffectEnvelopeMode.IMMEDIATE,
+        cascade=True,
+    )
+    ls.effects.add(eff)
+
+    pal5 = Palette(PaletteCategory.PRESET, 5.0, text="Gradin", channels={20: 1.0})
+    ls.palettes.add(pal5)
+    ls.fader_bank.set_fader(1, 1, FaderType.PRESET, 5.0)
+    fader = ls.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderPreset)
+    fader.exempt_grand_master = True
+    fader.intensity_master = True
+
+    save_path = tmp_path / "show_6_3.olc"
+    app.action_registry.execute("show.save", str(save_path))
+    assert save_path.exists()
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    ls2 = app2.lightshow
+
+    assert ls2.title == "Spectacle Test 6.3"
+    assert ls2.home_preset == pytest.approx(999.0)
+
+    r_cue1 = next(
+        s.cue
+        for s in ls2.main_playback.steps
+        if s.cue is not None and s.cue.number == 1.0
+    )
+    r_cue2 = next(
+        s.cue
+        for s in ls2.main_playback.steps
+        if s.cue is not None and s.cue.number == 2.0
+    )
+    assert r_cue1.is_assert is True
+    assert r_cue1.is_int_block is False
+    assert r_cue1.notes == "Check beam focus"
+    assert r_cue1.execute_preset == pytest.approx(5.0)
+    assert r_cue2.is_int_block is True
+    assert r_cue2.is_assert is False
+
+    r_eff = ls2.effects.get(2.0)
+    assert r_eff is not None
+    assert r_eff.entry_mode == EffectEnvelopeMode.FADE_BY_RATE
+    assert r_eff.exit_mode == EffectEnvelopeMode.IMMEDIATE
+    assert r_eff.cascade is True
+    assert r_eff.layers[0].duty_cycle == pytest.approx(0.8)
+
+    r_fader = ls2.fader_bank.faders[1][1]
+    assert isinstance(r_fader, FaderPreset)
+    assert r_fader.exempt_grand_master is True
+    assert r_fader.intensity_master is True

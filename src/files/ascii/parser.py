@@ -72,6 +72,8 @@ _RAW_TEXT_KEYWORDS: frozenset[str] = frozenset(
         "$$persslot",
         "$$perssltext",
         "$$notes",
+        "$$title",
+        "$$cuenotes",
     }
 )
 
@@ -143,6 +145,9 @@ class AsciiParser(ReadFile):
                 "patch",
                 "set",
                 "$paramtype",
+                "$$title",
+                "$$automark",
+                "$$homepreset",
             ),
             "cue": (
                 "chan",
@@ -194,6 +199,8 @@ class AsciiParser(ReadFile):
         self._cue_effects: dict[tuple[int, float], dict[str, typing.Any]] = {}
         self._sub_effects: dict[int, dict[str, typing.Any]] = {}
         self._cue_chan_moves: dict[tuple[int, float], dict[int, float]] = {}
+        self._cue_execute_subs: dict[tuple[int, float], float] = {}
+        self._eos_automark: bool | None = None
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -354,6 +361,22 @@ class AsciiParser(ReadFile):
             pass
         elif self.keyword == "$paramtype" and len(self.args) >= 3:
             self.param_types[int(self.args[0])] = self.args[2]
+        elif self.keyword == "$$title" and self.args:
+            self.data.setdefault("show_metadata", {})["title"] = html.unescape(
+                self.args[0]
+            )
+        elif self.keyword == "$$automark":
+            if self.args and self.args[0] in ("0", "false", "off"):
+                self._eos_automark = False
+            else:
+                self._eos_automark = True
+        elif self.keyword == "$$homepreset" and self.args:
+            try:
+                self.data.setdefault("show_metadata", {})["home_preset"] = float(
+                    self.args[0]
+                )
+            except ValueError:
+                pass
 
     def _do_patch(self) -> None:
         # self.args[0] is Page Patch, not used
@@ -614,6 +637,27 @@ class AsciiParser(ReadFile):
             )
         elif self.keyword == "$$block":
             cue["is_block"] = True
+        elif self.keyword == "$$intblock":
+            cue["is_int_block"] = True
+        elif self.keyword == "$$assert":
+            cue["is_assert"] = True
+        elif self.keyword == "$$cuenotes" and self.args:
+            note_text = html.unescape(self.args[0])
+            if cue.get("notes"):
+                cue["notes"] = f"{cue['notes']}\n{note_text}"
+            else:
+                cue["notes"] = note_text
+        elif (
+            self.keyword == "$$action"
+            and len(self.args) >= 3
+            and self.args[0] == "execute"
+            and self.args[1] == "s"
+        ):
+            try:
+                cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
+                self._cue_execute_subs[cue_key] = float(self.args[2])
+            except ValueError:
+                pass
         elif self.keyword == "$$chanmove":
             cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
             moves = self._cue_chan_moves.setdefault(cue_key, {})
@@ -843,7 +887,8 @@ class AsciiParser(ReadFile):
                 "type": fader_type,
                 "contents": contents,
             }
-            self.state = State.NO_PRIMARY
+            self.current["fader"] = index
+            self.state = State.IN_FADER
 
     def _do_fader(self) -> None:
         fader = self.data["faders"].get(self.current.get("fader"))
@@ -867,6 +912,10 @@ class AsciiParser(ReadFile):
             mode = self.args[0].strip().lower()
             if mode in ("size", "rate", "both"):
                 fader["control_mode"] = mode
+        elif self.keyword == "$$exclude" and "9" in self.args:
+            fader["exempt_grand_master"] = True
+        elif self.keyword == "$$intensitymaster":
+            fader["intensity_master"] = True
 
     def _get_level(self, level: str) -> float:
         if level.startswith("h"):
@@ -1162,7 +1211,12 @@ class AsciiParser(ReadFile):
             self.state = State.NO_PRIMARY
             return
         sub_id = int(self.args[0])
-        self.subs[sub_id] = {"label": "", "channels": {}}
+        self.subs[sub_id] = {
+            "label": "",
+            "channels": {},
+            "exempt_gm": False,
+            "intensity_master": False,
+        }
         self._sub_raw_params[sub_id] = {}
         self._sub_raw_refs[sub_id] = {}
         self.current["sub"] = sub_id
@@ -1176,6 +1230,16 @@ class AsciiParser(ReadFile):
             return
         if self.keyword in ("text", "$$text", "$$utext"):
             self._apply_label(sub)
+        elif self.keyword == "$$exclude" and self.args:
+            try:
+                if int(self.args[0]) & 8:
+                    sub["exempt_gm"] = True
+            except ValueError:
+                pass
+        elif self.keyword == "$$intensitymaster" or (
+            self.keyword == "$$master" and self.args and self.args[0] == "8"
+        ):
+            sub["intensity_master"] = True
         elif self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
@@ -1349,6 +1413,9 @@ class AsciiParser(ReadFile):
 
     def _finalize_eos_tracking(self) -> None:
         """Apply Eos $$ChanMove transitions and enable tracking on Eos CueLists."""
+        if self._eos_automark is not None:
+            for seq in self.data.get("sequences", {}).values():
+                seq["mib_enabled"] = self._eos_automark
         if not self._is_console("etc", "eos"):
             return
         devices = self.data.get("devices", {})
@@ -1370,6 +1437,7 @@ class AsciiParser(ReadFile):
             )
             if seq_has_moves or seq_has_effects:
                 seq["tracking_mode"] = True
+            seq["mib_enabled"] = bool(self._eos_automark)
             if not seq_has_moves:
                 continue
 
@@ -1383,7 +1451,7 @@ class AsciiParser(ReadFile):
                     if isinstance(dvals, dict) and "intensity" in dvals:
                         tracked_dev_chans.add(int(ch))
                 moves = self._cue_chan_moves.get((seq_int, float(cue_num)), {})
-                if cue.get("is_block"):
+                if cue.get("is_block") or cue.get("is_int_block"):
                     channels = cue.setdefault("channels", {})
                     channels.update(moves)
                 else:
@@ -1457,6 +1525,8 @@ class AsciiParser(ReadFile):
                         fader_entry["base_channels"] = dict(sub["channels"])
                     if sub["label"]:
                         fader_entry["text"] = sub["label"]
+                    if sub.get("exempt_gm"):
+                        fader_entry["exempt_grand_master"] = True
                 self.data["faders"][index] = fader_entry
                 return
             if sub and (
@@ -1480,12 +1550,17 @@ class AsciiParser(ReadFile):
                         "label": sub["label"] or f"Sub {sub_id}",
                         "channels": dict(sub["channels"]),
                     }
-                self.data["faders"][index] = {
+                preset_fader_entry: dict[str, typing.Any] = {
                     "page": page,
                     "number": number,
                     "type": FaderType.PRESET,
                     "contents": preset_num,
                 }
+                if sub.get("exempt_gm"):
+                    preset_fader_entry["exempt_grand_master"] = True
+                if sub.get("intensity_master"):
+                    preset_fader_entry["intensity_master"] = True
+                self.data["faders"][index] = preset_fader_entry
         elif target_type == "cl" and len(self.args) >= 2:
             seq_id = int(self.args[1])
             self.data["faders"][index] = {
@@ -1567,6 +1642,8 @@ class AsciiParser(ReadFile):
         """Merge raw parameters and palette references onto *target* dict."""
         palettes_data = self.data.get("palettes", {})
         for ch in sorted(set(raw_by_ch.keys()) | set(refs_by_ch.keys())):
+            pers_id = self.channel_personality.get(ch)
+            pers = self.personalities.get(pers_id) if pers_id is not None else None
             merged: dict[int, float] = dict(raw_by_ch.get(ch, {}))
             ref_intensity: float | None = None
             for p_id, (ref_cat, ref_num) in sorted(refs_by_ch.get(ch, {}).items()):
@@ -1579,7 +1656,7 @@ class AsciiParser(ReadFile):
                     src_pal = palettes_data.get(ref_cat, {}).get(ref_num)
                     if isinstance(src_pal, dict) and ch in src_pal.get("channels", {}):
                         ref_intensity = float(src_pal["channels"][ch])
-                olc_key = eos_param_id_to_olc_key(p_id, self.param_types)
+                olc_key = eos_param_id_to_olc_key(p_id, self.param_types, pers=pers)
                 if olc_key is not None:
                     pal_refs_ch = target.setdefault("palette_refs", {}).setdefault(
                         ch, {}
@@ -1589,8 +1666,6 @@ class AsciiParser(ReadFile):
             if store_resolved_key is not None and merged:
                 self._palette_raw_params.setdefault(store_resolved_key, {})[ch] = merged
 
-            pers_id = self.channel_personality.get(ch)
-            pers = self.personalities.get(pers_id) if pers_id is not None else None
             dev_vals, intensity_val = decode_eos_cue_params(
                 list(merged.items()), pers, self.param_types
             )
@@ -1669,3 +1744,16 @@ class AsciiParser(ReadFile):
                     self._cue_raw_params.get((seq_num, cue_num), {}),
                     self._cue_raw_refs.get((seq_num, cue_num), {}),
                 )
+
+        # 5. Resolve Cue $$Action Execute S <sub_id> -> Preset number
+        for (seq_num, cue_num), sub_ref in self._cue_execute_subs.items():
+            preset_num = (
+                self._sub_preset_numbers.get(int(sub_ref))
+                if float(sub_ref).is_integer()
+                else None
+            )
+            if preset_num is None and not self._is_console("etc", "eos"):
+                preset_num = float(sub_ref)
+            cue = sequences_data.get(seq_num, {}).get("cues", {}).get(cue_num)
+            if preset_num is not None and cue is not None:
+                cue["execute_preset"] = preset_num

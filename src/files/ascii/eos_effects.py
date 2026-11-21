@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import typing
+import unicodedata
 
 from olc.files.ascii.eos_devices import eos_param_id_to_olc_key, parse_eos_param_token
 
@@ -29,7 +30,13 @@ EOS_TYPE_STEPBASED = 5
 
 _RGB_IDS = frozenset({12, 13, 14})
 _CMY_IDS = frozenset({9, 10, 11})
-_PERCENT_RE = re.compile(r"^\(?([+-])?\)?\s*(-?[\d.]+)\s*%?$")
+_PERCENT_RE = re.compile(r"^([+-])?\s*(\d+(?:\.\d*)?|\.\d+)\s*%?$")
+
+
+def _normalize_label(label: str) -> str:
+    """Return lowercased label stripped of combining diacritical marks."""
+    decomposed = unicodedata.normalize("NFKD", label.lower())
+    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
 
 
 def _fmt_param(
@@ -37,6 +44,14 @@ def _fmt_param(
 ) -> str:
     key = eos_param_id_to_olc_key(p_id, param_types)
     return key if key is not None else default
+
+
+_EOS_ENVELOPE_MODES: dict[int, str] = {
+    0: "immediate",
+    1: "fade_by_size",
+    2: "fade_by_rate",
+    3: "fade_by_size_and_rate",
+}
 
 
 def new_eos_effect(number: float) -> dict[str, typing.Any]:
@@ -51,8 +66,13 @@ def new_eos_effect(number: float) -> dict[str, typing.Any]:
         "actions": [],
         "steps": [],
         "step_chans": {},
+        "step_times_ms": [],
         "data": [],
         "random": False,
+        "entry_mode": "fade_by_size",
+        "exit_mode": "fade_by_size",
+        "cascade": False,
+        "trail": None,
     }
 
 
@@ -77,21 +97,51 @@ def record_eos_effect_line(
             raw["steps"].append([float(a) for a in args[1:7]])
         elif keyword == "$$chanlist" and raw["steps"]:
             raw["step_chans"][len(raw["steps"])] = [int(a) for a in args]
+        elif keyword == "$$steptimes" and len(args) >= 3:
+            raw["step_times_ms"].append(float(args[1]) + float(args[2]))
         elif keyword == "$$data" and len(args) >= 2:
             raw["data"].append([float(a) for a in args[1:]])
         elif keyword == "$$command" and args and args[0] == "1562":
             raw["random"] = True
+        elif keyword == "$$entry" and args:
+            raw["entry_mode"] = _EOS_ENVELOPE_MODES.get(
+                int(float(args[0])), "fade_by_size"
+            )
+        elif keyword == "$$exit" and args:
+            raw["exit_mode"] = _EOS_ENVELOPE_MODES.get(
+                int(float(args[0])), "fade_by_size"
+            )
+        elif keyword == "$$cascade":
+            raw["cascade"] = True
+        elif keyword == "$$trail" and args:
+            raw["trail"] = float(args[0])
     except ValueError:
         return
 
 
+def _step_times_cycle(raw: dict[str, typing.Any], fallback: float) -> float:
+    """Compute cycle duration in seconds from Eos ``$$StepTimes`` entries."""
+    step_times = raw.get("step_times_ms")
+    if step_times:
+        total_s = sum(float(ms) for ms in step_times) / 1000.0
+        if total_s > 0.0:
+            return round(max(0.05, total_s), 3)
+    return fallback
+
+
 def _classify_1d_waveform(label: str, data: list[list[float]]) -> str:
-    low = label.lower()
+    low = _normalize_label(label)
     if "alea" in low or "random" in low:
         return "random"
     if "rampe" in low or "ramp" in low:
-        if data and len(data) > 1 and data[0][0] > data[-1][0]:
+        if "invers" in low or "descend" in low or "down" in low:
             return "saw_down"
+        if len(data) > 1:
+            vals = [row[0] for row in data]
+            neg = sum(1 for a, b in zip(vals, vals[1:], strict=False) if b < a - 1e-4)
+            pos = sum(1 for a, b in zip(vals, vals[1:], strict=False) if b > a + 1e-4)
+            if neg > pos:
+                return "saw_down"
         return "saw_up"
     if "can" in low:
         return "pulse"
@@ -111,11 +161,17 @@ def _classify_1d_waveform(label: str, data: list[list[float]]) -> str:
                 return "saw_up"
             if monotonic_down and last < first:
                 return "saw_down"
+            pos = sum(1 for a, b in zip(vals, vals[1:], strict=False) if b > a + 1e-4)
+            neg = sum(1 for a, b in zip(vals, vals[1:], strict=False) if b < a - 1e-4)
+            if pos >= len(vals) - 3 and neg <= 2:
+                return "saw_up"
+            if neg >= len(vals) - 3 and pos <= 2:
+                return "saw_down"
     return "sine"
 
 
 def _classify_2d(label: str, data: list[list[float]]) -> list[dict[str, typing.Any]]:
-    low = label.lower()
+    low = _normalize_label(label)
     reverse = "invers" in low
     if "8" in low or "huit" in low or "figure" in low:
         return [
@@ -148,20 +204,23 @@ def _action_value(token: str) -> tuple[str, float | None, tuple[str, float] | No
     if ref is not None:
         return "palette", None, ref
     if tok.startswith("(+)") or tok.startswith("(-)"):
-        match = _PERCENT_RE.match(tok.replace("(+)", "").replace("(-)", "").strip())
+        outer_sign = -1.0 if tok.startswith("(-)") else 1.0
+        rest = tok[3:].strip()
+        match = _PERCENT_RE.match(rest)
         if match:
-            return "offset", float(match.group(2)), None
+            inner_sign = -1.0 if match.group(1) == "-" else 1.0
+            return "offset", outer_sign * inner_sign * float(match.group(2)), None
     match = _PERCENT_RE.match(tok)
     if match:
-        val = float(match.group(2))
-        return "level", val, None
+        sign = -1.0 if match.group(1) == "-" else 1.0
+        return "level", sign * float(match.group(2)), None
     return "bkgrd", None, None
 
 
 def _convert_absolute(raw: dict[str, typing.Any], param: str) -> dict[str, typing.Any]:
     actions: list[tuple[float, float, str]] = raw["actions"]
     total = sum(t + d for t, d, _tok in actions)
-    cycle = max(0.05, total)
+    cycle = max(0.05, total) if total > 0.0 else _step_times_cycle(raw, 2.0)
     first_t, first_d, _ = actions[0] if actions else (0.5, 0.0, "")
     first_span = max(1e-6, first_t + first_d)
     duty = max(0.01, min(1.0, first_span / cycle)) if actions else 0.5
@@ -181,14 +240,18 @@ def _convert_absolute(raw: dict[str, typing.Any], param: str) -> dict[str, typin
         layer["low_palette"] = list(palettes[0])
         layer["high_palette"] = list(palettes[1])
     elif any(k[0] == "offset" for k in kinds):
-        offs = [abs(k[1]) for k in kinds if k[0] == "offset" and k[1] is not None]
+        offs = [k[1] for k in kinds if k[0] == "offset" and k[1] is not None]
         layer["mode"] = "relative"
         layer["size"] = offs[0] if offs else 25.0
     else:
         levels = [k[1] for k in kinds if k[0] == "level" and k[1] is not None]
         has_bkgrd = any(k[0] == "bkgrd" for k in kinds)
         if levels and has_bkgrd:
-            layer["low_value"] = levels[0]
+            if levels[0] < 0.0 and param not in ("pan", "tilt"):
+                layer["mode"] = "relative"
+                layer["size"] = levels[0]
+            else:
+                layer["low_value"] = levels[0]
         elif len(levels) >= 2:
             layer["low_value"] = min(levels)
             layer["high_value"] = max(levels)
@@ -212,6 +275,23 @@ def _convert_stepbased(raw: dict[str, typing.Any]) -> dict[str, typing.Any]:
         "high_value": 100.0,
     }
     return {"cycle_time": cycle, "layers": [layer], "groups": n_steps}
+
+
+def _finalize_eos_effect_dict(
+    result: dict[str, typing.Any], raw: dict[str, typing.Any]
+) -> dict[str, typing.Any]:
+    result["entry_mode"] = raw.get("entry_mode", "fade_by_size")
+    result["exit_mode"] = raw.get("exit_mode", "fade_by_size")
+    result["cascade"] = bool(raw.get("cascade", False))
+    trail_raw = raw.get("trail")
+    if trail_raw is not None:
+        trail_val = float(trail_raw)
+        if 0.0 < trail_val <= 100.0:
+            duty = max(0.01, min(1.0, trail_val / 100.0))
+            for layer in result.get("layers", []):
+                if isinstance(layer, dict):
+                    layer.setdefault("duty_cycle", duty)
+    return result
 
 
 def convert_eos_effect(
@@ -240,21 +320,21 @@ def convert_eos_effect(
     if eos_type == EOS_TYPE_ABSOLUTE and raw["actions"]:
         param = _fmt_param(ids[0], param_types) if ids else "intensity"
         result.update(_convert_absolute(raw, param))
-        return result
+        return _finalize_eos_effect_dict(result, raw)
 
     if eos_type == EOS_TYPE_STEPBASED:
         step_result = _convert_stepbased(raw)
         if raw["grouping"] is not None:
             step_result.pop("groups", None)
         result.update(step_result)
-        return result
+        return _finalize_eos_effect_dict(result, raw)
 
     if eos_type == EOS_TYPE_COLOR or id_set & (_RGB_IDS | _CMY_IDS) or 7 in id_set:
         result["layers"] = [
             {"parameter": "color", "waveform": "rainbow", "mode": "absolute"}
         ]
-        result["cycle_time"] = 6.0
-        return result
+        result["cycle_time"] = _step_times_cycle(raw, 6.0)
+        return _finalize_eos_effect_dict(result, raw)
 
     if eos_type == EOS_TYPE_FOCUS or (2 in id_set and 3 in id_set):
         size = float(scale) if scale is not None else 15.0
@@ -263,8 +343,8 @@ def convert_eos_effect(
             layer["mode"] = "relative"
             layer["size"] = size
         result["layers"] = layers
-        result["cycle_time"] = 4.0
-        return result
+        result["cycle_time"] = _step_times_cycle(raw, 4.0)
+        return _finalize_eos_effect_dict(result, raw)
 
     param = _fmt_param(ids[0], param_types) if ids else "intensity"
     wave = _classify_1d_waveform(label, raw["data"])
@@ -279,8 +359,8 @@ def convert_eos_effect(
             "size": size,
         }
     ]
-    result["cycle_time"] = 3.0
-    return result
+    result["cycle_time"] = _step_times_cycle(raw, 3.0)
+    return _finalize_eos_effect_dict(result, raw)
 
 
 def parse_effect_data_value(key: str, value: str) -> tuple[str, float] | None:

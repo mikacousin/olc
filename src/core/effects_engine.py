@@ -32,6 +32,7 @@ from olc.show.effect import (
     ActiveEffectInstance,
     DistributeDirection,
     EffectDefinition,
+    EffectEnvelopeMode,
     EffectLayer,
     EffectMode,
     WaveformType,
@@ -400,7 +401,109 @@ class EffectsEngine:
                             if ch_int in self._last_modulated_state:
                                 self._last_modulated_state[ch_int][p_name] = curr
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    @staticmethod
+    def _configure_entry_envelope(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        inst: ActiveEffectInstance,
+        eff: EffectDefinition,
+        target_size: float,
+        target_rate: float,
+        fade_in: float,
+        t_now: float,
+        *,
+        is_existing: bool,
+    ) -> None:
+        """Configure entry size/rate ramps on *inst* according to *eff.entry_mode*."""
+        mode = getattr(eff, "entry_mode", EffectEnvelopeMode.FADE_BY_SIZE)
+        tgt_size = max(0.0, float(target_size))
+        tgt_rate = max(0.01, float(target_rate))
+        inst.remove_on_fade_end = False
+
+        if fade_in <= 0.0 or mode == EffectEnvelopeMode.IMMEDIATE:
+            inst.size_scale = tgt_size
+            inst.fade_duration = 0.0
+            inst.cascade_fade = False
+            inst.rate_scale = tgt_rate
+            inst.rate_fade_duration = 0.0
+            return
+
+        dur = float(fade_in)
+        if mode in (
+            EffectEnvelopeMode.FADE_BY_SIZE,
+            EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE,
+        ):
+            start_sz = inst.effective_size_scale(t_now) if is_existing else 0.0
+            inst.size_scale = start_sz
+            inst.fade_start_size = start_sz
+            inst.fade_target_size = tgt_size
+            inst.fade_start_time = t_now
+            inst.fade_duration = dur
+            inst.cascade_fade = bool(getattr(eff, "cascade", False))
+        else:
+            inst.size_scale = tgt_size
+            inst.fade_duration = 0.0
+            inst.cascade_fade = False
+
+        if mode in (
+            EffectEnvelopeMode.FADE_BY_RATE,
+            EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE,
+        ):
+            start_rt = inst.effective_rate_scale(t_now) if is_existing else 0.05
+            inst.rate_scale = start_rt
+            inst.fade_start_rate = start_rt
+            inst.fade_target_rate = tgt_rate
+            inst.rate_fade_start_time = t_now
+            inst.rate_fade_duration = dur
+        else:
+            inst.rate_scale = tgt_rate
+            inst.rate_fade_duration = 0.0
+
+    @staticmethod
+    def _configure_exit_envelope(
+        inst: ActiveEffectInstance,
+        eff: EffectDefinition | None,
+        fade_out: float,
+        t_now: float,
+    ) -> bool:
+        """Configure exit ramps on *inst*; return True if faded out."""
+        mode = (
+            getattr(eff, "exit_mode", EffectEnvelopeMode.FADE_BY_SIZE)
+            if eff is not None
+            else EffectEnvelopeMode.FADE_BY_SIZE
+        )
+        if fade_out <= 0.0 or mode == EffectEnvelopeMode.IMMEDIATE:
+            return False
+
+        dur = float(fade_out)
+        if mode in (
+            EffectEnvelopeMode.FADE_BY_SIZE,
+            EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE,
+        ):
+            cur_sz = inst.effective_size_scale(t_now)
+            inst.fade_start_size = cur_sz
+            inst.fade_target_size = 0.0
+            inst.fade_start_time = t_now
+            inst.fade_duration = dur
+            inst.cascade_fade = bool(getattr(eff, "cascade", False)) if eff else False
+        else:
+            inst.fade_duration = 0.0
+            inst.cascade_fade = False
+
+        if mode in (
+            EffectEnvelopeMode.FADE_BY_RATE,
+            EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE,
+        ):
+            cur_rt = inst.effective_rate_scale(t_now)
+            inst.fade_start_rate = cur_rt
+            inst.fade_target_rate = 0.01
+            inst.rate_fade_start_time = t_now
+            inst.rate_fade_duration = dur
+        else:
+            inst.rate_fade_duration = 0.0
+
+        inst.remove_on_fade_end = True
+        return True
+
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def start_effect(
         self,
         effect_number: float,
@@ -434,20 +537,19 @@ class EffectsEngine:
                 if existing.effect_number == eff_num and existing.channels == list(
                     dict.fromkeys(int(c) for c in channels)
                 ):
-                    existing.rate_scale = max(0.0, float(rate_scale))
                     existing.groups_override = groups_override
                     existing.blocks_override = blocks_override
                     existing.wings_override = wings_override
                     existing.direction_override = direction_override
-                    existing.remove_on_fade_end = False
-                    if fade_in > 0.0:
-                        existing.fade_start_size = existing.effective_size_scale(t_now)
-                        existing.fade_target_size = max(0.0, float(size_scale))
-                        existing.fade_start_time = t_now
-                        existing.fade_duration = float(fade_in)
-                    else:
-                        existing.size_scale = max(0.0, float(size_scale))
-                        existing.fade_duration = 0.0
+                    self._configure_entry_envelope(
+                        existing,
+                        eff,
+                        size_scale,
+                        rate_scale,
+                        fade_in,
+                        t_now,
+                        is_existing=True,
+                    )
                     self._ensure_timer_locked()
                     return existing
 
@@ -456,28 +558,26 @@ class EffectsEngine:
                 channels, target_params, exclude_effect=eff_num
             )
 
-            init_size = 0.0 if fade_in > 0.0 else float(size_scale)
             inst = ActiveEffectInstance(
                 effect_number=eff_num,
                 channels=channels,
                 rate_scale=rate_scale,
-                size_scale=init_size,
+                size_scale=size_scale,
                 groups_override=groups_override,
                 blocks_override=blocks_override,
                 wings_override=wings_override,
                 direction_override=direction_override,
                 start_timestamp=t_now,
-                fade_start_size=0.0,
-                fade_target_size=float(size_scale),
-                fade_start_time=t_now,
-                fade_duration=max(0.0, float(fade_in)),
-                remove_on_fade_end=False,
+            )
+            self._configure_entry_envelope(
+                inst, eff, size_scale, rate_scale, fade_in, t_now, is_existing=False
             )
             self._capture_initial_base_state_locked(inst.channels, eff)
             self._instances.append(inst)
             self._ensure_timer_locked()
         return inst
 
+    # pylint: disable=too-many-branches
     def stop_effect(
         self,
         effect_number: float | None = None,
@@ -488,14 +588,15 @@ class EffectsEngine:
     ) -> int:
         """Stop running effect(s) matching *effect_number* and/or *channels*.
 
-        If *fade_out* > 0, fades size_scale smoothly to 0.0 over *fade_out* seconds
-        before removing and restoring base state. Returns number of affected instances.
+        If *fade_out* > 0 and exit mode is not IMMEDIATE, applies the effect's exit
+        envelope over *fade_out* seconds before removing and restoring base state.
         """
         t_now = time.monotonic() if now is None else float(now)
         eff_key = round(float(effect_number), 3) if effect_number is not None else None
         ch_set = {int(c) for c in channels} if channels is not None else None
         affected = 0
         restored_channels: set[int] = set()
+        show = self.lightshow
 
         with self._lock:
             remaining: list[ActiveEffectInstance] = []
@@ -507,9 +608,15 @@ class EffectsEngine:
                     continue
 
                 affected += 1
-                if fade_out > 0.0:
-                    if ch_set is not None and not ch_set.issuperset(inst.channels):
-                        # Split instance into unaffected channels + fading-out channels
+                eff = show.effects.get(inst.effect_number) if show is not None else None
+                partial = ch_set is not None and not ch_set.issuperset(inst.channels)
+                exit_mode = (
+                    getattr(eff, "exit_mode", EffectEnvelopeMode.FADE_BY_SIZE)
+                    if eff is not None
+                    else EffectEnvelopeMode.FADE_BY_SIZE
+                )
+                if fade_out > 0.0 and exit_mode != EffectEnvelopeMode.IMMEDIATE:
+                    if partial and ch_set is not None:
                         stay_chs = [c for c in inst.channels if c not in ch_set]
                         fade_chs = [c for c in inst.channels if c in ch_set]
                         inst.channels = stay_chs
@@ -517,37 +624,31 @@ class EffectsEngine:
                         fading_copy = ActiveEffectInstance(
                             effect_number=inst.effect_number,
                             channels=fade_chs,
-                            rate_scale=inst.rate_scale,
-                            size_scale=inst.size_scale,
+                            rate_scale=inst.effective_rate_scale(t_now),
+                            size_scale=inst.effective_size_scale(t_now),
                             groups_override=inst.groups_override,
                             blocks_override=inst.blocks_override,
                             wings_override=inst.wings_override,
                             direction_override=inst.direction_override,
                             start_timestamp=inst.start_timestamp,
                         )
-                        cur_sz = fading_copy.effective_size_scale(t_now)
-                        fading_copy.fade_start_size = cur_sz
-                        fading_copy.fade_target_size = 0.0
-                        fading_copy.fade_start_time = t_now
-                        fading_copy.fade_duration = float(fade_out)
-                        fading_copy.remove_on_fade_end = True
-                        remaining.append(fading_copy)
-                    else:
-                        cur_sz = inst.effective_size_scale(t_now)
-                        inst.fade_start_size = cur_sz
-                        inst.fade_target_size = 0.0
-                        inst.fade_start_time = t_now
-                        inst.fade_duration = float(fade_out)
-                        inst.remove_on_fade_end = True
+                        if self._configure_exit_envelope(
+                            fading_copy, eff, fade_out, t_now
+                        ):
+                            remaining.append(fading_copy)
+                        else:
+                            restored_channels.update(fade_chs)
+                    elif self._configure_exit_envelope(inst, eff, fade_out, t_now):
                         remaining.append(inst)
-                else:
-                    if ch_set is not None and not ch_set.issuperset(inst.channels):
-                        removed = [c for c in inst.channels if c in ch_set]
-                        inst.channels = [c for c in inst.channels if c not in ch_set]
-                        remaining.append(inst)
-                        restored_channels.update(removed)
                     else:
                         restored_channels.update(inst.channels)
+                elif partial and ch_set is not None:
+                    removed = [c for c in inst.channels if c in ch_set]
+                    inst.channels = [c for c in inst.channels if c not in ch_set]
+                    remaining.append(inst)
+                    restored_channels.update(removed)
+                else:
+                    restored_channels.update(inst.channels)
 
             self._instances = [i for i in remaining if i.channels]
             for ch in restored_channels:
@@ -624,8 +725,9 @@ class EffectsEngine:
                 ]
                 if not int_layers:
                     continue
-                size_mult = inst.effective_size_scale(t_now)
-                if size_mult <= 0.0:
+                theta_all = self._compute_instance_thetas(eff, inst)
+                size_all = inst.effective_channel_size_scales(t_now, theta_all)
+                if not np.any(size_all > 0.0):
                     continue
                 valid_pairs = [
                     (idx, ch)
@@ -636,10 +738,11 @@ class EffectsEngine:
                     continue
                 sel_indices = np.array([idx for idx, _ in valid_pairs], dtype=np.int64)
                 ch_indices = np.array([ch - 1 for _, ch in valid_pairs], dtype=np.int64)
-                theta_all = self._compute_instance_thetas(eff, inst)
                 theta = theta_all[sel_indices]
+                size_mult = size_all[sel_indices]
                 elapsed = max(0.0, t_now - inst.start_timestamp)
-                period = max(0.05, eff.cycle_time / max(0.01, inst.rate_scale))
+                rate_mult = inst.effective_rate_scale(t_now)
+                period = max(0.05, eff.cycle_time / max(0.01, rate_mult))
 
                 for layer in int_layers:
                     freq = layer.freq_mult / period
@@ -715,6 +818,7 @@ class EffectsEngine:
             active_list: list[ActiveEffectInstance] = []
             for inst in self._instances:
                 inst.effective_size_scale(t_now)
+                inst.effective_rate_scale(t_now)
                 if inst.remove_on_fade_end and inst.is_fade_finished(t_now):
                     restored_channels.update(inst.channels)
                 else:
@@ -909,10 +1013,11 @@ class EffectsEngine:
         if not dev_layers:
             return set(), set()
 
-        size_mult = inst.effective_size_scale(t_now)
         theta = self._compute_instance_thetas(eff, inst)
+        size_all = inst.effective_channel_size_scales(t_now, theta)
         elapsed = max(0.0, t_now - inst.start_timestamp)
-        period = max(0.05, eff.cycle_time / max(0.01, inst.rate_scale))
+        rate_mult = inst.effective_rate_scale(t_now)
+        period = max(0.05, eff.cycle_time / max(0.01, rate_mult))
 
         # Precompute waveform array per device layer
         layer_waves: list[tuple[EffectLayer, np.ndarray]] = []
@@ -939,6 +1044,7 @@ class EffectsEngine:
             if dev is None:
                 continue
 
+            size_mult = float(size_all[idx])
             self._sync_external_base_updates_locked(ch, dev, dev_layers)
             ch_base = self._base_device_state.setdefault(ch, {})
             ch_last = self._last_modulated_state.setdefault(ch, {})

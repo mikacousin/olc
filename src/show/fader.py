@@ -54,6 +54,7 @@ class Fader:
     level: float
     old_level: float
     contents: typing.Any
+    exempt_grand_master: bool
 
     def __init__(self, index: int, fader_bank: FaderBank) -> None:
         self.index = index
@@ -63,6 +64,7 @@ class Fader:
         self.level = 0.0
         self.old_level = 0.0
         self.contents = None
+        self.exempt_grand_master = False
 
     @property
     def app(self) -> CoreApplication | None:
@@ -123,6 +125,9 @@ class FaderPreset(Fader):
     contents: Palette | Cue | None
     dmx: np.ndarray
     channels: set
+    intensity_master: bool
+    _ltp_base_states: dict[int, dict[str, typing.Any]]
+    _ltp_active: bool
 
     def __init__(
         self,
@@ -135,6 +140,9 @@ class FaderPreset(Fader):
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         # Channels used by fader
         self.channels = set()
+        self.intensity_master = False
+        self._ltp_base_states = {}
+        self._ltp_active = False
         if preset:
             self.text = preset.text
             self.update_channels()
@@ -148,12 +156,138 @@ class FaderPreset(Fader):
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
 
+    def _get_non_intensity_device_values(self) -> dict[int, dict[str, typing.Any]]:
+        """Return target non-intensity device_values when LTP driving applies."""
+        if self.contents is None:
+            return {}
+        if self.intensity_master and bool(getattr(self.contents, "channels", None)):
+            return {}
+        raw = getattr(self.contents, "device_values", None)
+        if not isinstance(raw, dict) or not raw:
+            return {}
+        targets: dict[int, dict[str, typing.Any]] = {}
+        for dev_id, params in raw.items():
+            if not isinstance(params, dict):
+                continue
+            ltp_params = {
+                k: v for k, v in params.items() if str(k).lower() != "intensity"
+            }
+            if ltp_params:
+                targets[int(dev_id)] = ltp_params
+        return targets
+
+    def _restore_ltp_base_states(self) -> tuple[set[int], set[int]]:
+        """Restore device attributes captured before this fader was raised."""
+        if not self._ltp_active:
+            return set(), set()
+        lightshow = self.fader_bank.lightshow
+        patch = getattr(lightshow, "patch", None) if lightshow is not None else None
+        changed_devs: set[int] = set()
+        color_changed: set[int] = set()
+        if patch is not None and self._ltp_base_states:
+            # pylint: disable=import-outside-toplevel
+            from olc.devices.channel import ChannelType
+            from olc.show.sequence_threads import (
+                _COLOR_PARAM_NAMES,
+                _has_device_changed,
+                _snapshot_dev_diff_state,
+            )
+
+            scalar_map = {
+                "pan": "pan",
+                "tilt": "tilt",
+                "zoom": "zoom",
+                "focus": "focus",
+                "strobe": "strobe",
+                "cct": "cct",
+                "color_temp": "cct",
+                "colortemp": "cct",
+                "iris": "iris",
+            }
+            for dev_id, base in self._ltp_base_states.items():
+                dev = patch.get_device(dev_id)
+                if dev is None:
+                    continue
+                before = _snapshot_dev_diff_state(dev)
+                touched_color = False
+                norm_params = base.get("norm_params", {})
+                for p_lower in base.get("_touched_params", ()):
+                    if p_lower in _COLOR_PARAM_NAMES:
+                        touched_color = True
+                    if p_lower in scalar_map:
+                        s_val = base.get(scalar_map[p_lower])
+                        if s_val is not None:
+                            dev.apply_device_parameter(p_lower, float(s_val))
+                    elif p_lower in ("color", "colour"):
+                        if getattr(dev, "is_subtractive_cmy", False) and all(
+                            c in norm_params for c in ("cyan", "magenta", "yellow")
+                        ):
+                            for c_name, c_type in (
+                                ("cyan", ChannelType.CYAN),
+                                ("magenta", ChannelType.MAGENTA),
+                                ("yellow", ChannelType.YELLOW),
+                            ):
+                                dev.set_parameter_normalized(
+                                    c_type, float(norm_params[c_name])
+                                )
+                        elif "color_rgb" in base and hasattr(dev, "set_color_srgb"):
+                            r0, g0, b0 = base["color_rgb"]
+                            dev.set_color_srgb(float(r0), float(g0), float(b0))
+                    elif p_lower in norm_params:
+                        ctype: ChannelType | None = None
+                        try:
+                            ctype = ChannelType(p_lower)
+                        except ValueError:
+                            ctype = None
+                        if ctype is not None and dev.get_channel(ctype) is not None:
+                            dev.set_parameter_normalized(
+                                ctype, float(norm_params[p_lower])
+                            )
+                        else:
+                            dev.set_channel_normalized_by_label(
+                                p_lower, float(norm_params[p_lower])
+                            )
+
+                any_moved, col_moved = _has_device_changed(
+                    before, dev, touched_color_param=touched_color
+                )
+                if any_moved:
+                    changed_devs.add(dev_id)
+                    if col_moved:
+                        color_changed.add(dev_id)
+
+        self._ltp_base_states.clear()
+        self._ltp_active = False
+        return changed_devs, color_changed
+
+    def _emit_ltp_updates(
+        self, changed_devs: set[int], color_changed: set[int]
+    ) -> None:
+        """Emit UI parameter/color updates for modified devices."""
+        if not self.app or not changed_devs:
+            return
+        if color_changed:
+            self.app.emit("device.color_changed", sorted(color_changed), None)
+        non_color = changed_devs - color_changed
+        if non_color:
+            self.app.emit("device.parameter_changed", sorted(non_color), "fader", None)
+
     def set_contents(self, preset: Palette | Cue | None) -> None:
         """Set Preset or Cue.
 
         Args:
             preset: Preset palette or Cue to put in fader.
         """
+        if self._ltp_active:
+            changed_devs, color_changed = self._restore_ltp_base_states()
+            self._emit_ltp_updates(changed_devs, color_changed)
+            if (
+                changed_devs
+                and self.app
+                and hasattr(self.app, "backend")
+                and self.app.backend
+            ):
+                self.app.backend.dmx.set_levels()
         self.contents = preset
         if preset is not None:
             self.text = preset.text
@@ -167,11 +301,51 @@ class FaderPreset(Fader):
     def level_changed(self) -> None:
         """Fader level has changed"""
         self.dmx.fill(0.0)
+        changed_devs: set[int] = set()
+        color_changed: set[int] = set()
+        lightshow = self.fader_bank.lightshow
+        patch = getattr(lightshow, "patch", None) if lightshow is not None else None
+        target_ltp = self._get_non_intensity_device_values()
+
+        if patch is not None:
+            if self.level > 0.0 and target_ltp:
+                # pylint: disable=import-outside-toplevel
+                from olc.show.sequence_threads import (
+                    _capture_device_states,
+                    _interpolate_device_states,
+                )
+
+                if not self._ltp_active:
+                    captured = _capture_device_states(patch)
+                    self._ltp_base_states = {}
+                    for dev_id, params in target_ltp.items():
+                        if dev_id in captured:
+                            entry = dict(captured[dev_id])
+                            entry["_touched_params"] = {str(k).lower() for k in params}
+                            self._ltp_base_states[dev_id] = entry
+                    self._ltp_active = True
+
+                factor = max(0.0, min(1.0, float(self.level)))
+                changed_devs = _interpolate_device_states(
+                    patch,
+                    self._ltp_base_states,
+                    target_ltp,
+                    factor=factor,
+                    color_changed_out=color_changed,
+                )
+            elif self._ltp_active:
+                changed_devs, color_changed = self._restore_ltp_base_states()
+
         if self.contents:
             for channel, lvl in self.contents.channels.items():
                 if 1 <= channel <= MAX_CHANNELS:
                     self.dmx[channel - 1] = float(lvl) * self.level
             self.fader_bank.update_levels()
+            self._emit_ltp_updates(changed_devs, color_changed)
+            if self.app and hasattr(self.app, "backend") and self.app.backend:
+                self.app.backend.dmx.set_levels()
+        elif changed_devs:
+            self._emit_ltp_updates(changed_devs, color_changed)
             if self.app and hasattr(self.app, "backend") and self.app.backend:
                 self.app.backend.dmx.set_levels()
 

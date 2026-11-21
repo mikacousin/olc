@@ -84,7 +84,15 @@ class LiveView(Gtk.Notebook):
         level, color_level = self.app.core.get_channel_composite_level(channel_idx)
 
         main_fader_val = self.app.core.get_main_fader_value()
-        level = level * main_fader_val
+        gm_exempt_arr = getattr(
+            getattr(self.app.core.backend, "dmx", None), "levels", {}
+        ).get("faders_gm_exempt")
+        gm_lvl = (
+            float(gm_exempt_arr[channel_idx])
+            if gm_exempt_arr is not None and 0 <= channel_idx < len(gm_exempt_arr)
+            else 0.0
+        )
+        level = max(level * main_fader_val, gm_lvl)
         if next_level is None:
             main_pb = getattr(self.app.core.lightshow, "main_playback", None)
             if main_pb is not None and hasattr(main_pb, "get_next_channel_level"):
@@ -141,6 +149,13 @@ class LiveView(Gtk.Notebook):
 
         main_fader_val = self.app.core.get_main_fader_value()
         has_backend = self.app.core.backend is not None
+        gm_exempt_arr = (
+            getattr(getattr(self.app.core.backend, "dmx", None), "levels", {}).get(
+                "faders_gm_exempt"
+            )
+            if has_backend
+            else None
+        )
 
         for channel in range(1, MAX_CHANNELS + 1):
             state, level = classify_channel_tracking_state(
@@ -162,7 +177,14 @@ class LiveView(Gtk.Notebook):
                 ):
                     level = comp_level
                     color_level = comp_color
-            level = float(level) * main_fader_val
+            gm_lvl = (
+                float(gm_exempt_arr[channel - 1])
+                if gm_exempt_arr is not None
+                and 1 <= channel <= len(gm_exempt_arr)
+                and (step is None or target_step == pos)
+                else 0.0
+            )
+            level = max(float(level) * main_fader_val, gm_lvl)
             if all_next_levels is not None and 1 <= channel <= len(all_next_levels):
                 next_lvl = float(all_next_levels[channel - 1]) * main_fader_val
             else:

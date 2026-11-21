@@ -71,6 +71,7 @@ class Dmx:
                 "sequence": np.zeros(MAX_CHANNELS, dtype=np.float64),
                 "user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64),
                 "faders": np.zeros(MAX_CHANNELS, dtype=np.float64),
+                "faders_gm_exempt": np.zeros(MAX_CHANNELS, dtype=np.float64),
             }
         )
         # DMX values
@@ -143,8 +144,13 @@ class Dmx:
             level = float(self.levels["user"][channel_idx])
             color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         else:
-            if self.levels["faders"][channel_idx] > level:
-                level = float(self.levels["faders"][channel_idx])
+            fader_lvl = float(self.levels["faders"][channel_idx])
+            if "faders_gm_exempt" in self.levels:
+                fader_lvl = max(
+                    fader_lvl, float(self.levels["faders_gm_exempt"][channel_idx])
+                )
+            if fader_lvl > level:
+                level = fader_lvl
                 color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
             if self.lightshow.independents.dmx[channel_idx] > level:
                 level = float(self.lightshow.independents.dmx[channel_idx])
@@ -166,6 +172,8 @@ class Dmx:
         """
         composite = self.levels["sequence"].copy()
         composite = np.maximum(composite, self.levels["faders"])
+        if "faders_gm_exempt" in self.levels:
+            composite = np.maximum(composite, self.levels["faders_gm_exempt"])
         composite = np.maximum(composite, self.lightshow.independents.dmx)
         user_mask = self.levels["user"] >= 0.0
         composite[user_mask] = self.levels["user"][user_mask]
@@ -196,6 +204,7 @@ class Dmx:
         park_mgr = getattr(self.lightshow, "park", None)
         app = getattr(self.lightshow, "app", None)
         eff_eng = getattr(app, "effects_engine", None)
+        gm_exempt_arr = self.levels.get("faders_gm_exempt")
         for dev in self.patch.dynamic_intensity_devices:
             dev_id = dev.fixture_id
             if 1 <= dev_id <= len(composite):
@@ -209,6 +218,11 @@ class Dmx:
                     continue
                 user_val = float(self.levels["user"][dev_id - 1])
                 comp_val = float(composite[dev_id - 1])
+                gm_lvl = (
+                    float(gm_exempt_arr[dev_id - 1])
+                    if gm_exempt_arr is not None and 1 <= dev_id <= len(gm_exempt_arr)
+                    else 0.0
+                )
                 has_eff_int = bool(
                     eff_eng is not None
                     and getattr(eff_eng, "has_active_effects", False) is True
@@ -224,7 +238,7 @@ class Dmx:
                     )
                     target_norm = float(curr_int)
                 dev._target_intensity = target_norm
-                dev.set_intensity(target_norm * main_val)
+                dev.set_intensity(max(target_norm * main_val, gm_lvl))
 
     def on_dmx_received(self, universe: int, data: list[int] | np.ndarray) -> None:
         """Store incoming external DMX-In frame, re-merge HTP, and emit event."""
@@ -236,6 +250,30 @@ class Dmx:
         self.set_levels()
         if self.lightshow.app is not None:
             self.lightshow.app.emit("dmx.input_received", universe, arr.copy())
+
+    def _apply_output_curves(self, out_levels: np.ndarray) -> np.ndarray:
+        """Apply transfer curves across mapped output slots."""
+        result = out_levels.copy()
+        unique_curves = np.unique(self.patch.map_dst_curves)
+        for curve_numb in unique_curves:
+            if curve_numb != 0:
+                curve = self.lightshow.curves.get_curve(curve_numb)
+                if curve:
+                    curve_mask = self.patch.map_dst_curves == curve_numb
+                    try:
+                        result[curve_mask] = curve.evaluate_normalized(
+                            result[curve_mask]
+                        )
+                    except NotImplementedError:
+                        result[curve_mask] = (
+                            curve.values_array[
+                                np.round(
+                                    np.clip(result[curve_mask], 0.0, 1.0) * 255.0
+                                ).astype(np.uint8)
+                            ]
+                            / 255.0
+                        )
+        return result
 
     def set_levels(self) -> None:
         """Set DMX frame levels and push updated frames to CoreEngine."""
@@ -252,33 +290,17 @@ class Dmx:
 
             # Extract levels for each patched output slot
             out_levels = composite[self.patch.map_src_channels].astype(np.float64)
+            out_levels = self._apply_output_curves(out_levels)
 
-            # Apply curves by block with continuous normalized evaluation
-            unique_curves = np.unique(self.patch.map_dst_curves)
-            for curve_numb in unique_curves:
-                if curve_numb != 0:
-                    curve = self.lightshow.curves.get_curve(curve_numb)
-                    if curve:
-                        curve_mask = self.patch.map_dst_curves == curve_numb
-                        try:
-                            out_levels[curve_mask] = curve.evaluate_normalized(
-                                out_levels[curve_mask]
-                            )
-                        except NotImplementedError:
-                            out_levels[curve_mask] = (
-                                curve.values_array[
-                                    np.round(
-                                        np.clip(out_levels[curve_mask], 0.0, 1.0)
-                                        * 255.0
-                                    ).astype(np.uint8)
-                                ]
-                                / 255.0
-                            )
-
-            # Scale by Main Fader and Blackout (unless parked), then quantize to 8-bit
+            # Scale by Main Fader and Blackout unless GM-exempt or parked
             intensity_mult = self.effective_intensity_mult
             park_mgr = getattr(self.lightshow, "park", None)
             scaled = out_levels * intensity_mult
+            gm_exempt_arr = self.levels.get("faders_gm_exempt")
+            if gm_exempt_arr is not None and np.any(gm_exempt_arr > 0.0):
+                gm_out = gm_exempt_arr[self.patch.map_src_channels].astype(np.float64)
+                gm_out = self._apply_output_curves(gm_out)
+                scaled = np.maximum(scaled, gm_out)
             if isinstance(park_mgr, ParkManager) and park_mgr.parked_channels:
                 parked_indices = np.array(
                     [ch - 1 for ch in park_mgr.parked_channels], dtype=int
@@ -569,6 +591,8 @@ class Dmx:
         self.levels["user"].fill(-1.0)
         if "faders" in self.levels:
             self.levels["faders"].fill(0.0)
+        if "faders_gm_exempt" in self.levels:
+            self.levels["faders_gm_exempt"].fill(0.0)
         if reset_main_fader:
             self.main_fader.set_level(1.0)
         self.set_levels()

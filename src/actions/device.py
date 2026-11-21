@@ -20,6 +20,8 @@ import typing
 
 from olc.core.action import Action
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType
+from olc.show.palette import PaletteCategory
+from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -724,6 +726,25 @@ class DeviceAdjustParameterAction(Action):
         }
 
 
+def _filter_home_preset_params(
+    params: dict[str, typing.Any], category: str | None
+) -> dict[str, typing.Any]:
+    """Filter Home Preset device values for *category* without intensity."""
+    if category is None:
+        return {k: v for k, v in params.items() if str(k).lower() != "intensity"}
+    cat_norm = category.lower()
+    if cat_norm == "focus":
+        cat_norm = "position"
+    elif cat_norm in {"shutter", "gobo", "form", "image"}:
+        cat_norm = "beam"
+    return {
+        k: v
+        for k, v in params.items()
+        if str(k).lower() == category.lower()
+        or get_parameter_family(str(k)) == cat_norm
+    }
+
+
 class DeviceHomeAction(Action):
     """Action to reset fixture parameters to default Home values."""
 
@@ -769,6 +790,13 @@ class DeviceHomeAction(Action):
         self._old_live_states = {}
         self._new_live_states = {}
         live_state = getattr(self.app, "live_state", None)
+        hp_num = getattr(self.app.lightshow, "home_preset", None)
+        palettes = getattr(self.app.lightshow, "palettes", None)
+        home_pal = (
+            palettes.get(PaletteCategory.PRESET, hp_num)
+            if hp_num is not None and palettes is not None
+            else None
+        )
 
         for ch in targets:
             dev = patch.devices.get(ch)
@@ -779,6 +807,12 @@ class DeviceHomeAction(Action):
             self.old_states[ch] = {c.address: c.value for c in dev.channels}
             self.old_intensities[ch] = dev.intensity
             dev.home(self.category)
+            if home_pal is not None and ch in home_pal.device_values:
+                filtered = _filter_home_preset_params(
+                    home_pal.device_values[ch], self.category
+                )
+                if filtered:
+                    dev.apply_device_values(filtered)
             self.new_states[ch] = {c.address: c.value for c in dev.channels}
             self.new_intensities[ch] = dev.intensity
             if live_state is not None:

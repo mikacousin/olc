@@ -105,11 +105,15 @@ class LightShow(ShowFile):
     park: ParkManager
     universe_map: UniverseMap
     workspace: dict[str, typing.Any]
+    title: str
+    home_preset: float | None
 
     def __init__(self, app: CoreApplication | None = None) -> None:
         super().__init__(None)
         self.app = app
         self.workspace = default_workspace()
+        self.title = ""
+        self.home_preset = None
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
         # Fixture Library
         self.fixture_library = populate_builtin_library()

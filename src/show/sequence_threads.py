@@ -173,6 +173,7 @@ def _apply_resolved_device_values(
     app: Optional[CoreApplication] = None,
     *,
     clear_live_state: bool = True,
+    force_assert: bool = False,
 ) -> tuple[set[int], set[int]]:
     """Apply final resolved device values, emit events, and update live_state."""
     changed_devices: set[int] = set()
@@ -192,11 +193,11 @@ def _apply_resolved_device_values(
         any_moved, col_moved = _has_device_changed(
             before, dev, touched_color_param=touched_color
         )
-        if any_moved:
+        if any_moved or force_assert:
             changed_devices.add(dev_id)
-            if col_moved:
+            if col_moved or (force_assert and touched_color):
                 color_changed.add(dev_id)
-        if clear_live_state and live_state is not None:
+        if (clear_live_state or force_assert) and live_state is not None:
             to_clear = [
                 k
                 for k in params
@@ -307,6 +308,69 @@ def _sync_resolved_effects(  # pylint: disable=too-many-locals,too-many-branches
         live_state.clear_effect_refs()
 
 
+def _apply_execute_preset(
+    sequence: Sequence,
+    backend: typing.Any,  # noqa: ANN401
+    app: Optional[CoreApplication],
+    target_cue: typing.Any,  # noqa: ANN401
+) -> None:
+    """Trigger a referenced Submaster/Preset from Eos ``$$Action Execute S``."""
+    exec_num_raw = getattr(target_cue, "execute_preset", None)
+    if exec_num_raw is None:
+        return
+    exec_num = float(exec_num_raw)
+    lightshow = getattr(sequence, "lightshow", None)
+    if lightshow is None and app is not None:
+        lightshow = getattr(app, "lightshow", None)
+    if lightshow is None:
+        return
+
+    from olc.show.fader import FaderPreset  # pylint: disable=import-outside-toplevel
+    from olc.show.palette import (  # pylint: disable=import-outside-toplevel
+        PaletteCategory,
+    )
+
+    mounted = False
+    faders = getattr(getattr(lightshow, "fader_bank", None), "faders", None)
+    if isinstance(faders, dict):
+        for page_faders in faders.values():
+            if not isinstance(page_faders, dict):
+                continue
+            for fader in page_faders.values():
+                if (
+                    isinstance(fader, FaderPreset)
+                    and getattr(getattr(fader, "contents", None), "number", None)
+                    == exec_num
+                ):
+                    fader.set_level(1.0)
+                    mounted = True
+    if mounted:
+        return
+
+    palettes = getattr(lightshow, "palettes", None)
+    preset = (
+        palettes.get(PaletteCategory.PRESET, exec_num) if palettes is not None else None
+    )
+    if preset is None:
+        return
+
+    if (
+        backend
+        and hasattr(backend, "dmx")
+        and hasattr(backend.dmx, "levels")
+        and "sequence" in backend.dmx.levels
+    ):
+        seq_levels = backend.dmx.levels["sequence"]
+        for ch_raw, lvl in getattr(preset, "channels", {}).items():
+            ch_int = int(ch_raw)
+            if 1 <= ch_int <= len(seq_levels):
+                seq_levels[ch_int - 1] = max(float(seq_levels[ch_int - 1]), float(lvl))
+    if sequence.patch is not None and getattr(preset, "device_values", None):
+        _apply_resolved_device_values(
+            sequence.patch, preset, app, clear_live_state=True
+        )
+
+
 def _capture_device_states(
     patch: Optional[PatchManager],
 ) -> dict[int, dict[str, typing.Any]]:
@@ -328,6 +392,18 @@ def _capture_device_states(
                     n_val = get_norm(ctype)
                     if n_val is not None:
                         norm_params[ctype.value] = float(n_val)
+        get_by_label = getattr(dev, "get_channel_normalized_by_label", None)
+        if callable(get_by_label):
+            for ch in getattr(dev, "channels", ()):
+                if (
+                    ch.channel_type == ChannelType.GENERIC
+                    and not ch.fine
+                    and not ch.ultra_fine
+                    and ch.label
+                ):
+                    n_val = get_by_label(ch.label)
+                    if n_val is not None:
+                        norm_params[ch.label.lower()] = float(n_val)
         states[dev_id] = {
             "intensity": getattr(dev, "intensity", 0.0),
             "pan": getattr(dev, "pan_degrees", 0.0),
@@ -363,6 +439,29 @@ def _parse_rgb_norm(value: typing.Any) -> Optional[tuple[float, float, float]]: 
             max(0.0, min(1.0, float(value[2]))),
         )
     return None
+
+
+def _is_continuous_norm_param(dev: typing.Any, p_lower: str) -> bool:  # noqa: ANN401
+    """Return True if *p_lower* is continuous (not a discrete multi-range wheel)."""
+    if p_lower in ("gobo_wheel", "gobo", "color_wheel"):
+        return False
+    ch = None
+    try:
+        ctype = ChannelType(p_lower)
+    except ValueError:
+        ctype = None
+    if ctype is not None:
+        get_ch = getattr(dev, "get_channel", None)
+        if callable(get_ch):
+            ch = get_ch(ctype)
+    if ch is None:
+        get_res_lbl = getattr(dev, "_get_resolution_channels_by_label", None)
+        if callable(get_res_lbl):
+            res = get_res_lbl(p_lower)
+            if isinstance(res, tuple) and res:
+                ch = res[0]
+    ranges = getattr(ch, "ranges", None) if ch is not None else None
+    return not (isinstance(ranges, list) and ranges)
 
 
 def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments, too-many-branches
@@ -465,7 +564,14 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
                     )
                 else:
                     dev.apply_device_parameter(p_lower, target_val)
-            elif p_lower in norm_emitter_names and isinstance(target_val, (int, float)):
+            elif (
+                p_lower in norm_emitter_names
+                or (
+                    isinstance(start_norm, dict)
+                    and p_lower in start_norm
+                    and _is_continuous_norm_param(dev, p_lower)
+                )
+            ) and isinstance(target_val, (int, float)):
                 t_norm = float(target_val)
                 if t_norm > 1.0:
                     t_norm /= 255.0
@@ -704,10 +810,23 @@ class ThreadGo(threading.Thread):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
+        target_cue = (
+            self.sequence.steps[target_step_idx].cue
+            if 0 <= target_step_idx < len(self.sequence.steps)
+            else None
+        )
+        is_assert = bool(getattr(target_cue, "is_assert", False))
+
         # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
-            _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
+            _apply_resolved_device_values(
+                self.sequence.patch,
+                resolved,
+                self.app,
+                force_assert=is_assert,
+            )
         _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
+        _apply_execute_preset(self.sequence, self.backend, self.app, target_cue)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -1093,9 +1212,21 @@ class ThreadGoBack(threading.Thread):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
 
+        prev_cue = (
+            self.sequence.steps[prev_step].cue
+            if 0 <= prev_step < len(self.sequence.steps)
+            else None
+        )
+        is_assert = bool(getattr(prev_cue, "is_assert", False))
+
         # Apply multi-parameter device values and emit differential events
         if self.sequence.patch is not None:
-            _apply_resolved_device_values(self.sequence.patch, resolved, self.app)
+            _apply_resolved_device_values(
+                self.sequence.patch,
+                resolved,
+                self.app,
+                force_assert=is_assert,
+            )
         _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
 
         self.sequence.on_go = False

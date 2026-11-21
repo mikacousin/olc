@@ -259,7 +259,16 @@ class FaderBank:
     def update_levels(self) -> None:
         """Update faders levels for DMX"""
         if self.app and hasattr(self.app, "backend") and self.app.backend:
-            faders_levels = self.app.backend.dmx.levels["faders"]
+            levels = self.app.backend.dmx.levels
+            faders_levels = levels["faders"]
             faders_levels.fill(0)
+            gm_exempt_levels = levels.get("faders_gm_exempt")
+            if gm_exempt_levels is not None:
+                gm_exempt_levels.fill(0)
             for fader in self.active_faders:
-                np.maximum(faders_levels, fader.dmx, out=faders_levels)
+                if gm_exempt_levels is not None and getattr(
+                    fader, "exempt_grand_master", False
+                ):
+                    np.maximum(gm_exempt_levels, fader.dmx, out=gm_exempt_levels)
+                else:
+                    np.maximum(faders_levels, fader.dmx, out=faders_levels)

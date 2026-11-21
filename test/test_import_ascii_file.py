@@ -555,6 +555,164 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
         assert preset is not None and preset.text == label
     assert lightshow.palettes.get(PaletteCategory.PRESET, 200.0) is None
 
+    # Section 6.3 metadata, cue flags/notes/actions, effect envelopes, and sub flags
+    from olc.show.effect import EffectEnvelopeMode
+    from olc.show.fader import FaderPreset
+
+    assert lightshow.title == "00  Base  Nocturne"
+    assert lightshow.home_preset == pytest.approx(999.0)
+    assert lightshow.main_playback.mib_enabled is True
+    all_seqs = [lightshow.main_playback, *lightshow.sequences]
+    assert all(s.mib_enabled is True for s in all_seqs)
+
+    assert_cues = [
+        (s.index, step.cue.number)
+        for s in all_seqs
+        for step in s.steps
+        if step.cue is not None and step.cue.is_assert
+    ]
+    assert len(assert_cues) == 9
+
+    assert step19.cue is not None
+    assert step19.cue.is_int_block is True
+    assert step19.cue.is_assert is True
+    assert step19.cue.notes == "zoom 9 edge 3"
+
+    seq2 = next(s for s in lightshow.sequences if s.index == 2)
+    step522 = next(s for s in seq2.steps if s.cue is not None and s.cue.number == 522.0)
+    assert step522.cue is not None and step522.cue.is_int_block is True
+    step498 = next(s for s in seq2.steps if s.cue is not None and s.cue.number == 498.0)
+    assert step498.cue is not None and step498.cue.execute_preset == pytest.approx(1.0)
+
+    fx1 = lightshow.effects.get(1.0)
+    fx100 = lightshow.effects.get(100.0)
+    fx11 = lightshow.effects.get(11.0)
+    assert fx1 is not None and fx1.entry_mode == EffectEnvelopeMode.FADE_BY_SIZE
+    assert fx1.cascade is True
+    assert fx100 is not None and fx100.cascade is True
+    assert fx11 is not None and fx11.layers[0].duty_cycle == pytest.approx(1.0)
+
+    fader_sub900 = lightshow.fader_bank.faders[1][6]
+    assert isinstance(fader_sub900, FaderPreset)
+    assert fader_sub900.text == "Gradin"
+    assert fader_sub900.exempt_grand_master is True
+    fader_sub6 = lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader_sub6, FaderPreset)
+    assert fader_sub6.intensity_master is True
+
+    # Section 6.4 (Base Nocturne audit): $$StepTimes, signed offsets, waveforms
+    from olc.show.effect import EffectMode, WaveformType
+
+    fx5 = lightshow.effects.get(5.0)
+    fx7 = lightshow.effects.get(7.0)
+    fx103 = lightshow.effects.get(103.0)
+    assert fx5 is not None and fx5.cycle_time == pytest.approx(5.0, abs=0.01)
+    assert fx7 is not None and fx7.cycle_time == pytest.approx(4.998, abs=0.01)
+    assert fx11.cycle_time == pytest.approx(10.002, abs=0.01)
+    assert fx103 is not None and fx103.cycle_time == pytest.approx(25.0, abs=0.05)
+
+    fx2 = lightshow.effects.get(2.0)
+    fx6 = lightshow.effects.get(6.0)
+    fx909 = lightshow.effects.get(909.0)
+    fx915 = lightshow.effects.get(915.0)
+    fx916 = lightshow.effects.get(916.0)
+    assert fx2 is not None
+    assert fx2.layers[0].mode == EffectMode.RELATIVE
+    assert fx2.layers[0].waveform == WaveformType.PULSE
+    assert fx2.layers[0].size == pytest.approx(-25.0)
+    assert fx6 is not None
+    assert fx6.cycle_time == pytest.approx(10.0)
+    assert fx6.layers[0].mode == EffectMode.RELATIVE
+    assert fx6.layers[0].waveform == WaveformType.PULSE
+    assert fx6.layers[0].size == pytest.approx(-5.0)
+    assert fx909 is not None and fx909.layers[0].waveform == WaveformType.RANDOM
+    assert fx915 is not None and fx915.layers[0].waveform == WaveformType.SAW_UP
+    assert fx916 is not None and fx916.layers[0].waveform == WaveformType.SAW_DOWN
+
+    # Generic optical/framing $$Param support: BP 8..10/30 & Preset 10..12 populated
+    for bp_num in (8.0, 9.0, 10.0):
+        bp = lightshow.palettes.get(PaletteCategory.BEAM, bp_num)
+        assert bp is not None
+        assert "frame_a_1" in bp.device_values.get(1, {})
+        assert "frame_assembly" in bp.device_values.get(1, {})
+    bp30 = lightshow.palettes.get(PaletteCategory.BEAM, 30.0)
+    assert bp30 is not None
+    assert bp30.device_values[1]["gobo_index/speed"] == pytest.approx(0.75, abs=1e-3)
+
+    pr10 = lightshow.palettes.get(PaletteCategory.PRESET, 10.0)
+    pr11 = lightshow.palettes.get(PaletteCategory.PRESET, 11.0)
+    pr12 = lightshow.palettes.get(PaletteCategory.PRESET, 12.0)
+    assert pr10 is not None
+    assert pr10.device_values[4]["gobo_index/speed"] == pytest.approx(0.5, abs=1e-3)
+    assert pr10.device_values[5]["gobo_index/speed"] == pytest.approx(1.0, abs=1e-3)
+    assert pr11 is not None and pr11.device_values[1][
+        "gobo_index/speed"
+    ] == pytest.approx(1.0)
+    assert pr12 is not None and pr12.device_values[1][
+        "gobo_index/speed"
+    ] == pytest.approx(0.0)
+
+    # 16-bit generic channel application on Ghibli ch 1
+    dev1 = lightshow.patch.get_device(1)
+    assert dev1 is not None
+    home_gobo_rot = dev1.get_channel_normalized_by_label("Gobo_Index/Speed")
+    assert home_gobo_rot == pytest.approx(16383 / 65535.0, abs=1e-4)
+    dev1.apply_device_parameter("gobo_index/speed", 0.5)
+    assert dev1.get_channel_normalized_by_label("gobo_index/speed") == pytest.approx(
+        0.5, abs=1e-4
+    )
+    dev1.apply_device_parameter("gobo_index/speed", 16383 / 65535.0)
+
+    # FaderPreset proportional LTP blending & release on Sub 11, 12, 13, and Sub 6 guard
+    fader_sub11 = lightshow.fader_bank.faders[2][2]
+    fader_sub12 = lightshow.fader_bank.faders[2][3]
+    fader_sub13 = lightshow.fader_bank.faders[2][4]
+    assert isinstance(fader_sub11, FaderPreset)
+    assert isinstance(fader_sub12, FaderPreset)
+    assert isinstance(fader_sub13, FaderPreset)
+
+    # Sub 11 raises Gobo_Index/Speed from Home (~0.25) -> 0.625 -> 1.0 -> restores ~0.25
+    fader_sub11.set_level(0.5)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        0.5 * (16383 / 65535.0 + 1.0), abs=1e-3
+    )
+    fader_sub11.set_level(1.0)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        1.0, abs=1e-4
+    )
+    fader_sub11.set_level(0.0)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        16383 / 65535.0, abs=1e-4
+    )
+
+    # Sub 12 lowers Gobo_Index/Speed toward 0.0 -> restores ~0.25
+    fader_sub12.set_level(0.5)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        0.5 * (16383 / 65535.0), abs=1e-3
+    )
+    fader_sub12.set_level(1.0)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        0.0, abs=1e-4
+    )
+    fader_sub12.set_level(0.0)
+    assert dev1.get_channel_normalized_by_label("Gobo_Index/Speed") == pytest.approx(
+        16383 / 65535.0, abs=1e-4
+    )
+
+    # Sub 13 (intensity_master=True, channels={}) drives strobe 1.0 -> 25/255 -> 1.0
+    assert dev1.strobe_hz == pytest.approx(1.0, abs=1e-3)
+    fader_sub13.set_level(1.0)
+    assert dev1.strobe_hz == pytest.approx(25 / 255.0, abs=1e-3)
+    fader_sub13.set_level(0.0)
+    assert dev1.strobe_hz == pytest.approx(1.0, abs=1e-3)
+
+    # Sub 6 (intensity_master=True, channels={1,2,3}) must NOT overwrite pan/tilt
+    dev1.set_pan_degrees(90.0)
+    fader_sub6.set_level(1.0)
+    assert dev1.pan_degrees == pytest.approx(90.0, abs=0.5)
+    fader_sub6.set_level(0.0)
+    assert dev1.pan_degrees == pytest.approx(90.0, abs=0.5)
+
 
 def test_eos_param_token_parsing() -> None:
     """Unit-test parse_eos_param_token and eos_param_id_to_olc_key."""
@@ -593,6 +751,22 @@ def test_eos_param_token_parsing() -> None:
     assert eos_param_id_to_olc_key(78, ptypes) == "focus"
     assert eos_param_id_to_olc_key(57675, ptypes) == "frost"
     assert eos_param_id_to_olc_key(9999, ptypes) is None
+
+    ptypes_ext = {
+        **ptypes,
+        206: "Gobo_Index/Speed",
+        240: "Frame_a_1",
+        9998: "Custom_Blade",
+    }
+    assert eos_param_id_to_olc_key(206, ptypes_ext) == "gobo_index/speed"
+    assert eos_param_id_to_olc_key(240, ptypes_ext) == "frame_a_1"
+    assert eos_param_id_to_olc_key(9998, ptypes_ext) is None
+    assert (
+        eos_param_id_to_olc_key(
+            9998, ptypes_ext, pers={"channels": [{"param_id": 9998}]}
+        )
+        == "custom_blade"
+    )
 
 
 def test_import_eos_palettes_special_formats_and_two_pass_resolution(
@@ -2022,3 +2196,323 @@ EndData
     assert preset50.text == "Spare Look"
     assert preset50.channels[21] == pytest.approx(128 / 255.0)
     assert show.palettes.get(PaletteCategory.PRESET, 60.0) is None
+
+
+def test_import_eos_6_3_assert_intblock_envelopes_gm_exempt_and_home_preset(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+) -> None:
+    """Verify 6.3 metadata, assert/intblock, envelopes, GM-exempt, and Execute S."""
+    import pathlib
+
+    from olc.core.app import CoreApplication
+    from olc.files.ascii.writer import AsciiWriter
+    from olc.show.effect import EffectEnvelopeMode
+    from olc.show.fader import FaderPreset
+    from olc.show.sequence import ThreadGo
+
+    # 1. File without $$AutoMark -> mib_enabled is False
+    assert isinstance(tmp_path, pathlib.Path)
+    no_mark_asc = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$CueList 1
+Cue 1 1
+   Chan 1@Hff
+EndData
+"""
+    show_no_mark = _parse_asc(monkeypatch, tmp_path, no_mark_asc).lightshow
+    assert show_no_mark.main_playback.mib_enabled is False
+
+    # 2. Full synthetic Section 6.3 show loaded into CoreApplication
+    full_asc = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$$Title My  Live  Show
+$$AutoMark
+$$HomePreset 999
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$Personality 100
+   $$Manuf TestBrand
+   $$Model Spot_PT
+   $$Footprint 5
+   $$PersChan 2 2 1 2 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 D
+   $$PersChan 3 2 3 4 32768
+   $$PersSlot 0 65535 32768 -135.0 135.0 D
+   $$PersChan 1 1 5 0 0
+$Personality 40
+   $$Manuf Generic
+   $$Model Dimmer
+   $$Footprint 1
+   $$PersChan 1 1 1 0 0
+$Patch 1 100 1 0 1
+$Patch 21 40 21 0 1
+$Patch 22 40 22 0 1
+$Effect 10
+   Text Pulse FX
+   $$Type 1
+   $$ParamList 1
+   $$Entry 0
+   $$Exit 2
+   $$Cascade
+   $$Trail 40
+$CueList 1
+Cue 1 1
+   Up 2
+   $$ChanMove 1@Hff
+   $$Param 1 1@65535 2@49152 3@32768
+Cue 2 1
+   $$IntBlock
+   $$Assert
+   $$CueNotes Hold spotlight
+   $$Action Execute S 10
+   Chan 1@H00
+Group 999
+   Text Home Look
+   $$Param 1 2@40000 3@20000
+Sub 10 1
+   Text Spare Move
+   Chan 25@H80
+   $$Param 1 3@45000
+Sub 900 1
+   Text Gradin
+   $$Exclude 9 ! Record, GM
+   Chan 21@Hff
+Sub 5 1
+   Text Front Normal
+   $$IntensityMaster
+   Chan 22@Hff
+$FaderDef 1
+   $$Target S 900
+$FaderDef 2
+   $$Target S 5
+EndData
+"""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    from olc.core.dmx_backend import DMXBackend
+
+    app.backend = DMXBackend(app.lightshow)
+
+    asc_path = tmp_path / "show_6_3.asc"
+    asc_path.write_text(full_asc, encoding="utf-8")
+    imported = ImportFile(
+        app.lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    ls = app.lightshow
+    assert ls.title == "My  Live  Show"
+    assert ls.home_preset == pytest.approx(999.0)
+    assert ls.main_playback.mib_enabled is True
+
+    # Effect envelopes + trail + AsciiWriter round-trip
+    fx10 = ls.effects.get(10.0)
+    assert fx10 is not None
+    assert fx10.entry_mode == EffectEnvelopeMode.IMMEDIATE
+    assert fx10.exit_mode == EffectEnvelopeMode.FADE_BY_RATE
+    assert fx10.cascade is True
+    assert fx10.layers[0].duty_cycle == pytest.approx(0.4)
+
+    export_path = tmp_path / "export_6_3.asc"
+    AsciiWriter(export_path, ls).write()
+    exported_txt = export_path.read_text(encoding="utf-8")
+    assert "$$ENTRY 0" in exported_txt
+    assert "$$EXIT 2" in exported_txt
+    assert "$$CASCADE" in exported_txt
+
+    # Cue flags, notes, Execute S 10 -> ThreadGo._finalize_go()
+    step2 = ls.main_playback.steps[2]
+    assert step2.cue is not None
+    assert step2.cue.is_int_block is True
+    assert step2.cue.is_assert is True
+    assert step2.cue.notes == "Hold spotlight"
+    assert step2.cue.execute_preset == pytest.approx(10.0)
+
+    ls.main_playback.position = 1
+    thread_go = ThreadGo(False, ls.main_playback)
+    thread_go._finalize_go()
+    assert app.backend.dmx.levels["sequence"][24] == pytest.approx(128 / 255.0)
+    dev1 = ls.patch.get_device(1)
+    assert dev1 is not None
+    assert dev1.tilt_degrees < 0.0 or dev1.tilt_degrees > 0.0
+
+    # $$HomePreset 999 applied on device.home & undone cleanly
+    tilt_before_home = dev1.tilt_degrees
+    app.action_registry.execute("device.home", channels=[1])
+    assert dev1.pan_degrees == pytest.approx((40000 / 65535.0) * 540.0 - 270.0, abs=0.5)
+    assert dev1.tilt_degrees == pytest.approx(
+        (20000 / 65535.0) * 270.0 - 135.0, abs=0.5
+    )
+    app.history.undo()
+    assert dev1.tilt_degrees == pytest.approx(tilt_before_home, abs=0.1)
+
+    # $$Exclude 9 (GM-exempt) keeps house lights at 255 through Main Fader=0 & Blackout
+    fader_gm_exempt = ls.fader_bank.faders[1][1]
+    fader_normal = ls.fader_bank.faders[1][2]
+    assert isinstance(fader_gm_exempt, FaderPreset)
+    assert isinstance(fader_normal, FaderPreset)
+    assert fader_gm_exempt.exempt_grand_master is True
+    assert fader_normal.intensity_master is True
+
+    fader_gm_exempt.set_level(1.0)
+    fader_normal.set_level(1.0)
+    assert app.backend.dmx.frame[0][20] == 255
+    assert app.backend.dmx.frame[0][21] == 255
+
+    app.backend.dmx.main_fader.set_level(0.0)
+    app.backend.dmx.set_levels()
+    assert app.backend.dmx.frame[0][20] == 255
+    assert app.backend.dmx.frame[0][21] == 0
+
+    app.backend.dmx.blackout = True
+    app.backend.dmx.set_levels()
+    assert app.backend.dmx.frame[0][20] == 255
+    assert app.backend.dmx.frame[0][21] == 0
+
+
+def test_ascii_writer_section_6_3_and_6_4_roundtrip(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+) -> None:
+    """AsciiWriter symmetrically round-trips 6.3/6.4 metadata, faders, and effects."""
+    import pathlib
+
+    from olc.files.ascii.writer import AsciiWriter
+    from olc.show.cue import Cue
+    from olc.show.effect import EffectDefinition, EffectLayer, EffectMode, WaveformType
+    from olc.show.fader import FaderPreset, FaderType
+    from olc.show.palette import Palette, PaletteCategory
+    from olc.show.sequence import Sequence
+    from olc.show.step import Step
+
+    assert isinstance(tmp_path, pathlib.Path)
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    show = LightShow()
+    show.title = "Gala  Nocturne"
+    show.home_preset = 999.0
+    show.main_playback.mib_enabled = False
+
+    c1 = Cue(
+        sequence=1,
+        number=1.0,
+        channels={1: 1.0},
+        is_block=True,
+        is_int_block=True,
+        is_assert=True,
+        notes="Line one\nLine two",
+        execute_preset=5.0,
+    )
+    show.main_playback.cues.add(c1)
+    show.main_playback.insert_step(1, Step(sequence=1.0, cue=c1, text="Intro"))
+
+    seq2 = Sequence(index=2, text="Side List")
+    c2 = Cue(
+        sequence=2,
+        number=10.0,
+        channels={2: 0.5},
+        is_int_block=True,
+        is_assert=True,
+        notes="Side note",
+        execute_preset=7.0,
+    )
+    seq2.cues.add(c2)
+    seq2.insert_step(1, Step(sequence=2.0, cue=c2, text="Flash"))
+    show.sequences.append(seq2)
+
+    p5 = Palette(category=PaletteCategory.PRESET, number=5.0, text="P5")
+    p6 = Palette(category=PaletteCategory.PRESET, number=6.0, text="P6")
+    show.palettes.add(p5)
+    show.palettes.add(p6)
+
+    show.fader_bank.set_fader(1, 1, FaderType.PRESET, 5.0)
+    show.fader_bank.set_fader(1, 2, FaderType.PRESET, 6.0)
+    f1 = show.fader_bank.faders[1][1]
+    f2 = show.fader_bank.faders[1][2]
+    assert isinstance(f1, FaderPreset) and isinstance(f2, FaderPreset)
+    f1.exempt_grand_master = True
+    f2.intensity_master = True
+
+    show.effects.add(
+        EffectDefinition(
+            number=11.0,
+            label="Long Sine",
+            cycle_time=25.0,
+            layers=[
+                EffectLayer(
+                    parameter="intensity",
+                    waveform=WaveformType.SINE,
+                    mode=EffectMode.RELATIVE,
+                    size=30.0,
+                    duty_cycle=0.75,
+                )
+            ],
+        )
+    )
+    show.effects.add(
+        EffectDefinition(
+            number=6.0,
+            label="Zoom Dip",
+            cycle_time=10.0,
+            layers=[
+                EffectLayer(
+                    parameter="zoom",
+                    waveform=WaveformType.PULSE,
+                    mode=EffectMode.RELATIVE,
+                    size=-5.0,
+                    duty_cycle=0.5,
+                )
+            ],
+        )
+    )
+
+    out_path = tmp_path / "roundtrip_6_4.asc"
+    AsciiWriter(out_path, show).write()
+
+    reloaded = LightShow()
+    imp = ImportFile(reloaded, Gio.File.new_for_path(str(out_path)), FileType.ASCII)
+    imp.parse_sync(auto_import=True)
+
+    assert reloaded.title == "Gala  Nocturne"
+    assert reloaded.home_preset == pytest.approx(999.0)
+    assert reloaded.main_playback.mib_enabled is False
+
+    rc1 = reloaded.main_playback.steps[1].cue
+    assert rc1 is not None
+    assert rc1.is_block is True
+    assert rc1.is_int_block is True
+    assert rc1.is_assert is True
+    assert rc1.notes == "Line one\nLine two"
+    assert rc1.execute_preset == pytest.approx(5.0)
+
+    rseq2 = next(s for s in reloaded.sequences if s.index == 2)
+    assert rseq2.mib_enabled is False
+    rc2 = rseq2.steps[1].cue
+    assert rc2 is not None
+    assert rc2.is_int_block is True
+    assert rc2.is_assert is True
+    assert rc2.notes == "Side note"
+    assert rc2.execute_preset == pytest.approx(7.0)
+
+    rf1 = reloaded.fader_bank.faders[1][1]
+    rf2 = reloaded.fader_bank.faders[1][2]
+    assert isinstance(rf1, FaderPreset) and rf1.exempt_grand_master is True
+    assert isinstance(rf2, FaderPreset) and rf2.intensity_master is True
+
+    rfx11 = reloaded.effects.get(11.0)
+    assert rfx11 is not None
+    assert rfx11.cycle_time == pytest.approx(25.0)
+    assert rfx11.layers[0].duty_cycle == pytest.approx(0.75)
+
+    rfx6 = reloaded.effects.get(6.0)
+    assert rfx6 is not None
+    assert rfx6.cycle_time == pytest.approx(10.0)
+    assert rfx6.layers[0].mode == EffectMode.RELATIVE
+    assert rfx6.layers[0].waveform == WaveformType.PULSE
+    assert rfx6.layers[0].size == pytest.approx(-5.0)

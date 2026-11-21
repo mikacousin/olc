@@ -63,6 +63,42 @@ EOS_PARAM_TO_CHANNEL_TYPE: dict[str, ChannelType] = {
     "cto": ChannelType.COLOR_TEMP,
 }
 
+# Standard Eos optical/framing/control parameter names kept as ChannelType.GENERIC
+# channels keyed by their lowercased personality label.
+EOS_GENERIC_PARAM_NAMES: frozenset[str] = frozenset(
+    {
+        "gobo_index/speed",
+        "gobo_index/speed_2",
+        "beam_fx_index/speed",
+        "beam_fx_index/speed_2",
+        "animation_select",
+        "animation_index/speed",
+        "frame_assembly",
+        "frame_a_1",
+        "frame_b_1",
+        "frame_a_2",
+        "frame_b_2",
+        "frame_a_3",
+        "frame_b_3",
+        "frame_a_4",
+        "frame_b_4",
+        "edge_mode",
+        "position_mspeed",
+        "lamp_control",
+        "color_mix",
+        "color_mix_crossfade_rate",
+        "chase",
+        "chase_rate",
+        "chase_level",
+        "pwm_frequency",
+        "dimmer_curve",
+        "tint",
+        "led_engine_effects",
+        "led_engine_effect_rate",
+        "led_engine_effect_step_time",
+    }
+)
+
 # Parameter names expected by LightingDevice.apply_device_parameter()
 _PHYSICAL_PARAM_NAMES: dict[str, str] = {
     "pan": "pan",
@@ -106,7 +142,12 @@ def parse_eos_param_token(
         return None, None
 
 
-def eos_param_id_to_olc_key(p_id: int, param_types: dict[int, str]) -> str | None:
+def eos_param_id_to_olc_key(
+    p_id: int,
+    param_types: dict[int, str],
+    *,
+    pers: dict[str, typing.Any] | None = None,
+) -> str | None:
     """Map an Eos parameter ID to its OLC channel/device_values key."""
     p_name = param_types.get(p_id, "").lower()
     if not p_name:
@@ -118,7 +159,15 @@ def eos_param_id_to_olc_key(p_id: int, param_types: dict[int, str]) -> str | Non
     if p_name in ("red", "green", "blue", "cyan", "magenta", "yellow"):
         return "color"
     ctype = map_eos_param_type(p_name)
-    return ctype.value if ctype is not ChannelType.GENERIC else None
+    if ctype is not ChannelType.GENERIC:
+        return ctype.value
+    if p_name in EOS_GENERIC_PARAM_NAMES:
+        return p_name
+    if pers is not None and any(
+        int(pc["param_id"]) == p_id for pc in pers.get("channels", [])
+    ):
+        return p_name
+    return None
 
 
 def map_eos_param_type(eos_name: str) -> ChannelType:
@@ -485,6 +534,8 @@ def decode_eos_cue_params(
                 existing = dev_vals.get(key)
                 if not isinstance(existing, (int, float)) or norm > float(existing):
                     dev_vals[key] = norm
+            elif p_name and (pc is not None or p_name in EOS_GENERIC_PARAM_NAMES):
+                dev_vals[p_name] = norm
 
     if rgb:
         r = round(rgb.get("red", 0.0) * 255)

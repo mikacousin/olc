@@ -288,6 +288,32 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     coarse_ch = ch
         return coarse_ch, fine_ch, ultra_fine_ch
 
+    def _get_resolution_channels_by_label(
+        self, label: str
+    ) -> tuple[Optional[Channel], Optional[Channel], Optional[Channel]]:
+        """Get (coarse_channel, fine_channel, ultra_fine_channel) matched by label."""
+        target = label.strip().lower()
+        if not target:
+            return None, None, None
+        coarse_ch = None
+        for ch in self.channels:
+            if not ch.fine and not ch.ultra_fine and ch.label.strip().lower() == target:
+                coarse_ch = ch
+                break
+        if coarse_ch is None:
+            return None, None, None
+        fine_target = f"{target}_fine"
+        ultra_target = f"{target}_ultra_fine"
+        fine_ch = None
+        ultra_fine_ch = None
+        for ch in self.channels:
+            ch_low = ch.label.strip().lower()
+            if ch.fine and ch_low == fine_target and fine_ch is None:
+                fine_ch = ch
+            elif ch.ultra_fine and ch_low == ultra_target and ultra_fine_ch is None:
+                ultra_fine_ch = ch
+        return coarse_ch, fine_ch, ultra_fine_ch
+
     def _get_coarse_fine_channels(
         self, channel_type: ChannelType
     ) -> tuple[Optional[Channel], Optional[Channel]]:
@@ -766,11 +792,13 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self._set_color_emitter_channels(ctype, base_val)
 
     # Physical, normalized and multi-resolution helpers
-    def _get_raw_and_max(
-        self, channel_type: ChannelType
+    @staticmethod
+    def _channels_raw_and_max(
+        coarse_ch: Optional[Channel],
+        fine_ch: Optional[Channel],
+        ultra_fine_ch: Optional[Channel],
     ) -> Optional[tuple[int, int, Channel, Optional[Channel], Optional[Channel]]]:
-        """Return (raw_value, max_raw_value, coarse_ch, fine_ch, ultra_fine_ch)."""
-        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        """Compute (raw_value, max_raw_value, coarse_ch, fine_ch, ultra_fine_ch)."""
         if coarse_ch is None:
             return None
         if ultra_fine_ch is not None and fine_ch is not None:
@@ -783,6 +811,57 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             raw = coarse_ch.value
             max_raw = 255
         return (raw, max_raw, coarse_ch, fine_ch, ultra_fine_ch)
+
+    @staticmethod
+    def _write_resolution_channels(
+        coarse_ch: Channel,
+        fine_ch: Optional[Channel],
+        ultra_fine_ch: Optional[Channel],
+        clamped_norm: float,
+    ) -> int:
+        """Write normalized value [0.0..1.0] across 8/16/24-bit channels; return raw."""
+        if ultra_fine_ch is not None and fine_ch is not None:
+            val_24 = round(clamped_norm * 16777215.0)
+            coarse_ch.set_value((val_24 >> 16) & 0xFF)
+            fine_ch.set_value((val_24 >> 8) & 0xFF)
+            ultra_fine_ch.set_value(val_24 & 0xFF)
+            return val_24
+        if fine_ch is not None:
+            val_16 = round(clamped_norm * 65535.0)
+            coarse_ch.set_value((val_16 >> 8) & 0xFF)
+            fine_ch.set_value(val_16 & 0xFF)
+            return val_16
+        coarse_ch.set_normalized(clamped_norm)
+        return coarse_ch.value
+
+    def _get_raw_and_max(
+        self, channel_type: ChannelType
+    ) -> Optional[tuple[int, int, Channel, Optional[Channel], Optional[Channel]]]:
+        """Return (raw_value, max_raw_value, coarse_ch, fine_ch, ultra_fine_ch)."""
+        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(channel_type)
+        return self._channels_raw_and_max(coarse_ch, fine_ch, ultra_fine_ch)
+
+    def get_channel_normalized_by_label(self, label: str) -> Optional[float]:
+        """Return normalized [0.0..1.0] value for a channel matched by label."""
+        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels_by_label(
+            label
+        )
+        res = self._channels_raw_and_max(coarse_ch, fine_ch, ultra_fine_ch)
+        if res is None:
+            return None
+        raw, max_raw, _, _, _ = res
+        return raw / float(max_raw) if max_raw > 0 else 0.0
+
+    def set_channel_normalized_by_label(self, label: str, norm: float) -> bool:
+        """Set normalized [0.0..1.0] value across 8/16/24-bit channels by label."""
+        coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels_by_label(
+            label
+        )
+        if coarse_ch is None:
+            return False
+        clamped_norm = max(0.0, min(1.0, float(norm)))
+        self._write_resolution_channels(coarse_ch, fine_ch, ultra_fine_ch, clamped_norm)
+        return True
 
     def _sync_param_after_raw_write(self, channel_type: ChannelType) -> None:
         """Synchronize _param_normalized and _param_last_raw from DMX channels."""
@@ -818,20 +897,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         clamped_norm = max(0.0, min(1.0, float(norm)))
         self._param_normalized[channel_type] = clamped_norm
 
-        if ultra_fine_ch is not None and fine_ch is not None:
-            val_24 = round(clamped_norm * 16777215.0)
-            coarse_ch.set_value((val_24 >> 16) & 0xFF)
-            fine_ch.set_value((val_24 >> 8) & 0xFF)
-            ultra_fine_ch.set_value(val_24 & 0xFF)
-            self._param_last_raw[channel_type] = val_24
-        elif fine_ch is not None:
-            val_16 = round(clamped_norm * 65535.0)
-            coarse_ch.set_value((val_16 >> 8) & 0xFF)
-            fine_ch.set_value(val_16 & 0xFF)
-            self._param_last_raw[channel_type] = val_16
-        else:
-            coarse_ch.set_normalized(clamped_norm)
-            self._param_last_raw[channel_type] = coarse_ch.value
+        self._param_last_raw[channel_type] = self._write_resolution_channels(
+            coarse_ch, fine_ch, ultra_fine_ch, clamped_norm
+        )
         if channel_type in COLOR_CHANNEL_TYPES:
             self._base_emitters[channel_type] = clamped_norm
             self._update_target_from_emitters()
@@ -1309,12 +1377,15 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         elif p_lower in ("gobo", "gobo_wheel"):
             self._apply_gobo_param(value)
         else:
+            ctype: Optional[ChannelType] = None
             try:
                 ctype = ChannelType(p_lower)
             except ValueError:
-                return
-            if self.get_channel(ctype) is not None:
+                ctype = None
+            if ctype is not None and self.get_channel(ctype) is not None:
                 self.set_parameter_normalized(ctype, max(0.0, min(1.0, float(value))))
+            elif isinstance(value, (int, float)):
+                self.set_channel_normalized_by_label(p_lower, float(value))
 
     def apply_device_values(self, values: dict[str, Any]) -> None:
         """Apply a batch of parameter values to this device."""

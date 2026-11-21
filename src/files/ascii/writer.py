@@ -21,8 +21,20 @@ from collections.abc import Mapping
 from olc.define import UNIVERSES, strip_accents
 from olc.files.write import WriteFile
 from olc.show.curve import LimitCurve
-from olc.show.effect import DistributeDirection, EffectMode, WaveformType
+from olc.show.effect import (
+    DistributeDirection,
+    EffectEnvelopeMode,
+    EffectMode,
+    WaveformType,
+)
 from olc.show.fader import FaderType
+
+_ENVELOPE_TO_EOS: dict[EffectEnvelopeMode, int] = {
+    EffectEnvelopeMode.IMMEDIATE: 0,
+    EffectEnvelopeMode.FADE_BY_SIZE: 1,
+    EffectEnvelopeMode.FADE_BY_RATE: 2,
+    EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE: 3,
+}
 
 if typing.TYPE_CHECKING:
     from olc.show.effect import EffectDefinition
@@ -79,6 +91,45 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("MANUFACTURER MIKA\n", "ascii"))
         self.stream.write(bytes("CONSOLE OLC\n\n", "ascii"))
         self.stream.write(bytes("CLEAR ALL\n\n", "ascii"))
+        wrote_meta = False
+        if title := getattr(self.lightshow, "title", ""):
+            self.stream.write(bytes(f"$$TITLE {title}\n", "utf8"))
+            wrote_meta = True
+        main_pb = getattr(self.lightshow, "main_playback", None)
+        if main_pb is not None:
+            mib_line = (
+                "$$AUTOMARK\n"
+                if getattr(main_pb, "mib_enabled", True)
+                else "$$AUTOMARK 0\n"
+            )
+            self.stream.write(bytes(mib_line, "ascii"))
+            wrote_meta = True
+        if (hp := getattr(self.lightshow, "home_preset", None)) is not None:
+            self.stream.write(
+                bytes(f"$$HOMEPRESET {self._float_to_str(hp)}\n", "ascii")
+            )
+            wrote_meta = True
+        if wrote_meta:
+            self.stream.write(bytes("\n", "ascii"))
+
+    def _write_cue_metadata(self, cue: typing.Any) -> None:  # noqa: ANN401
+        """Write block, assert, notes, and execute-preset metadata for a Cue."""
+        if self.stream is None or cue is None:
+            return
+        if getattr(cue, "is_block", False):
+            self.stream.write(bytes("$$BLOCK\n", "ascii"))
+        if getattr(cue, "is_int_block", False):
+            self.stream.write(bytes("$$INTBLOCK\n", "ascii"))
+        if getattr(cue, "is_assert", False):
+            self.stream.write(bytes("$$ASSERT\n", "ascii"))
+        if notes := getattr(cue, "notes", ""):
+            for note_line in str(notes).splitlines():
+                if note_line:
+                    self.stream.write(bytes(f"$$CUENOTES {note_line}\n", "utf8"))
+        if (exec_p := getattr(cue, "execute_preset", None)) is not None:
+            self.stream.write(
+                bytes(f"$$ACTION EXECUTE S {self._float_to_str(exec_p)}\n", "ascii")
+            )
 
     def _main_playback(self) -> None:
         if self.stream is None:
@@ -109,6 +160,7 @@ class AsciiWriter(WriteFile):
                 self.stream.write(bytes(f"$$PARTTIMECHAN {chan}\n", "ascii"))
             self._ascii_text(step.text)
             self.stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
+            self._write_cue_metadata(step.cue)
             self._save_channels(step.cue.channels)
             self._save_effect_refs(step.cue.effect_refs)
             self.stream.write(bytes("\n", "ascii"))
@@ -149,6 +201,7 @@ class AsciiWriter(WriteFile):
 
         layer_params = [layer.parameter for layer in eff.layers]
         first = eff.layers[0] if eff.layers else None
+        is_abs_exported = False
         if len(eff.layers) >= 2 and "pan" in layer_params and "tilt" in layer_params:
             self.stream.write(bytes("$$TYPE 2\n", "ascii"))
             self.stream.write(bytes("$$PARAMLIST 2 3\n", "ascii"))
@@ -162,7 +215,15 @@ class AsciiWriter(WriteFile):
         ):
             self.stream.write(bytes("$$TYPE 3\n", "ascii"))
             self.stream.write(bytes("$$PARAMLIST 12 13 14\n", "ascii"))
-        elif first is not None and first.mode == EffectMode.ABSOLUTE:
+        elif first is not None and (
+            first.mode == EffectMode.ABSOLUTE
+            or (
+                first.mode == EffectMode.RELATIVE
+                and first.waveform == WaveformType.PULSE
+                and first.size < 0.0
+            )
+        ):
+            is_abs_exported = True
             p_id = _OLC_PARAM_TO_EOS.get(first.parameter, (1, 0, "Intens"))[0]
             self.stream.write(bytes("$$TYPE 4\n", "ascii"))
             self.stream.write(bytes(f"$$PARAMLIST {p_id}\n", "ascii"))
@@ -172,10 +233,20 @@ class AsciiWriter(WriteFile):
                 t1, d1, t2, d2 = 0.0, span1, 0.0, span2
             else:
                 t1, d1, t2, d2 = span1, 0.0, span2, 0.0
-            tok1 = self._format_effect_action_token(first.low_palette, first.low_value)
-            tok2 = self._format_effect_action_token(
-                first.high_palette, first.high_value
-            )
+            if (
+                first.mode == EffectMode.RELATIVE
+                and first.waveform == WaveformType.PULSE
+                and first.size < 0.0
+            ):
+                tok1 = f"(+) {self._float_to_str(first.size)}"
+                tok2 = "Bkgrd"
+            else:
+                tok1 = self._format_effect_action_token(
+                    first.low_palette, first.low_value
+                )
+                tok2 = self._format_effect_action_token(
+                    first.high_palette, first.high_value
+                )
             self.stream.write(bytes(f"$$ACTION 1 {t1:.3f} {d1:.3f} {tok1}\n", "ascii"))
             self.stream.write(bytes(f"$$ACTION 2 {t2:.3f} {d2:.3f} {tok2}\n", "ascii"))
         else:
@@ -200,7 +271,23 @@ class AsciiWriter(WriteFile):
                         bytes(f"$$DATA {step_i + 1} {val:.4f}\n", "ascii")
                     )
 
+        if not is_abs_exported:
+            self.stream.write(
+                bytes(f"$$STEPTIMES 1 {eff.cycle_time * 1000.0:.3f} 0\n", "ascii")
+            )
+            if first is not None and abs(first.duty_cycle - 0.5) > 1e-4:
+                trail_pct = self._float_to_str(round(first.duty_cycle * 100.0, 2))
+                self.stream.write(bytes(f"$$TRAIL {trail_pct}\n", "ascii"))
+
         self.stream.write(bytes(f"$$GROUPING {eff.groups}\n", "ascii"))
+        if eff.entry_mode != EffectEnvelopeMode.FADE_BY_SIZE:
+            entry_code = _ENVELOPE_TO_EOS.get(eff.entry_mode, 1)
+            self.stream.write(bytes(f"$$ENTRY {entry_code}\n", "ascii"))
+        if eff.exit_mode != EffectEnvelopeMode.FADE_BY_SIZE:
+            exit_code = _ENVELOPE_TO_EOS.get(eff.exit_mode, 1)
+            self.stream.write(bytes(f"$$EXIT {exit_code}\n", "ascii"))
+        if eff.cascade:
+            self.stream.write(bytes("$$CASCADE\n", "ascii"))
         if eff.direction == DistributeDirection.RANDOM:
             self.stream.write(bytes("$$COMMAND 1562\n", "ascii"))
         self.stream.write(bytes("\n", "ascii"))
@@ -292,6 +379,7 @@ class AsciiWriter(WriteFile):
                 if step.text:
                     self._ascii_text(step.text)
                     self.stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
+                self._write_cue_metadata(step.cue)
                 self._save_channels(step.cue.channels)
                 self._save_effect_refs(step.cue.effect_refs)
                 self.stream.write(bytes("\n", "ascii"))
@@ -368,6 +456,10 @@ class AsciiWriter(WriteFile):
                             "ascii",
                         )
                     )
+                    if getattr(fader, "exempt_grand_master", False):
+                        self.stream.write(bytes("$$EXCLUDE 9\n", "ascii"))
+                    if getattr(fader, "intensity_master", False):
+                        self.stream.write(bytes("$$INTENSITYMASTER\n", "ascii"))
                     if content_type == FaderType.EFFECT:
                         if eff_chs := getattr(fader, "effect_channels", []):
                             self._save_channel_list(list(eff_chs))
