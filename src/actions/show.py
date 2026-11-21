@@ -445,6 +445,7 @@ def _apply_import_options(
         "patch",
         "groups",
         "palettes",
+        "effects",
         "independents",
         "faders",
         "midi",

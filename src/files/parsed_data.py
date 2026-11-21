@@ -24,7 +24,7 @@ from olc.files.import_types import Action
 from olc.show.channel_time import ChannelTime
 from olc.show.cue import Cue
 from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.show.effect import deserialize_effect_refs
+from olc.show.effect import EffectDefinition, deserialize_effect_refs
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.group import Group
 from olc.show.independent import IndependentType
@@ -299,7 +299,10 @@ class ParsedData:
         effects_data = self.data.get("effects")
         if not effects_data or not hasattr(self.lightshow, "effects"):
             return
-        self.lightshow.effects.from_list(effects_data)
+        # REPLACE clears the pool beforehand; MERGE keeps non-conflicting effects.
+        for item in effects_data:
+            if isinstance(item, dict):
+                self.lightshow.effects.add(EffectDefinition.from_dict(item))
 
     def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data

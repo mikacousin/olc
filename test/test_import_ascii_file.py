@@ -1182,3 +1182,240 @@ def test_import_eos_base_nocturne_slots_units_notes_and_inversions(
     rgba = lightshow.fixture_library.get("Custom", "ParLite_LED_RGBA")
     assert "flash in this range" in rgba.notes
     assert "DMX Status: Tested\nRDM Status: Not Supported" in rgba.notes
+
+
+_EOS_EFFECTS_ASC = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$ParamType 12 3 Red
+$ParamType 13 3 Green
+$ParamType 14 3 Blue
+$ParamType 79 5 Zoom
+$Effect 3
+   Text strob|| Abs
+   $$Type 4 ! Absolute
+   $$Grouping 1
+   $$Action   1  0.02 0 0
+   $$Action   2  0.01 0 Bkgrd
+$Effect 7
+   Text sin
+   $$Type 1 ! Linear
+   $$Scale 50
+   $$Data   1 0
+$Effect 5
+   Text zoom -> mini||Sin
+   $$Type 1 ! Linear
+   $$Scale 15
+   $$ParamList  79
+   $$Data   1 0
+$Effect 901
+   Text Figure 8
+   $$Type 2 ! Focus
+   $$Scale 27
+   $$ParamList  2 3
+   $$Dimensions 2
+   $$Data   1 0 1
+$Effect 917
+   Text Rainbow RGB
+   $$Type 1 ! Linear
+   $$ParamList  12 13 14
+   $$Data   1 0 0 0
+$Effect 100
+   Text CHENILLARD
+   $$Type 5 ! StepBased
+   $$Step   1  1 1 0 1 100 0
+   $$ChanList      3
+   $$Step   2  1 1 0 1 100 0
+   $$ChanList      1
+$CueList 1
+Cue 1 1
+   Chan 1@Hff
+   $$EffectChan  7  21  1
+   $$EffectChan  7  22  1
+   $$EffectChan  7  23  1
+   $$EffectData  7  Rate 79
+   $$EffectData  7  Size 50
+Cue 2 1
+   Chan 1@Hff
+   $$EffectData  7  Rate 30
+Cue 3 1
+   Chan 1@Hff
+   $$EffectChan  0  22  1
+EndData
+"""
+
+
+def _parse_asc(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object, content: str
+) -> ImportFile:
+    import pathlib
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+    assert isinstance(tmp_path, pathlib.Path)
+    asc_file = tmp_path / "eos_effects.asc"
+    asc_file.write_text(content, encoding="utf-8")
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_file)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+    return imported
+
+
+def test_import_eos_effect_definitions_and_cue_refs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Eos $Effect blocks and $$EffectChan/$$EffectData are imported."""
+    imported = _parse_asc(monkeypatch, tmp_path, _EOS_EFFECTS_ASC)
+    effects = imported.lightshow.effects
+
+    assert len(effects) == 6
+
+    strobe = effects.get(3.0)
+    assert strobe is not None
+    assert strobe.groups == 1
+    assert strobe.layers[0].parameter == "intensity"
+    assert strobe.layers[0].low_value == 0.0
+    assert strobe.layers[0].mode.value == "absolute"
+
+    sine = effects.get(7.0)
+    assert sine is not None
+    assert sine.layers[0].size == 50.0
+
+    zoom = effects.get(5.0)
+    assert zoom is not None
+    assert zoom.layers[0].parameter == "zoom"
+    assert zoom.layers[0].size == 15.0
+
+    fig8 = effects.get(901.0)
+    assert fig8 is not None
+    assert [layer.parameter for layer in fig8.layers] == ["pan", "tilt"]
+    assert fig8.layers[1].freq_mult == 2.0
+    assert fig8.layers[0].size == 27.0
+
+    rainbow = effects.get(917.0)
+    assert rainbow is not None
+    assert rainbow.layers[0].parameter == "color"
+    assert rainbow.layers[0].waveform.value == "rainbow"
+
+    chase = effects.get(100.0)
+    assert chase is not None
+    assert chase.groups == 2
+
+    cues = [s.cue for s in imported.lightshow.main_playback.steps if s.cue]
+    cue1 = next(c for c in cues if c.number == 1.0)
+    cue2 = next(c for c in cues if c.number == 2.0)
+    cue3 = next(c for c in cues if c.number == 3.0)
+
+    assert sorted(cue1.effect_refs) == [21, 22, 23]
+    assert cue1.effect_refs[21]["order_index"] == 0
+    assert cue1.effect_refs[23]["order_index"] == 2
+    assert cue1.effect_refs[22]["channels"] == [21, 22, 23]
+    assert cue1.effect_refs[21]["rate_scale"] == pytest.approx(0.79)
+    assert cue1.effect_refs[21]["size_scale"] == pytest.approx(0.5)
+
+    # Data-only cue updates the tracked effect on the same ordered channels
+    assert cue2.effect_refs[21]["effect"] == 7.0
+    assert cue2.effect_refs[21]["rate_scale"] == pytest.approx(0.30)
+
+    # EffectChan 0 is a Stop Effect marker
+    assert cue3.effect_refs[22] == {"stop": True}
+
+
+def test_import_eos_effects_action_merge_and_ignore(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Import actions Replace / Merge / Ignore apply to effects."""
+    from olc.files.import_types import Action
+    from olc.show.effect import EffectDefinition
+
+    imported = _parse_asc(monkeypatch, tmp_path, _EOS_EFFECTS_ASC)
+    show = imported.lightshow
+
+    # Merge keeps an unrelated pre-existing effect
+    show.effects.add(EffectDefinition(number=500.0, label="Keep me"))
+    imported.actions["effects"] = Action.MERGE
+    imported.do_import()
+    assert show.effects.get(500.0) is not None
+    assert show.effects.get(3.0) is not None
+
+    # Replace clears it
+    imported.actions["effects"] = Action.REPLACE
+    imported.do_import()
+    assert show.effects.get(500.0) is None
+    assert show.effects.get(3.0) is not None
+
+    # Ignore leaves the pool untouched
+    show.effects.add(EffectDefinition(number=501.0, label="Stay"))
+    imported.actions["effects"] = Action.IGNORE
+    imported.do_import()
+    assert show.effects.get(501.0) is not None
+
+
+def test_import_eos_sub_effect_mounted_on_effect_fader(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """A Sub carrying $$EffectChan mounted on a fader becomes an Effect fader."""
+    from olc.show.fader import FaderEffect, FaderType
+
+    content = _EOS_EFFECTS_ASC.replace(
+        "$CueList 1",
+        """Sub 20 1
+   Text chaser horaire
+   Chan 21@Hff 22@Hff
+   $$EffectChan  7  22  1
+   $$EffectChan  7  21  1
+$FaderDef 1
+   $$Target S 20
+$CueList 1""",
+    )
+    imported = _parse_asc(monkeypatch, tmp_path, content)
+    show = imported.lightshow
+
+    assert show.fader_bank.get_fader_type(1, 1) == FaderType.EFFECT
+    fader = show.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.contents is show.effects.get(7.0)
+    assert fader.effect_channels == [22, 21]
+
+
+def test_import_eos_base_nocturne_effects(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify doc/00  Base  Nocturne.asc imports its 34 effects and cue refs."""
+    import pathlib
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+
+    assert len(lightshow.effects) == 34
+    circle = lightshow.effects.get(901.0)
+    assert circle is not None
+    assert [layer.parameter for layer in circle.layers] == ["pan", "tilt"]
+    rainbow = lightshow.effects.get(917.0)
+    assert rainbow is not None
+    assert rainbow.layers[0].waveform.value == "rainbow"
+
+    cue106 = lightshow.cues.get(106.0, 0)
+    assert cue106 is not None
+    assert cue106.effect_refs[21]["effect"] == 7.0
+    assert cue106.effect_refs[21]["channels"] == [21, 22, 23, 24, 25, 26]
+    assert cue106.effect_refs[21]["rate_scale"] == pytest.approx(0.79)
+
+    cue107 = lightshow.cues.get(107.0, 0)
+    assert cue107 is not None
+    assert cue107.effect_refs[1] == {"stop": True}

@@ -35,6 +35,12 @@ from olc.files.ascii.eos_devices import (
     is_dimmer_personality,
     parse_eos_param_token,
 )
+from olc.files.ascii.eos_effects import (
+    convert_eos_effect,
+    new_eos_effect,
+    parse_effect_data_value,
+    record_eos_effect_line,
+)
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
@@ -88,6 +94,7 @@ class State(Enum):
     NEW_PATCH = auto()
     NEW_CURVE = auto()
     NEW_FADERDEF = auto()
+    NEW_EFFECT = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
@@ -101,6 +108,7 @@ class State(Enum):
     IN_PATCH = auto()
     IN_CURVE = auto()
     IN_FADERDEF = auto()
+    IN_EFFECT = auto()
 
 
 # pylint: disable=too-many-instance-attributes
@@ -179,6 +187,9 @@ class AsciiParser(ReadFile):
         ] = {}
         self.subs: dict[int, dict[str, typing.Any]] = {}
         self._sub_preset_numbers: dict[int, float] = {}
+        self._raw_effects: dict[float, dict[str, typing.Any]] = {}
+        self._cue_effects: dict[tuple[int, float], dict[str, typing.Any]] = {}
+        self._sub_effects: dict[int, dict[str, typing.Any]] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -208,7 +219,9 @@ class AsciiParser(ReadFile):
                 if not loop:
                     break
         self._finalize_personalities()
+        self._finalize_effects()
         self._resolve_palettes_and_refs()
+        self._resolve_effect_refs()
 
     def _do_parse(self, line: str) -> bool:
         """Parse line
@@ -304,6 +317,10 @@ class AsciiParser(ReadFile):
             self._new_faderdef()
         elif self.state is State.IN_FADERDEF:
             self._do_faderdef()
+        elif self.state is State.NEW_EFFECT:
+            self._new_effect()
+        elif self.state is State.IN_EFFECT:
+            self._do_effect()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
@@ -528,6 +545,11 @@ class AsciiParser(ReadFile):
             )
         elif self.keyword == "$$block":
             cue["is_block"] = True
+        elif self.keyword in ("$$effectchan", "$$effectdata"):
+            cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
+            self._record_effect_call(
+                self._cue_effects.setdefault(cue_key, self._new_effect_store())
+            )
         elif self.keyword == "$$param" and len(self.args) >= 3:
             cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
             self._record_param_line(
@@ -952,6 +974,10 @@ class AsciiParser(ReadFile):
                 channel = int(self.args[index])
                 if channel <= MAX_CHANNELS:
                     sub["channels"][channel] = self._get_level(self.args[index + 1])
+        elif self.keyword in ("$$effectchan", "$$effectdata"):
+            self._record_effect_call(
+                self._sub_effects.setdefault(sub_id, self._new_effect_store())
+            )
         elif self.keyword == "$$param" and len(self.args) >= 3:
             self._record_param_line(
                 self._sub_raw_params.setdefault(sub_id, {}),
@@ -968,6 +994,117 @@ class AsciiParser(ReadFile):
                     if p_id == 1 and raw_val is not None:
                         max_raw = 65535.0 if raw_val > 255.0 else 255.0
                         sub["channels"][channel] = max(0.0, min(1.0, raw_val / max_raw))
+
+    def _new_effect(self) -> None:
+        if not self.args:
+            self.state = State.NO_PRIMARY
+            return
+        try:
+            number = float(self.args[0])
+        except ValueError:
+            self.state = State.NO_PRIMARY
+            return
+        self._raw_effects[number] = new_eos_effect(number)
+        self.current["effect"] = number
+        self.current["utext_active"] = False
+        self.state = State.IN_EFFECT
+
+    def _do_effect(self) -> None:
+        raw = self._raw_effects.get(self.current.get("effect", -1.0))
+        if raw is None:
+            return
+        if self.keyword in ("text", "$$text", "$$utext"):
+            self._apply_label(raw)
+        else:
+            record_eos_effect_line(raw, self.keyword, self.args)
+
+    def _finalize_effects(self) -> None:
+        """Convert accumulated Eos $Effect blocks into OLC effect dictionaries."""
+        if not self._raw_effects:
+            return
+        effects = self.data.setdefault("effects", [])
+        for number in sorted(self._raw_effects):
+            effects.append(
+                convert_eos_effect(self._raw_effects[number], self.param_types)
+            )
+
+    @staticmethod
+    def _new_effect_store() -> dict[str, typing.Any]:
+        return {"chans": {}, "data": {}}
+
+    def _record_effect_call(self, store: dict[str, typing.Any]) -> None:
+        """Record one $$EffectChan / $$EffectData line into *store*."""
+        try:
+            if self.keyword == "$$effectchan" and len(self.args) >= 2:
+                eff = round(float(self.args[0]), 3)
+                channel = int(self.args[1])
+                store["chans"].setdefault(eff, [])
+                if channel not in store["chans"][eff]:
+                    store["chans"][eff].append(channel)
+            elif self.keyword == "$$effectdata" and len(self.args) >= 3:
+                eff = round(float(self.args[0]), 3)
+                parsed = parse_effect_data_value(self.args[1], self.args[2])
+                if parsed is not None:
+                    store["data"].setdefault(eff, {})[parsed[0]] = parsed[1]
+        except ValueError:
+            return
+
+    @staticmethod
+    def _build_effect_refs(
+        store: dict[str, typing.Any],
+        running: dict[float, list[int]],
+    ) -> dict[int, dict[str, typing.Any]]:
+        """Build Cue.effect_refs-style mapping from a recorded effect store."""
+        refs: dict[int, dict[str, typing.Any]] = {}
+        data = store["data"]
+        for eff, chans in store["chans"].items():
+            if eff == 0.0:
+                for ch in chans:
+                    refs[ch] = {"stop": True}
+                    for run_chs in running.values():
+                        if ch in run_chs:
+                            run_chs.remove(ch)
+                continue
+            overrides = data.get(eff, {})
+            for idx, ch in enumerate(chans):
+                refs[ch] = {
+                    "effect": eff,
+                    "order_index": idx,
+                    "channels": list(chans),
+                    "rate_scale": float(overrides.get("rate_scale", 1.0)),
+                    "size_scale": float(overrides.get("size_scale", 1.0)),
+                }
+            running[eff] = list(chans)
+        # Data-only updates on an already running (tracked) effect
+        for eff, overrides in data.items():
+            if eff in store["chans"] or eff == 0.0:
+                continue
+            chans = running.get(eff)
+            if not chans:
+                continue
+            for idx, ch in enumerate(chans):
+                refs[ch] = {
+                    "effect": eff,
+                    "order_index": idx,
+                    "channels": list(chans),
+                    "rate_scale": float(overrides.get("rate_scale", 1.0)),
+                    "size_scale": float(overrides.get("size_scale", 1.0)),
+                }
+        return refs
+
+    def _resolve_effect_refs(self) -> None:
+        """Attach recorded effect calls to each Cue of each sequence, in step order."""
+        for seq_num, seq in self.data.get("sequences", {}).items():
+            running: dict[float, list[int]] = {}
+            steps = seq.get("steps", {})
+            for step_nb in sorted(steps):
+                cue_num = steps[step_nb].get("cue")
+                store = self._cue_effects.get((int(seq_num), float(cue_num)))
+                if store is None:
+                    continue
+                refs = self._build_effect_refs(store, running)
+                if refs:
+                    seq["cues"][cue_num]["effect_refs"] = refs
 
     def _new_faderdef(self) -> None:
         if not self.args:
@@ -998,6 +1135,22 @@ class AsciiParser(ReadFile):
         if target_type == "s" and len(self.args) >= 2:
             sub_id = int(self.args[1])
             sub = self.subs.get(sub_id)
+            sub_fx = self._sub_effects.get(sub_id)
+            running_effs = (
+                [(e, c) for e, c in sub_fx["chans"].items() if e > 0.0 and c]
+                if sub_fx
+                else []
+            )
+            if running_effs:
+                eff_num, eff_chans = running_effs[0]
+                self.data["faders"][index] = {
+                    "page": page,
+                    "number": number,
+                    "type": FaderType.EFFECT,
+                    "contents": eff_num,
+                    "effect_channels": list(eff_chans),
+                }
+                return
             if sub and (
                 sub["channels"]
                 or self._sub_raw_params.get(sub_id)
@@ -1052,6 +1205,8 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_CURVE
         elif self.keyword == "$faderdef":
             self.state = State.NEW_FADERDEF
+        elif self.keyword == "$effect":
+            self.state = State.NEW_EFFECT
         elif self.keyword in ("$sequence", "$cuelist", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):
