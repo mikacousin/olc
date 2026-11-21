@@ -1832,12 +1832,15 @@ class CommandExecutor:
         propagation = res.get("propagation", {}) if isinstance(res, dict) else {}
         cues_upd = propagation.get("cues", 0)
         presets_upd = propagation.get("presets", 0)
-        if presets_upd or cues_upd:
-            return CommandResult(
-                True,
+        effects_upd = propagation.get("effects", 0)
+        if presets_upd or cues_upd or effects_upd:
+            msg = (
                 f"Updated {label} (propagated to {presets_upd} preset(s), "
-                f"{cues_upd} cue(s))",
+                f"{cues_upd} cue(s)"
             )
+            if effects_upd:
+                msg += f", {effects_upd} effect(s)"
+            return CommandResult(True, f"{msg})")
         return CommandResult(True, f"Updated {label}")
 
     def _execute_delete_palette(self, node: DeletePaletteCommandNode) -> CommandResult:

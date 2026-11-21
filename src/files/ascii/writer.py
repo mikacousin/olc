@@ -21,10 +21,32 @@ from collections.abc import Mapping
 from olc.define import UNIVERSES, strip_accents
 from olc.files.write import WriteFile
 from olc.show.curve import LimitCurve
+from olc.show.effect import DistributeDirection, EffectMode, WaveformType
 from olc.show.fader import FaderType
 
 if typing.TYPE_CHECKING:
+    from olc.show.effect import EffectDefinition
     from olc.show.lightshow import LightShow
+    from olc.show.palette import PaletteRef
+
+_OLC_PARAM_TO_EOS: dict[str, tuple[int, int, str]] = {
+    "intensity": (1, 0, "Intens"),
+    "pan": (2, 1, "Pan"),
+    "tilt": (3, 1, "Tilt"),
+    "color": (12, 2, "Red"),
+    "zoom": (15, 3, "Zoom"),
+    "focus": (16, 3, "Edge"),
+    "strobe": (21, 3, "Shutter_Strobe"),
+    "color_temp": (22, 2, "Color_Temperature"),
+}
+
+_PALETTE_CAT_TO_EOS_PREFIX: dict[str, str] = {
+    "intensity": "IP",
+    "focus": "FP",
+    "color": "CP",
+    "beam": "BP",
+    "preset": "PR",
+}
 
 
 class AsciiWriter(WriteFile):
@@ -41,8 +63,9 @@ class AsciiWriter(WriteFile):
 
     def export(self) -> None:
         self._header()
+        self._effects()
         self._main_playback()
-        self._chasers()
+        self._sequences()
         self._groups()
         self._masters()
         self._patch()
@@ -87,9 +110,160 @@ class AsciiWriter(WriteFile):
             self._ascii_text(step.text)
             self.stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
             self._save_channels(step.cue.channels)
+            self._save_effect_refs(step.cue.effect_refs)
             self.stream.write(bytes("\n", "ascii"))
 
-    def _chasers(self) -> None:
+    def _effects(self) -> None:
+        if self.stream is None or not hasattr(self.lightshow, "effects"):
+            return
+        effects = self.lightshow.effects.all()
+        if not effects:
+            return
+        self.stream.write(
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
+        self.stream.write(bytes("! Effects\n\n", "ascii"))
+
+        used_params: dict[int, tuple[int, str]] = {}
+        for eff in effects:
+            for layer in eff.layers:
+                info = _OLC_PARAM_TO_EOS.get(layer.parameter)
+                if info is not None and info[0] != 1:
+                    used_params[info[0]] = (info[1], info[2])
+        for p_id in sorted(used_params):
+            p_cat, p_name = used_params[p_id]
+            self.stream.write(bytes(f"$PARAMTYPE {p_id} {p_cat} {p_name}\n", "ascii"))
+        if used_params:
+            self.stream.write(bytes("\n", "ascii"))
+
+        for eff in effects:
+            self._write_single_effect(eff)
+
+    def _write_single_effect(self, eff: EffectDefinition) -> None:
+        if self.stream is None:
+            return
+        self.stream.write(bytes(f"$EFFECT {self._float_to_str(eff.number)}\n", "ascii"))
+        if eff.label:
+            self._ascii_text(eff.label)
+            self.stream.write(bytes(f"$$TEXT {eff.label}\n", "utf8"))
+
+        layer_params = [layer.parameter for layer in eff.layers]
+        first = eff.layers[0] if eff.layers else None
+        if len(eff.layers) >= 2 and "pan" in layer_params and "tilt" in layer_params:
+            self.stream.write(bytes("$$TYPE 2\n", "ascii"))
+            self.stream.write(bytes("$$PARAMLIST 2 3\n", "ascii"))
+            self.stream.write(
+                bytes(f"$$SCALE {self._float_to_str(eff.layers[0].size)}\n", "ascii")
+            )
+        elif (
+            first is not None
+            and first.parameter == "color"
+            and first.waveform == WaveformType.RAINBOW
+        ):
+            self.stream.write(bytes("$$TYPE 3\n", "ascii"))
+            self.stream.write(bytes("$$PARAMLIST 12 13 14\n", "ascii"))
+        elif first is not None and first.mode == EffectMode.ABSOLUTE:
+            p_id = _OLC_PARAM_TO_EOS.get(first.parameter, (1, 0, "Intens"))[0]
+            self.stream.write(bytes("$$TYPE 4\n", "ascii"))
+            self.stream.write(bytes(f"$$PARAMLIST {p_id}\n", "ascii"))
+            span1 = max(0.01, eff.cycle_time * first.duty_cycle)
+            span2 = max(0.01, eff.cycle_time * (1.0 - first.duty_cycle))
+            if first.softness <= 0.1:
+                t1, d1, t2, d2 = 0.0, span1, 0.0, span2
+            else:
+                t1, d1, t2, d2 = span1, 0.0, span2, 0.0
+            tok1 = self._format_effect_action_token(first.low_palette, first.low_value)
+            tok2 = self._format_effect_action_token(
+                first.high_palette, first.high_value
+            )
+            self.stream.write(bytes(f"$$ACTION 1 {t1:.3f} {d1:.3f} {tok1}\n", "ascii"))
+            self.stream.write(bytes(f"$$ACTION 2 {t2:.3f} {d2:.3f} {tok2}\n", "ascii"))
+        else:
+            p_id = (
+                _OLC_PARAM_TO_EOS.get(first.parameter, (1, 0, "Intens"))[0]
+                if first is not None
+                else 1
+            )
+            scale = first.size if first is not None else 50.0
+            self.stream.write(bytes("$$TYPE 1\n", "ascii"))
+            self.stream.write(bytes(f"$$PARAMLIST {p_id}\n", "ascii"))
+            self.stream.write(bytes(f"$$SCALE {self._float_to_str(scale)}\n", "ascii"))
+            if first is not None and first.waveform in (
+                WaveformType.SAW_UP,
+                WaveformType.SAW_DOWN,
+            ):
+                for step_i in range(8):
+                    val = step_i / 7.0
+                    if first.waveform == WaveformType.SAW_DOWN:
+                        val = 1.0 - val
+                    self.stream.write(
+                        bytes(f"$$DATA {step_i + 1} {val:.4f}\n", "ascii")
+                    )
+
+        self.stream.write(bytes(f"$$GROUPING {eff.groups}\n", "ascii"))
+        if eff.direction == DistributeDirection.RANDOM:
+            self.stream.write(bytes("$$COMMAND 1562\n", "ascii"))
+        self.stream.write(bytes("\n", "ascii"))
+
+    def _format_effect_action_token(
+        self,
+        palette_ref: PaletteRef | None,
+        value: float | str | None,
+    ) -> str:
+        """Format an Eos $$ACTION target token from a palette ref or numeric bound."""
+        if palette_ref is not None:
+            prefix = _PALETTE_CAT_TO_EOS_PREFIX.get(str(palette_ref[0]).strip().lower())
+            if prefix:
+                return f"{prefix}{self._float_to_str(float(palette_ref[1]))}"
+        if isinstance(value, (int, float)):
+            return self._float_to_str(float(value))
+        return "Bkgrd"
+
+    def _save_effect_refs(
+        self, effect_refs: Mapping[int, dict[str, typing.Any]]
+    ) -> None:
+        """Write $$EFFECTCHAN and $$EFFECTDATA lines for cue effect references."""
+        if self.stream is None or not effect_refs:
+            return
+        stopped_chans: list[int] = []
+        by_fx: dict[float, tuple[list[tuple[int, int]], dict[str, typing.Any]]] = {}
+        for ch_raw, spec in effect_refs.items():
+            if not isinstance(spec, dict):
+                continue
+            ch = int(ch_raw)
+            if spec.get("stop"):
+                stopped_chans.append(ch)
+                continue
+            fx_num = spec.get("effect")
+            if fx_num is None:
+                fx_num = spec.get("effect_number")
+            if fx_num is None:
+                continue
+            fx_id = float(fx_num)
+            order_idx = int(spec.get("order_index", spec.get("selection_index", 0)))
+            if fx_id not in by_fx:
+                by_fx[fx_id] = ([], spec)
+            by_fx[fx_id][0].append((order_idx, ch))
+
+        for ch in sorted(stopped_chans):
+            self.stream.write(bytes(f"$$EFFECTCHAN 0 {ch} 1\n", "ascii"))
+
+        for fx_id in sorted(by_fx):
+            indexed_chans, spec = by_fx[fx_id]
+            indexed_chans.sort(key=lambda item: (item[0], item[1]))
+            fx_str = self._float_to_str(fx_id)
+            for _order, ch in indexed_chans:
+                self.stream.write(bytes(f"$$EFFECTCHAN {fx_str} {ch} 1\n", "ascii"))
+            rate_scale = float(spec.get("rate_scale", 1.0))
+            if abs(rate_scale - 1.0) > 1e-4:
+                pct = self._float_to_str(round(rate_scale * 100.0, 3))
+                self.stream.write(bytes(f"$$EFFECTDATA {fx_str} RATE {pct}\n", "ascii"))
+            size_scale = float(spec.get("size_scale", 1.0))
+            if abs(size_scale - 1.0) > 1e-4:
+                pct = self._float_to_str(round(size_scale * 100.0, 3))
+                self.stream.write(bytes(f"$$EFFECTDATA {fx_str} SIZE {pct}\n", "ascii"))
+
+    def _sequences(self) -> None:
         if self.stream is None:
             return
         self.stream.write(
@@ -119,6 +293,7 @@ class AsciiWriter(WriteFile):
                     self._ascii_text(step.text)
                     self.stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
                 self._save_channels(step.cue.channels)
+                self._save_effect_refs(step.cue.effect_refs)
                 self.stream.write(bytes("\n", "ascii"))
 
     def _groups(self) -> None:
@@ -160,9 +335,14 @@ class AsciiWriter(WriteFile):
         self.stream.write(
             bytes("!               Content type (1=Preset, 2=Channels,\n", "ascii")
         )
-        self.stream.write(bytes("!               3=Chaser, 99=Main Fader),\n", "ascii"))
         self.stream.write(
-            bytes("!               Content value (Preset#, Chaser#),\n", "ascii")
+            bytes("!               3=Sequence, 4=Effect, 99=Main Fader),\n", "ascii")
+        )
+        self.stream.write(
+            bytes(
+                "!               Content value (Preset#, Sequence#, Effect#),\n",
+                "ascii",
+            )
         )
         self.stream.write(
             bytes("!               Time In, Wait time, Time Out,\n", "ascii")
@@ -178,6 +358,8 @@ class AsciiWriter(WriteFile):
                     contents = str(fader.contents.index)
                 elif content_type == FaderType.PRESET and fader.contents is not None:
                     contents = self._float_to_str(fader.contents.number)
+                elif content_type == FaderType.EFFECT and fader.contents is not None:
+                    contents = self._float_to_str(fader.contents.number)
                 if content_type not in (FaderType.NONE, FaderType.MAIN):
                     self.stream.write(
                         bytes(
@@ -186,6 +368,14 @@ class AsciiWriter(WriteFile):
                             "ascii",
                         )
                     )
+                    if content_type == FaderType.EFFECT:
+                        if eff_chs := getattr(fader, "effect_channels", []):
+                            self._save_channel_list(list(eff_chs))
+                        ctrl_mode = getattr(fader, "control_mode", "size")
+                        if ctrl_mode in ("rate", "both"):
+                            self.stream.write(
+                                bytes(f"$$EFFECTMODE {ctrl_mode}\n", "ascii")
+                            )
         self.stream.write(bytes("\n", "ascii"))
 
     def _patch(self) -> None:
@@ -289,4 +479,5 @@ class AsciiWriter(WriteFile):
         )
 
     def _float_to_str(self, number: float) -> str:
-        return str(int(number)) if number.is_integer() else str(number)
+        val = float(number)
+        return str(int(val)) if val.is_integer() else str(val)

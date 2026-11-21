@@ -1419,3 +1419,160 @@ def test_import_eos_base_nocturne_effects(monkeypatch: pytest.MonkeyPatch) -> No
     cue107 = lightshow.cues.get(107.0, 0)
     assert cue107 is not None
     assert cue107.effect_refs[1] == {"stop": True}
+
+
+def test_ascii_export_import_effects_round_trip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """AsciiWriter round-trips effects, cue effect_refs, and Effect faders."""
+    import pathlib
+
+    from olc.files.ascii.writer import AsciiWriter
+    from olc.show.cue import Cue
+    from olc.show.effect import DistributeDirection
+    from olc.show.fader import FaderEffect, FaderType
+    from olc.show.palette import Palette, PaletteCategory
+    from olc.show.sequence import Sequence
+    from olc.show.step import Step
+
+    assert isinstance(tmp_path, pathlib.Path)
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    show = LightShow()
+    show.palettes.add(
+        Palette(
+            category=PaletteCategory.COLOR,
+            number=1.0,
+            text="Red",
+            device_values={1: {"color": "#ff0000"}},
+        )
+    )
+    show.palettes.add(
+        Palette(
+            category=PaletteCategory.COLOR,
+            number=2.0,
+            text="Blue",
+            device_values={1: {"color": "#0000ff"}},
+        )
+    )
+
+    eff1 = show.effects.create_from_template("sine_dimmer", 1.0, label="Warm Sine")
+    eff1.groups = 2
+    show.effects.create_from_template("circle", 2.0, label="Circle")
+    eff3 = show.effects.create_from_template("rainbow", 3.0, label="Rainbow")
+    eff3.direction = DistributeDirection.RANDOM
+    eff4 = show.effects.create_from_template(
+        "two_color_chase", 4.0, label="Color Bounce"
+    )
+    eff4.layers[0].softness = 0.0
+
+    # Main playback cues: Cue 1 starts Effect 1 on [3, 1, 2]; Cue 2 stops ch 1
+    cue1 = Cue(
+        1,
+        1.0,
+        {1: 1.0, 2: 0.8, 3: 0.6},
+        text="FX Start",
+        effect_refs={
+            ch: {
+                "effect": 1.0,
+                "order_index": idx,
+                "channels": [3, 1, 2],
+                "rate_scale": 0.8,
+                "size_scale": 0.6,
+            }
+            for idx, ch in enumerate([3, 1, 2])
+        },
+    )
+    cue2 = Cue(1, 2.0, {}, text="FX Stop ch1", effect_refs={1: {"stop": True}})
+    show.cues.add(cue1)
+    show.cues.add(cue2)
+    show.main_playback.insert_step(1, Step(1, cue=cue1, text="FX Start"))
+    show.main_playback.insert_step(2, Step(1, cue=cue2, text="FX Stop ch1"))
+
+    # Secondary Sequence 2 Cue 1 starts Effect 2 on [10, 11]
+    seq2 = Sequence(2, type_seq="Normal", text="FX Seq", lightshow=show)
+    seq2_cue1 = Cue(
+        2,
+        1.0,
+        {10: 1.0, 11: 1.0},
+        text="Sec FX",
+        effect_refs={
+            10: {"effect": 2.0, "order_index": 0, "channels": [10, 11]},
+            11: {"effect": 2.0, "order_index": 1, "channels": [10, 11]},
+        },
+    )
+    seq2.cues.add(seq2_cue1)
+    seq2.insert_step(1, Step(2, cue=seq2_cue1, text="Sec FX"))
+    show.sequences.append(seq2)
+
+    # Effect Fader on page 1, index 1 with control_mode='both' & channels [3, 1, 2]
+    show.fader_bank.set_fader(1, 1, FaderType.EFFECT, 1.0)
+    fader1 = show.fader_bank.faders[1][1]
+    assert isinstance(fader1, FaderEffect)
+    fader1.set_control_mode("both")
+    fader1.set_effect_channels([3, 1, 2])
+
+    asc_path = tmp_path / "effects_roundtrip.asc"
+    AsciiWriter(asc_path, show).write()
+    assert asc_path.exists()
+
+    # Re-import into a fresh LightShow
+    reimported = LightShow()
+    importer = ImportFile(
+        reimported, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    importer.parse_sync(auto_import=True)
+
+    assert len(reimported.effects) == 4
+    re_eff1 = reimported.effects.get(1.0)
+    assert re_eff1 is not None
+    assert re_eff1.label == "Warm Sine"
+    assert re_eff1.groups == 2
+    assert re_eff1.layers[0].waveform.value == "sine"
+
+    re_eff2 = reimported.effects.get(2.0)
+    assert re_eff2 is not None
+    assert [layer.parameter for layer in re_eff2.layers] == ["pan", "tilt"]
+    assert re_eff2.layers[0].size == pytest.approx(15.0)
+
+    re_eff3 = reimported.effects.get(3.0)
+    assert re_eff3 is not None
+    assert re_eff3.direction == DistributeDirection.RANDOM
+    assert re_eff3.layers[0].waveform.value == "rainbow"
+
+    re_eff4 = reimported.effects.get(4.0)
+    assert re_eff4 is not None
+    assert re_eff4.layers[0].parameter == "color"
+    assert re_eff4.layers[0].low_palette == ("color", 1.0)
+    assert re_eff4.layers[0].high_palette == ("color", 2.0)
+    assert re_eff4.layers[0].softness == pytest.approx(0.0)
+
+    # Verify main playback cue effect_refs round-trip
+    re_cues = [s.cue for s in reimported.main_playback.steps if s.cue]
+    re_cue1 = next(c for c in re_cues if c.number == 1.0)
+    re_cue2 = next(c for c in re_cues if c.number == 2.0)
+    assert re_cue1.effect_refs[3]["effect"] == 1.0
+    assert re_cue1.effect_refs[3]["order_index"] == 0
+    assert re_cue1.effect_refs[1]["order_index"] == 1
+    assert re_cue1.effect_refs[2]["order_index"] == 2
+    assert re_cue1.effect_refs[3]["channels"] == [3, 1, 2]
+    assert re_cue1.effect_refs[3]["rate_scale"] == pytest.approx(0.8)
+    assert re_cue1.effect_refs[3]["size_scale"] == pytest.approx(0.6)
+    assert re_cue2.effect_refs[1] == {"stop": True}
+
+    # Verify secondary sequence cue effect_refs
+    re_seq2 = reimported.get_sequence(2)
+    assert re_seq2 is not None
+    re_seq2_cue1 = next(c for c in re_seq2.cues if c.number == 1.0)
+    assert re_seq2_cue1.effect_refs[10]["effect"] == 2.0
+    assert re_seq2_cue1.effect_refs[10]["channels"] == [10, 11]
+
+    # Verify FaderEffect round-trip
+    assert reimported.fader_bank.get_fader_type(1, 1) == FaderType.EFFECT
+    re_fader1 = reimported.fader_bank.faders[1][1]
+    assert isinstance(re_fader1, FaderEffect)
+    assert re_fader1.contents is re_eff1
+    assert re_fader1.control_mode == "both"
+    assert re_fader1.effect_channels == [3, 1, 2]

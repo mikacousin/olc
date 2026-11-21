@@ -287,7 +287,7 @@ class PaletteManager:
         cat = self._normalize_category(category)
         source = self.get(cat, number)
         if source is None:
-            return {"presets": 0, "cues": 0, "faders": 0}
+            return {"presets": 0, "cues": 0, "faders": 0, "effects": 0}
 
         ref_num = float(number)
         updated_presets: list[Palette] = []
@@ -325,11 +325,13 @@ class PaletteManager:
             id(c) for c in updated_cue_objs
         }
         updated_faders = self._refresh_faders(lightshow, updated_objects)
+        updated_effects = self._refresh_effects(lightshow, sources_by_key)
 
         return {
             "presets": len(updated_presets),
             "cues": updated_cues_count,
             "faders": updated_faders,
+            "effects": updated_effects,
         }
 
     @staticmethod
@@ -396,3 +398,34 @@ class PaletteManager:
                         fader.level_changed()
                     updated_faders += 1
         return updated_faders
+
+    @staticmethod
+    def _refresh_effects(
+        lightshow: LightShow,
+        sources_by_key: dict[tuple[str, float], Palette],
+    ) -> int:
+        """Count effects referencing updated palettes and tick engine if live."""
+        if not sources_by_key or not hasattr(lightshow, "effects"):
+            return 0
+        affected_numbers: set[float] = set()
+        for eff in lightshow.effects.all():
+            for layer in eff.layers:
+                for ref in (layer.low_palette, layer.high_palette):
+                    if ref is None:
+                        continue
+                    key = (str(ref[0]).strip().lower(), float(ref[1]))
+                    if key in sources_by_key:
+                        affected_numbers.add(float(eff.number))
+                        break
+                if float(eff.number) in affected_numbers:
+                    break
+        if affected_numbers:
+            app = getattr(lightshow, "app", None)
+            engine = getattr(app, "effects_engine", None)
+            if engine is not None and hasattr(engine, "get_active_instances"):
+                active = engine.get_active_instances()
+                if any(
+                    float(inst.effect_number) in affected_numbers for inst in active
+                ):
+                    engine.tick()
+        return len(affected_numbers)

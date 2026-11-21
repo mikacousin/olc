@@ -192,3 +192,79 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     process_events()
     assert step_obj.channel_time[5].time == 0.0
     assert ct_tab.liststore[0][2] == ""
+
+
+def test_sequence_tab_fx_column_display(app_gui: Application) -> None:
+    """Verify FX column shows started, tracked (T), and Stop FX markers."""
+    from olc.show.cue import Cue
+    from olc.show.step import Step
+
+    main_pb = app_gui.core.lightshow.main_playback
+    main_pb.tracking_mode = False
+    main_pb.steps.clear()
+    main_pb.steps.append(Step(sequence=1))
+    main_pb.steps.append(
+        Step(
+            sequence=1,
+            cue=Cue(
+                1,
+                1.0,
+                {1: 1.0, 2: 1.0},
+                effect_refs={
+                    1: {"effect": 1.0, "order_index": 0, "channels": [1, 2]},
+                    2: {"effect": 1.0, "order_index": 1, "channels": [1, 2]},
+                },
+            ),
+        )
+    )
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 2.0, {1: 0.5})))
+    main_pb.steps.append(
+        Step(
+            sequence=1,
+            cue=Cue(
+                1,
+                3.0,
+                {},
+                effect_refs={1: {"stop": True}, 2: {"stop": True}},
+            ),
+        )
+    )
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 4.0, {})))
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0.0, {})))
+    main_pb.last = len(main_pb.steps)
+
+    app_gui.activate_action("sequences", None)
+    process_events()
+    assert app_gui.tabs is not None
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.refresh()
+    process_events()
+
+    col_titles = [col.get_title() for col in seq_tab.treeview2.get_columns()]
+    assert col_titles[12] == "FX"
+
+    # Cue-Only mode: only explicit starts & stops
+    assert seq_tab.liststore2[0][12] == "FX 1"
+    assert seq_tab.liststore2[0][14] is True
+    assert seq_tab.liststore2[1][12] == ""
+    assert seq_tab.liststore2[1][13] is None
+    assert seq_tab.liststore2[1][14] is False
+    assert seq_tab.liststore2[2][12] == "Stop FX"
+    assert seq_tab.liststore2[2][14] is True
+    assert seq_tab.liststore2[3][12] == ""
+    assert seq_tab.liststore2[3][13] is None
+    assert seq_tab.liststore2[3][14] is False
+
+    # Tracking mode: Cue 2 shows FX 1 (T), Cue 3 stops it, Cue 4 stays empty
+    seq_tab.set_tracking_mode(True)
+    process_events()
+    assert seq_tab.liststore2[0][12] == "FX 1"
+    assert seq_tab.liststore2[0][14] is True
+    assert seq_tab.liststore2[1][12] == "FX 1 (T)"
+    assert seq_tab.liststore2[1][14] is True
+    assert seq_tab.liststore2[2][12] == "Stop FX"
+    assert seq_tab.liststore2[2][14] is True
+    assert seq_tab.liststore2[3][12] == ""
+    assert seq_tab.liststore2[3][13] is None
+    assert seq_tab.liststore2[3][14] is False

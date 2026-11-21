@@ -22,6 +22,7 @@ from gi.repository import Gdk, Gtk
 from olc.core.tracking import (
     TRACKING_COLORS,
     TrackingDisplayState,
+    TrackingEngine,
     classify_channel_tracking_state,
     get_tracking_color,
 )
@@ -119,6 +120,8 @@ class SequenceTab(Gtk.Grid):
         )
         self.channels_view.flowbox.invalidate_filter()
         self.channels_view.flowbox.queue_draw()
+        if hasattr(self, "liststore2"):
+            self.on_sequence_changed(step_idx=self.get_selected_step())
 
     def toggle_tracking_mode(self) -> bool:
         """Toggle between Cue-Only and Tracking mode and return new state."""
@@ -183,7 +186,21 @@ class SequenceTab(Gtk.Grid):
         self.paned.add1(self.channels_view)
 
         self.liststore2 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, str, str
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            bool,
         )
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
@@ -203,6 +220,7 @@ class SequenceTab(Gtk.Grid):
             "Color",
             "Beam",
             "Channel Time",
+            "FX",
         ]
         edit_callbacks = {
             2: self.text_edited,
@@ -230,6 +248,9 @@ class SequenceTab(Gtk.Grid):
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
+            elif i == 12:
+                column.add_attribute(renderer, "foreground", 13)
+                column.add_attribute(renderer, "foreground-set", 14)
 
             self.treeview2.append_column(column)
 
@@ -678,6 +699,67 @@ class SequenceTab(Gtk.Grid):
             return "0"
         return time_to_string(val)
 
+    @staticmethod
+    def _format_step_fx_status(sequence: Sequence, step: int) -> tuple[str, str | None]:
+        """Return (label, foreground_hex) summarizing effects for a sequence step."""
+        cue = sequence.steps[step].cue
+        if cue is None:
+            return "", None
+
+        raw_refs = getattr(cue, "effect_refs", None)
+        started_fx: set[float] = set()
+        has_stop = False
+        if isinstance(raw_refs, dict):
+            for spec in raw_refs.values():
+                if not isinstance(spec, dict):
+                    continue
+                if spec.get("stop"):
+                    has_stop = True
+                    continue
+                fx_num = spec.get("effect")
+                if fx_num is None:
+                    fx_num = spec.get("effect_number")
+                if fx_num is not None:
+                    started_fx.add(float(fx_num))
+
+        tracked_only_fx: set[float] = set()
+        if getattr(sequence, "tracking_mode", False):
+            resolved = TrackingEngine.resolve_step_effects(
+                sequence, step, tracking_mode=True
+            )
+            resolved_fx: set[float] = set()
+            for spec in resolved.values():
+                if not isinstance(spec, dict) or spec.get("stop"):
+                    continue
+                fx_num = spec.get("effect")
+                if fx_num is None:
+                    fx_num = spec.get("effect_number")
+                if fx_num is not None:
+                    resolved_fx.add(float(fx_num))
+            tracked_only_fx = resolved_fx - started_fx
+
+        def _fmt_fx(nums: set[float]) -> str:
+            return ",".join(
+                str(int(n)) if n.is_integer() else f"{n:g}" for n in sorted(nums)
+            )
+
+        parts: list[str] = []
+        if started_fx:
+            parts.append(f"FX {_fmt_fx(started_fx)}")
+        if tracked_only_fx:
+            parts.append(f"FX {_fmt_fx(tracked_only_fx)} (T)")
+        if has_stop:
+            parts.append("Stop FX")
+
+        if not parts:
+            return "", None
+        label = " / ".join(parts)
+        if started_fx:
+            return label, "#E59933"
+        if tracked_only_fx and not has_stop:
+            return label, "#33D9F2"
+        return label, "#F25959"
+
     def add_step_to_liststore(self, step: int) -> None:
         """Add Step to the list
 
@@ -701,6 +783,7 @@ class SequenceTab(Gtk.Grid):
             channel_time = ""
         cue = step_obj.cue
         cue_number = str(cue.number) if cue is not None else ""
+        fx_text, fx_color = self._format_step_fx_status(sequence, step)
         self.liststore2.insert(
             step - 1,
             [
@@ -716,6 +799,9 @@ class SequenceTab(Gtk.Grid):
                 t_color,
                 t_beam,
                 channel_time,
+                fx_text,
+                fx_color,
+                fx_color is not None,
             ],
         )
 

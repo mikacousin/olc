@@ -437,6 +437,16 @@ class TrackingEngine:
         )
 
     @staticmethod
+    def resolve_step_effects(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        *,
+        tracking_mode: bool = False,
+    ) -> dict[int, dict[str, Any]]:
+        """Resolve active effect references at *step_index* (Cue-Only or Tracking)."""
+        return TrackingEngine._resolve_effect_refs(sequence, step_index, tracking_mode)
+
+    @staticmethod
     def _resolve_effect_refs(
         sequence: Any,  # noqa: ANN401
         step_index: int,

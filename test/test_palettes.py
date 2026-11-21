@@ -197,3 +197,69 @@ def test_palette_rename_action_undo_redo() -> None:
     # Missing palette returns False cleanly without corrupting history
     missing = app.action_registry.execute("palette.rename", "color", 99.0, "Ghost")
     assert missing is False
+
+
+def test_palette_propagate_update_counts_and_ticks_effects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """propagate_update counts effects referencing the palette and ticks when live."""
+    settings = MagicMock()
+    settings.get_double.return_value = 5.0
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+    ls = app.lightshow
+
+    cp1 = Palette(
+        category=PaletteCategory.COLOR,
+        number=1.0,
+        text="Red",
+        device_values={1: {"color": "#ff0000"}},
+    )
+    cp2 = Palette(
+        category=PaletteCategory.COLOR,
+        number=2.0,
+        text="Blue",
+        device_values={1: {"color": "#0000ff"}},
+    )
+    bp3 = Palette(
+        category=PaletteCategory.BEAM,
+        number=3.0,
+        text="Frost",
+        device_values={1: {"frost": 0.5}},
+    )
+    ls.palettes.add(cp1)
+    ls.palettes.add(cp2)
+    ls.palettes.add(bp3)
+
+    ls.effects.create_from_template("two_color_chase", 1.0, label="Two-Color")
+
+    tick_calls = 0
+    orig_tick = app.effects_engine.tick
+
+    def _spy_tick(now: float | None = None) -> bool:
+        nonlocal tick_calls
+        tick_calls += 1
+        return orig_tick(now=now)
+
+    monkeypatch.setattr(app.effects_engine, "tick", _spy_tick)
+
+    # Effect is stopped -> counts effect, does not tick
+    cp1.device_values[1]["color"] = "#ff8800"
+    res1 = ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 1.0)
+    assert res1["effects"] == 1
+    assert tick_calls == 0
+
+    # Unrelated and missing palettes count 0 effects
+    res_unrelated = ls.palettes.propagate_update(ls, PaletteCategory.BEAM, 3.0)
+    assert res_unrelated["effects"] == 0
+    res_missing = ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 99.0)
+    assert res_missing["effects"] == 0
+    assert tick_calls == 0
+
+    # Start effect -> propagate_update triggers live tick
+    app.effects_engine.start_effect(1.0, [1])
+    tick_calls = 0
+    cp2.device_values[1]["color"] = "#00ffaa"
+    res2 = ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 2.0)
+    assert res2["effects"] == 1
+    assert tick_calls == 1

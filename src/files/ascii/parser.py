@@ -719,7 +719,10 @@ class AsciiParser(ReadFile):
         page = int(self.args[0])
         number = int(self.args[1])
         fader_type = int(self.args[2])
-        contents = int(self.args[3]) if int(self.args[3]) else None
+        raw_contents = float(self.args[3])
+        contents: int | float | None = None
+        if raw_contents != 0.0:
+            contents = int(raw_contents) if raw_contents.is_integer() else raw_contents
         if self._is_console("nicobats", "dlight") and fader_type == FaderType.CHANNELS:
             # DLight uses channels type for groups -> migrate via legacy group path
             fader_type = LEGACY_FADER_TYPE_GROUP
@@ -733,6 +736,15 @@ class AsciiParser(ReadFile):
             }
             self.current["fader"] = index
             self.state = State.IN_FADER
+        elif fader_type == FaderType.EFFECT:
+            self.data["faders"][index] = {
+                "page": page,
+                "number": number,
+                "type": fader_type,
+                "contents": contents,
+            }
+            self.current["fader"] = index
+            self.state = State.IN_FADER
         else:
             self.data["faders"][index] = {
                 "page": page,
@@ -743,11 +755,27 @@ class AsciiParser(ReadFile):
             self.state = State.NO_PRIMARY
 
     def _do_fader(self) -> None:
-        if self.keyword in "chan":
+        fader = self.data["faders"].get(self.current.get("fader"))
+        if not isinstance(fader, dict):
+            return
+        if self.keyword == "chan" and isinstance(fader.get("contents"), dict):
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 level = self._get_level(self.args[index + 1])
-                self.data["faders"][self.current["fader"]]["contents"][channel] = level
+                fader["contents"][channel] = level
+        elif self.keyword == "$$chanlist":
+            eff_chs = fader.setdefault("effect_channels", [])
+            for arg in self.args:
+                try:
+                    ch = int(arg)
+                except ValueError:
+                    continue
+                if 1 <= ch <= MAX_CHANNELS and ch not in eff_chs:
+                    eff_chs.append(ch)
+        elif self.keyword == "$$effectmode" and self.args:
+            mode = self.args[0].strip().lower()
+            if mode in ("size", "rate", "both"):
+                fader["control_mode"] = mode
 
     def _get_level(self, level: str) -> float:
         if level[0] == "h":
