@@ -24,7 +24,7 @@ from olc.gtk3.widgets.common import (
     draw_cached_numeric_text,
     register_system_font_listener,
 )
-from olc.show.curve import InterpolateCurve, SegmentsCurve
+from olc.show.curve import PointsCurve
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
@@ -71,7 +71,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             self.curve
             and event.button == 1
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
-            and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
+            and isinstance(self.curve, PointsCurve)
         ):
             x_curve = round(((event.x - 20) / (self.width - 40)) * 255)
             y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)

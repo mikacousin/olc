@@ -365,9 +365,12 @@ EndData
     assert preset6.channels[21] == 1.0
     assert abs(preset6.channels[22] - (128 / 255.0)) < 0.01
 
-    # Unused Sub 99 must not pollute groups or palettes
+    # Unused Sub 99 is promoted as a Preset (Option A) without creating a Group
     assert lightshow.groups.get(99.0) is None
-    assert lightshow.palettes.get(PaletteCategory.PRESET, 99.0) is None
+    preset99 = lightshow.palettes.get(PaletteCategory.PRESET, 99.0)
+    assert preset99 is not None
+    assert preset99.text == "Unused Sub"
+    assert preset99.channels[30] == pytest.approx(1.0)
 
     # Fader 2 -> CueList 1 (Main Playback)
     assert lightshow.fader_bank.get_fader_type(1, 2) == FaderType.SEQUENCE
@@ -472,6 +475,85 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     preset6 = lightshow.palettes.get(PaletteCategory.PRESET, 6.0)
     assert preset6 is not None
     assert lightshow.fader_bank.faders[1][1].contents is preset6
+
+    from olc.devices.device import ChannelType
+    from olc.show.curve import SteppedCurve
+    from olc.show.fader import FaderEffect
+
+    # Cue 19 Seq 3: Part 1 global fade (5s) + Part 2 channel_time on ch 41..44 (3s)
+    seq3 = next(s for s in lightshow.sequences if s.index == 3)
+    step19 = next(s for s in seq3.steps if s.cue is not None and s.cue.number == 19.0)
+    assert step19.text == "41Jusqu'à44"
+    assert step19.time_in == pytest.approx(5.0)
+    assert step19.time_out == pytest.approx(5.0)
+    for ch in (41, 42, 43, 44):
+        assert ch in step19.channel_time
+        assert step19.channel_time[ch].delay == pytest.approx(0.0)
+        assert step19.channel_time[ch].time == pytest.approx(3.0)
+
+    # $Patch dimmer labels (Text) & $$Options P (flip Pan on Diablo ch 4)
+    for ch in range(21, 27):
+        dev = lightshow.patch.get_device(ch)
+        assert dev is not None and dev.label == "PAR Rosace"
+    dev4 = lightshow.patch.get_device(4)
+    assert dev4 is not None
+    pan4 = dev4.get_channel(ChannelType.PAN)
+    assert pan4 is not None
+    assert pan4.physical_min == pytest.approx(270.0)
+    assert pan4.physical_max == pytest.approx(-270.0)
+    dev5 = lightshow.patch.get_device(5)
+    assert dev5 is not None
+    pan5 = dev5.get_channel(ChannelType.PAN)
+    assert pan5 is not None
+    assert pan5.physical_min == pytest.approx(-270.0)
+    assert pan5.physical_max == pytest.approx(270.0)
+
+    # SteppedCurve (905, 906) & non-0/non-255 endpoint preservation (907, 909, 910)
+    c905 = lightshow.curves.get_curve(905)
+    assert isinstance(c905, SteppedCurve)
+    assert c905.get_level(0) == 0
+    assert c905.get_level(2) == 0
+    assert c905.get_level(3) == 255
+    assert c905.get_level(255) == 255
+
+    c906 = lightshow.curves.get_curve(906)
+    assert isinstance(c906, SteppedCurve)
+    assert c906.get_level(0) == 255
+    assert c906.get_level(252) == 255
+    assert c906.get_level(255) == 0
+
+    c907 = lightshow.curves.get_curve(907)
+    assert c907 is not None
+    assert c907.get_level(0) == 13
+    assert c907.get_level(255) == 255
+
+    c909 = lightshow.curves.get_curve(909)
+    assert c909 is not None
+    assert c909.get_level(0) == 255
+    assert c909.get_level(255) == 255
+
+    c910 = lightshow.curves.get_curve(910)
+    assert c910 is not None
+    assert c910.get_level(0) == 255
+    assert c910.get_level(255) == 0
+
+    # Mixed effect Sub 20 mounted on fader (3, 4) keeps base_channels & text
+    fader34 = lightshow.fader_bank.faders[3][4]
+    assert isinstance(fader34, FaderEffect)
+    assert fader34.text == "chaser PAR horaire"
+    assert fader34.base_channels == {ch: pytest.approx(1.0) for ch in range(21, 27)}
+
+    # Unmounted static Subs promoted to Presets (Option A); pure-effect Sub 200 skipped
+    for pnum, label in (
+        (1.0, "All Move"),
+        (2.0, "Flash photo"),
+        (3.0, "Led chaud"),
+        (50.0, "Sub 50"),
+        (901.0, "services"),
+    ):
+        preset = lightshow.palettes.get(PaletteCategory.PRESET, pnum)
+        assert preset is not None and preset.text == label
+    assert lightshow.palettes.get(PaletteCategory.PRESET, 200.0) is None
 
 
 def test_eos_param_token_parsing() -> None:
@@ -1773,3 +1855,170 @@ EndData
     assert res4.device_values[1]["intensity"] == pytest.approx(0x8000 / 65535.0)
     assert res4.channels[20] == pytest.approx(0.0)
     assert res4.effect_refs == {}
+
+
+def test_import_eos_parts_patch_options_labels_stepped_and_mixed_subs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Verify Cue Part timing, $Patch options/labels, SteppedCurve, and Subs."""
+    import logging
+
+    from olc.devices.device import ChannelType
+    from olc.show.curve import InterpolateCurve, SteppedCurve
+    from olc.show.fader import FaderEffect, FaderType
+    from olc.show.palette import PaletteCategory
+
+    asc_content = """Ident 3:0
+Manufacturer ETC
+Console Eos
+$ParamType 1 1 Intens
+$ParamType 2 2 Pan
+$ParamType 3 2 Tilt
+$Personality 100
+   $$Manuf TestBrand
+   $$Model Spot_PT
+   $$Footprint 5
+   $$PersChan 2 2 1 2 32768
+   $$PersSlot 0 65535 32768 -270.0 270.0 D
+   $$PersChan 3 2 3 4 32768
+   $$PersSlot 0 65535 32768 -135.0 135.0 D
+   $$PersChan 1 1 5 0 0
+$Personality 40
+   $$Manuf Generic
+   $$Model Dimmer
+   $$Footprint 1
+   $$PersChan 1 1 1 0 0
+$Patch 21 40 50 0 1
+   Text Front PAR
+$Patch 1 100 1 0 1
+   Text Spot FlipP
+   $$Options P
+$Patch 2 100 10 0 1
+   Text Spot FlipT
+   $$Options T
+$Patch 3 100 20 0 1
+   Text Spot SwapPT
+   $$Options S
+$Curve 905
+   Text Step Hold
+   $$Stepped
+   $$CurveData 0 0 10 0 11 255 255 255
+$Curve 910
+   Text Inverse Fade
+   $$Interpolated
+   $$CurveData 0 255 255 0
+$Effect 10
+   Text Dimmer FX
+   $$Type 1
+   $$ParamList 1
+$CueList 1
+Cue 1 1
+   Part 1
+   Text Main Cue
+   Up 5
+   Down 4
+   $$TimeColor 6
+   Chan 21@Hff
+   Part 2
+   Text Part Two
+   Up 2 1
+   Down 3 0.5
+   $$TimeColor 9
+   Chan 1@H80 2@H00
+Sub 20 1
+   Text Mixed FX
+   Chan 21@Hff
+   $$EffectChan 10 21 1
+Sub 50 1
+   Text Spare Look
+   Chan 21@H80
+Sub 60 1
+   Text Spare FX
+   $$EffectChan 10 21 1
+$FaderDef 1
+   $$Target S 20
+$FaderDef 300
+   $$Target S 50
+EndData
+"""
+    with caplog.at_level(logging.DEBUG, logger="olc.files.ascii.parser"):
+        imported = _parse_asc(monkeypatch, tmp_path, asc_content)
+    show = imported.lightshow
+
+    assert "Ignoring Eos $FaderDef 300" in caplog.text
+
+    # Patch labels and $$Options P / T / S
+    dev21 = show.patch.get_device(21)
+    assert dev21 is not None and dev21.label == "Front PAR"
+
+    dev1 = show.patch.get_device(1)
+    assert dev1 is not None and dev1.label == "Spot FlipP"
+    pan1 = dev1.get_channel(ChannelType.PAN)
+    assert pan1 is not None
+    assert pan1.physical_min == pytest.approx(270.0)
+    assert pan1.physical_max == pytest.approx(-270.0)
+
+    dev2 = show.patch.get_device(2)
+    assert dev2 is not None and dev2.label == "Spot FlipT"
+    tilt2 = dev2.get_channel(ChannelType.TILT)
+    assert tilt2 is not None
+    assert tilt2.physical_min == pytest.approx(135.0)
+    assert tilt2.physical_max == pytest.approx(-135.0)
+
+    dev3 = show.patch.get_device(3)
+    assert dev3 is not None and dev3.label == "Spot SwapPT"
+    pan3_chs = dev3.get_channels(ChannelType.PAN)
+    tilt3_chs = dev3.get_channels(ChannelType.TILT)
+    pan3_coarse = next(c for c in pan3_chs if not c.fine)
+    pan3_fine = next(c for c in pan3_chs if c.fine)
+    tilt3_coarse = next(c for c in tilt3_chs if not c.fine)
+    tilt3_fine = next(c for c in tilt3_chs if c.fine)
+    assert (pan3_coarse.address, pan3_fine.address) == (22, 23)
+    assert (tilt3_coarse.address, tilt3_fine.address) == (20, 21)
+
+    # SteppedCurve and custom endpoints
+    c905 = show.curves.get_curve(905)
+    assert isinstance(c905, SteppedCurve)
+    assert c905.get_level(0) == 0
+    assert c905.get_level(10) == 0
+    assert c905.get_level(11) == 255
+    assert c905.get_level(255) == 255
+
+    c910 = show.curves.get_curve(910)
+    assert isinstance(c910, InterpolateCurve)
+    assert c910.get_level(0) == 255
+    assert c910.get_level(255) == 0
+
+    # Cue Part 1 / Part 2 preservation & channel_time
+    step1 = next(
+        s for s in show.main_playback.steps if s.cue is not None and s.cue.number == 1.0
+    )
+    assert step1.text == "Main Cue"
+    assert step1.time_in == pytest.approx(5.0)
+    assert step1.time_out == pytest.approx(4.0)
+    assert step1.time_color == pytest.approx(6.0)
+    assert 21 not in step1.channel_time
+    assert step1.channel_time[1].delay == pytest.approx(1.0)
+    assert step1.channel_time[1].time == pytest.approx(2.0)
+    assert step1.channel_time[2].delay == pytest.approx(0.5)
+    assert step1.channel_time[2].time == pytest.approx(3.0)
+
+    # Mixed effect fader + base_channels proportional scaling + clearing
+    assert show.fader_bank.get_fader_type(1, 1) == FaderType.EFFECT
+    fader = show.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.text == "Mixed FX"
+    assert fader.base_channels == {21: pytest.approx(1.0)}
+    fader.set_level(0.5)
+    assert fader.dmx[20] == pytest.approx(0.5)
+    fader.set_base_channels({})
+    assert fader.dmx[20] == pytest.approx(0.0)
+
+    # Unmounted Subs: static Sub 50 promoted to Preset 50; pure-effect Sub 60 skipped
+    preset50 = show.palettes.get(PaletteCategory.PRESET, 50.0)
+    assert preset50 is not None
+    assert preset50.text == "Spare Look"
+    assert preset50.channels[21] == pytest.approx(128 / 255.0)
+    assert show.palettes.get(PaletteCategory.PRESET, 60.0) is None

@@ -27,7 +27,7 @@ from olc.gtk3.widgets.curve_points_table import CurvePointsTable
 from olc.gtk3.widgets.curve_sampled_monitor import CurveSampledMonitor
 from olc.gtk3.widgets.curve_units import CurveUnitMode
 from olc.gtk3.widgets.edit_curve import EditCurveWidget
-from olc.show.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
+from olc.show.curve import LimitCurve, PointsCurve
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -748,7 +748,7 @@ class CurvesTab(Gtk.Box):
         if hasattr(self.curve_edition, "points_table"):
             self.curve_edition.points_table.delete_point()
             return
-        if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+        if isinstance(curve, PointsCurve):
             for toggle in self.curve_edition.points:
                 if toggle.get_active():
                     new_points = list(curve.points)

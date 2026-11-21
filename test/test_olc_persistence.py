@@ -800,3 +800,52 @@ def test_olc_persistence_fader_effect_both_mode_and_channels(
     assert fader.contents.number == 1.0
     assert fader.control_mode == "both"
     assert fader.effect_channels == [3, 4, 5]
+
+
+def test_olc_persistence_stepped_curve_and_fader_effect_base_channels(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for SteppedCurve and FaderEffect base_channels."""
+    from olc.show.curve import SteppedCurve
+    from olc.show.fader import FaderEffect, FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    stepped = SteppedCurve()
+    stepped.name = "Stepped Out"
+    stepped.set_points([(0, 255), (128, 128), (255, 0)])
+    app.lightshow.curves.curves[906] = stepped
+
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    fader.text = "Chaser Mixte"
+    fader.set_base_channels({21: 1.0, 22: 0.5})
+
+    save_path = tmp_path / "stepped_and_base_channels.olc"
+    app.action_registry.execute("show.save", str(save_path))
+    assert save_path.exists()
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    ls2 = app2.lightshow
+
+    c906 = ls2.curves.get_curve(906)
+    assert isinstance(c906, SteppedCurve)
+    assert c906.name == "Stepped Out"
+    assert c906.get_level(0) == 255
+    assert c906.get_level(127) == 255
+    assert c906.get_level(128) == 128
+    assert c906.get_level(255) == 0
+
+    re_fader = ls2.fader_bank.faders[1][1]
+    assert isinstance(re_fader, FaderEffect)
+    assert re_fader.text == "Chaser Mixte"
+    assert re_fader.base_channels == {21: pytest.approx(1.0), 22: pytest.approx(0.5)}
+    re_fader.set_level(0.5)
+    assert re_fader.dmx[20] == pytest.approx(0.5)
+    assert re_fader.dmx[21] == pytest.approx(0.25)

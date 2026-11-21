@@ -47,6 +47,8 @@ class DialogData(Gtk.Dialog):
         box.set_spacing(6)
         # If you change actions order, you have to modify combo callbacks
         act = ["Replace", "Merge", "Ignore"]
+        if data.get("curves"):
+            self._curves(act, box)
         if data.get("patch") or data.get("devices"):
             self._patch(act, box)
         if data["sequences"]:
@@ -62,6 +64,18 @@ class DialogData(Gtk.Dialog):
         if data["faders"]:
             self._faders(act, box)
         self.show_all()
+
+    def _curves(self, actions: list, box: Gtk.Box) -> None:
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label(label="Curves:")
+        combo = Gtk.ComboBoxText()
+        combo.connect("changed", self._on_curves_changed)
+        for action in actions:
+            combo.append_text(action)
+        combo.set_active(0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.add(combo)
+        box.add(hbox)
 
     def _patch(self, actions: list, box: Gtk.Box) -> None:
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -165,6 +179,15 @@ class DialogData(Gtk.Dialog):
         hbox.pack_start(label, True, True, 0)
         hbox.add(combo)
         box.add(hbox)
+
+    def _on_curves_changed(self, widget: Gtk.ComboBoxText) -> None:
+        active = widget.get_active()
+        if active == 0:
+            self.actions["curves"] = Action.REPLACE
+        elif active == 1:
+            self.actions["curves"] = Action.MERGE
+        elif active == 2:
+            self.actions["curves"] = Action.IGNORE
 
     def _on_patch_changed(self, widget: Gtk.ComboBoxText) -> None:
         active = widget.get_active()

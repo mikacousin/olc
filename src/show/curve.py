@@ -295,6 +295,20 @@ class PointsCurve(Curve):
         del self.points[point_number]
         self.populate_values()
 
+    def set_points(self, points: list[tuple[int, int]]) -> None:
+        """Replace all control points (preserving non-zero/non-255 endpoints)."""
+        by_x: dict[int, int] = {}
+        for x_raw, y_raw in points:
+            x_clamped = min(max(int(round(x_raw)), 0), 255)
+            y_clamped = min(max(int(round(y_raw)), 0), 255)
+            by_x[x_clamped] = y_clamped
+        if 0 not in by_x:
+            by_x[0] = 0
+        if 255 not in by_x:
+            by_x[255] = 255
+        self.points = sorted(by_x.items())
+        self.populate_values()
+
     def set_point(self, point_number: int, x: int, y: int) -> None:
         """Change point values.
 
@@ -388,6 +402,54 @@ class InterpolateCurve(PointsCurve):
         grid_16 = np.linspace(0.0, 1.0, 65536)
         vals_16 = np.clip(np.round(spl(grid_16) * 65535.0), 0.0, 65535.0)
         self.values_array_16bit = vals_16.astype(np.uint16)
+
+
+class SteppedCurve(PointsCurve):
+    """Step-hold (zero-order hold) curve defined by control points."""
+
+    def __init__(self) -> None:
+        super().__init__(name="Stepped", editable=True)
+
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        xp = np.array([p[0] / 255.0 for p in self.points], dtype=np.float64)
+        fp = np.array([p[1] / 255.0 for p in self.points], dtype=np.float64)
+        if isinstance(values, (int, float)):
+            clamped = max(0.0, min(1.0, float(values)))
+            idx = int(
+                np.clip(np.searchsorted(xp, clamped, side="right") - 1, 0, len(fp) - 1)
+            )
+            return float(fp[idx])
+        arr = np.clip(np.asarray(values, dtype=np.float64), 0.0, 1.0)
+        indices = np.clip(np.searchsorted(xp, arr, side="right") - 1, 0, len(fp) - 1)
+        return fp[indices]
+
+    def populate_values(self) -> None:
+        """Populate 8-bit and 16-bit lookup tables using step hold."""
+        if not hasattr(self, "values_array") or self.values_array is None:
+            self.values_array = np.zeros(256, dtype=np.uint8)
+        if not hasattr(self, "values_array_16bit") or self.values_array_16bit is None:
+            self.values_array_16bit = np.zeros(65536, dtype=np.uint16)
+
+        xp_8 = np.array([p[0] for p in self.points], dtype=np.int64)
+        fp_8 = np.array([p[1] for p in self.points], dtype=np.uint8)
+        idx_8 = np.clip(
+            np.searchsorted(xp_8, np.arange(256), side="right") - 1, 0, len(fp_8) - 1
+        )
+        self.values_array = fp_8[idx_8]
+
+        xp_16 = np.array(
+            [p[0] / 255.0 * 65535.0 for p in self.points], dtype=np.float64
+        )
+        fp_16 = np.round(
+            np.array([p[1] / 255.0 * 65535.0 for p in self.points], dtype=np.float64)
+        ).astype(np.uint16)
+        idx_16 = np.clip(
+            np.searchsorted(xp_16, np.arange(65536, dtype=np.float64), side="right")
+            - 1,
+            0,
+            len(fp_16) - 1,
+        )
+        self.values_array_16bit = fp_16[idx_16]
 
 
 class Curves:

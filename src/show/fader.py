@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Mapping
 from enum import IntEnum
 
 import numpy as np
@@ -297,26 +298,38 @@ class FaderEffect(Fader):
     dmx: np.ndarray
     channels: set[int]
     effect_channels: list[int]
+    base_channels: dict[int, float]
     control_mode: str
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         index: int,
         fader_bank: FaderBank,
         effect: EffectDefinition | None = None,
         effect_channels: list[int] | None = None,
         control_mode: str = "size",
+        base_channels: Mapping[int, float] | None = None,
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = effect
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         self.channels = set()
         self.effect_channels = list(effect_channels or [])
+        self.base_channels = (
+            {
+                int(ch): max(0.0, min(1.0, float(lvl)))
+                for ch, lvl in base_channels.items()
+                if 1 <= int(ch) <= MAX_CHANNELS and float(lvl) > 0.0
+            }
+            if base_channels
+            else {}
+        )
         self.control_mode = (
             control_mode if control_mode in VALID_EFFECT_CONTROL_MODES else "size"
         )
         if effect is not None:
             self.text = effect.label or f"Effect {effect.number:g}"
+        if effect is not None or self.base_channels:
             self.update_channels()
 
     def format_target_channels(self) -> str:
@@ -357,6 +370,17 @@ class FaderEffect(Fader):
         if self.level > 0.0 and self.contents is not None:
             self.level_changed()
 
+    def set_base_channels(self, channels: Mapping[int, float]) -> None:
+        """Set static base intensity levels scaled proportionally with fader level."""
+        self.base_channels = {
+            int(ch): max(0.0, min(1.0, float(lvl)))
+            for ch, lvl in channels.items()
+            if 1 <= int(ch) <= MAX_CHANNELS and float(lvl) > 0.0
+        }
+        self.update_channels()
+        if self.level > 0.0 or self.dmx.any():
+            self.level_changed()
+
     def get_target_channels(self) -> list[int]:
         """Resolve target channels for this effect fader."""
         if self.effect_channels:
@@ -379,6 +403,8 @@ class FaderEffect(Fader):
         if self.contents is not None:
             for ch in self.get_target_channels():
                 self.channels.add(int(ch))
+        for ch in self.base_channels:
+            self.channels.add(int(ch))
         self.fader_bank.update_active_faders()
 
     def set_contents(
@@ -411,6 +437,12 @@ class FaderEffect(Fader):
 
     def level_changed(self) -> None:
         """Start, modulate, or stop the assigned effect when the fader moves."""
+        if self.base_channels or self.dmx.any():
+            self.dmx.fill(0.0)
+            if self.level > 0.0:
+                for ch, base_lvl in self.base_channels.items():
+                    self.dmx[int(ch) - 1] = float(base_lvl) * float(self.level)
+            self.fader_bank.update_levels()
         if self.contents is None or self.app is None:
             return
         engine = getattr(self.app, "effects_engine", None)

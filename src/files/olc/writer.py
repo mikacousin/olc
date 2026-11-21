@@ -20,7 +20,7 @@ import typing
 
 from olc.controllers.midi import Midi
 from olc.files.write import WriteFile
-from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.show.curve import LimitCurve, PointsCurve
 from olc.show.effect import serialize_effect_refs
 from olc.show.fader import FaderType
 from olc.show.palette import serialize_palette_refs
@@ -239,6 +239,9 @@ class OlcWriter(WriteFile):
                     ctrl_mode = getattr(fader, "control_mode", "size")
                     if ctrl_mode and ctrl_mode != "size":
                         fader_entry["control_mode"] = ctrl_mode
+                    base_chs = getattr(fader, "base_channels", None)
+                    if base_chs:
+                        fader_entry["base_channels"] = dict(base_chs)
                     self.data["faders"][number] = fader_entry
                 elif content_type == FaderType.MAIN:
                     self.data["faders"][number] = {
@@ -270,7 +273,7 @@ class OlcWriter(WriteFile):
                         "limit": curve.limit,
                         "label": curve.name,
                     }
-                elif isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+                elif isinstance(curve, PointsCurve):
                     self.data["curves"][key] = {
                         "type": curve_type,
                         "points": curve.points,

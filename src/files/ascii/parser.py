@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 import typing
 from enum import Enum, auto
@@ -45,6 +46,8 @@ from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.palette import PaletteCategory
+
+LOGGER = logging.getLogger(__name__)
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
@@ -194,6 +197,13 @@ class AsciiParser(ReadFile):
         self.current = {
             "step": 0,
             "cue": 0.0,
+            "cue_part": 1,
+            "part_timing": {
+                "time_in": None,
+                "delay_in": 0.0,
+                "time_out": None,
+                "delay_out": 0.0,
+            },
             "channel_time": (0.0, 0.0),
             "sequence": 1,
             "group": 0.0,
@@ -222,6 +232,7 @@ class AsciiParser(ReadFile):
                     break
         self._finalize_personalities()
         self._finalize_effects()
+        self._finalize_unmounted_subs()
         self._resolve_palettes_and_refs()
         self._resolve_effect_refs()
         self._finalize_eos_tracking()
@@ -490,56 +501,111 @@ class AsciiParser(ReadFile):
             "channels": {},
         }
         self.current["cue"] = cue_number
+        self.current["cue_part"] = 1
+        self.current["part_timing"] = {
+            "time_in": None,
+            "delay_in": 0.0,
+            "time_out": None,
+            "delay_out": 0.0,
+        }
         self.current["utext_active"] = False
         cue_key = (seq_number, cue_number)
         self._cue_raw_params[cue_key] = {}
         self._cue_raw_refs[cue_key] = {}
         self.state = State.IN_CUE
 
+    def _apply_part_channel_time(
+        self,
+        step: dict[str, typing.Any],
+        channel: int,
+        level: float | None = None,
+    ) -> None:
+        """Record per-channel part time on *step* when inside Eos Part > 1."""
+        if int(self.current.get("cue_part", 1)) <= 1:
+            return
+        pt = self.current["part_timing"]
+        t_in, d_in = pt.get("time_in"), float(pt.get("delay_in", 0.0))
+        t_out, d_out = pt.get("time_out"), float(pt.get("delay_out", 0.0))
+        if level == 0.0 and t_out is not None:
+            delay_val, time_val = d_out, float(t_out)
+        elif t_in is not None:
+            delay_val, time_val = d_in, float(t_in)
+        elif t_out is not None:
+            delay_val, time_val = d_out, float(t_out)
+        else:
+            return
+        step["channel_time"][channel] = {"delay": delay_val, "time": time_val}
+
     def _do_cue(self) -> None:
-        # Missed keywords: link, part
+        # Missed keywords: link
         cues = self.data["sequences"][self.current["sequence"]]["cues"]
         steps = self.data["sequences"][self.current["sequence"]]["steps"]
         step = steps[self.current["step"]]
         cue = cues[self.current["cue"]]
-        if self.keyword == "chan":
+        cue_part = int(self.current.get("cue_part", 1))
+        if self.keyword == "part" and self.args:
+            try:
+                self.current["cue_part"] = max(1, int(self.args[0]))
+            except ValueError:
+                return
+            self.current["part_timing"] = {
+                "time_in": None,
+                "delay_in": 0.0,
+                "time_out": None,
+                "delay_out": 0.0,
+            }
+            self.current["utext_active"] = False
+        elif self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 if channel <= MAX_CHANNELS:
                     level = self._get_level(self.args[index + 1])
                     cue["channels"][channel] = level
+                    self._apply_part_channel_time(step, channel, level)
         elif self.keyword in ("down", "$$timedown") and self.args:
             time = string_to_time(self.args[0])
             if not time and self.keyword == "down":
                 time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            step["time_out"] = time
-            step["delay_out"] = delay
+            if cue_part > 1:
+                self.current["part_timing"]["time_out"] = time
+                self.current["part_timing"]["delay_out"] = delay
+            else:
+                step["time_out"] = time
+                step["delay_out"] = delay
         elif self.keyword in ("up", "$$timeup") and self.args:
             time = string_to_time(self.args[0])
             if not time and self.keyword == "up":
                 time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            step["time_in"] = time
-            step["delay_in"] = delay
+            if cue_part > 1:
+                self.current["part_timing"]["time_in"] = time
+                self.current["part_timing"]["delay_in"] = delay
+            else:
+                step["time_in"] = time
+                step["delay_in"] = delay
         elif self.keyword == "$$timeposition" and self.args:
-            step["time_position"] = string_to_time(self.args[0])
-            step["delay_position"] = (
-                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            )
+            if cue_part == 1:
+                step["time_position"] = string_to_time(self.args[0])
+                step["delay_position"] = (
+                    string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+                )
         elif self.keyword == "$$timecolor" and self.args:
-            step["time_color"] = string_to_time(self.args[0])
-            step["delay_color"] = (
-                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            )
+            if cue_part == 1:
+                step["time_color"] = string_to_time(self.args[0])
+                step["delay_color"] = (
+                    string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+                )
         elif self.keyword == "$$timegraphic" and self.args:
-            step["time_beam"] = string_to_time(self.args[0])
-            step["delay_beam"] = (
-                string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
-            )
+            if cue_part == 1:
+                step["time_beam"] = string_to_time(self.args[0])
+                step["delay_beam"] = (
+                    string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
+                )
         elif self.keyword in ("text", "$$text", "$$utext", "$$presettext"):
-            self._apply_label(step)
-            cue["label"] = step["label"]
+            if cue_part == 1 or not step["label"]:
+                self._apply_label(step)
+                cue["label"] = step["label"]
         elif self.keyword in ("$$wait", "$$dwell", "followon") and self.args:
             # Eos executes wait/follow at the end of cue N; OLC executes wait at
             # the start of cue N+1, so queue it for the next step in this sequence.
@@ -559,6 +625,7 @@ class AsciiParser(ReadFile):
                     continue
                 if 1 <= channel <= MAX_CHANNELS:
                     moves[channel] = level
+                    self._apply_part_channel_time(step, channel, level)
         elif self.keyword in ("$$effectchan", "$$effectdata"):
             cue_key = (int(self.current["sequence"]), float(self.current["cue"]))
             self._record_effect_call(
@@ -570,6 +637,16 @@ class AsciiParser(ReadFile):
                 self._cue_raw_params.setdefault(cue_key, {}),
                 self._cue_raw_refs.setdefault(cue_key, {}),
             )
+            if cue_part > 1:
+                try:
+                    ch_param = int(self.args[0])
+                except ValueError:
+                    ch_param = 0
+                if (
+                    1 <= ch_param <= MAX_CHANNELS
+                    and ch_param not in step["channel_time"]
+                ):
+                    self._apply_part_channel_time(step, ch_param, level=None)
         elif self.keyword == "$$parttime":
             delay = string_to_time(self.args[0])
             time = string_to_time(self.args[1])
@@ -934,6 +1011,7 @@ class AsciiParser(ReadFile):
         self.channel_personality[channel] = pers_id
         self.current["patch_channel"] = channel
         self.current["patch_output"] = None
+        self.current["utext_active"] = False
         pers = self.personalities.get(pers_id)
 
         if pers is None or is_dimmer_personality(pers, self.param_types):
@@ -988,6 +1066,60 @@ class AsciiParser(ReadFile):
                     ):
                         out["curve"] = curve_num
                         break
+        elif self.keyword in ("text", "$$text", "$$utext"):
+            if dev is not None:
+                self._apply_label(dev, key="label")
+            elif ch in self.data["patch"]:
+                target_out = self.current.get("patch_output")
+                for out in reversed(self.data["patch"][ch]):
+                    if (
+                        target_out is None
+                        or (out["output"], out["universe"]) == target_out
+                    ):
+                        self._apply_label(out, key="label")
+                        break
+        elif self.keyword == "$$options" and dev is not None and self.args:
+            self._apply_patch_options(dev, "".join(self.args).lower())
+
+    @staticmethod
+    def _apply_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
+        """Apply Eos $$Options flags (P=flip pan, T=flip tilt, S=swap pan/tilt)."""
+        channels = dev.get("channels", [])
+        if "p" in flags:
+            for ch_dict in channels:
+                if ch_dict.get("channel_type") == "pan":
+                    ch_dict["physical_min"], ch_dict["physical_max"] = (
+                        ch_dict["physical_max"],
+                        ch_dict["physical_min"],
+                    )
+        if "t" in flags:
+            for ch_dict in channels:
+                if ch_dict.get("channel_type") == "tilt":
+                    ch_dict["physical_min"], ch_dict["physical_max"] = (
+                        ch_dict["physical_max"],
+                        ch_dict["physical_min"],
+                    )
+        if "s" in flags:
+            pan_chs = {
+                (bool(c.get("fine")), bool(c.get("ultra_fine"))): c
+                for c in channels
+                if c.get("channel_type") == "pan"
+            }
+            tilt_chs = {
+                (bool(c.get("fine")), bool(c.get("ultra_fine"))): c
+                for c in channels
+                if c.get("channel_type") == "tilt"
+            }
+            for res_key, p_ch in pan_chs.items():
+                if (t_ch := tilt_chs.get(res_key)) is not None:
+                    p_ch["universe"], t_ch["universe"] = (
+                        t_ch["universe"],
+                        p_ch["universe"],
+                    )
+                    p_ch["address"], t_ch["address"] = (
+                        t_ch["address"],
+                        p_ch["address"],
+                    )
 
     def _new_curve(self) -> None:
         if not self.args:
@@ -1012,6 +1144,8 @@ class AsciiParser(ReadFile):
             self._apply_label(curve)
         elif self.keyword == "$$interpolated":
             curve["type"] = "InterpolateCurve"
+        elif self.keyword == "$$stepped":
+            curve["type"] = "SteppedCurve"
         elif self.keyword == "$$curvedata":
             for index in range(0, len(self.args) - 1, 2):
                 x = max(0, min(255, int(self.args[index])))
@@ -1100,6 +1234,40 @@ class AsciiParser(ReadFile):
             effects.append(
                 convert_eos_effect(self._raw_effects[number], self.param_types)
             )
+
+    def _finalize_unmounted_subs(self) -> None:
+        """Promote non-empty unmounted Eos Subs into Presets (Option A)."""
+        presets: dict[float, typing.Any] | None = None
+        for sub_id in sorted(self.subs):
+            if sub_id in self._sub_preset_numbers:
+                continue
+            sub_fx = self._sub_effects.get(sub_id)
+            has_fx = bool(
+                sub_fx
+                and any(e > 0.0 and c for e, c in sub_fx.get("chans", {}).items())
+            )
+            sub = self.subs[sub_id]
+            has_static = bool(
+                sub["channels"]
+                or self._sub_raw_params.get(sub_id)
+                or self._sub_raw_refs.get(sub_id)
+            )
+            if has_fx or not has_static:
+                continue
+            if presets is None:
+                presets = self.data.setdefault("palettes", {}).setdefault(
+                    PaletteCategory.PRESET.value, {}
+                )
+            preset_num = float(sub_id)
+            while preset_num in presets:
+                preset_num += 1.0
+            self._sub_preset_numbers[sub_id] = preset_num
+            presets[preset_num] = {
+                "category": PaletteCategory.PRESET.value,
+                "number": preset_num,
+                "label": sub["label"] or f"Sub {sub_id}",
+                "channels": dict(sub["channels"]),
+            }
 
     @staticmethod
     def _new_effect_store() -> dict[str, typing.Any]:
@@ -1243,6 +1411,11 @@ class AsciiParser(ReadFile):
         fader_num = int(self.args[0])
         max_faders = MAX_FADER_PAGE * MAX_FADER_PER_PAGE
         if not 1 <= fader_num <= max_faders:
+            LOGGER.debug(
+                "Ignoring Eos $FaderDef %d outside OLC fader range 1..%d",
+                fader_num,
+                max_faders,
+            )
             self.current["faderdef"] = -1
             self.state = State.IN_FADERDEF
             return
@@ -1272,13 +1445,19 @@ class AsciiParser(ReadFile):
             )
             if running_effs:
                 eff_num, eff_chans = running_effs[0]
-                self.data["faders"][index] = {
+                fader_entry: dict[str, typing.Any] = {
                     "page": page,
                     "number": number,
                     "type": FaderType.EFFECT,
                     "contents": eff_num,
                     "effect_channels": list(eff_chans),
                 }
+                if sub is not None:
+                    if sub["channels"]:
+                        fader_entry["base_channels"] = dict(sub["channels"])
+                    if sub["label"]:
+                        fader_entry["text"] = sub["label"]
+                self.data["faders"][index] = fader_entry
                 return
             if sub and (
                 sub["channels"]

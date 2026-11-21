@@ -22,6 +22,7 @@ from olc.show.curve import (
     LinearCurve,
     SegmentsCurve,
     SquareRootCurve,
+    SteppedCurve,
 )
 
 
@@ -299,3 +300,30 @@ def test_parse_curve_value(
     else:
         assert res is not None
         assert abs(res - expected) < 1e-4
+
+
+def test_stepped_curve_and_custom_endpoints() -> None:
+    """Verify SteppedCurve zero-order hold and custom endpoint preservation."""
+    stepped = SteppedCurve()
+    stepped.name = "Step"
+    stepped.set_points([(0, 0), (10, 0), (11, 255), (255, 255)])
+    assert stepped.points == [(0, 0), (10, 0), (11, 255), (255, 255)]
+    assert stepped.get_level(0) == 0
+    assert stepped.get_level(10) == 0
+    assert stepped.get_level(11) == 255
+    assert stepped.get_level(255) == 255
+    assert stepped.get_level_16bit(0) == 0
+    assert stepped.get_level_16bit(2700) == 0
+    assert stepped.get_level_16bit(11 * 257) == 65535
+    assert stepped.evaluate_normalized(0.0) == 0.0
+    assert stepped.evaluate_normalized(10.5 / 255.0) == 0.0
+    assert stepped.evaluate_normalized(11.5 / 255.0) == 1.0
+    assert stepped.evaluate_normalized(1.0) == 1.0
+
+    inverted = SegmentsCurve()
+    inverted.name = "Inverted"
+    inverted.set_points([(0, 255), (128, 128), (255, 0)])
+    assert inverted.points == [(0, 255), (128, 128), (255, 0)]
+    assert inverted.get_level(0) == 255
+    assert inverted.get_level(128) == 128
+    assert inverted.get_level(255) == 0

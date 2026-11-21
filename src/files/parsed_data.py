@@ -23,7 +23,13 @@ from olc.devices.fixture import FixtureDefinition
 from olc.files.import_types import Action
 from olc.show.channel_time import ChannelTime
 from olc.show.cue import Cue
-from olc.show.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.show.curve import (
+    InterpolateCurve,
+    LimitCurve,
+    PointsCurve,
+    SegmentsCurve,
+    SteppedCurve,
+)
 from olc.show.effect import EffectDefinition, deserialize_effect_refs
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.group import Group
@@ -165,7 +171,7 @@ class ParsedData:
     @staticmethod
     def _create_curve_from_dict(
         values: dict,
-    ) -> LimitCurve | SegmentsCurve | InterpolateCurve | None:
+    ) -> LimitCurve | PointsCurve | None:
         """Create a curve instance from serialized dictionary."""
         curve_type = values.get("type")
         if curve_type == "LimitCurve":
@@ -177,9 +183,11 @@ class ParsedData:
             )
             return LimitCurve(limit=limit_int)
         if curve_type == "SegmentsCurve":
-            curve: SegmentsCurve | InterpolateCurve = SegmentsCurve()
+            curve: PointsCurve = SegmentsCurve()
         elif curve_type == "InterpolateCurve":
             curve = InterpolateCurve()
+        elif curve_type == "SteppedCurve":
+            curve = SteppedCurve()
         else:
             return None
 
@@ -187,11 +195,19 @@ class ParsedData:
         is_norm = values.get("normalized", False) or any(
             isinstance(p[0], float) and 0.0 < p[0] < 1.0 for p in points
         )
+        converted: list[tuple[int, int]] = []
         for point in points:
             if is_norm:
-                curve.add_normalized_point(float(point[0]), float(point[1]))
+                converted.append(
+                    (
+                        int(round(float(point[0]) * 255.0)),
+                        int(round(float(point[1]) * 255.0)),
+                    )
+                )
             else:
-                curve.add_point(int(round(point[0])), int(round(point[1])))
+                converted.append((int(round(point[0])), int(round(point[1]))))
+        if converted:
+            curve.set_points(converted)
         return curve
 
     def import_curves(self) -> None:
@@ -250,6 +266,10 @@ class ParsedData:
                 universe = out["universe"]
                 curve_nb = out.get("curve", 0)
                 self.lightshow.patch.add_output(channel, output, universe, curve_nb)
+                if (label := out.get("label")) and (
+                    dev_obj := self.lightshow.patch.devices.get(int(channel))
+                ) is not None:
+                    dev_obj.label = str(label)
 
     def _normalize_channels_dict(
         self, channels: dict[typing.Any, typing.Any] | None
@@ -350,6 +370,17 @@ class ParsedData:
                         fader_obj, "control_mode"
                     ):
                         fader_obj.control_mode = str(ctrl_mode)
+                    base_chs = values.get("base_channels")
+                    if (
+                        isinstance(base_chs, dict)
+                        and base_chs
+                        and hasattr(fader_obj, "set_base_channels")
+                    ):
+                        fader_obj.set_base_channels(
+                            self._normalize_channels_dict(base_chs)
+                        )
+                    if fader_text := values.get("text"):
+                        fader_obj.text = str(fader_text)
 
     def import_independents(self) -> None:
         """Import independents data"""

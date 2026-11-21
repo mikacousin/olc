@@ -337,3 +337,67 @@ def test_limit_curve_point_and_spin_sync(app_gui: Application) -> None:
     process_events()
     assert not edition.limit_box.get_visible()
     assert edition.limit_point is None
+
+
+def test_import_dialog_curves_option(app_gui: Application) -> None:
+    """Verify DialogData displays Curves combo and updates actions['curves']."""
+    from olc.files.import_types import Action
+    from olc.gtk3.dialogs.import_dialog import DialogData
+
+    actions: dict[str, object] = {
+        "curves": Action.REPLACE,
+        "patch": Action.REPLACE,
+        "sequences": {},
+        "groups": Action.REPLACE,
+        "palettes": Action.REPLACE,
+        "effects": Action.REPLACE,
+        "independents": Action.REPLACE,
+        "faders": Action.REPLACE,
+        "midi": Action.REPLACE,
+    }
+    data = {
+        "curves": {905: {"type": "SteppedCurve", "points": [(0, 0), (255, 255)]}},
+        "patch": {},
+        "devices": {},
+        "sequences": {},
+        "groups": {},
+        "palettes": {},
+        "effects": [],
+        "independents": {},
+        "faders": {},
+    }
+    assert app_gui.window is not None
+    dialog = DialogData(app_gui.window, data, actions)
+    process_events()
+
+    combos: list[Gtk.ComboBoxText] = []
+
+    def _walk(widget: Gtk.Widget) -> None:
+        if isinstance(widget, Gtk.Box):
+            children = widget.get_children()
+            if (
+                len(children) == 2
+                and isinstance(children[0], Gtk.Label)
+                and children[0].get_text() == "Curves:"
+                and isinstance(children[1], Gtk.ComboBoxText)
+            ):
+                combos.append(children[1])
+        if isinstance(widget, Gtk.Container):
+            for child in widget.get_children():
+                _walk(child)
+
+    _walk(dialog.get_content_area())
+    assert len(combos) == 1
+    curves_combo = combos[0]
+    assert actions["curves"] is Action.REPLACE
+
+    curves_combo.set_active(1)
+    process_events()
+    assert actions["curves"] is Action.MERGE
+
+    curves_combo.set_active(2)
+    process_events()
+    assert actions["curves"] is Action.IGNORE
+
+    dialog.destroy()
+    process_events()
