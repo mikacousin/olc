@@ -1324,11 +1324,13 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self.set_color_rgb(int(c0), int(c1), int(c2))
 
     def _apply_gobo_param(self, value: Any) -> None:  # noqa: ANN401
-        """Apply gobo parameter from slot index, DMX value, or range label."""
+        """Apply gobo parameter from normalized float, slot index, DMX, or label."""
         gobo_ch = self.get_channel(ChannelType.GOBO_WHEEL)
         if gobo_ch is None:
             return
-        if isinstance(value, (int, float)):
+        if isinstance(value, float) and 0.0 <= value <= 1.0:
+            self.set_parameter_normalized(ChannelType.GOBO_WHEEL, value)
+        elif isinstance(value, (int, float)):
             int_val = int(round(value))
             if (
                 gobo_ch.ranges
@@ -1389,7 +1391,19 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
     def apply_device_values(self, values: dict[str, Any]) -> None:
         """Apply a batch of parameter values to this device."""
+        lower_keys = {str(k).lower() for k in values}
+        has_explicit_rgb = {"red", "green", "blue"}.issubset(lower_keys)
+        color_items: list[tuple[str, Any]] = []
+        other_items: list[tuple[str, Any]] = []
         for name, val in values.items():
+            if str(name).lower() in ("color", "colour"):
+                if not has_explicit_rgb:
+                    color_items.append((name, val))
+            else:
+                other_items.append((name, val))
+        for name, val in color_items:
+            self.apply_device_parameter(name, val)
+        for name, val in other_items:
             self.apply_device_parameter(name, val)
 
     def activate_range(self, channel_label: str, range_label: str) -> None:

@@ -965,14 +965,24 @@ class EffectsEngine:
     ) -> tuple[np.ndarray, np.ndarray]:
         low = np.zeros(len(channels), dtype=np.float64)
         high = np.ones(len(channels), dtype=np.float64)
-        if isinstance(layer.low_value, (int, float)):
+        if (
+            isinstance(layer.low_value, str)
+            and layer.low_value.strip().lower() == "bkgrd"
+        ):
+            low = base_vals.copy()
+        elif isinstance(layer.low_value, (int, float)):
             val = float(layer.low_value)
             low.fill(val / 100.0 if val > 1.0 else val)
         elif layer.low_palette is not None:
             low = self._resolve_palette_intensities(
                 show, layer.low_palette, channels, base_vals
             )
-        if isinstance(layer.high_value, (int, float)):
+        if (
+            isinstance(layer.high_value, str)
+            and layer.high_value.strip().lower() == "bkgrd"
+        ):
+            high = base_vals.copy()
+        elif isinstance(layer.high_value, (int, float)):
             val = float(layer.high_value)
             high.fill(val / 100.0 if val > 1.0 else val)
         elif layer.high_palette is not None:

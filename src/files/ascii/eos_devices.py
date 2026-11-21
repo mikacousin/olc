@@ -49,14 +49,12 @@ EOS_PARAM_TO_CHANNEL_TYPE: dict[str, ChannelType] = {
     "yellow": ChannelType.YELLOW,
     "color_select": ChannelType.COLOR_WHEEL,
     "gobo_select": ChannelType.GOBO_WHEEL,
-    "gobo_select_2": ChannelType.GOBO_WHEEL,
     "shutter_strobe": ChannelType.STROBE,
     "zoom": ChannelType.ZOOM,
     "edge": ChannelType.FOCUS,
     "iris": ChannelType.IRIS,
     "beam_fx_select": ChannelType.PRISM,
     "diffusion": ChannelType.FROST,
-    "medium_diffusion": ChannelType.FROST,
     "_macros": ChannelType.MACRO,
     "fixture_global_reset": ChannelType.RESET,
     "color_temperature": ChannelType.COLOR_TEMP,
@@ -67,12 +65,14 @@ EOS_PARAM_TO_CHANNEL_TYPE: dict[str, ChannelType] = {
 # channels keyed by their lowercased personality label.
 EOS_GENERIC_PARAM_NAMES: frozenset[str] = frozenset(
     {
+        "gobo_select_2",
         "gobo_index/speed",
         "gobo_index/speed_2",
         "beam_fx_index/speed",
         "beam_fx_index/speed_2",
         "animation_select",
         "animation_index/speed",
+        "medium_diffusion",
         "frame_assembly",
         "frame_a_1",
         "frame_b_1",
@@ -542,6 +542,8 @@ def decode_eos_cue_params(
         g = round(rgb.get("green", 0.0) * 255)
         b = round(rgb.get("blue", 0.0) * 255)
         dev_vals["color"] = f"#{r:02x}{g:02x}{b:02x}"
+        for comp, val in rgb.items():
+            dev_vals[comp] = val
     elif cmy:
         r = round((1.0 - cmy.get("cyan", 0.0)) * 255)
         g = round((1.0 - cmy.get("magenta", 0.0)) * 255)

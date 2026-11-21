@@ -749,16 +749,18 @@ def test_eos_param_token_parsing() -> None:
     assert eos_param_id_to_olc_key(12, ptypes) == "color"
     assert eos_param_id_to_olc_key(76, ptypes) == "frost"
     assert eos_param_id_to_olc_key(78, ptypes) == "focus"
-    assert eos_param_id_to_olc_key(57675, ptypes) == "frost"
+    assert eos_param_id_to_olc_key(57675, ptypes) == "medium_diffusion"
     assert eos_param_id_to_olc_key(9999, ptypes) is None
 
     ptypes_ext = {
         **ptypes,
         206: "Gobo_Index/Speed",
+        211: "Gobo_Select_2",
         240: "Frame_a_1",
         9998: "Custom_Blade",
     }
     assert eos_param_id_to_olc_key(206, ptypes_ext) == "gobo_index/speed"
+    assert eos_param_id_to_olc_key(211, ptypes_ext) == "gobo_select_2"
     assert eos_param_id_to_olc_key(240, ptypes_ext) == "frame_a_1"
     assert eos_param_id_to_olc_key(9998, ptypes_ext) is None
     assert (
@@ -2516,3 +2518,214 @@ def test_ascii_writer_section_6_3_and_6_4_roundtrip(
     assert rfx6.layers[0].mode == EffectMode.RELATIVE
     assert rfx6.layers[0].waveform == WaveformType.PULSE
     assert rfx6.layers[0].size == pytest.approx(-5.0)
+
+
+def test_eos_base_nocturne_dmx_fidelity_and_bkgrd_effects(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+) -> None:
+    """Verify 0 DMX mismatch across Base Nocturne and Bkgrd ceiling on Abs effects."""
+    import pathlib
+    import typing
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from olc.core.app import CoreApplication
+    from olc.core.effects_engine import EffectsEngine
+    from olc.devices.channel import ChannelType
+    from olc.files.ascii.parser import AsciiParser
+    from olc.files.ascii.writer import AsciiWriter
+    from olc.show.palette import PaletteCategory
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    assert isinstance(tmp_path, pathlib.Path)
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    ls = LightShow()
+    imported = ImportFile(ls, Gio.File.new_for_path(str(asc_path)), FileType.ASCII)
+    imported.parse_sync(auto_import=True)
+    parser = imported.parser
+    assert isinstance(parser, AsciiParser)
+
+    def _u16(dev: object, label: str) -> int:
+        chs = getattr(dev, "channels", [])
+        coarse = next(
+            c for c in chs if not c.fine and not c.ultra_fine and c.label == label
+        )
+        fine = next((c for c in chs if c.fine and c.label == f"{label}_fine"), None)
+        return ((coarse.value << 8) | fine.value) if fine is not None else coarse.value
+
+    # 1. Gobos & dual Gobo wheels
+    dev1 = ls.patch.get_device(1)
+    dev4 = ls.patch.get_device(4)
+    dev41 = ls.patch.get_device(41)
+    assert dev1 is not None and dev4 is not None and dev41 is not None
+
+    bp22 = ls.palettes.get(PaletteCategory.BEAM, 22.0)
+    bp123 = ls.palettes.get(PaletteCategory.BEAM, 123.0)
+    pr110 = ls.palettes.get(PaletteCategory.PRESET, 110.0)
+    assert bp22 is not None and bp123 is not None and pr110 is not None
+
+    dev4.apply_device_values(bp22.device_values[4])
+    assert _u16(dev4, "Gobo_Select") == 15
+
+    dev1.apply_device_values(bp123.device_values[1])
+    assert _u16(dev1, "Gobo_Select") == 45
+
+    dev1.apply_device_values(pr110.device_values[1])
+    assert _u16(dev1, "Gobo_Select") == 0
+    assert _u16(dev1, "Gobo_Select_2") == 27
+
+    # 2. Dual Frost (Diffusion vs Medium_Diffusion)
+    bp2 = ls.palettes.get(PaletteCategory.BEAM, 2.0)
+    bp3 = ls.palettes.get(PaletteCategory.BEAM, 3.0)
+    assert bp2 is not None and bp3 is not None
+
+    dev1.apply_device_values(bp2.device_values[1])
+    assert _u16(dev1, "Diffusion") == 255
+    assert _u16(dev1, "Medium_Diffusion") == 0
+
+    dev1.apply_device_values(bp3.device_values[1])
+    assert _u16(dev1, "Diffusion") == 0
+    assert _u16(dev1, "Medium_Diffusion") == 255
+
+    # 3. 16-bit RGBW emitter fidelity on ColorPalette 1 (LED F1 ch 41)
+    cp1 = ls.palettes.get(PaletteCategory.COLOR, 1.0)
+    assert cp1 is not None
+    assert cp1.device_values[41]["color"] == "#61fcff"
+    dev41.apply_device_values(cp1.device_values[41])
+    assert abs(_u16(dev41, "Red") - 24854) <= 2
+    assert abs(_u16(dev41, "Green") - 64827) <= 2
+    assert abs(_u16(dev41, "Blue") - 65535) <= 2
+    assert abs(_u16(dev41, "White") - 65535) <= 2
+
+    # 4. Global byte-for-byte guard across ALL palettes, presets, and cues
+    mismatches: list[tuple[str, int, str, int, int]] = []
+    checked_params: set[str] = set()
+
+    def _audit_container(
+        label: str,
+        raw_by_ch: dict[int, dict[int, float]],
+        olc_dev_vals: dict[int, dict[str, object]],
+    ) -> None:
+        for ch, pmap in raw_by_ch.items():
+            dev = ls.patch.get_device(ch)
+            if dev is None:
+                continue
+            pers_id = parser.channel_personality.get(ch)
+            pers = parser.personalities.get(pers_id) if pers_id is not None else None
+            if pers is None:
+                continue
+            pers_by_pid = {int(pc["param_id"]): pc for pc in pers["channels"]}
+            saved = [c.value for c in dev.channels]
+            dev.apply_device_values(olc_dev_vals.get(ch, {}))
+            for pid, raw_val in pmap.items():
+                pc = pers_by_pid.get(pid)
+                if pc is None:
+                    continue
+                pname = parser.param_types.get(pid, f"pid_{pid}")
+                checked_params.add(pname)
+                coarse = next(
+                    c
+                    for c in dev.channels
+                    if not c.fine and not c.ultra_fine and c.label == pname
+                )
+                fine = next(
+                    (c for c in dev.channels if c.fine and c.label == f"{pname}_fine"),
+                    None,
+                )
+                slots = pc.get("slot_list", [])
+                slot_inverted = len(slots) == 1 and int(slots[0]["dmx_min"]) > int(
+                    slots[0]["dmx_max"]
+                )
+                is_flipped = (
+                    coarse.channel_type != ChannelType.GENERIC
+                    and coarse.physical_max < coarse.physical_min
+                    and not slot_inverted
+                )
+                if int(pc.get("bytes", 1)) == 2 and fine is not None:
+                    actual = (coarse.value << 8) | fine.value
+                    expected = (
+                        65535 - int(round(raw_val))
+                        if is_flipped
+                        else int(round(raw_val))
+                    )
+                    tol = 300
+                else:
+                    actual = coarse.value
+                    exp_8 = (
+                        int(round(raw_val)) >> 8
+                        if raw_val > 255
+                        else int(round(raw_val))
+                    )
+                    expected = 255 - exp_8 if is_flipped else exp_8
+                    tol = 2
+                if abs(actual - expected) > tol:
+                    mismatches.append((label, ch, pname, expected, actual))
+            for c, val_saved in zip(dev.channels, saved, strict=False):
+                c.value = val_saved
+
+    for (cat_val, num), raw_by_ch in parser._palette_raw_params.items():
+        pal = ls.palettes.get(PaletteCategory(cat_val), num)
+        if pal is not None:
+            _audit_container(f"{cat_val} {num:g}", raw_by_ch, pal.device_values)
+
+    for (seq_num, cue_num), raw_by_ch in parser._cue_raw_params.items():
+        seq = (
+            ls.main_playback
+            if seq_num == 1
+            else next((s for s in ls.sequences if s.index == seq_num), None)
+        )
+        if seq is None:
+            continue
+        st = next((s for s in seq.steps if s.cue and s.cue.number == cue_num), None)
+        if st is not None and st.cue is not None:
+            _audit_container(
+                f"Seq{seq_num} Cue{cue_num:g}", raw_by_ch, st.cue.device_values
+            )
+
+    assert len(checked_params) >= 40
+    assert mismatches == []
+
+    # 5. Absolute 0 -> Bkgrd effects stay bounded by base cue intensity + round-trip
+    fx4 = ls.effects.get(4.0)
+    assert fx4 is not None
+    assert fx4.layers[0].low_value == 0.0
+    assert fx4.layers[0].high_value == "bkgrd"
+
+    app_stub = typing.cast(
+        "CoreApplication",
+        SimpleNamespace(lightshow=ls, backend=None, emit=lambda *_a, **_k: None),
+    )
+    base = np.zeros(512, dtype=np.float64)
+
+    for eff_num, times in (
+        (4.0, [0.0, 1.25, 2.5, 3.75, 5.0, 7.5]),
+        (3.0, [0.0, 0.005, 0.01, 0.015, 0.025]),
+    ):
+        for base_lvl in (0.0, 0.10, 0.50):
+            base[20] = base_lvl
+            eng = EffectsEngine(app_stub)
+            eng.start_effect(eff_num, [21], now=0.0)
+            samples = [
+                float(eng.apply_intensity_modulation(base, now=t)[20]) for t in times
+            ]
+            assert max(samples) == pytest.approx(base_lvl, abs=1e-4)
+            assert min(samples) == pytest.approx(0.0, abs=1e-4)
+
+    rt_path = tmp_path / "bkgrd_roundtrip.asc"
+    AsciiWriter(rt_path, ls).write()
+    ls_rt = LightShow()
+    ImportFile(ls_rt, Gio.File.new_for_path(str(rt_path)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    rt_fx4 = ls_rt.effects.get(4.0)
+    assert rt_fx4 is not None
+    assert rt_fx4.layers[0].low_value == pytest.approx(0.0)
+    assert rt_fx4.layers[0].high_value == "bkgrd"

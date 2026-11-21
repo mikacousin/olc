@@ -443,7 +443,7 @@ def _parse_rgb_norm(value: typing.Any) -> Optional[tuple[float, float, float]]: 
 
 def _is_continuous_norm_param(dev: typing.Any, p_lower: str) -> bool:  # noqa: ANN401
     """Return True if *p_lower* is continuous (not a discrete multi-range wheel)."""
-    if p_lower in ("gobo_wheel", "gobo", "color_wheel"):
+    if p_lower in ("gobo_wheel", "gobo", "gobo_select_2", "color_wheel"):
         return False
     ch = None
     try:
@@ -505,8 +505,19 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
         touched_color = False
         start = start_states.get(dev_id, {})
         start_norm = start.get("norm_params", {})
-        for param_name, target_val in params.items():
+        lower_keys = {str(k).lower() for k in params}
+        has_explicit_rgb = {"red", "green", "blue"}.issubset(lower_keys)
+        ordered_params = [
+            (k, v) for k, v in params.items() if str(k).lower() in ("color", "colour")
+        ] + [
+            (k, v)
+            for k, v in params.items()
+            if str(k).lower() not in ("color", "colour")
+        ]
+        for param_name, target_val in ordered_params:
             p_lower = param_name.lower()
+            if p_lower in ("color", "colour") and has_explicit_rgb:
+                continue
             if p_lower == "intensity":
                 s_val = float(start.get("intensity", getattr(dev, "intensity", 0.0)))
                 t_val = float(target_val)

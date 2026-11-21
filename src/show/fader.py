@@ -211,7 +211,14 @@ class FaderPreset(Fader):
                 before = _snapshot_dev_diff_state(dev)
                 touched_color = False
                 norm_params = base.get("norm_params", {})
-                for p_lower in base.get("_touched_params", ()):
+                touched_raw = list(base.get("_touched_params", ()))
+                has_explicit_rgb = {"red", "green", "blue"}.issubset(set(touched_raw))
+                ordered_touched = [
+                    p for p in touched_raw if p in ("color", "colour")
+                ] + [p for p in touched_raw if p not in ("color", "colour")]
+                for p_lower in ordered_touched:
+                    if p_lower in ("color", "colour") and has_explicit_rgb:
+                        continue
                     if p_lower in _COLOR_PARAM_NAMES:
                         touched_color = True
                     if p_lower in scalar_map:

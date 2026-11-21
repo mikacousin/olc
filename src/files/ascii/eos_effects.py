@@ -252,6 +252,7 @@ def _convert_absolute(raw: dict[str, typing.Any], param: str) -> dict[str, typin
                 layer["size"] = levels[0]
             else:
                 layer["low_value"] = levels[0]
+                layer["high_value"] = "bkgrd"
         elif len(levels) >= 2:
             layer["low_value"] = min(levels)
             layer["high_value"] = max(levels)
