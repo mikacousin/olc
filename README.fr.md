@@ -37,9 +37,10 @@ Console virtuelle :
 
 ## Utilisation
 
-- Une [présentation](https://mikacousin.github.io/olc/index.fr.html).
-- Un [manuel en français](https://mikacousin.github.io/olc/doc.fr/) en cours d'écriture.
-- Un [espace de discussion francophone](https://github.com/mikacousin/olc/discussions/categories/fran%C3%A7ais).
+- [Présentation et documentation](https://mikacousin.github.io/olc/index.fr.html)
+- [Manuel utilisateur (Français)](https://mikacousin.github.io/olc/doc.fr/)
+- [User Manual (English)](https://mikacousin.github.io/olc/doc.en/)
+- [Espace de discussion francophone](https://github.com/mikacousin/olc/discussions/categories/fran%C3%A7ais)
 
 ## Installation
 

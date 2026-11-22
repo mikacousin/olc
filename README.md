@@ -37,8 +37,10 @@ Virtual Console:
 
 ## Usage
 
-You can find useful information in the [Documentation](https://mikacousin.github.io/olc/).  
-A [manual in French](https://mikacousin.github.io/olc/doc.fr/) is being written and can be translated using online tools in the meantime.
+- [Documentation & Overview](https://mikacousin.github.io/olc/)
+- [User Manual (English)](https://mikacousin.github.io/olc/doc.en/)
+- [Manuel utilisateur (Français)](https://mikacousin.github.io/olc/doc.fr/)
+- [GitHub Discussions](https://github.com/mikacousin/olc/discussions)
 
 ## Installation
 
