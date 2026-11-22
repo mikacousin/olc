@@ -1,28 +1,35 @@
-# Contrôleurs MIDI
-Configurer les contrôleurs pour qu'ils envoient :
-- des Notes pour les boutons,
-- des Control Changes pour les rotatifs et les contrôleurs
-- des Control Changes ou des Pitchwheel pour les faders
+[English](../doc.en/midi.md) | [← Sommaire](index.md)
 
-Le mapping MIDI par défaut correspond au mode Makie Control, les contrôleurs configurés ainsi sont pris en charge directement.
+# 20. MIDI & Surfaces Mackie Control
 
-Ouvrir les paramètres MIDI d'olc, activer le(s) contrôleur(s) dans MIDI In et choisir le mode utilisé par le contrôleur pour les rotatifs.
-- Mode Relative1 : Rotatifs infinis. Valeurs de 0 à 64 dans un sens, de 127 à 65 dans l'autre.
-- Mode Relative2 : Rotatifs infinis. Valeurs de 65 à 127 dans un sens, de 63 à 0 dans l'autre.
-- Mode Relative3 (Makie) : Rotatifs infinis. Valeurs de 0 à 64 dans un sens, valeurs de 65 à 127 dans l'autre.
-- Mode Absolute : Pour les rotatifs classiques non infinis. Valeurs de 0 à 127. Attention, ce mode ne fonctionne pas pour la roue de le console virtuelle.
+Open Lighting Console prend en charge les contrôleurs **MIDI** génériques ainsi que les surfaces de contrôle motorisées compatibles **Mackie Control Universal (MCU)** via `mido` et `python-rtmidi`.
 
-> Note:  
-> Tous les rotatifs d'un contrôleur doivent être configurés dans le même mode.
+![Préférences — onglet MIDI](../pictures/settings_midi.png)
 
-Activer également le(s) contrôleur(s) dans MIDI Out pour avoir le retour d'info sur le matériel le supportant (faders motorisés, LED, ...)
+## Activation & Modes d'encodeurs rotatifs
 
-Ensuite :
-- Ouvrir la console virtuelle, activer le bouton MIDI pour passer en mode apprentissage.
-- En mode apprentissage, sélectionner un objet (le bouton Go par exemple) et appuyer sur un bouton d'un contrôleur MIDI.
-- Il est possible de configurer autant d'objets que voulu (boutons, faders, ...)
-- Appuyer sur le bouton MIDI pour quitter le mode apprentissage
-- Utiliser les boutons et les faders des contrôleurs MIDI
+Dans **Preferences → MIDI** :
+1. Cochez **`Active`** sur le ou les ports MIDI de votre contrôleur (l'exemple `Midi Through` apparaît même sans matériel branché).
+2. Choisissez dans **`Rotary encoder Mode`** le protocole émis par vos encodeurs rotatifs infinis :
+   - **`Relative 1`** *(Complément à 2)* : valeurs `1..63` pour incrémenter, `65..127` pour décrémenter.
+   - **`Relative 2`** *(Bit de signe)* : valeurs `1..63` dans un sens, `65..127` dans l'autre selon convention *Sign Bit / Offset*.
+   - **`Mackie`** : format relatif des encodeurs *V-Pot* Mackie Control.
+   - **`Absolute`** : potentiomètres physiques classiques `0..127`.
 
-> Note:  
-> Le mapping MIDI est enregistré par olc dans les fichiers ASCII.
+## Apprentissage MIDI (*MIDI Learn*)
+
+L'association ne nécessite aucun fichier de configuration manuel :
+1. Ouvrez la **Console virtuelle** (`Shift+Ctrl+C`).
+2. Activez le bouton **`MIDI`** dans la barre de titre.
+3. Cliquez sur le contrôle souhaité (fader, bouton Flash, encodeur ou bouton indépendant, touche `Go`, `Pause`, `Go Back`, …).
+4. Bougez le curseur, le bouton ou le potentiomètre physique correspondant sur votre surface MIDI : l'affectation est mémorisée par page/contrôle et sauvegardée dans le fichier `.olc`.
+
+## Retour moteur, LED & Écran `MackieLCD`
+
+Lorsque le contrôleur prend en charge le retour bidirectionnel :
+- **Faders & Flashs** : les changements de page, les rappels de mémoires et l'interface graphique renvoient les messages *Control Change* et *Note* pour repositionner les faders motorisés et allumer les témoins LED.
+- **Écran LCD Mackie (`MackieLCD`)** : affiche automatiquement les étiquettes des faders assignés sur l'afficheur SysEx des surfaces MCU compatibles.
+
+---
+
+*Précédent : [19. Préférences (Preferences)](settings.md) — Suivant : [21. OSC, OSCQuery & TouchOSC →](osc.md)*

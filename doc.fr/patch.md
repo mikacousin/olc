@@ -1,53 +1,43 @@
-# Patch
+[English](../doc.en/patch.md) | [← Sommaire](index.md)
 
-## Outputs:  
-![Patch Outputs](pictures/patch_outputs.png)
+# 5. Patch & Sorties DMX
 
-Ouvrir l'onglet : [Ctrl + P] ou 'Patch' dans le menu principal.
+## Onglet Patch (`Ctrl+P`)
 
-### Sélectionner un output :  
+L'onglet **Patch** propose une vue centrée sur les circuits et les projecteurs (*devices*), associée à une barre d'outils dédiée en haut de l'onglet :
 
-- Clique souris : sélectionne un output
-- Clique souris + Maj : sélectionne la série entre les deux
-- Clique souris + Ctrl : Ajoute / Retire l'output de la sélection
-- Numéro puis [O] : sélectionne l'output
-- Numéro puis [>] : Thru
-- Numéro puis [+] : ajoute l'output
-- Numéro puis [-] : retire l'output
-- Déplacement avec les flèches
+![Onglet Patch](../pictures/patch.png)
 
-> Note :  
-> Output sans préciser univers : output premier univers  
-> Output.univers (par exemple 10.3 pour l'output 10 de l'univers 3)
+### Barre d'outils
+- **Tri (`Sort by Channels` / par adresse DMX)** : bascule l'ordre des lignes et des colonnes entre vue logique (circuit d'abord) et vue physique (univers / adresse d'abord).
+- **Filtre (`Patched only`)** : masque ou affiche les circuits non patchés.
+- **`Add Device`** : ouvre l'assistant de création et de patch d'un ou plusieurs projecteurs multi-paramètres depuis la bibliothèque (y compris modèles importés en `.gdtf`) en affectant automatiquement numéro de circuit, mode DMX, univers et adresse de départ sans chevauchement.
+- **`Remove Device`** : supprime le projecteur sélectionné (ou le remet à l'état non patché).
+- **`Fixture Exchange`** : remplace le type ou le mode DMX d'un appareil déjà patché tout en conservant son numéro de circuit.
+- **`Patch 1:1`** : associe directement les adresses aux circuits en correspondance directe 1 pour 1.
+- **`Unpatch all`** : libère l'ensemble du patch (avec demande de confirmation).
 
-### Envoyer des outputs :  
+### Tableau & Édition directe
+Le tableau affiche : **`Channel`**, **`Label / Name`**, **`Fixture`**, **`Mode`**, **`Universe`**, **`Address`**, **`Footprint`** (empreinte DMX en canaux) et **`Curve`** (courbe de gradation assignée).
 
-Valeur puis [=]
+- Double-cliquez sur le label, le projecteur, le mode, l'adresse ou la courbe pour modifier l'élément directement via les menus contextuels intégrés.
+- Vous pouvez aussi patcher/dépatcher au clavier :
+  - `1 AT` -> `1 PATCH AT 1/10` ou `21 THRU 24 PATCH AT 2/1`
+  - `1 UNPATCH` ou `ADDRESS 2/1 UNPATCH`
 
-### Tester les outputs :
-> Note : On ne peut tester qu'un output à la fois
+---
 
-Valeur puis [T], ensuite déplacement avec les flèches.  
-Quitter le mode test output : presser à nouveau [T] ou fermer l'onglet.
+## Onglet Sorties DMX (`DMX Outputs` — `Ctrl+D`)
 
-### Patcher :  
-- Patch droit : Bouton 'Patch 1:1'
-- Vider patch : Bouton 'Unpatch all'
-- Patch un output : sélectionner output, entrer un numéro de circuit, presser [C]
-- Patch multiple : sélectionner une série d'output, entrer un numéro de circuit, choisir de patcher tout sur le même circuit ou sur des circuits consécutifs.
+L'onglet **DMX Outputs** affiche en temps réel les **512 adresses DMX** de chaque univers configuré :
 
-### Changer la courbe des outputs :  
-Chaque output a sa courbe de dessinée.  
-On peut choisir la [courbe](curves.md) de réponse des outputs. Par défaut la courbe est linéaire. 
+![Onglet DMX Outputs](../pictures/dmx_outputs.png)
 
-![Select Curve](pictures/patch_set_curve.png)
+- **En-tête de tuile** : `Univers/Adresse` (ex. `1/47`, `1/62`).
+- **Centre (blanc)** : valeur DMX actuelle sortie sur le réseau (`0..255`, masquée à zéro pour préserver la lisibilité).
+- **Bas (ambre)** : numéro du circuit logique patché à cette adresse (ex. `7` sur `1/47`, `31` sur `1/62`).
+- **Surbrillance** : les tuiles actives prennent une teinte ambrée proportionnelle à leur niveau de sortie.
 
-- Sélectionner un ou des output(s) patché(s)
-- Cliquer sur un des outputs sélectionnés
-- Choisir une courbe en les faisant défiler
-- Cliquer sur la courbe choisie
-> Vous pouvez appuyer sur la touche [Esc] pour fermer ce popup sans faire de choix.
+---
 
-![Red Output](pictures/patch_red_output.png)
-
-Un output avec une courbe à 0% apparaîtra en rouge pour signifier qu'il n'enverra jamais de valeur DMX.
+*Précédent : [4. Fichiers, formats & import/export](files.md) — Suivant : [6. Bibliothèque de projecteurs & GDTF →](fixtures.md)*

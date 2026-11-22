@@ -1,37 +1,33 @@
-# Groupes
-Un groupe est une sélection de circuits ayants un niveau supérieur à 0.
+[English](../doc.en/groups.md) | [← Sommaire](index.md)
 
-Les groupes doivent avoir un numéro. Celui-ci peut être de la forme '1.5'.
+# 9. Groupes
 
-![Groups Edition](pictures/groups.png)
+L'onglet **Groups** (`Shift+Ctrl+G`) sert à enregistrer et rappeler des **sélections ordonnées de circuits** (sans niveaux d'intensité stockés) afin d'accélérer le pointage, l'édition en Live et la répartition spatiale des effets :
 
-## Édition des groupes
+![Onglet Groups avec grille de circuits et tuiles Direct Select](../pictures/groups.png)
 
-Ouvrir l'onglet : [Maj + Ctrl + G] ou 'Groupes' dans le menu principal.
+## Aperçu visuel & Ordre de sélection
 
-### Créer un nouveau groupe :
-[N] : Créer un nouveau groupe à la suite des autres.
+- La partie supérieure affiche une grille `ChannelsView` avec barre d'outils (`Compact` / `Summary+`, `Labels`, filtre `Patched`, …).
+- **Badges d'ordre (`#1`, `#2`, …)** : les circuits appartenant au groupe sélectionné portent un badge indiquant leur rang exact dans l'ordre du groupe (utile pour les chenillards, les éventails `Fan` et le paramètre `Phase` / `Spread` des effets).
+- La partie inférieure présente les tuiles des groupes (`G 1 — PC Face — 2 ch — 1, 2`) ainsi qu'une ligne d'état résumant le nom, le nombre de circuits et la liste ordonnée (`Order: 1, 2`).
 
-Numéro puis [N] : Créer le groupe Numéro.
+## Outils de la barre supérieure
 
-### Effacer un groupe :
+- **`Direct Select`** : en mode actif, cliquer sur une tuile sélectionne immédiatement les circuits du groupe dans `LiveView`.
+- **`Select Live`** : envoie la sélection du groupe courant vers la vue `Channels` principale.
+- **`Record`** / **`Update`** : enregistre la sélection active dans un nouveau groupe ou remplace le contenu du groupe courant.
+- **`Reverse`** : inverse l'ordre des circuits du groupe sélectionné (ex. `1, 2, 3, 4` devient `4, 3, 2, 1`).
+- **`Sort`** : trie ou réordonne la sélection selon l'ordre croissant ou l'ordre courant saisi.
+- **`Clear`** : désélectionne tous les circuits de l'éditeur.
+- **`Rename`** (`F2`) / **`Delete`** (`Delete`) : renomme ou supprime le groupe sélectionné.
 
-[Suppr] : Effacer le groupe sélectionné.
+## Commandes CLI équivalentes
 
-### Sélectionner un groupe :
+- Sélectionner un groupe : `GROUP 1` ou `G 1 THRU 3`
+- Enregistrer / Nommer : `RECORD GROUP 10 LABEL "Faces"`
+- Mettre à jour / Renommer / Supprimer : `UPDATE GROUP 10`, `LABEL GROUP 10 "Contres"`, `DELETE GROUP 10`
 
-Numéro puis [G] : Sélectionner le groupe.
+---
 
-[←] [↑] [→] [↓] : Changer le groupe sélectionné.
-
-### Modifier un groupe :
-
-> Les modifications sur les circuits des groupes sont effectuées en temps réel. Si le groupe est envoyé dans un master, elles seront effectives immédiatement.
-
-Valeur puis [=] : Mettre le(s) circuit(s) sélectionné(s) à la valeur donnée.
-
-[!] : Augmenter la valeur du ou des circuit(s) sélectionné(s).
-
-[:] : Baisser la valeur du ou des circuit(s) sélectionné(s).
-
-[L] : Changer le texte du groupe, [Entrée] pour confirmer, [Esc] pour abandonner.
+*Précédent : [8. Palettes & Presets](palettes.md) — Suivant : [10. Effets paramétriques →](effects.md)*

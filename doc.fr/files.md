@@ -1,44 +1,31 @@
-# Fichiers
-Open Lighting Console utilise son propre format de fichier (extension .olc) pour enregistrer les données.
+[English](../doc.en/files.md) | [← Sommaire](index.md)
 
-De plus, il peut importer et exporter les fichiers ASCII Light Cue. Ce sont les fichiers que l'on peut enregistrer avec un Congo ou DLight par exemple.
+# 4. Fichiers, formats & import/export
 
-**Afin de ne pas perdre d'informations, il est très fortement conseillé de travailler sur des copies de vos fichiers ASCII originaux. En effet, olc n'enregistrera pas les données qui ne lui sont pas utiles mais qui peuvent l'être sur d'autres systèmes.**
+Le sous-menu **File** (accessible via le bouton de menu de l'en-tête) centralise la gestion des conduites lumière :
 
-## Nouveau
-'Nouveau' dans le menu principal.
+- **New** : réinitialise le spectacle en cours (après confirmation si des modifications n'ont pas été enregistrées).
+- **Open (`Ctrl+O`)** : ouvre un fichier de spectacle existant.
+- **Save (`Ctrl+S`)** / **Save As (`Shift+Ctrl+S`)** : enregistre le spectacle courant au format natif `.olc`.
+- **Import ASCII (`Shift+Ctrl+O`)** / **Export ASCII** : importe ou exporte au format texte standardisé **USITT ASCII**.
 
-Un nouveau projet vide sera créé. Tout est effacé, le patch est remis droit.
+## Format natif `.olc`
 
-**Attention, le travail en cours est définitivement perdu !**
+Le fichier `.olc` repose sur une structure **JSON** complète qui sauvegarde sans perte l'intégralité de l'état de la console :
 
-## Ouvrir
-[Ctrl + O] ou 'Fichier > Ouvrir' dans le menu principal.
+- **Patch & Univers** : circuits simples, projecteurs multi-paramètres, profils personnalisés (*user fixtures*) et affectation des courbes de gradation.
+- **Bibliothèque & Construction** : groupes ordonnés, palettes (`Intensity`, `Focus`, `Color`, `Beam`), `Presets`, courbes (`Limit`, `Segments`, `Interpolate`) et effets paramétriques.
+- **Restitution** : séquences, étapes (*Steps*), mémoires (*Cues*), références d'effets et de palettes dans les mémoires, temps séparés par famille (`Pos`, `Color`, `Beam`), temps individuels par circuit (`Channel Time`), mode `Tracking / Cue-Only` et `MIB`.
+- **Surfaces & Workspace** : configuration multi-pages des faders (y compris épinglage `Fix`), indépendants, affectations MIDI (`note`, `note_cc`, `control_change`) et disposition des onglets ouverts entre les deux volets.
 
-**Attention, le travail en cours est définitivement perdu !**
+## Import & Export USITT ASCII (avec extensions ETC Eos)
 
-> Il est également possible d'ouvrir directement un fichier à l'ouverture en le passant en paramètre de la ligne de commande, par exemple :
-> ```bash
-> $ olc fichier.olc
-> ```
+L'import et l'export **USITT ASCII** assurent la compatibilité avec d'autres consoles de théâtre et prennent en charge les extensions **ETC Eos** :
 
-## Enregistrer
-[Ctrl + S] ou 'Fichier > Enregistrer' dans le menu principal.
+- Circuits, intensités et temps de transfert de base.
+- Définitions d'appareils (*personalities* Eos via `eos_devices`), palettes et presets.
+- Courbes, submasters / faders, parties de mémoires (*Cue parts*), temps par famille IFCB et données d'effets (`eos_effects`).
 
-Enregistre dans le fichier ouvert.
+---
 
-## Enregistrer sous
-[Maj + Ctrl + S] ou 'Fichier > Enregistrer sous' dans le menu principal.
-
-Enregistre dans un nouveau fichier.
-
-## Importer
-[Maj + Ctrl + O] ou 'Fichier > Importer' dans le menu principal.
-
-Il est possible d'importer les fichiers au formats olc et ASCII Light Cue.  
-De plus, après analyse du fichier, olc propose de remplacer, fusionner ou ignorer les données des éléments importés.
-
-## Exporter ASCII
-'Fichier > Exporter ASCII' dans le menu principal
-
-Exporte les données au format ASCII.
+*Précédent : [3. Ligne de commande (CLI)](commandline.md) — Suivant : [5. Patch & Sorties DMX →](patch.md)*

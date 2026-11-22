@@ -1,62 +1,39 @@
-# Séquences
-Une séquence est une succession de pas qui contiennent des mémoires.
+[English](../doc.en/sequences.md) | [← Sommaire](index.md)
 
-Open Lighting Console gère une séquence principale, les autres sont utilisées pour les chenillards.
+# 12. Séquences, Tracking & MIB (`Sequences`)
 
-![Édition de séquences](pictures/sequences.png)
+L'onglet **Sequences** (`Ctrl+T`) permet d'éditer l'ensemble des séquences du spectacle (`1 Main Playback` ainsi que les séquences auxiliaires assignables aux faders) :
 
-Cet onglet est divisé en 3 parties.
-- En haut : la liste des séquences
-	- Seq : numéro de la séquence
-	- Type : Normal (séquence principale) ou Chaser (toutes les autres)
-	- Name : nom de la séquence
-- Au milieu : l'affichage des circuits
-- En bas : la liste des pas
-	- Step : numéro de pas
-	- Cue : numéro de mémoire
-	- Text : texte associé au pas de séquence
-	- Wait : temps avant de lancer automatiquement le pas suivant
-	- Delay Out : délai d'attente avant de baisser les niveaux de circuits
-	- Out : temps de la baisse des niveaux de circuits
-	- Delay In : délai d'attente avant de monter les niveaux de circuits
-	- In : temps de monté des niveaux de circuits
-	- Channel Time : nombre de circuits avec un channel time
+![Onglet Sequences](../pictures/sequences.png)
 
-> Tous les temps sont exprimés en secondes.
+## Modes de conduite (`Tracking` & `MIB`)
 
-## Éditions de séquences
+En haut de l'onglet, deux boutons bascule pilotent le comportement de la séquence sélectionnée :
 
-Ouvrir l'onglet : [Ctrl + T] ou 'Séquences' dans le menu principal.
+- **`Mode: Tracking` / `Mode: Cue-Only`** :
+  - En mode **Tracking** (conduite à état continu), une valeur enregistrée reste active dans les mémoires suivantes tant qu'elle n'est pas modifiée explicitement, bloquée (`Block`) ou mise à zéro.
+  - En mode **Cue-Only**, les modifications d'une mémoire restent isolées sans se propager en aval.
+- **`MIB: ON` / `MIB: OFF` (*Move In Black*)** :
+  - Anticipe automatiquement le pré-positionnement des projecteurs asservis (Pan/Tilt, Couleur, Faisceau) **pendant qu'ils sont au noir (intensité à 0 %)** juste avant leur ré-allumage, afin d'éviter des mouvements visibles à l'allumage.
 
-### Créer un nouveau chenillard :
-[Maj + N]
+## Organisation de l'onglet
 
-### Sélectionner une séquence :
-- Cliquer sur la séquence avec la souris
-- [Maj + Q] pour passer à la séquence suivante
+1. **Liste des séquences** (haut) : colonnes `Seq` et `Name` (`1 Main Playback`, `2`, `11`, …).
+2. **Grille `ChannelsView`** (centre) : affiche et permet d'ajuster directement les circuits de l'étape sélectionnée.
+3. **Liste des étapes (`Steps`)** (bas) : tableau détaillé de toutes les mémoires de la séquence.
 
-### Créer un nouveau pas de séquence et une mémoire vide :
-[Maj + R] : créer un pas à la suite de celui sélectionné et une nouvelle mémoire qui lui est associée
-Numéro puis [Maj + R] : créer un pas de séquence, la mémoire avec le Numéro et l'insérer dans la séquence
+### Colonnes de la liste des étapes
 
-### Sélectionner un pas de séquence :
-- Cliquer sur le pas avec la souris
-- [W] : passer au pas suivant
-- [Q] : passer au pas précédent
+| Colonne | Rôle |
+| ------- | ---- |
+| `Step` / `Cue` / `Text` | Indice interne d'étape, numéro de mémoire (décimal possible) et texte descriptif |
+| `Wait` | Temps d'attente automatique avant enchaînement (si défini) |
+| `Delay Out` / `Out` | Retard et durée de descente (*Fade Out*) |
+| `Delay In` / `In` | Retard et durée de montée (*Fade In*) |
+| `Pos` / `Color` / `Beam` | Temps de transition dédiés par famille d'attributs IFCB (hérités si vides) |
+| `Channel Time` | Nombre de circuits dotés d'un temps individuel ; un **double-clic** ouvre l'éditeur de temps par circuit |
+| `FX` | Statut des effets sur l'étape : **orange** (`FX <n>`, effet démarré), **cyan** (`FX <n> (T)`, effet suivi en tracking), **rouge** (`Stop FX`, arrêt d'effet) |
 
-### Éditer les temps d'un pas de séquence :
-Cliquer sur le temps à modifier, entrer la valeur et valider avec [Entrée]
+---
 
-### Modifier le texte d'un pas de séquence :
-Cliquer sur le champ de texte, taper le nouveau texte et valider avec [Entrée]
-
-### Modifier une mémoire :
-Sélectionner les circuits désirés.
-- Valeur puis [=] : Mettre à la valeur
-- [!] : Augmenter la valeur
-- [:] : Baisser la valeur
-- [Maj + U] : Mettre à jour la mémoire
-
-### Supprimer un pas de séquence :
-[Suppr]
-> Ne supprime que le pas de séquence, la mémoire associée est conservée.
+*Précédent : [11. Mémoires (Cues)](cues.md) — Suivant : [13. Faders multi-pages →](faders.md)*

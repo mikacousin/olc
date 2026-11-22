@@ -1,36 +1,26 @@
-# Mémoires
-Une mémoire contient des circuits avec des niveaux supérieurs à 0.  
-Elle est définie par un numéro (1.0, 7.3 par exemple).  
-On peut y associer un texte.
+[English](../doc.en/cues.md) | [← Sommaire](index.md)
 
-![Édition de Mémoires](pictures/cues.png)
+# 11. Mémoires (`Cues`)
 
-### Détail des colonnes :
-- Memory : numéro de mémoire
-- Text : texte de la mémoire
-- Channels : Quantité de circuits utilisés dans la mémoire
+L'onglet **Cues** offre une vue directe sur l'ensemble des mémoires enregistrées et les circuits qu'elles modifient :
 
-## Édition de mémoires
-Ouvrir l'onglet : 'Mémoires' dans le menu principal.
+![Onglet Cues](../pictures/cues.png)
 
-### Modifier une mémoire :
-Sélectionner la mémoire à modifier puis sélectionner le(s) circuit(s) à modifier.
+## Interface de l'onglet `Cues`
 
-Valeur puis [=] : Mettre le(s) circuit(s) sélectionné(s) à la valeur donnée.
+- **Volet supérieur (`ChannelsView`)** : affiche les niveaux des circuits pour la mémoire sélectionnée en bas, avec les contrôles de vue habituels (`Compact` / `Summary+` / `Table`, mode de lecture `Auto / Label / Ref / Percent / DMX`, bouton `Labels` et filtres Flexi).
+  - Les circuits contenant des données de palettes/presets ou des attributs IFCB affichent leurs indicateurs `F`, `C`, `B`, leur barre colorée et l'état de progression.
+- **Volet inférieur** : tableau des mémoires avec colonnes **`Cue`**, **`Text`** (libellé scénique) et **`Channels`** (nombre de circuits stockés dans la mémoire).
 
-[!] : Augmenter la valeur du ou des circuit(s) sélectionné(s).
+## Création, mise à jour & suppression
 
-[:] : Baisser la valeur du ou des circuit(s) sélectionné(s).
+- **Via la ligne de commande** :
+  - `RECORD 12` ou `RECORD CUE 12 TIME 6` : enregistre l'état courant dans la mémoire `12`.
+  - `UPDATE 12` ou `UPDATE` : met à jour la mémoire `12` ou la mémoire active sur scène.
+  - `DELETE 12` : supprime la mémoire `12`.
+  - `GOTO 12` ou `GOTO CUE 12 TIME 2` : appelle immédiatement la mémoire `12`.
+- **Édition directe** : sélectionnez une mémoire dans la liste inférieure pour inspecter, ajuster ou renommer son texte et ses niveaux directement.
 
-[Maj + U] : Mettre à jour la mémoire sélectionnée.
+---
 
-[Suppr] : Effacer la mémoire sélectionnée. Cela supprime également les pas de séquence qui l'utilise.
-
-Numéro puis [Maj + R] : Enregistrer une copie de la mémoire sélectionnée dans une nouvelle ayant le numéro donné.
-
-[Insert] : Insérer une copie de la mémoire sélectionnée à la suite.
-
-Numéro + [Insert] : Insérer une copie de la mémoire sélectionnée au numéro donné.
-
-En cliquant sur le texte de la mémoire, il est possible de l'éditer.
-> Les textes affichés dans le séquentiel sont ceux des steps, pas ceux des mémoires.
+*Précédent : [10. Effets paramétriques](effects.md) — Suivant : [12. Séquences, Tracking & MIB →](sequences.md)*

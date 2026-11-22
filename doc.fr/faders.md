@@ -1,27 +1,31 @@
-# Faders
-Open Lighting Console gère 10 pages de 10 faders.
+[English](../doc.en/faders.md) | [← Sommaire](index.md)
 
-Un fader peut contenir :
-- un groupe
-- une mémoire
-- un chenillard
-- le Main Fader (souvent appelé Grand Master)
+# 13. Faders multi-pages (`Faders`)
 
-![Édition des faders](pictures/faders.png)
+L'onglet **Faders** (`Shift+Ctrl+F`) permet de configurer les banques de **10 faders par page** affichées dans la Console Virtuelle, synchronisées en MIDI et en OSC :
 
-Les 10 pages de faders.  
-Les 10 faders de la page sélectionnée.
-- En gris, le fader n'est pas affecté
-- En doré, le fader est affecté
-	
-## Édition des faders
+![Onglet Faders](../pictures/faders.png)
 
-Ouvrir l'onglet : [Ctrl + F] ou 'Faders' dans le menu principal.
+## Navigation multi-pages
 
-Cliquer sur la page à modifier.
+La barre supérieure commande le changement de page (le nombre total de pages et l'option *Skip empty fader pages* se règlent dans **Preferences → General**) :
 
-### Changer le type d'un fader :
-Cliquer sur le bouton sous le nom du fader pour sélectionner le type de contenu.
+- **`Page -` / `Page +`** : passe à la page précédente ou suivante.
+- **Sélecteur numérique `Page <n> / <total>`** : accès direct à n'importe quelle page.
 
-### Changer le contenu d'un fader :
-Pour les faders contenant un groupe, une mémoire ou une séquence, cliquer sur le bouton en dessous du type pour sélectionner le contenu.
+## Affectation d'un fader
+
+Chaque emplacement affiche un bloc de configuration comprenant :
+
+- **En-tête `Fader <N>` + bouton bascule `Fix`** : lorsque **`Fix`** est activé, l'affectation de ce fader reste **épinglée à l'identique à travers toutes les pages** (pratique pour garder le `Main Fader`, une façade ou un effet général toujours accessible).
+- **Bouton Type** : choisit le rôle du fader :
+  - *(vide)* : emplacement non assigné.
+  - **`Preset`** : restitue un `Preset` enregistré (intensité HTP + paramètres).
+  - **`Sequence`** : affecte une séquence auxiliaire (par exemple `2 : Mains`, `11 : Lat`).
+  - **`Effect`** : pilote un effet paramétrique en direct, avec choix de mode (**`Mode: Size`**, **`Mode: Rate`** ou **`Mode: Size+Rate`**) et portée de circuits.
+  - **`Main Fader`** : sert de général maître sur l'ensemble de la sortie.
+- **Bouton Contenu** : sélectionne l'élément cible (numéro et nom du `Preset`, de la `Sequence` ou de l'`Effect`).
+
+---
+
+*Précédent : [12. Séquences, Tracking & MIB](sequences.md) — Suivant : [14. Courbes de gradation (Curves) →](curves.md)*
