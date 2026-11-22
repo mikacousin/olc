@@ -23,6 +23,7 @@ from gi.repository import Gtk
 from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.show.curve import LimitCurve, PointsCurve
 from olc.show.independent import IndependentType
+from olc.show.palette import PaletteCategory
 
 from .base import BaseEventBridgeHandler
 
@@ -54,7 +55,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         )
         self.app.core.subscribe(
             "palettes.changed",
-            lambda *_args: self._run_idle(self._safe_refresh_palettes),
+            lambda *args: self._run_idle(self._safe_refresh_palettes, *args),
         )
         self.app.core.subscribe(
             "effect.changed",
@@ -108,11 +109,31 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
             group_tab.refresh()
         return False
 
-    def _safe_refresh_palettes(self) -> bool:
+    def _safe_refresh_palettes(
+        self,
+        category: str | None = None,
+        number: float | None = None,
+    ) -> bool:
         """Refresh the palettes tab UI safely in the GTK thread."""
         if self.app.tabs and self.app.tabs.tabs.get("palettes") is not None:
             palettes_tab = typing.cast("PalettesTab", self.app.tabs.tabs["palettes"])
-            palettes_tab.refresh()
+            if category is not None:
+                try:
+                    cat = PaletteCategory(str(category).lower())
+                except ValueError:
+                    palettes_tab.refresh()
+                    return False
+                if number is not None:
+                    pal = self.app.core.lightshow.palettes.get(cat, float(number))
+                    if pal is not None and palettes_tab.update_palette_tile(pal):
+                        if cat is not PaletteCategory.PRESET:
+                            palettes_tab.refresh_category(PaletteCategory.PRESET)
+                        return False
+                palettes_tab.refresh_category(cat)
+                if cat is not PaletteCategory.PRESET:
+                    palettes_tab.refresh_category(PaletteCategory.PRESET)
+            else:
+                palettes_tab.refresh()
         return False
 
     def _safe_refresh_effects(self) -> bool:

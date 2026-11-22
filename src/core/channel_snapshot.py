@@ -114,6 +114,7 @@ class AttributeFamilySnapshot:
     parameter_dmx: dict[str, int] = field(default_factory=dict)
     parameter_percent: dict[str, float] = field(default_factory=dict)
     effect_ref: Optional[PaletteRefDisplay] = None
+    manual_params: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -430,12 +431,14 @@ def _resolve_family_palette_and_states(
     bool,
     Optional[PaletteRefDisplay],
     dict[str, PaletteRefDisplay],
+    frozenset[str],
 ]:
     if not param_keys:
-        return TrackingDisplayState.INACTIVE, False, None, {}
+        return TrackingDisplayState.INACTIVE, False, None, {}, frozenset()
 
     raw_refs: list[Optional[PaletteRef]] = []
     param_refs_out: dict[str, PaletteRefDisplay] = {}
+    manual_keys: set[str] = set()
     any_manual = False
 
     if (
@@ -452,6 +455,7 @@ def _resolve_family_palette_and_states(
             )
             if p_manual:
                 any_manual = True
+                manual_keys.add(key)
         else:
             ref = _lookup_step_param_ref(resolved_step, channel, key)
         raw_refs.append(ref)
@@ -476,7 +480,7 @@ def _resolve_family_palette_and_states(
     else:
         t_state = TrackingDisplayState.INACTIVE
 
-    return t_state, any_manual, family_ref, param_refs_out
+    return t_state, any_manual, family_ref, param_refs_out, frozenset(manual_keys)
 
 
 def _normalize_lvl(raw: float) -> float:
@@ -624,14 +628,16 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     else:
         focus_summary = ""
 
-    f_state, f_manual, f_ref, f_prefs = _resolve_family_palette_and_states(
-        "position",
-        list(focus_params.keys()),
-        channel=channel,
-        palettes=palettes,
-        live_state=live_state,
-        resolved_step=resolved_step,
-        is_live=is_live,
+    f_state, f_manual, f_ref, f_prefs, f_manual_params = (
+        _resolve_family_palette_and_states(
+            "position",
+            list(focus_params.keys()),
+            channel=channel,
+            palettes=palettes,
+            live_state=live_state,
+            resolved_step=resolved_step,
+            is_live=is_live,
+        )
     )
     focus_snap = AttributeFamilySnapshot(
         family="position",
@@ -647,6 +653,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_dmx=focus_param_dmx,
         parameter_percent=focus_param_pct,
         effect_ref=fx_map.get("position"),
+        manual_params=f_manual_params,
     )
 
     # --- COLOR ---
@@ -739,14 +746,16 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     color_ref_keys = list(color_params.keys())
     if has_color and not color_ref_keys:
         color_ref_keys = ["color"]
-    c_state, c_manual, c_ref, c_prefs = _resolve_family_palette_and_states(
-        "color",
-        color_ref_keys if color_params or has_color else [],
-        channel=channel,
-        palettes=palettes,
-        live_state=live_state,
-        resolved_step=resolved_step,
-        is_live=is_live,
+    c_state, c_manual, c_ref, c_prefs, c_manual_params = (
+        _resolve_family_palette_and_states(
+            "color",
+            color_ref_keys if color_params or has_color else [],
+            channel=channel,
+            palettes=palettes,
+            live_state=live_state,
+            resolved_step=resolved_step,
+            is_live=is_live,
+        )
     )
     if (
         c_manual
@@ -776,6 +785,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_dmx=color_param_dmx,
         parameter_percent=color_param_pct,
         effect_ref=fx_map.get("color"),
+        manual_params=c_manual_params,
     )
 
     # --- BEAM ---
@@ -812,14 +822,16 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
     beam_parts.extend(_format_beam_parts(beam_params))
     beam_summary = " ".join(beam_parts[:2])
 
-    b_state, b_manual, b_ref, b_prefs = _resolve_family_palette_and_states(
-        "beam",
-        list(beam_params.keys()),
-        channel=channel,
-        palettes=palettes,
-        live_state=live_state,
-        resolved_step=resolved_step,
-        is_live=is_live,
+    b_state, b_manual, b_ref, b_prefs, b_manual_params = (
+        _resolve_family_palette_and_states(
+            "beam",
+            list(beam_params.keys()),
+            channel=channel,
+            palettes=palettes,
+            live_state=live_state,
+            resolved_step=resolved_step,
+            is_live=is_live,
+        )
     )
     beam_snap = AttributeFamilySnapshot(
         family="beam",
@@ -835,6 +847,7 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
         parameter_dmx=beam_param_dmx,
         parameter_percent=beam_param_pct,
         effect_ref=fx_map.get("beam"),
+        manual_params=b_manual_params,
     )
 
     return focus_snap, color_snap, beam_snap, has_color, preview_rgb

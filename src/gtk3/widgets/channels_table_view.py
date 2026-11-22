@@ -158,6 +158,17 @@ def _family_cell_fg_hex(
         and mode_low in ("auto", "label", "ref")
     ):
         return EFFECT_MAGENTA_HEX
+    is_manual = (
+        (
+            param_key in family_snap.manual_params
+            if family_snap.manual_params
+            else family_snap.is_manual
+        )
+        if param_key is not None
+        else family_snap.is_manual
+    )
+    if is_manual:
+        return MANUAL_CORAL_HEX
     has_ref = (
         param_key in family_snap.parameter_refs
         if param_key is not None
@@ -165,8 +176,6 @@ def _family_cell_fg_hex(
     )
     if has_ref and mode_low in ("auto", "label", "ref"):
         return PALETTE_CYAN_HEX
-    if family_snap.is_manual:
-        return MANUAL_CORAL_HEX
     if is_mib_channel or family_snap.tracking_state == TrackingDisplayState.MIB:
         return MIB_AMBER_HEX
     if family_snap.tracking_state != TrackingDisplayState.INACTIVE:
@@ -231,12 +240,12 @@ class ColorSwatchCellRenderer(Gtk.CellRenderer):
         )
         cr.fill_preserve()
 
-        if self.has_palette_ref:
+        if self.is_manual:
+            cr.set_source_rgb(0.95, 0.35, 0.35)
+            cr.set_line_width(1.5)
+        elif self.has_palette_ref:
             cr.set_source_rgb(0.20, 0.88, 0.96)
             cr.set_line_width(1.5)
-        elif self.is_manual:
-            cr.set_source_rgb(0.95, 0.35, 0.35)
-            cr.set_line_width(1.2)
         else:
             cr.set_source_rgb(0.55, 0.55, 0.55)
             cr.set_line_width(1.0)
@@ -715,12 +724,18 @@ class ChannelsTableView(Gtk.ScrolledWindow):
                         if (readout_low == "label" and snap.intensity_effect_ref.label)
                         else snap.intensity_effect_ref.short_ref
                     )
-                return (
-                    " + ".join(parts),
-                    EFFECT_MAGENTA_HEX
-                    if snap.intensity_effect_ref is not None
-                    else PALETTE_CYAN_HEX,
-                )
+                if snap.intensity_effect_ref is not None:
+                    ref_fg = EFFECT_MAGENTA_HEX
+                elif snap.is_parked:
+                    ref_fg = PARK_AMBER_HEX
+                elif (
+                    snap.intensity_source == "manual"
+                    or snap.intensity_state == TrackingDisplayState.MANUAL
+                ):
+                    ref_fg = MANUAL_CORAL_HEX
+                else:
+                    ref_fg = PALETTE_CYAN_HEX
+                return (" + ".join(parts), ref_fg)
 
             if (
                 snap.intensity <= 0.0

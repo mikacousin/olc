@@ -322,10 +322,10 @@ class ChannelWidget(Gtk.DrawingArea):
     ) -> tuple[float, float, float]:
         if family_snap.effect_ref is not None:
             return _EFFECT_MAGENTA
-        if family_snap.palette_ref is not None:
-            return _PALETTE_CYAN
         if family_snap.is_manual:
             return _MANUAL_CORAL
+        if family_snap.palette_ref is not None:
+            return _PALETTE_CYAN
         if is_mib_channel or family_snap.tracking_state == TrackingDisplayState.MIB:
             return _MIB_AMBER
         if family_snap.tracking_state != TrackingDisplayState.INACTIVE:
@@ -646,6 +646,11 @@ class ChannelWidget(Gtk.DrawingArea):
                 )
             if snap.intensity_effect_ref is not None:
                 cr.set_source_rgb(*_EFFECT_MAGENTA)
+            elif (
+                snap.intensity_source == "manual"
+                or snap.intensity_state == TrackingDisplayState.MANUAL
+            ):
+                cr.set_source_rgb(*_MANUAL_CORAL)
             else:
                 cr.set_source_rgb(*_PALETTE_CYAN_TEXT)
             self._draw_ellipsized_text(
@@ -684,12 +689,12 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.fill_preserve()
             has_col_ref = snap is not None and snap.color.palette_ref is not None
             is_col_manual = snap is not None and snap.color.is_manual
-            if has_col_ref:
+            if is_col_manual:
+                cr.set_source_rgb(*_MANUAL_CORAL)
+                cr.set_line_width(1.5)
+            elif has_col_ref:
                 cr.set_source_rgb(*_PALETTE_CYAN)
                 cr.set_line_width(1.5)
-            elif is_col_manual:
-                cr.set_source_rgb(*_MANUAL_CORAL)
-                cr.set_line_width(1.2)
             else:
                 cr.set_source_rgb(0.55, 0.55, 0.55)
                 cr.set_line_width(1.0)
@@ -738,14 +743,14 @@ class ChannelWidget(Gtk.DrawingArea):
                         "ref",
                     ):
                         cr.set_source_rgb(*_EFFECT_MAGENTA)
+                    elif fam.is_manual:
+                        cr.set_source_rgb(*_MANUAL_CORAL)
                     elif fam.palette_ref is not None and mode_low in (
                         "auto",
                         "label",
                         "ref",
                     ):
                         cr.set_source_rgb(*_PALETTE_CYAN_TEXT)
-                    elif fam.is_manual:
-                        cr.set_source_rgb(*_MANUAL_CORAL)
                     elif fam.tracking_state not in (
                         TrackingDisplayState.INACTIVE,
                         TrackingDisplayState.MIB,
@@ -868,6 +873,11 @@ class ChannelWidget(Gtk.DrawingArea):
                 weight=Pango.Weight.BOLD,
                 anchor=TextAnchor.BASELINE_RIGHT,
             )
+            if fam.is_manual and fam.palette_ref is not None and fam.effect_ref is None:
+                cr.new_sub_path()
+                cr.arc(x_pos - 9.0 * s, y_pos - 3.0 * s, 1.5 * s, 0, 6.2831853)
+                cr.set_source_rgb(*_PALETTE_CYAN)
+                cr.fill()
 
     def _draw_device_indicators(
         self,
@@ -883,6 +893,7 @@ class ChannelWidget(Gtk.DrawingArea):
         )
         is_parked = self._is_parked(snap)
         has_col_ref = snap is not None and snap.color.palette_ref is not None
+        is_col_manual = snap is not None and snap.color.is_manual
         cx = (20 if is_parked else 11) * self.scale
         if rgb is not None:
             r, g, b = rgb
@@ -892,7 +903,10 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.arc(cx, cy, radius, 0, 6.2831853)
             cr.set_source_rgb(r, g, b)
             cr.fill_preserve()
-            if has_col_ref:
+            if is_col_manual:
+                cr.set_source_rgb(*_MANUAL_CORAL)
+                cr.set_line_width(1.5)
+            elif has_col_ref:
                 cr.set_source_rgb(*_PALETTE_CYAN)
                 cr.set_line_width(1.4)
             else:
@@ -908,7 +922,17 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.rectangle(4, strip_y, strip_w, strip_h)
             cr.set_source_rgb(r, g, b)
             cr.fill()
-            if has_col_ref:
+            if is_col_manual:
+                cr.set_source_rgb(*_MANUAL_CORAL)
+                cr.set_line_width(1.3)
+                cr.move_to(4, strip_y)
+                cr.line_to(4 + strip_w, strip_y)
+                cr.stroke()
+                if has_col_ref:
+                    cr.rectangle(4, strip_y, max(3.0, 4.0 * self.scale), strip_h)
+                    cr.set_source_rgb(*_PALETTE_CYAN)
+                    cr.fill()
+            elif has_col_ref:
                 cr.set_source_rgb(*_PALETTE_CYAN)
                 cr.set_line_width(1.2)
                 cr.move_to(4, strip_y)

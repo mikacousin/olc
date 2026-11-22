@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import pathlib
+import types
 import typing
 
 import cairo
@@ -30,9 +31,22 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
 from olc.devices.builtin import create_rgb_definition  # noqa: E402
+from olc.devices.channel import Channel, ChannelType, FixtureType  # noqa: E402
+from olc.devices.device import LightingDevice  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
+from olc.gtk3.group import GroupTab  # noqa: E402
 from olc.gtk3.palettes import (  # noqa: E402
     CATEGORY_SPECS,
+    INSP_COL_B,
+    INSP_COL_CH,
+    INSP_COL_FIXTURE,
+    INSP_COL_G,
+    INSP_COL_HAS_COLOR,
+    INSP_COL_HAS_COLOR_REF,
+    INSP_COL_INTENSITY,
+    INSP_COL_PARAMS,
+    INSP_COL_R,
+    INSP_COL_REFS,
     PalettesTab,
     PaletteTileWidget,
     extract_palette_preview_rgb,
@@ -215,7 +229,7 @@ def test_palettes_tab_record_recall_update_rename_delete(
     assert pr10.device_values[2]["color"].upper() == "#00FF00"
     assert cue1.device_values[2]["color"].upper() == "#00FF00"
 
-    # 7. Rename CP 2 via inline popover entry & Undo/Redo
+    # 7. Rename CP 2 via inline popover entry & in-place identity + Undo/Redo
     tile_cp2_fresh = typing.cast(
         Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0]
     ).get_child()
@@ -227,6 +241,10 @@ def test_palettes_tab_record_recall_update_rename_delete(
 
     assert cp2.text == "Forest Green"
     assert "Forest Green" in pal_tab.details_label.get_text()
+    tile_cp2_after_rename = typing.cast(
+        Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0]
+    ).get_child()
+    assert tile_cp2_after_rename is tile_cp2_fresh
 
     app_gui.activate_action("undo", None)
     process_events()
@@ -235,6 +253,21 @@ def test_palettes_tab_record_recall_update_rename_delete(
     app_gui.activate_action("redo", None)
     process_events()
     assert cp2.text == "Forest Green"
+
+    # Update keeps widget identity too
+    pal_tab.flowbox.select_child(
+        typing.cast(Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0])
+    )
+    rgb_dev.set_color_hex("#123456")
+    tile_before_update = typing.cast(
+        Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0]
+    ).get_child()
+    pal_tab.btn_update.emit("clicked")
+    process_events()
+    tile_after_update = typing.cast(
+        Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0]
+    ).get_child()
+    assert tile_after_update is tile_before_update
 
     # 8. Delete CP 2 via _keypress_delete & Undo
     pal_tab.flowbox.select_child(
@@ -256,15 +289,23 @@ def test_palettes_tab_workspace_persistence(
     app_gui: Application,
     tmp_path: pathlib.Path,
 ) -> None:
-    """Test active_category retention across close/reopen and show save/open."""
+    """Test active_category, Direct Select, Inspector & paned persistence."""
     assert app_gui.tabs is not None
 
     app_gui.open_palettes()
+    app_gui.open_groups()
     process_events()
     pal_tab = app_gui.tabs.tabs.get("palettes")
+    grp_tab = app_gui.tabs.tabs.get("groups")
     assert isinstance(pal_tab, PalettesTab)
+    assert isinstance(grp_tab, GroupTab)
 
     pal_tab.set_active_category(PaletteCategory.BEAM)
+    pal_tab.direct_select_toggle.set_active(True)
+    pal_tab.set_inspector_visible(False)
+    pal_tab.set_position(210)
+    grp_tab.direct_select_toggle.set_active(True)
+    grp_tab.set_position(390)
     process_events()
 
     save_path = str(tmp_path / "palettes_ws.olc")
@@ -272,6 +313,7 @@ def test_palettes_tab_workspace_persistence(
     process_events()
 
     app_gui.tabs.close_physically("palettes")
+    app_gui.tabs.close_physically("groups")
     process_events()
     assert app_gui.tabs.tabs.get("palettes") is None
 
@@ -282,5 +324,312 @@ def test_palettes_tab_workspace_persistence(
     process_events()
 
     restored = app_gui.tabs.tabs.get("palettes")
+    restored_grp = app_gui.tabs.tabs.get("groups")
     assert isinstance(restored, PalettesTab)
+    assert isinstance(restored_grp, GroupTab)
     assert restored.current_category is PaletteCategory.BEAM
+    assert restored.direct_select_toggle.get_active() is True
+    assert restored.is_inspector_visible() is False
+    assert restored.get_position() == 210
+    assert restored_grp.direct_select_toggle.get_active() is True
+    assert restored_grp.get_position() == 390
+
+
+def test_palettes_tab_direct_select_double_click_select_live_and_fallback(
+    app_gui: Application,
+) -> None:
+    """Test Direct Select alias, double-click, Select Live, and empty/disjoint."""
+    ls = app_gui.core.lightshow
+    ls.palettes.clear()
+    dev1 = ls.patch.patch_device(1, create_rgb_definition(), 1, 1, label="LED 1")
+    dev2 = ls.patch.patch_device(2, create_rgb_definition(), 1, 10, label="LED 2")
+    dev1.set_color_hex("#000000")
+    dev2.set_color_hex("#000000")
+
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.COLOR,
+            1.0,
+            text="Crimson",
+            device_values={1: {"color": "#FF0000"}, 2: {"color": "#FF0000"}},
+        )
+    )
+    ls.palettes.add(Palette(PaletteCategory.COLOR, 2.0, text="EmptyCP"))
+
+    app_gui.activate_action("palettes", None)
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+    assert pal_tab.direct_select_toggle is pal_tab.direct_recall_toggle
+
+    pal_tab.set_active_category(PaletteCategory.COLOR)
+    process_events()
+    children = pal_tab.flowbox.get_children()
+    tile1 = typing.cast(Gtk.FlowBoxChild, children[0]).get_child()
+    tile2 = typing.cast(Gtk.FlowBoxChild, children[1]).get_child()
+    assert isinstance(tile1, PaletteTileWidget)
+    assert isinstance(tile2, PaletteTileWidget)
+
+    # 1. Direct Select OFF: single click inspects only without applying Red
+    pal_tab.direct_select_toggle.set_active(False)
+    app_gui.core.selected_channels = []
+    tile1.on_click(
+        tile1,
+        typing.cast(Gdk.Event, types.SimpleNamespace(type=Gdk.EventType.BUTTON_PRESS)),
+    )
+    process_events()
+    assert dev1.color_srgb.r == pytest.approx(0.0, abs=0.05)
+
+    # 2. Direct Select OFF + double-click + empty Live selection recalls all chs
+    tile1.on_click(
+        tile1,
+        typing.cast(Gdk.Event, types.SimpleNamespace(type=Gdk.EventType(5))),
+    )
+    process_events()
+    assert dev1.color_srgb.r == pytest.approx(1.0, abs=0.05)
+    assert dev2.color_srgb.r == pytest.approx(1.0, abs=0.05)
+
+    # 3. Select Live recalls stored channels [1, 2] into Live selection
+    app_gui.core.selected_channels = []
+    pal_tab.btn_select_live.clicked()
+    process_events()
+    assert app_gui.core.selected_channels == [1, 2]
+
+    # 4. Disjoint Live selection shows helpful status and touches 0 fixtures
+    dev1.set_color_hex("#000000")
+    app_gui.core.selected_channels = [99]
+    affected = pal_tab.recall_palette(PaletteCategory.COLOR, 1.0)
+    process_events()
+    assert affected == []
+    assert dev1.color_srgb.r == pytest.approx(0.0, abs=0.05)
+    assert "CP 1" in pal_tab.details_label.get_text()
+    assert "1, 2" in pal_tab.details_label.get_text()
+
+    # 5. Empty palette displays informative message
+    app_gui.core.selected_channels = []
+    affected_empty = pal_tab.recall_palette(PaletteCategory.COLOR, 2.0)
+    process_events()
+    assert affected_empty == []
+    assert "CP 2" in pal_tab.details_label.get_text()
+
+
+def test_palettes_tab_inspector_panel_and_channel_removal(
+    app_gui: Application,
+) -> None:
+    """Test Inspector rows, CMY swatches, Select Ch, row-activated, and Remove Ch."""
+    ls = app_gui.core.lightshow
+    ls.palettes.clear()
+
+    dim = LightingDevice(
+        fixture_id=1,
+        fixture_type=FixtureType.DIMMER,
+        label="Dim 1",
+        manufacturer="Generic",
+        model="Dimmer",
+    )
+    dim.add_channel(Channel(universe=1, address=1, channel_type=ChannelType.INTENSITY))
+    ls.patch.restore_device(dim)
+
+    spot = LightingDevice(
+        fixture_id=2,
+        fixture_type=FixtureType.MOVING_HEAD,
+        label="Spot 2",
+        manufacturer="ACME",
+        model="CMY Spot",
+    )
+    spot.add_channel(Channel(universe=1, address=2, channel_type=ChannelType.INTENSITY))
+    spot.add_channel(Channel(universe=1, address=3, channel_type=ChannelType.PAN))
+    spot.add_channel(Channel(universe=1, address=4, channel_type=ChannelType.CYAN))
+    spot.add_channel(Channel(universe=1, address=5, channel_type=ChannelType.MAGENTA))
+    spot.add_channel(Channel(universe=1, address=6, channel_type=ChannelType.YELLOW))
+    ls.patch.restore_device(spot)
+
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.INTENSITY, 1.0, text="Three Quarters", channels={1: 0.75}
+        )
+    )
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.COLOR,
+            2.0,
+            text="Cool Cyan",
+            device_values={2: {"cyan": 0.5, "magenta": 0.25, "yellow": 0.0}},
+        )
+    )
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.PRESET,
+            5.0,
+            text="Preset Look",
+            channels={1: 0.75},
+            device_values={
+                2: {"pan": 30.0, "cyan": 0.5, "magenta": 0.25, "yellow": 0.0}
+            },
+            palette_refs={
+                1: {"intensity": ("intensity", 1.0)},
+                2: {
+                    "cyan": ("color", 2.0),
+                    "magenta": ("color", 2.0),
+                    "yellow": ("color", 2.0),
+                },
+            },
+        )
+    )
+
+    app_gui.activate_action("palettes", None)
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+
+    pal_tab.set_active_category(PaletteCategory.PRESET)
+    process_events()
+    pr5_child = typing.cast(Gtk.FlowBoxChild, pal_tab.flowbox.get_children()[0])
+    pal_tab.flowbox.select_child(pr5_child)
+    process_events()
+
+    assert pal_tab.is_inspector_visible() is True
+    assert "PR 5" in pal_tab.inspector_title_label.get_text()
+    assert "Preset Look" in pal_tab.inspector_title_label.get_text()
+    assert len(pal_tab.inspector_store) == 2
+
+    # Row 0: Ch 1 Dimmer
+    r0 = pal_tab.inspector_store[0]
+    assert r0[INSP_COL_CH] == 1
+    assert r0[INSP_COL_FIXTURE] == "Dim 1"
+    assert r0[INSP_COL_INTENSITY] == "75%"
+    assert r0[INSP_COL_HAS_COLOR] is False
+    assert "IP 1" in r0[INSP_COL_REFS]
+
+    # Row 1: Ch 2 CMY Spot
+    r1 = pal_tab.inspector_store[1]
+    assert r1[INSP_COL_CH] == 2
+    assert r1[INSP_COL_FIXTURE] == "Spot 2"
+    assert r1[INSP_COL_HAS_COLOR] is True
+    assert r1[INSP_COL_R] == pytest.approx(0.5, abs=0.02)
+    assert r1[INSP_COL_G] == pytest.approx(0.75, abs=0.02)
+    assert r1[INSP_COL_B] == pytest.approx(1.0, abs=0.02)
+    assert r1[INSP_COL_HAS_COLOR_REF] is True
+    assert "pan=30°" in r1[INSP_COL_PARAMS]
+    assert "CP 2" in r1[INSP_COL_REFS]
+
+    # Select row 0 -> Select Ch selects [1] in Live
+    pal_tab.inspector_selection.unselect_all()
+    pal_tab.inspector_selection.select_path(Gtk.TreePath.new_from_indices([0]))
+    process_events()
+    assert pal_tab.btn_inspector_select_ch.get_sensitive() is True
+    assert pal_tab.btn_inspector_remove_ch.get_sensitive() is True
+    pal_tab.btn_inspector_select_ch.clicked()
+    process_events()
+    assert app_gui.core.selected_channels == [1]
+
+    # Row activation selects row's channel ([2]) in Live
+    col0 = pal_tab.inspector_view.get_column(0)
+    assert col0 is not None
+    pal_tab.inspector_view.emit(
+        "row-activated", Gtk.TreePath.new_from_indices([1]), col0
+    )
+    process_events()
+    assert app_gui.core.selected_channels == [2]
+
+    # Remove Ch removes highlighted ch 1 cleanly with Undo/Redo
+    pal_tab.inspector_selection.unselect_all()
+    pal_tab.inspector_selection.select_path(Gtk.TreePath.new_from_indices([0]))
+    process_events()
+    pal_tab.btn_inspector_remove_ch.clicked()
+    process_events()
+
+    pr5_model = ls.palettes.get(PaletteCategory.PRESET, 5.0)
+    assert pr5_model is not None
+    assert 1 not in pr5_model.channels
+    assert len(pal_tab.inspector_store) == 1
+
+    app_gui.activate_action("undo", None)
+    process_events()
+    pr5_undo = ls.palettes.get(PaletteCategory.PRESET, 5.0)
+    assert pr5_undo is not None and 1 in pr5_undo.channels
+    assert len(pal_tab.inspector_store) == 2
+
+    app_gui.activate_action("redo", None)
+    process_events()
+    assert len(pal_tab.inspector_store) == 1
+
+    # Toggle visibility via inspector_toggle
+    pal_tab.inspector_toggle.set_active(False)
+    process_events()
+    assert pal_tab.is_inspector_visible() is False
+    pal_tab.set_inspector_visible(True)
+    process_events()
+    assert pal_tab.is_inspector_visible() is True
+
+
+def test_palettes_tab_keyboard_navigation(
+    app_gui: Application,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test Left/Right/Up/Down/Q/W navigation across PaletteTileWidgets."""
+    ls = app_gui.core.lightshow
+    ls.palettes.clear()
+    for idx in range(1, 5):
+        ls.palettes.add(
+            Palette(
+                PaletteCategory.COLOR,
+                float(idx),
+                text=f"C{idx}",
+                device_values={1: {"color": "#FFFFFF"}},
+            )
+        )
+
+    app_gui.activate_action("palettes", None)
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+    pal_tab.set_active_category(PaletteCategory.COLOR)
+    process_events()
+
+    pal_tab._keypress_right()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 1.0
+
+    pal_tab._keypress_w()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 2.0
+
+    pal_tab._keypress_right()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 3.0
+
+    pal_tab._keypress_left()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 2.0
+
+    pal_tab._keypress_q()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 1.0
+
+    # Exercise Up/Down row lookup deterministically via FlowBox allocations
+    children = pal_tab.flowbox.get_children()
+    c0 = typing.cast(Gtk.FlowBoxChild, children[0])
+    c2 = typing.cast(Gtk.FlowBoxChild, children[2])
+    alloc0 = Gdk.Rectangle()
+    alloc0.x, alloc0.y, alloc0.width, alloc0.height = 10, 10, 116, 78
+    alloc2 = Gdk.Rectangle()
+    alloc2.x, alloc2.y, alloc2.width, alloc2.height = 10, 94, 116, 78
+    monkeypatch.setattr(c0, "get_allocation", lambda: alloc0)
+    monkeypatch.setattr(c2, "get_allocation", lambda: alloc2)
+    monkeypatch.setattr(
+        pal_tab.flowbox,
+        "get_child_at_pos",
+        lambda _x, y: c2 if y > 80 else c0,
+    )
+
+    pal_tab._keypress_down()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 3.0
+
+    pal_tab._keypress_up()
+    sel = pal_tab.get_selected_palette()
+    assert sel is not None and sel.number == 1.0

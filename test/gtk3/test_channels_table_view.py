@@ -34,6 +34,11 @@ from olc.devices.device import LightingDevice  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
+from olc.gtk3.widgets.channel import (  # noqa: E402
+    _MANUAL_CORAL,
+    _PALETTE_CYAN,
+    ChannelWidget,
+)
 from olc.gtk3.widgets.channels_table_view import (  # noqa: E402
     COL_BEAM_TEXT,
     COL_CHANNEL,
@@ -44,6 +49,8 @@ from olc.gtk3.widgets.channels_table_view import (  # noqa: E402
     COL_FOCUS_FG,
     COL_FOCUS_TEXT,
     COL_HAS_COLOR,
+    COL_INTENSITY,
+    COL_INTENSITY_FG,
     COL_SWATCH_B,
     COL_SWATCH_G,
     COL_SWATCH_R,
@@ -53,6 +60,7 @@ from olc.gtk3.widgets.channels_table_view import (  # noqa: E402
 )
 from olc.show.cue import Cue  # noqa: E402
 from olc.show.palette import Palette, PaletteCategory  # noqa: E402
+from olc.show.step import Step  # noqa: E402
 from test.gtk3.conftest import process_events  # noqa: E402
 
 pytestmark = pytest.mark.gui
@@ -211,7 +219,7 @@ def test_table_view_stack_switch_base_columns_and_swatch_render(
     assert tv.store[2][COL_SWATCH_B] == pytest.approx(1.0, abs=0.02)
     assert tv.store[2][COL_COLOR_HAS_REF] is True
     assert tv.store[2][COL_COLOR_TEXT] == "Deep Cyan"
-    assert tv.store[2][COL_COLOR_FG] == PALETTE_CYAN_HEX
+    assert tv.store[2][COL_COLOR_FG] == MANUAL_CORAL_HEX
 
     # Exercise ColorSwatchCellRenderer Cairo rendering (both linked & unlinked)
     surface = cairo.ImageSurface(cairo.Format.ARGB32, 60, 40)
@@ -359,25 +367,25 @@ def test_table_view_readout_modes_and_palette_cyan_markers(
 
     tv = live_cv.table_view
 
-    # Auto / Label: Palette labels in Cyan, manual Zoom in Coral
+    # Auto / Label: Live manual palette recalls show Coral while keeping labels
     assert tv.store[0][COL_FOCUS_TEXT] == "US Center"
-    assert tv.store[0][COL_FOCUS_FG] == PALETTE_CYAN_HEX
+    assert tv.store[0][COL_FOCUS_FG] == MANUAL_CORAL_HEX
     assert tv.store[0][COL_COLOR_TEXT] == "Deep Cyan"
-    assert tv.store[0][COL_COLOR_FG] == PALETTE_CYAN_HEX
+    assert tv.store[0][COL_COLOR_FG] == MANUAL_CORAL_HEX
     assert "24°" in tv.store[0][COL_BEAM_TEXT]
-    assert tv.get_param_cell_data(3, "focus", "pan") == ("US Center", PALETTE_CYAN_HEX)
+    assert tv.get_param_cell_data(3, "focus", "pan") == ("US Center", MANUAL_CORAL_HEX)
     assert tv.get_param_cell_data(3, "color", "cyan") == (
         "Deep Cyan",
-        PALETTE_CYAN_HEX,
+        MANUAL_CORAL_HEX,
     )
     assert tv.get_param_cell_data(3, "beam", "zoom") == ("24°", MANUAL_CORAL_HEX)
 
-    # Ref mode: concise CP / FP IDs in Cyan
+    # Ref mode: concise CP / FP IDs remain Manual Coral while live manual
     live_cv.set_readout_mode("Ref")
     process_events()
     assert tv.store[0][COL_FOCUS_TEXT] == "FP 1"
     assert tv.store[0][COL_COLOR_TEXT] == "CP 2.5"
-    assert tv.get_param_cell_data(3, "color", "cyan") == ("CP 2.5", PALETTE_CYAN_HEX)
+    assert tv.get_param_cell_data(3, "color", "cyan") == ("CP 2.5", MANUAL_CORAL_HEX)
 
     # Percent mode
     live_cv.set_readout_mode("Percent")
@@ -518,3 +526,153 @@ def test_table_view_selection_sync_with_tiles_inspector_and_isolation(
     assert cues_tv.store[0][COL_CHANNEL] == 1
     assert cues_tv.store[0][COL_SWATCH_R] == pytest.approx(1.0, abs=0.02)
     assert cues_tv.store[0][COL_SWATCH_B] == pytest.approx(0.0, abs=0.02)
+
+
+def test_live_manual_palette_red_vs_cue_cyan_and_param_isolation(
+    app_gui: Application,
+) -> None:
+    """Live palette recalls show Manual Coral; recorded Cue refs show Palette Cyan."""
+    _add_cmy_spot(app_gui, 3, 1)
+    ls = app_gui.core.lightshow
+    ls.palettes.add(
+        Palette(PaletteCategory.INTENSITY, 1.0, "Stage 80", channels={3: 0.8})
+    )
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.FOCUS,
+            1.0,
+            "US Center",
+            device_values={3: {"pan": 20.0, "tilt": -10.0}},
+        )
+    )
+    ls.palettes.add(
+        Palette(
+            PaletteCategory.COLOR,
+            2.5,
+            "Deep Cyan",
+            device_values={3: {"cyan": 0.5, "magenta": 0.25, "yellow": 0.0}},
+        )
+    )
+
+    app_gui.core.action_registry.execute(
+        "palette.apply", "intensity", 1.0, channels=[3]
+    )
+    app_gui.core.action_registry.execute("palette.apply", "focus", 1.0, channels=[3])
+    app_gui.core.action_registry.execute("palette.apply", "color", 2.5, channels=[3])
+    process_events()
+
+    assert app_gui.window is not None
+    live_cv = app_gui.window.live_view.channels_view
+    live_cv.set_view_mode_by_name("Patched")
+    live_cv.set_display_format("Table")
+    live_cv.set_family_expanded("focus", True)
+    live_cv.set_readout_mode("Auto")
+    process_events()
+
+    tv = live_cv.table_view
+    assert tv.store[0][COL_INTENSITY] == "Stage 80"
+    assert tv.store[0][COL_INTENSITY_FG] == MANUAL_CORAL_HEX
+    assert tv.store[0][COL_FOCUS_FG] == MANUAL_CORAL_HEX
+    assert tv.store[0][COL_COLOR_FG] == MANUAL_CORAL_HEX
+
+    live_cv.set_readout_mode("Ref")
+    process_events()
+    assert tv.store[0][COL_INTENSITY] == "IP 1"
+    assert tv.store[0][COL_INTENSITY_FG] == MANUAL_CORAL_HEX
+    live_cv.set_readout_mode("Auto")
+    process_events()
+
+    w3 = live_cv.get_channel_widget(3)
+    assert isinstance(w3, ChannelWidget)
+    snap_live = w3.get_snapshot()
+    assert snap_live is not None
+    assert w3._get_family_status_rgb(snap_live.focus) == _MANUAL_CORAL
+    assert w3._get_family_status_rgb(snap_live.color) == _MANUAL_CORAL
+
+    # Exercise Cairo tile and swatch rendering with both is_manual & palette_ref active
+    surface = cairo.ImageSurface(cairo.Format.ARGB32, 220, 220)
+    cr = cairo.Context(surface)
+    area = Gdk.Rectangle()
+    area.x, area.y, area.width, area.height = 0, 0, 28, 22
+    tv.swatch_renderer.has_color = True
+    tv.swatch_renderer.rgb = (0.5, 0.75, 1.0)
+    tv.swatch_renderer.has_palette_ref = True
+    tv.swatch_renderer.is_manual = True
+    tv.swatch_renderer.do_render(cr, tv.treeview, area, area, Gtk.CellRendererState(0))
+
+    live_cv.set_display_format("Compact")
+    process_events()
+    w3.do_draw(cr)
+    live_cv.set_display_format("Summary+")
+    process_events()
+    w3.do_draw(cr)
+    live_cv.set_display_format("Table")
+    process_events()
+
+    # Record/load Cue 1 and clear manual live state -> Cue refs turn Palette Cyan
+    cue1 = Cue(
+        sequence=1,
+        number=1.0,
+        channels={3: 0.8},
+        device_values={
+            3: {
+                "pan": 20.0,
+                "tilt": -10.0,
+                "cyan": 0.5,
+                "magenta": 0.25,
+                "yellow": 0.0,
+            }
+        },
+        palette_refs={
+            3: {
+                "intensity": ("intensity", 1.0),
+                "pan": ("focus", 1.0),
+                "tilt": ("focus", 1.0),
+                "cyan": ("color", 2.5),
+                "magenta": ("color", 2.5),
+                "yellow": ("color", 2.5),
+            }
+        },
+    )
+    ls.cues.add(cue1)
+    ls.main_playback.insert_step(1, Step(sequence=1, cue=cue1))
+    ls.main_playback.load_step(1)
+    app_gui.core.live_state.clear_channel(3)
+    if (
+        app_gui.core.backend is not None
+        and getattr(app_gui.core.backend, "dmx", None) is not None
+    ):
+        app_gui.core.backend.dmx.levels["user"][2] = -1.0
+    live_cv.invalidate_all_snapshots()
+    live_cv.update()
+    process_events()
+
+    snap_cue = live_cv.get_channel_snapshot(3)
+    assert snap_cue is not None
+    assert snap_cue.is_manual is False
+    assert snap_cue.intensity_source == "cue"
+    assert w3._get_family_status_rgb(snap_cue.focus) == _PALETTE_CYAN
+    assert w3._get_family_status_rgb(snap_cue.color) == _PALETTE_CYAN
+    assert tv.store[0][COL_INTENSITY_FG] == PALETTE_CYAN_HEX
+    assert tv.store[0][COL_FOCUS_FG] == PALETTE_CYAN_HEX
+    assert tv.store[0][COL_COLOR_FG] == PALETTE_CYAN_HEX
+    assert tv.get_param_cell_data(3, "focus", "pan") == ("US Center", PALETTE_CYAN_HEX)
+    assert tv.get_param_cell_data(3, "focus", "tilt") == (
+        "US Center",
+        PALETTE_CYAN_HEX,
+    )
+
+    # Tweak only Pan manually while Cue 1 is active -> Pan Coral, Tilt stays Cyan
+    app_gui.core.action_registry.execute(
+        "device.adjust_pan_tilt", pan_delta=5.0, channels=[3]
+    )
+    process_events()
+    live_cv.flush_dirty_channels()
+    process_events()
+
+    _pan_txt, pan_fg = tv.get_param_cell_data(3, "focus", "pan")
+    assert pan_fg == MANUAL_CORAL_HEX
+    assert tv.get_param_cell_data(3, "focus", "tilt") == (
+        "US Center",
+        PALETTE_CYAN_HEX,
+    )

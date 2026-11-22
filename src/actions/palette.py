@@ -272,6 +272,35 @@ def capture_live_palette_data(  # pylint: disable=too-many-branches
     return channels_data, device_values
 
 
+def _sync_preset_live_refs(
+    live_state: typing.Any,  # noqa: ANN401
+    ch_data: typing.Mapping[int, float],
+    dev_vals: typing.Mapping[int, typing.Mapping[str, typing.Any]],
+    target_refs: dict[int, dict[str, tuple[str, float]]],
+) -> None:
+    """Sync live sub-palette references into *target_refs* for a Preset."""
+    if live_state is None:
+        return
+    for ch in set(ch_data.keys()) | set(dev_vals.keys()):
+        ch_int = int(ch)
+        ch_refs = target_refs.setdefault(ch_int, {})
+        if ch in ch_data:
+            int_ref = live_state.get_palette_ref(ch_int, "intensity")
+            if int_ref is not None and int_ref[0] != PaletteCategory.PRESET.value:
+                ch_refs["intensity"] = int_ref
+            else:
+                ch_refs.pop("intensity", None)
+        for param_name in dev_vals.get(ch, {}):
+            p_key = str(param_name)
+            p_ref = live_state.get_palette_ref(ch_int, p_key)
+            if p_ref is not None and p_ref[0] != PaletteCategory.PRESET.value:
+                ch_refs[p_key] = p_ref
+            else:
+                ch_refs.pop(p_key, None)
+        if not ch_refs:
+            target_refs.pop(ch_int, None)
+
+
 def _snapshot_device_state(dev: typing.Any) -> dict[str, typing.Any]:  # noqa: ANN401
     """Capture complete mutable DMX and cached color/parameter state of a device."""
     return {
@@ -620,27 +649,9 @@ class PaletteRecordAction(Action):
             and self.device_values is None
         ):
             refs = {}
-            live_state = getattr(self.app, "live_state", None)
-            if live_state is not None:
-                all_chs = set(ch_data.keys()) | set(dev_vals.keys())
-                for ch in all_chs:
-                    ch_refs: dict[str, tuple[str, float]] = {}
-                    if ch in ch_data:
-                        int_ref = live_state.get_palette_ref(ch, "intensity")
-                        if (
-                            int_ref is not None
-                            and int_ref[0] != PaletteCategory.PRESET.value
-                        ):
-                            ch_refs["intensity"] = int_ref
-                    for param_name in dev_vals.get(ch, {}):
-                        p_ref = live_state.get_palette_ref(ch, param_name)
-                        if (
-                            p_ref is not None
-                            and p_ref[0] != PaletteCategory.PRESET.value
-                        ):
-                            ch_refs[str(param_name)] = p_ref
-                    if ch_refs:
-                        refs[ch] = ch_refs
+            _sync_preset_live_refs(
+                getattr(self.app, "live_state", None), ch_data, dev_vals, refs
+            )
         else:
             refs = copy.deepcopy(existing.palette_refs if existing is not None else {})
 
@@ -747,6 +758,18 @@ class PaletteUpdateAction(Action):
             existing.channels[int(ch)] = float(lvl)
         for ch, attrs in dev_vals.items():
             existing.device_values.setdefault(int(ch), {}).update(copy.deepcopy(attrs))
+
+        if (
+            self.category is PaletteCategory.PRESET
+            and self.channels_data is None
+            and self.device_values is None
+        ):
+            _sync_preset_live_refs(
+                getattr(self.app, "live_state", None),
+                ch_data,
+                dev_vals,
+                existing.palette_refs,
+            )
 
         self._updated_palette = copy.deepcopy(existing)
         propagation = lightshow.palettes.propagate_update(

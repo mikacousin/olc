@@ -263,3 +263,70 @@ def test_palette_propagate_update_counts_and_ticks_effects(
     res2 = ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 2.0)
     assert res2["effects"] == 1
     assert tick_calls == 1
+
+
+def test_palette_update_action_syncs_and_removes_preset_palette_refs() -> None:
+    """Updating a Preset from Live updates new palette_refs & drops overridden refs."""
+    from olc.actions import register_all_actions  # noqa: PLC0415
+    from olc.devices.builtin import create_rgb_definition  # noqa: PLC0415
+
+    settings = MagicMock()
+    settings.get_double.return_value = 5.0
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+    register_all_actions(app.action_registry)
+    ls = app.lightshow
+    ls.patch.patch_device(1, create_rgb_definition(), 1, 1, label="RGB 1")
+
+    cp1 = Palette(
+        category=PaletteCategory.COLOR,
+        number=1.0,
+        text="Red",
+        device_values={1: {"color": "#ff0000"}},
+    )
+    cp2 = Palette(
+        category=PaletteCategory.COLOR,
+        number=2.0,
+        text="Blue",
+        device_values={1: {"color": "#0000ff"}},
+    )
+    ls.palettes.add(cp1)
+    ls.palettes.add(cp2)
+
+    # Record Preset 5 referencing CP 1
+    app.action_registry.execute("palette.apply", "color", 1.0, channels=[1])
+    app.action_registry.execute("channel.set_level", 1, 0.9)
+    app.action_registry.execute("palette.record", "preset", 5.0, "Look 5", [1])
+    preset5 = ls.palettes.get(PaletteCategory.PRESET, 5.0)
+    assert preset5 is not None
+    assert preset5.palette_refs.get(1, {}).get("color") == ("color", 1.0)
+
+    # Apply CP 2 in Live and Update Preset 5 -> palette_refs switches to CP 2
+    app.action_registry.execute("palette.apply", "color", 2.0, channels=[1])
+    app.action_registry.execute("palette.update", "preset", 5.0, channels=[1])
+    assert preset5.palette_refs.get(1, {}).get("color") == ("color", 2.0)
+
+    # Cascade test: modifying CP 2 now updates Preset 5
+    cp2.device_values[1]["color"] = "#0088ff"
+    ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 2.0)
+    assert preset5.device_values[1]["color"] == "#0088ff"
+
+    # Manual color override in Live breaks ref; updating Preset 5 removes color ref
+    app.action_registry.execute("device.set_color", 0.1, 0.9, 0.1, channels=[1])
+    app.action_registry.execute("palette.update", "preset", 5.0, channels=[1])
+    assert "color" not in preset5.palette_refs.get(1, {})
+
+    # Modifying CP 2 must NO LONGER overwrite Preset 5's manual green
+    cp2.device_values[1]["color"] = "#4400ff"
+    ls.palettes.propagate_update(ls, PaletteCategory.COLOR, 2.0)
+    assert preset5.device_values[1]["color"] != "#4400ff"
+
+    # Undo restores ("color", 2.0) ref; Redo drops it again
+    app.history.undo()
+    preset5_undo = ls.palettes.get(PaletteCategory.PRESET, 5.0)
+    assert preset5_undo is not None
+    assert preset5_undo.palette_refs.get(1, {}).get("color") == ("color", 2.0)
+    app.history.redo()
+    preset5_redo = ls.palettes.get(PaletteCategory.PRESET, 5.0)
+    assert preset5_redo is not None
+    assert "color" not in preset5_redo.palette_refs.get(1, {})

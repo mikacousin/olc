@@ -303,11 +303,29 @@ class Tabs:
             if callable(get_pos):
                 current["paned_position"] = get_pos()
 
-        # PalettesTab / active_category
+        # PalettesTab / active_category, direct_select, inspector & paned position
         if tab_name == "palettes":
             cur_cat = getattr(widget, "current_category", None)
             if cur_cat is not None:
                 current["active_category"] = getattr(cur_cat, "value", str(cur_cat))
+            ds_toggle = getattr(widget, "direct_select_toggle", None)
+            if ds_toggle is not None and hasattr(ds_toggle, "get_active"):
+                current["direct_select"] = bool(ds_toggle.get_active())
+            is_insp = getattr(widget, "is_inspector_visible", None)
+            if callable(is_insp):
+                current["inspector_visible"] = bool(is_insp())
+            get_pos = getattr(widget, "get_position", None)
+            if callable(get_pos):
+                current["paned_position"] = int(get_pos())
+
+        # GroupTab / direct_select & paned position
+        if tab_name == "groups":
+            ds_toggle = getattr(widget, "direct_select_toggle", None)
+            if ds_toggle is not None and hasattr(ds_toggle, "get_active"):
+                current["direct_select"] = bool(ds_toggle.get_active())
+            get_pos = getattr(widget, "get_position", None)
+            if callable(get_pos):
+                current["paned_position"] = int(get_pos())
 
         # EffectsTab / selected_effect
         if tab_name == "effects":
@@ -364,7 +382,7 @@ class Tabs:
             if "paned_position" in settings and callable(set_pos):
                 set_pos(int(settings["paned_position"]))
 
-        # PalettesTab / active_category
+        # PalettesTab / active_category, direct_select, inspector & paned position
         if tab_name == "palettes":
             active_cat = settings.get("active_category")
             set_cat_fn = getattr(widget, "set_active_category", None)
@@ -373,6 +391,24 @@ class Tabs:
                     set_cat_fn(str(active_cat))
                 except ValueError:
                     pass
+            ds_toggle = getattr(widget, "direct_select_toggle", None)
+            if "direct_select" in settings and isinstance(ds_toggle, Gtk.ToggleButton):
+                ds_toggle.set_active(bool(settings["direct_select"]))
+            set_insp = getattr(widget, "set_inspector_visible", None)
+            if "inspector_visible" in settings and callable(set_insp):
+                set_insp(bool(settings["inspector_visible"]))
+            set_pos = getattr(widget, "set_position", None)
+            if "paned_position" in settings and callable(set_pos):
+                set_pos(int(settings["paned_position"]))
+
+        # GroupTab / direct_select & paned position
+        if tab_name == "groups":
+            ds_toggle = getattr(widget, "direct_select_toggle", None)
+            if "direct_select" in settings and isinstance(ds_toggle, Gtk.ToggleButton):
+                ds_toggle.set_active(bool(settings["direct_select"]))
+            set_pos = getattr(widget, "set_position", None)
+            if "paned_position" in settings and callable(set_pos):
+                set_pos(int(settings["paned_position"]))
 
         # EffectsTab / selected_effect
         if tab_name == "effects":
