@@ -327,10 +327,14 @@ class FixtureColorProfile:
 def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
     """Build Red, Green, Blue EmitterProfiles from a GDTF ColorSpace."""
     defn = getattr(cs, "definition", None) if cs is not None else None
-    r_cie = getattr(defn, "r", None) if defn is not None else None
-    g_cie = getattr(defn, "g", None) if defn is not None else None
-    b_cie = getattr(defn, "b", None) if defn is not None else None
-    w_cie = getattr(defn, "w", None) if defn is not None else None
+    r_cie = getattr(defn, "r", None) if defn is not None else getattr(cs, "red", None)
+    g_cie = getattr(defn, "g", None) if defn is not None else getattr(cs, "green", None)
+    b_cie = getattr(defn, "b", None) if defn is not None else getattr(cs, "blue", None)
+    w_cie = (
+        getattr(defn, "w", None)
+        if defn is not None
+        else getattr(cs, "white_point", None)
+    )
 
     if r_cie is not None and g_cie is not None and b_cie is not None:
         w_y = float(getattr(w_cie, "Y", 1.0) or 1.0)
@@ -400,6 +404,60 @@ def _gdtf_has_rgb_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
     return False
 
 
+def _extract_node_link_name(value: Any) -> str:  # noqa: ANN401
+    """Return the referenced name from a pygdtf NodeLink, string, or named object."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if hasattr(value, "str_link"):
+        link = getattr(value, "str_link", None)
+        return str(link) if link else ""
+    name = getattr(value, "name", None)
+    return str(name) if name else ""
+
+
+def _extract_gdtf_emitter_attributes(gdtf_fixture: Any) -> dict[str, str]:  # noqa: ANN401
+    """Map lowercase GDTF emitter names to their ChannelFunction attribute names."""
+    emitter_to_attr: dict[str, str] = {}
+    for dmx_mode in getattr(gdtf_fixture, "dmx_modes", []) or []:
+        for ch in getattr(dmx_mode, "dmx_channels", []) or []:
+            if hasattr(ch, "logical_channels"):
+                logical_channels = getattr(ch, "logical_channels", None) or []
+            else:
+                ch_raw = ch.as_dict() if hasattr(ch, "as_dict") else ch
+                ch_dicts = (
+                    ch_raw
+                    if isinstance(ch_raw, list)
+                    else ([ch_raw] if isinstance(ch_raw, dict) else [])
+                )
+                logical_channels = []
+                for ch_dict in ch_dicts:
+                    if isinstance(ch_dict, dict):
+                        logical_channels.extend(
+                            ch_dict.get("logical_channels", []) or []
+                        )
+
+            for lc in logical_channels:
+                cfs = (
+                    lc.get("channel_functions", [])
+                    if isinstance(lc, dict)
+                    else getattr(lc, "channel_functions", [])
+                ) or []
+                for cf in cfs:
+                    if isinstance(cf, dict):
+                        attr_val = cf.get("attribute")
+                        em_val = cf.get("emitter")
+                    else:
+                        attr_val = getattr(cf, "attribute", None)
+                        em_val = getattr(cf, "emitter", None)
+                    attr = _extract_node_link_name(attr_val)
+                    em_ref_name = _extract_node_link_name(em_val)
+                    if em_ref_name and attr:
+                        emitter_to_attr[em_ref_name.lower()] = attr
+    return emitter_to_attr
+
+
 def extract_color_profile(  # pylint: disable=too-many-locals
     gdtf_fixture: Any,  # noqa: ANN401
     fixture_name: str = "",
@@ -427,17 +485,7 @@ def extract_color_profile(  # pylint: disable=too-many-locals
         "red-orange": "ColorAdd_RY",
     }
 
-    emitter_to_attr: dict[str, str] = {}
-    for dmx_mode in getattr(gdtf_fixture, "dmx_modes", []) or []:
-        for ch in getattr(dmx_mode, "dmx_channels", []) or []:
-            ch_dict = ch.as_dict() if hasattr(ch, "as_dict") else {}
-            for lc in ch_dict.get("logical_channels", []):
-                for cf in lc.get("channel_functions", []):
-                    attr = cf.get("attribute", "")
-                    em_ref = cf.get("emitter")
-                    if em_ref and attr:
-                        em_ref_name = getattr(em_ref, "name", str(em_ref))
-                        emitter_to_attr[em_ref_name.lower()] = attr
+    emitter_to_attr = _extract_gdtf_emitter_attributes(gdtf_fixture)
 
     emitters: list[EmitterProfile] = []
     gdtf_emitters = getattr(gdtf_fixture, "emitters", [])

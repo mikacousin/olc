@@ -16,6 +16,9 @@
 
 # pylint: disable=missing-function-docstring, redefined-outer-name, protected-access
 
+from pathlib import Path
+from types import SimpleNamespace
+
 import pytest
 
 from olc.devices import (
@@ -42,6 +45,7 @@ from olc.devices import (
     create_rgba_definition,
     create_rgbw_definition,
     delta_e76,
+    extract_color_profile,
     populate_builtin_library,
     profile_from_emitters,
     sRGB,
@@ -605,6 +609,124 @@ def test_gdtf_importer_sanity() -> None:
             importer.load("non_existent.gdtf")
         with pytest.raises(ImportError):
             importer.load_from_bytes(b"dummy")
+
+
+def test_gdtf_import_real_robe_arianne_6() -> None:
+    if not HAS_PYGDTF:
+        pytest.skip("pygdtf not installed")
+    gdtf_path = Path(
+        "doc/Robe_Lighting@Robin_Arianne_6@2026-09-25_Control_channel_update.gdtf"
+    )
+    if not gdtf_path.exists():
+        pytest.skip(f"{gdtf_path} not present")
+
+    defn = GdtfImporter().load(gdtf_path)
+    assert defn.manufacturer == "Robe Lighting"
+    assert defn.model == "Robin Arianne 6"
+    assert defn.fixture_type == FixtureType.MOVING_HEAD
+    assert [m.footprint() for m in defn.dmx_modes] == [22, 27, 58]
+    assert defn.color_profile is not None
+    assert [e.name for e in defn.color_profile.emitters] == [
+        "Red",
+        "Green",
+        "Blue",
+        "Lime",
+    ]
+    assert [e.gdtf_attribute for e in defn.color_profile.emitters] == [
+        "ColorAdd_R",
+        "ColorAdd_G",
+        "ColorAdd_B",
+        "ColorAdd_GY",
+    ]
+    assert defn.thumbnail is not None
+    assert len(defn.thumbnail) > 0
+
+
+def test_extract_color_profile_nodelink_and_list_as_dict() -> None:
+    class _NodeLink:
+        def __init__(self, str_link: str | None) -> None:
+            self.str_link = str_link
+
+        def __str__(self) -> str:
+            return str(self.str_link)
+
+    class _DmxChannelWithObjects:
+        def __init__(self, attribute: str, emitter_link: str | None) -> None:
+            self._attr = attribute
+            self.logical_channels = [
+                SimpleNamespace(
+                    channel_functions=[
+                        SimpleNamespace(
+                            attribute=_NodeLink(attribute),
+                            emitter=_NodeLink(emitter_link),
+                        )
+                    ]
+                )
+            ]
+
+        def as_dict(self) -> list[dict[str, object]]:
+            return [{"attribute": self._attr, "logical_channels": []}]
+
+    class _DmxChannelDictListOnly:
+        def as_dict(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "attribute": "ColorAdd_R",
+                    "logical_channels": [
+                        {
+                            "channel_functions": [
+                                {
+                                    "attribute": "ColorAdd_R",
+                                    "emitter": _NodeLink(None),
+                                }
+                            ]
+                        }
+                    ],
+                },
+                {"attribute": "+ColorAdd_R"},
+            ]
+
+    class _DmxChannelList(list):  # type: ignore[type-arg]
+        def as_dict(self) -> list[dict[str, object]]:
+            items: list[dict[str, object]] = []
+            for ch in self:
+                items.extend(ch.as_dict())
+            return items
+
+    channels = _DmxChannelList(
+        [
+            _DmxChannelDictListOnly(),
+            _DmxChannelWithObjects("ColorAdd_G", None),
+            _DmxChannelWithObjects("ColorAdd_B", None),
+            _DmxChannelWithObjects("ColorAdd_GY", "Lime"),
+        ]
+    )
+    fake_gdtf = SimpleNamespace(
+        manufacturer="Mock",
+        name="RGBL Fixture",
+        dmx_modes=[SimpleNamespace(dmx_channels=channels)],
+        emitters=[
+            SimpleNamespace(
+                name="Lime",
+                color=CIExyY(0.3225, 0.387, 100.0),
+                dominant_wave_length=0.0,
+                diode_part="",
+            ),
+            SimpleNamespace(
+                name="None",
+                color=CIExyY(0.3127, 0.329, 100.0),
+                dominant_wave_length=0.0,
+                diode_part="",
+            ),
+        ],
+        color_space=None,
+    )
+
+    profile = extract_color_profile(fake_gdtf)
+    by_name = {e.name: e for e in profile.emitters}
+    assert by_name["Lime"].gdtf_attribute == "ColorAdd_GY"
+    assert by_name["None"].gdtf_attribute == ""
+    assert {"Red", "Green", "Blue", "Lime"}.issubset(by_name.keys())
 
 
 # ---------------------------------------------------------------------------

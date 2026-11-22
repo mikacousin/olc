@@ -180,8 +180,8 @@ class GdtfImporter:
         thumbnail: Optional[bytes],
     ) -> FixtureDefinition:
         fixture_type = _infer_fixture_type(
-            getattr(gdtf_obj, "name", ""),
-            getattr(gdtf_obj, "description", ""),
+            getattr(gdtf_obj, "name", None) or "",
+            getattr(gdtf_obj, "description", None) or "",
         )
 
         dmx_modes = [self._adapt_mode(m) for m in getattr(gdtf_obj, "dmx_modes", [])]
@@ -193,14 +193,14 @@ class GdtfImporter:
             pass
 
         return FixtureDefinition(
-            manufacturer=getattr(gdtf_obj, "manufacturer", "Unknown"),
-            model=getattr(gdtf_obj, "name", "Unknown"),
+            manufacturer=getattr(gdtf_obj, "manufacturer", None) or "Unknown",
+            model=getattr(gdtf_obj, "name", None) or "Unknown",
             fixture_type=fixture_type,
             dmx_modes=dmx_modes,
             color_profile=color_profile,
-            gdtf_id=str(getattr(gdtf_obj, "fixture_type_id", "")),
+            gdtf_id=str(getattr(gdtf_obj, "fixture_type_id", None) or ""),
             thumbnail=thumbnail,
-            notes=getattr(gdtf_obj, "description", ""),
+            notes=getattr(gdtf_obj, "description", None) or "",
         )
 
     def _adapt_mode(self, mode: Any) -> DmxModeDefinition:  # noqa: ANN401
@@ -214,7 +214,7 @@ class GdtfImporter:
                 if ch_def:
                     channel_defs.append(ch_def)
         return DmxModeDefinition(
-            name=getattr(mode, "name", "Default"), channel_defs=channel_defs
+            name=getattr(mode, "name", None) or "Default", channel_defs=channel_defs
         )
 
     def _adapt_channel(  # pylint: disable=too-many-locals
@@ -224,7 +224,9 @@ class GdtfImporter:
         if attr_name in ("NoFeature", ""):
             return None
 
-        offsets = ch.get("offset", [1])
+        offsets = ch.get("offset")
+        if not offsets or offsets[0] is None or offsets[0] <= 0:
+            return None
         offset = offsets[0] - 1  # 0-based
         fine_offset = offsets[1] - 1 if len(offsets) > 1 else None
         ultra_fine_offset = offsets[2] - 1 if len(offsets) > 2 else None
@@ -299,7 +301,7 @@ class GdtfImporter:
         if attr in ("NoFeature", ""):
             return None
 
-        name = cf.get("name", attr)
+        name = cf.get("name") or attr
         dmx_from = cf.get("dmx_from", 0)
         dmx_to = cf.get("dmx_to", 255)
         default = cf.get("default", dmx_from)

@@ -32,6 +32,7 @@ from olc.devices.fixture import (  # noqa: E402
     DmxModeDefinition,
     FixtureDefinition,
 )
+from olc.devices.gdtf import HAS_PYGDTF  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
@@ -43,6 +44,8 @@ from olc.gtk3.fixture_library import (  # noqa: E402
     COL_CH_LABEL,
     COL_CH_OFFSET,
     COL_CH_UNIT,
+    COL_EM_ATTR,
+    COL_EM_NAME,
     FixtureLibraryTab,
 )
 
@@ -385,3 +388,110 @@ def test_fixture_library_tab_width_bounded_on_long_gdtf_profile(
         assert fixtures_tab.lbl_color_info.get_ellipsize() == Pango.EllipsizeMode.END
     finally:
         fixtures_tab.cleanup()
+
+
+class _FakeFileChooser:
+    def __init__(self, filename: str, response: Gtk.ResponseType) -> None:
+        self._filename = filename
+        self._response = response
+
+    def add_filter(self, _file_filter: object) -> None:
+        pass
+
+    def set_modal(self, _modal: bool) -> None:
+        pass
+
+    def run(self) -> Gtk.ResponseType:
+        return self._response
+
+    def get_filename(self) -> str:
+        return self._filename
+
+    def destroy(self) -> None:
+        pass
+
+
+def test_fixture_library_tab_import_gdtf_selects_profile(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Verify clicking GDTF imports, registers, and selects the imported profile."""
+    if not HAS_PYGDTF:
+        pytest.skip("pygdtf not installed")
+    gdtf_path = pathlib.Path(
+        "doc/Robe_Lighting@Robin_Arianne_6@2026-09-25_Control_channel_update.gdtf"
+    )
+    if not gdtf_path.exists():
+        pytest.skip(f"{gdtf_path} not present")
+
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        Gtk.FileChooserNative,
+        "new",
+        lambda *_args: _FakeFileChooser(str(gdtf_path), Gtk.ResponseType.ACCEPT),
+    )
+
+    app_gui.activate_action("fixtures", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fixtures_tab = app_gui.tabs.tabs.get("fixtures")
+    assert isinstance(fixtures_tab, FixtureLibraryTab)
+
+    try:
+        fixtures_tab._on_import_gdtf_clicked(fixtures_tab.btn_import_gdtf)
+        process_events()
+
+        cat_keys = {
+            (row[COL_CAT_MANUFACTURER], row[COL_CAT_MODEL])
+            for row in fixtures_tab.cat_store
+        }
+        assert ("Robe Lighting", "Robin Arianne 6") in cat_keys
+
+        active = fixtures_tab.active_definition
+        assert active is not None
+        assert active.manufacturer == "Robe Lighting"
+        assert active.model == "Robin Arianne 6"
+        assert len(active.dmx_modes) == 3
+
+        assert len(fixtures_tab.emitters_store) == 4
+        emitters_by_name = {
+            row[COL_EM_NAME]: row[COL_EM_ATTR] for row in fixtures_tab.emitters_store
+        }
+        assert emitters_by_name.get("Lime") == "ColorAdd_GY"
+    finally:
+        app_gui.core.lightshow.fixture_library = populate_builtin_library()
+        app_gui.core.emit("fixture_library.changed")
+        process_events()
+
+
+def test_fixture_library_tab_import_gdtf_shows_error_on_failure(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Verify GDTF import errors display an error dialog instead of failing silently."""
+    missing_path = tmp_path / "missing.gdtf"
+    monkeypatch.setattr(
+        Gtk.FileChooserNative,
+        "new",
+        lambda *_args: _FakeFileChooser(str(missing_path), Gtk.ResponseType.ACCEPT),
+    )
+
+    app_gui.activate_action("fixtures", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fixtures_tab = app_gui.tabs.tabs.get("fixtures")
+    assert isinstance(fixtures_tab, FixtureLibraryTab)
+
+    errors: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        fixtures_tab,
+        "_show_error_dialog",
+        lambda title, msg: errors.append((title, msg)),
+    )
+
+    fixtures_tab._on_import_gdtf_clicked(fixtures_tab.btn_import_gdtf)
+    process_events()
+
+    assert len(errors) == 1
+    assert errors[0][0]
+    assert errors[0][1]

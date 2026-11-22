@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import typing
 from gettext import gettext as _
 from typing import Optional
@@ -34,6 +35,8 @@ from olc.devices.fixture import (
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
+
+logger = logging.getLogger(__name__)
 
 # Columns in left TreeView (catalogue)
 COL_CAT_MANUFACTURER = 0
@@ -1334,6 +1337,20 @@ class FixtureLibraryTab(Gtk.Box):
         """Refresh tab contents."""
         self.refresh_catalog()
 
+    def _show_error_dialog(self, title: str, message: str) -> None:
+        """Display an error dialog to the user."""
+        dialog = Gtk.MessageDialog(
+            transient_for=self.app.window if self.app is not None else None,
+            modal=True,
+            destroy_with_parent=True,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text=title,
+        )
+        dialog.format_secondary_text(message)
+        dialog.run()
+        dialog.destroy()
+
     def _on_import_gdtf_clicked(self, _button: Gtk.Button) -> None:
         chooser = Gtk.FileChooserNative.new(
             _("Import GDTF Fixture File"),
@@ -1344,18 +1361,24 @@ class FixtureLibraryTab(Gtk.Box):
         )
         file_filter = Gtk.FileFilter()
         file_filter.set_name(_("GDTF files (*.gdtf)"))
-        file_filter.add_pattern("*.gdtf")
+        file_filter.add_pattern("*.[Gg][Dd][Tt][Ff]")
         chooser.add_filter(file_filter)
+        chooser.set_modal(True)
 
         res = chooser.run()
-        if res == Gtk.ResponseType.ACCEPT:
-            filename = chooser.get_filename()
-            if filename:
-                try:
-                    self.core.action_registry.execute("fixture.import_gdtf", filename)
-                except Exception:
-                    pass
+        filename = chooser.get_filename() if res == Gtk.ResponseType.ACCEPT else None
         chooser.destroy()
+
+        if not filename:
+            return
+
+        try:
+            defn = self.core.action_registry.execute("fixture.import_gdtf", filename)
+            if isinstance(defn, FixtureDefinition):
+                self.refresh_catalog(select_key=(defn.manufacturer, defn.model))
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            logger.warning("Failed to import GDTF '%s': %s", filename, err)
+            self._show_error_dialog(_("Failed to import GDTF file"), str(err))
 
     def _on_new_clicked(self, _button: Gtk.Button) -> None:
         """Create a new custom fixture definition."""

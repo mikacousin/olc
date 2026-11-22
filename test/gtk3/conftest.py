@@ -126,6 +126,9 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.palettes.clear()
     app.core.lightshow.park.clear()
     app.core.lightshow.patch.patch_empty()
+    from olc.devices.builtin import populate_builtin_library  # noqa: E402
+
+    app.core.lightshow.fixture_library = populate_builtin_library()
     app.core.lightshow.curves.reset()
     app.core.live_state.clear_all()
     app.core.commandline.set_string("")

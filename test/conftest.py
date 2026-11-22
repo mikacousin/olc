@@ -17,7 +17,9 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
+from collections.abc import Generator
 
 # Dynamic module aliasing to allow importing 'olc' from 'src' without installation
 _root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -58,3 +60,22 @@ def pytest_collection_modifyitems(
     for item in items:
         if "gui" in item.keywords:
             item.add_marker(skip_gui)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _isolate_session_user_fixtures_dir(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[None, None, None]:
+    """Isolate session-scoped fixtures from the user's real fixture directory."""
+    session_dir = tmp_path_factory.mktemp("session_user_fixtures")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("OLC_USER_FIXTURES_DIR", str(session_dir))
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _isolate_user_fixtures_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Give every test its own isolated user fixtures directory."""
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path / "user_fixtures"))

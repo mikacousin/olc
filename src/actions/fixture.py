@@ -234,12 +234,12 @@ class FixtureImportGdtfAction(Action):
         """Configure the .gdtf file path to import."""
         self.file_path = str(file_path).strip()
 
-    def execute(self) -> None:
+    def execute(self) -> Optional[FixtureDefinition]:
         """Import the .gdtf file and register it."""
         library = getattr(self.app.lightshow, "fixture_library", None)
         if library is None or not self.file_path:
             self.can_undo = False
-            return
+            return None
 
         importer = GdtfImporter()
         defn = importer.load(self.file_path)
@@ -254,6 +254,7 @@ class FixtureImportGdtfAction(Action):
         library.register(defn)
         save_user_fixture(defn)
         self.app.emit("fixture_library.changed")
+        return defn
 
     def undo(self) -> None:
         """Revert imported definition."""
