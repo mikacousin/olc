@@ -76,7 +76,13 @@ def test_selection_manager_basic_operations() -> None:
     assert set(manager.selected_channels) == {5, 6, 7, 8, 10}
     assert manager.last_selected_channel == 8
 
-    # 6. Select all (active levels are 2 and 4)
+    # 6. Reverse Thru preserves descending channel order
+    manager.execute_action(SelectActiveAction, channel=10)
+    manager.execute_action(SelectThruAction, to_channel=6)
+    assert manager.selected_channels == [10, 9, 8, 7, 6]
+    assert manager.last_selected_channel == 6
+
+    # 7. Select all (active levels are 2 and 4)
     manager.execute_action(SelectAllAction)
     assert manager.selected_channels == [2, 4]
 

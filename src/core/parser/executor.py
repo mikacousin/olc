@@ -27,6 +27,12 @@ from olc.actions.effect import (
     EffectUpdateAction,
     format_effect_number,
 )
+from olc.actions.group import (
+    DeleteGroupAction,
+    GroupRenameAction,
+    GroupUpdateChannelsAction,
+    NewGroupAction,
+)
 from olc.actions.palette import (
     PaletteApplyAction,
     PaletteDeleteAction,
@@ -54,16 +60,19 @@ from olc.core.parser.ast_nodes import (
     CommandNode,
     DeleteCueCommandNode,
     DeleteEffectCommandNode,
+    DeleteGroupCommandNode,
     DeletePaletteCommandNode,
     EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
     IntensityCommandNode,
+    LabelGroupCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
     PatchCommandNode,
     RecordCueCommandNode,
+    RecordGroupCommandNode,
     RecordPaletteCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -74,6 +83,7 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
+    UpdateGroupCommandNode,
     UpdatePaletteCommandNode,
 )
 from olc.core.tracking import TrackingEngine
@@ -218,6 +228,18 @@ class CommandExecutor:
 
         if isinstance(node, DeleteEffectCommandNode):
             return self._execute_delete_effect(node)
+
+        if isinstance(node, RecordGroupCommandNode):
+            return self._execute_record_group(node)
+
+        if isinstance(node, UpdateGroupCommandNode):
+            return self._execute_update_group(node)
+
+        if isinstance(node, DeleteGroupCommandNode):
+            return self._execute_delete_group(node)
+
+        if isinstance(node, LabelGroupCommandNode):
+            return self._execute_label_group(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -391,7 +413,7 @@ class CommandExecutor:
     # --- Command Implementations ---
 
     def _execute_select_only(self, node: SelectOnlyCommandNode) -> CommandResult:
-        channels = self.resolve_selection(node.selection)
+        channels = self.resolve_ordered_selection(node.selection)
         last_sel: int | None = None
         if node.selection.items:
             last_item = node.selection.items[-1]
@@ -2069,3 +2091,137 @@ class CommandExecutor:
             action.execute()
 
         return CommandResult(True, f"Deleted Effect {num_str}")
+
+    # --- Group Commands ---
+
+    @staticmethod
+    def _format_group_id(group_id: float) -> str:
+        val = float(group_id)
+        return str(int(val)) if val.is_integer() else f"{val:g}"
+
+    def _execute_record_group(self, node: RecordGroupCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "groups"):
+            return CommandResult(False, "Groups store not available")
+
+        channels = (
+            self.resolve_ordered_selection(node.selection)
+            if node.selection is not None
+            else list(getattr(self.app, "selected_channels", []))
+        )
+        group_id = (
+            float(node.group_id)
+            if node.group_id is not None
+            else lightshow.groups.get_next_index()
+        )
+        num_str = self._format_group_id(group_id)
+        registry = self._get_registry()
+
+        if lightshow.groups.get(group_id) is None:
+            if registry is not None and "group.new" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute("group.new", group_id, channels, label=node.label)
+            else:
+                action = NewGroupAction(self.app)
+                action.configure(group_id, channels, label=node.label)
+                action.execute()
+        else:
+            if registry is not None and "group.update_channels" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute("group.update_channels", group_id, channels)
+            else:
+                action_upd = GroupUpdateChannelsAction(self.app)
+                action_upd.configure(group_id, channels)
+                action_upd.execute()
+            if node.label is not None:
+                if registry is not None and "group.rename" in getattr(
+                    registry, "_action_classes", {}
+                ):
+                    registry.execute("group.rename", group_id, node.label)
+                else:
+                    action_ren = GroupRenameAction(self.app)
+                    action_ren.configure(group_id, node.label)
+                    action_ren.execute()
+
+        return CommandResult(
+            True,
+            f"Recorded Group {num_str} ({len(channels)} ch)",
+            affected_channels=channels,
+        )
+
+    def _execute_update_group(self, node: UpdateGroupCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "groups"):
+            return CommandResult(False, "Groups store not available")
+
+        group_id = float(node.group_id)
+        num_str = self._format_group_id(group_id)
+        if lightshow.groups.get(group_id) is None:
+            return CommandResult(False, f"Group {num_str} not found")
+
+        channels = (
+            self.resolve_ordered_selection(node.selection)
+            if node.selection is not None
+            else list(getattr(self.app, "selected_channels", []))
+        )
+        registry = self._get_registry()
+        if registry is not None and "group.update_channels" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("group.update_channels", group_id, channels)
+        else:
+            action = GroupUpdateChannelsAction(self.app)
+            action.configure(group_id, channels)
+            action.execute()
+
+        return CommandResult(
+            True,
+            f"Updated Group {num_str} ({len(channels)} ch)",
+            affected_channels=channels,
+        )
+
+    def _execute_delete_group(self, node: DeleteGroupCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "groups"):
+            return CommandResult(False, "Groups store not available")
+
+        group_id = float(node.group_id)
+        num_str = self._format_group_id(group_id)
+        if lightshow.groups.get(group_id) is None:
+            return CommandResult(False, f"Group {num_str} not found")
+
+        registry = self._get_registry()
+        if registry is not None and "group.delete" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("group.delete", group_id)
+        else:
+            action = DeleteGroupAction(self.app)
+            action.configure(group_id)
+            action.execute()
+
+        return CommandResult(True, f"Deleted Group {num_str}")
+
+    def _execute_label_group(self, node: LabelGroupCommandNode) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None or not hasattr(lightshow, "groups"):
+            return CommandResult(False, "Groups store not available")
+
+        group_id = float(node.group_id)
+        num_str = self._format_group_id(group_id)
+        if lightshow.groups.get(group_id) is None:
+            return CommandResult(False, f"Group {num_str} not found")
+
+        registry = self._get_registry()
+        if registry is not None and "group.rename" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("group.rename", group_id, node.label)
+        else:
+            action = GroupRenameAction(self.app)
+            action.configure(group_id, node.label)
+            action.execute()
+
+        return CommandResult(True, f'Labeled Group {num_str} "{node.label}"')

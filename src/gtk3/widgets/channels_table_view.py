@@ -351,7 +351,11 @@ class ChannelsTableView(Gtk.ScrolledWindow):
         col.set_min_width(min_width)
         return col
 
+    def _is_membership_view(self) -> bool:
+        return bool(getattr(self.channels_view, "is_membership_view", False))
+
     def _build_base_columns(self) -> None:
+        is_membership = self._is_membership_view()
         # 1. Ch
         self.treeview.append_column(
             self._make_text_column(
@@ -368,10 +372,10 @@ class ChannelsTableView(Gtk.ScrolledWindow):
         )
         self.treeview.append_column(self._col_fixture)
 
-        # 3. Int
+        # 3. Order (Groups) or Int
         self.treeview.append_column(
             self._make_text_column(
-                "Int",
+                "Order" if is_membership else "Int",
                 COL_INTENSITY,
                 fg_col=COL_INTENSITY_FG,
                 bold=True,
@@ -396,18 +400,21 @@ class ChannelsTableView(Gtk.ScrolledWindow):
         self._col_color.pack_start(r_col, True)
         self._col_color.add_attribute(r_col, "text", COL_COLOR_TEXT)
         self._col_color.add_attribute(r_col, "foreground", COL_COLOR_FG)
+        self._col_color.set_visible(not is_membership)
         self.treeview.append_column(self._col_color)
 
         # 5. Focus
         self._col_focus = self._make_text_column(
             "Focus", COL_FOCUS_TEXT, fg_col=COL_FOCUS_FG, ellipsize=True, min_width=95
         )
+        self._col_focus.set_visible(not is_membership)
         self.treeview.append_column(self._col_focus)
 
         # 6. Beam
         self._col_beam = self._make_text_column(
             "Beam", COL_BEAM_TEXT, fg_col=COL_BEAM_FG, ellipsize=True, min_width=95
         )
+        self._col_beam.set_visible(not is_membership)
         self.treeview.append_column(self._col_beam)
 
         # 7. Address
@@ -533,6 +540,8 @@ class ChannelsTableView(Gtk.ScrolledWindow):
 
     def refresh_dynamic_columns(self) -> None:
         """Synchronize expanded F/C/B TreeViewColumns with current visible channels."""
+        if self._is_membership_view():
+            return
         for family in ("color", "focus", "beam"):
             desired = (
                 self.discover_family_parameters(family)
@@ -739,6 +748,11 @@ class ChannelsTableView(Gtk.ScrolledWindow):
 
         # Fallback for Group / Independent / ChannelTime views without snapshots
         widget = self.channels_view.get_channel_widget(channel)
+        if self._is_membership_view():
+            order = widget.membership_order if widget is not None else None
+            if order is not None:
+                return f"#{order}", PALETTE_CYAN_HEX
+            return "", DEFAULT_TEXT_HEX
         raw_lvl = float(widget.level) if widget is not None else 0.0
         fg_hex = (
             _rgb_dict_to_hex(widget.color_level)
@@ -788,9 +802,13 @@ class ChannelsTableView(Gtk.ScrolledWindow):
                 lightshow.patch.devices.get(channel) if lightshow is not None else None
             )
             fixture_txt = str(dev.label or dev.fixture_name) if dev is not None else ""
-            preview = dev.get_preview_rgb() if dev is not None else None
-            has_color = preview is not None
-            rgb = preview if preview is not None else (1.0, 1.0, 1.0)
+            if self._is_membership_view():
+                has_color = False
+                rgb = (1.0, 1.0, 1.0)
+            else:
+                preview = dev.get_preview_rgb() if dev is not None else None
+                has_color = preview is not None
+                rgb = preview if preview is not None else (1.0, 1.0, 1.0)
             col_txt = ""
             col_fg = DEFAULT_TEXT_HEX
             col_has_ref = False

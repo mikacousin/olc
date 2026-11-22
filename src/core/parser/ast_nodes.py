@@ -57,9 +57,9 @@ class RelativeThruNode(SelectionItemNode):
 
 @dataclasses.dataclass
 class GroupSelectionNode(SelectionItemNode):
-    """Group of channels (e.g. GROUP 2)."""
+    """Group of channels (e.g. GROUP 2 or GROUP 1.5)."""
 
-    group_id: int
+    group_id: float
 
 
 @dataclasses.dataclass
@@ -369,3 +369,38 @@ class DeleteEffectCommandNode(CommandNode):
     """Command to delete an effect from the show pool (e.g. DELETE EFFECT 1)."""
 
     effect_id: float
+
+
+# --- Group Command Nodes ---
+
+
+@dataclasses.dataclass
+class RecordGroupCommandNode(CommandNode):
+    """Command to record a Group (e.g. RECORD GROUP 1 or 1 RECORD GROUP 2)."""
+
+    group_id: float | None = None
+    selection: SelectionNode | None = None
+    label: str | None = None
+
+
+@dataclasses.dataclass
+class UpdateGroupCommandNode(CommandNode):
+    """Command to update a Group's channel selection (e.g. 1 THRU 4 UPDATE GROUP 1)."""
+
+    group_id: float
+    selection: SelectionNode | None = None
+
+
+@dataclasses.dataclass
+class DeleteGroupCommandNode(CommandNode):
+    """Command to delete a Group from the show (e.g. DELETE GROUP 2)."""
+
+    group_id: float
+
+
+@dataclasses.dataclass
+class LabelGroupCommandNode(CommandNode):
+    """Command to rename a Group (e.g. LABEL GROUP 2 "Front")."""
+
+    group_id: float
+    label: str

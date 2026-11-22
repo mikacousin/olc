@@ -1626,7 +1626,6 @@ class VirtualConsoleWindow(Gtk.Window):
             return
         child = self.app.window.get_active_tab() if self.app.window else None
         if self.app.tabs and child in (
-            self.app.tabs.tabs["groups"],
             self.app.tabs.tabs["indes"],
             self.app.tabs.tabs["faders"],
             self.app.tabs.tabs["cues"],

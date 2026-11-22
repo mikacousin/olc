@@ -1113,3 +1113,73 @@ def test_executor_palette_record_apply_update_cascade_and_undo_redo() -> None:
     app.action_registry.execute("edit.undo")
     assert app.lightshow.palettes.get(PaletteCategory.BEAM, 1.0) is not None
     assert spot_dev.get_channel(ChannelType.ZOOM) is not None
+
+
+def test_executor_group_commands_float_order_and_undo_redo() -> None:
+    """Verify RECORD/UPDATE/DELETE/LABEL GROUP, float IDs, order preservation, Undo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.groups.clear()
+
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. Explicit descending selection preserves reverse order
+    res_sel = executor.execute(parser.parse("4 THRU 1"))
+    assert res_sel.success is True
+    assert app.selected_channels == [4, 3, 2, 1]
+
+    # 2. Record float Group 2.5 with ordered selection + label
+    res_rec = executor.execute(
+        parser.parse('10 THRU 8 + 2 RECORD GROUP 2.5 LABEL "Contres"')
+    )
+    assert res_rec.success is True
+    grp = app.lightshow.groups.get(2.5)
+    assert grp is not None
+    assert grp.channels == [10, 9, 8, 2]
+    assert grp.text == "Contres"
+
+    # Undo -> removes Group 2.5; Redo -> restores
+    app.action_registry.execute("edit.undo")
+    assert app.lightshow.groups.get(2.5) is None
+    app.action_registry.execute("edit.redo")
+    assert app.lightshow.groups.get(2.5) is not None
+
+    # 3. Recall GROUP 2.5 preserves ordered selection
+    app.selected_channels = []
+    res_g = executor.execute(parser.parse("GROUP 2.5"))
+    assert res_g.success is True
+    assert app.selected_channels == [10, 9, 8, 2]
+
+    # 4. Update Group 2.5 with new ordered selection (+ Undo/Redo)
+    res_upd = executor.execute(parser.parse("1 + 5 + 3 UPDATE GROUP 2.5"))
+    assert res_upd.success is True
+    grp25 = app.lightshow.groups.get(2.5)
+    assert grp25 is not None
+    assert grp25.channels == [1, 5, 3]
+    app.action_registry.execute("edit.undo")
+    assert grp25.channels == [10, 9, 8, 2]
+    app.action_registry.execute("edit.redo")
+    assert grp25.channels == [1, 5, 3]
+
+    # 5. Label Group via both syntaxes (+ Undo/Redo)
+    assert executor.execute(parser.parse('LABEL GROUP 2.5 "Wash"')).success is True
+    assert grp25.text == "Wash"
+    assert executor.execute(parser.parse('GROUP 2.5 LABEL "Front"')).success is True
+    assert grp25.text == "Front"
+    app.action_registry.execute("edit.undo")
+    assert grp25.text == "Wash"
+
+    # 6. Auto-numbered RECORD GROUP from current Live selection
+    app.selected_channels = [7, 4]
+    res_auto = executor.execute(parser.parse("RECORD GROUP"))
+    assert res_auto.success is True
+    auto_grp = app.lightshow.groups.get(3.5)
+    assert auto_grp is not None
+    assert auto_grp.channels == [7, 4]
+
+    # 7. Delete Group 2.5 (+ Undo)
+    assert executor.execute(parser.parse("DELETE GROUP 2.5")).success is True
+    assert app.lightshow.groups.get(2.5) is None
+    app.action_registry.execute("edit.undo")
+    assert app.lightshow.groups.get(2.5) is not None

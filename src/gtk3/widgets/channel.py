@@ -61,6 +61,8 @@ _MANUAL_CORAL: tuple[float, float, float] = (0.95, 0.35, 0.35)
 _MIB_AMBER: tuple[float, float, float] = (1.0, 0.65, 0.15)
 _PARK_AMBER: tuple[float, float, float] = (1.0, 0.7, 0.0)
 _MUTED_GREY: tuple[float, float, float] = (0.50, 0.54, 0.57)
+_GROUP_MEMBER_FILL: tuple[float, float, float] = (0.16, 0.27, 0.36)
+_GROUP_MEMBER_TEXT: tuple[float, float, float] = (0.45, 0.85, 1.0)
 
 _COMPACT_COLOR_TYPES: frozenset[ChannelType] = COLOR_CHANNEL_TYPES | frozenset(
     {ChannelType.COLOR_TEMP, ChannelType.COLOR_WHEEL}
@@ -96,6 +98,8 @@ class ChannelWidget(Gtk.DrawingArea):
     display_format: str
     readout_mode: str
     show_labels: bool
+    membership_mode: bool
+    membership_order: int | None
     scale: float
     width: int
     height: int
@@ -134,6 +138,8 @@ class ChannelWidget(Gtk.DrawingArea):
         self.show_labels = (
             bool(channels_view.show_labels) if channels_view is not None else True
         )
+        self.membership_mode = False
+        self.membership_order = None
         self.scale = 1.0
         base_w, base_h = self.get_base_dimensions()
         self.width = round(base_w * self.scale)
@@ -379,6 +385,9 @@ class ChannelWidget(Gtk.DrawingArea):
         snap: ChannelDisplaySnapshot | None,
     ) -> None:
         """Draw compact 80x80 tile with live color preview and micro IFCB markers."""
+        if self.membership_mode:
+            self._draw_compact_membership(cr, allocation)
+            return
         self._draw_background(cr, allocation, header_height=18 * self.scale)
         self._draw_channel_number(cr)
         self._draw_park_badge(cr, snap)
@@ -388,6 +397,105 @@ class ChannelWidget(Gtk.DrawingArea):
         self._draw_level_bar(cr, allocation, snap)
         self._draw_next_level(cr, percent_level)
 
+    def _draw_compact_membership(
+        self,
+        cr: cairo.Context,
+        allocation: Gdk.Rectangle,
+    ) -> None:
+        """Draw compact 80x80 tile showing pure group membership and selection rank."""
+        s = self.scale
+        alloc_w = max(self.width, allocation.width)
+        hdr_h = 18 * s
+        self._draw_background(cr, allocation, header_height=hdr_h)
+        if self.membership_order is not None:
+            cr.rectangle(
+                4, 4 + hdr_h, max(1.0, alloc_w - 8), max(1.0, self.height - 8 - hdr_h)
+            )
+            cr.set_source_rgb(*_GROUP_MEMBER_FILL)
+            cr.fill()
+        self._draw_channel_number(cr)
+        if self.membership_order is not None:
+            cr.set_source_rgb(*_GROUP_MEMBER_TEXT)
+            draw_cached_numeric_text(
+                cr,
+                alloc_w / 2.0,
+                52 * s,
+                f"#{self.membership_order}",
+                13.0 * s,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_CENTER,
+            )
+
+    def _draw_summary_plus_membership(
+        self,
+        cr: cairo.Context,
+        allocation: Gdk.Rectangle,
+    ) -> None:
+        """Draw Summary+ tombstone tile showing pure group membership and rank."""
+        s = self.scale
+        alloc_w = max(self.width, allocation.width)
+        hdr_h = 20 * s
+        self._draw_background(cr, allocation, header_height=hdr_h)
+
+        if self.membership_order is not None:
+            cr.rectangle(
+                4,
+                4 + hdr_h,
+                max(1.0, alloc_w - 8),
+                max(1.0, self.height - 8 - hdr_h),
+            )
+            cr.set_source_rgb(*_GROUP_MEMBER_FILL)
+            cr.fill()
+
+        self._set_channel_number_color(cr)
+        ch_draw = draw_cached_numeric_text(
+            cr,
+            7 * s,
+            17 * s,
+            self.channel,
+            10.5 * s,
+            weight=Pango.Weight.BOLD,
+            anchor=TextAnchor.BASELINE_LEFT,
+        )
+        ch_right_x = 7 * s + max(14 * s, float(ch_draw[2])) + 5 * s
+
+        if self.show_labels:
+            dev = self.get_patched_device()
+            label = str(dev.label or dev.fixture_name) if dev is not None else ""
+            if label:
+                cr.set_source_rgb(0.78, 0.80, 0.82)
+                self._draw_ellipsized_text(
+                    cr,
+                    ch_right_x,
+                    16.5 * s,
+                    alloc_w - 6 * s - ch_right_x - 3 * s,
+                    label,
+                    8.0 * s,
+                    weight=Pango.Weight.NORMAL,
+                )
+
+        if self.membership_order is not None:
+            cr.set_source_rgb(*_GROUP_MEMBER_TEXT)
+            draw_cached_numeric_text(
+                cr,
+                alloc_w / 2.0,
+                60 * s,
+                f"#{self.membership_order}",
+                16.0 * s,
+                weight=Pango.Weight.BOLD,
+                anchor=TextAnchor.BASELINE_CENTER,
+            )
+            cr.set_source_rgb(0.72, 0.84, 0.92)
+            draw_cached_numeric_text(
+                cr,
+                alloc_w / 2.0,
+                82 * s,
+                "In Group",
+                8.5 * s,
+                weight=Pango.Weight.NORMAL,
+                anchor=TextAnchor.BASELINE_CENTER,
+            )
+
     def _draw_summary_plus(  # pylint: disable=too-many-locals, too-many-branches
         self,
         cr: cairo.Context,
@@ -396,6 +504,9 @@ class ChannelWidget(Gtk.DrawingArea):
         snap: ChannelDisplaySnapshot | None,
     ) -> None:
         """Draw Summary+ tombstone tile (header, label, level, color strip, IFCB)."""
+        if self.membership_mode:
+            self._draw_summary_plus_membership(cr, allocation)
+            return
         s = self.scale
         alloc_w = max(self.width, allocation.width)
         self._draw_background(cr, allocation, header_height=20 * s)

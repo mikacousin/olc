@@ -39,16 +39,19 @@ from olc.core.parser.ast_nodes import (
     CommandNode,
     DeleteCueCommandNode,
     DeleteEffectCommandNode,
+    DeleteGroupCommandNode,
     DeletePaletteCommandNode,
     EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
     IntensityCommandNode,
+    LabelGroupCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
     PatchCommandNode,
     RecordCueCommandNode,
+    RecordGroupCommandNode,
     RecordPaletteCommandNode,
     RelativeThruNode,
     SelectionItemNode,
@@ -59,6 +62,7 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UnpatchCommandNode,
     UpdateCueCommandNode,
+    UpdateGroupCommandNode,
     UpdatePaletteCommandNode,
 )
 from olc.core.parser.lexer import CommandLexer, LexerError
@@ -229,6 +233,9 @@ class CommandParser:
 
         if self._peek_is(TokenType.DELETE):
             return self._parse_delete_cue()
+
+        if self._peek_is(TokenType.LABEL):
+            return self._parse_label_command()
 
         if self._peek_is(TokenType.SNEAK):
             return self._parse_sneak_command(selection=None)
@@ -462,6 +469,37 @@ class CommandParser:
         palette_cmd = self._try_parse_apply_palette(selection=selection)
         if palette_cmd is not None:
             return palette_cmd
+
+        if self.match(TokenType.RECORD):
+            self.expect(
+                TokenType.GROUP, "Expected GROUP after RECORD with channel selection"
+            )
+            return self._parse_record_group(selection=selection)
+
+        if self.match(TokenType.UPDATE):
+            self.expect(
+                TokenType.GROUP, "Expected GROUP after UPDATE with channel selection"
+            )
+            tok_num = self.expect(
+                TokenType.NUMBER, "Expected Group number after UPDATE GROUP"
+            )
+            return UpdateGroupCommandNode(
+                group_id=float(tok_num.value), selection=selection
+            )
+
+        if (
+            len(selection.items) == 1
+            and isinstance(selection.items[0], GroupSelectionNode)
+            and not selection.exclusions
+            and selection.filter_mode == "all"
+            and not selection.is_relative
+            and self.match(TokenType.LABEL)
+        ):
+            lbl_tok = self._expect_label_token()
+            return LabelGroupCommandNode(
+                group_id=selection.items[0].group_id,
+                label=str(lbl_tok.value),
+            )
 
         return self._parse_action_clause(selection)
 
@@ -766,8 +804,52 @@ class CommandParser:
             delay_beam=family_delays[TokenType.BEAM],
         )
 
-    def _parse_record_cue(self) -> RecordCueCommandNode | RecordPaletteCommandNode:
+    def _expect_label_token(self) -> Token:
+        """Expect a STRING or IDENT token for an object label."""
+        if self._peek_is(TokenType.STRING, TokenType.IDENT):
+            return self.advance()
+        tok = self.peek()
+        raise CommandSyntaxError(
+            f"Expected label string after LABEL, got {tok.raw_text!r}",
+            tok.position,
+            tok,
+        )
+
+    def _parse_optional_label(self) -> str | None:
+        if self.match(TokenType.LABEL):
+            return str(self._expect_label_token().value)
+        return None
+
+    def _parse_record_group(
+        self, selection: SelectionNode | None = None
+    ) -> RecordGroupCommandNode:
+        group_id: float | None = None
+        if self._peek_is(TokenType.NUMBER):
+            group_id = float(self.advance().value)
+        label = self._parse_optional_label()
+        return RecordGroupCommandNode(
+            group_id=group_id, selection=selection, label=label
+        )
+
+    def _parse_label_command(self) -> LabelGroupCommandNode:
+        self.advance()  # Consume LABEL
+        self.expect(TokenType.GROUP, "Expected GROUP after LABEL")
+        tok_num = self.expect(
+            TokenType.NUMBER, "Expected Group number after LABEL GROUP"
+        )
+        lbl_tok = self._expect_label_token()
+        return LabelGroupCommandNode(
+            group_id=float(tok_num.value),
+            label=str(lbl_tok.value),
+        )
+
+    def _parse_record_cue(
+        self,
+    ) -> RecordCueCommandNode | RecordPaletteCommandNode | RecordGroupCommandNode:
         self.advance()  # Consume RECORD
+        if self.match(TokenType.GROUP):
+            return self._parse_record_group(selection=None)
+
         spec = self._parse_palette_spec()
         if spec is not None:
             return RecordPaletteCommandNode(category=spec[0], palette_id=spec[1])
@@ -778,8 +860,16 @@ class CommandParser:
         cue_id = float(tok_num.value)
         return self._parse_record_cue_options(cue_id)
 
-    def _parse_update_cue(self) -> UpdateCueCommandNode | UpdatePaletteCommandNode:
+    def _parse_update_cue(
+        self,
+    ) -> UpdateCueCommandNode | UpdatePaletteCommandNode | UpdateGroupCommandNode:
         self.advance()  # Consume UPDATE
+        if self.match(TokenType.GROUP):
+            tok_num = self.expect(
+                TokenType.NUMBER, "Expected Group number after UPDATE GROUP"
+            )
+            return UpdateGroupCommandNode(group_id=float(tok_num.value), selection=None)
+
         spec = self._parse_palette_spec()
         if spec is not None:
             return UpdatePaletteCommandNode(category=spec[0], palette_id=spec[1])
@@ -820,8 +910,19 @@ class CommandParser:
 
     def _parse_delete_cue(
         self,
-    ) -> DeleteCueCommandNode | DeletePaletteCommandNode | DeleteEffectCommandNode:
+    ) -> (
+        DeleteCueCommandNode
+        | DeletePaletteCommandNode
+        | DeleteEffectCommandNode
+        | DeleteGroupCommandNode
+    ):
         self.advance()  # Consume DELETE
+        if self.match(TokenType.GROUP):
+            tok_grp = self.expect(
+                TokenType.NUMBER, "Expected Group number after DELETE GROUP"
+            )
+            return DeleteGroupCommandNode(group_id=float(tok_grp.value))
+
         if self.match(TokenType.EFFECT):
             tok_fx = self.expect(
                 TokenType.NUMBER, "Expected Effect number after DELETE EFFECT"
@@ -1101,7 +1202,7 @@ class CommandParser:
         if self._peek_is(TokenType.GROUP):
             self.advance()
             num_tok = self.expect(TokenType.NUMBER, "Expected group number after GROUP")
-            return GroupSelectionNode(group_id=int(num_tok.value))
+            return GroupSelectionNode(group_id=float(num_tok.value))
 
         if self._peek_is(TokenType.NUMBER):
             start_val = int(self.advance().value)

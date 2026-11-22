@@ -41,19 +41,22 @@ class NewGroupAction(Action):
         super().__init__(app)
         self.group_nb: typing.Optional[float] = None
         self.channels: list[int] = []
+        self.label: str | None = None
         self.created_group: typing.Optional[Group] = None
 
     def configure(
         self,
         group_nb: float | None = None,
         channels: typing.Iterable[int] | None = None,
+        label: str | None = None,
     ) -> None:
-        """Configure the action with an optional group number and channels.
+        """Configure the action with an optional group number, channels, and label.
 
         Args:
             group_nb: Optional group number.
                       If None, the next available integer is used.
             channels: Optional ordered channel selection.
+            label: Optional text description for the new group.
         """
         self.group_nb = group_nb
         self.channels = (
@@ -61,6 +64,7 @@ class NewGroupAction(Action):
             if channels is not None
             else []
         )
+        self.label = label
 
     def get_history_details(self) -> str:
         """Return group number."""
@@ -80,7 +84,8 @@ class NewGroupAction(Action):
             raise ValueError(f"Group {group_nb} already exists.")
 
         # Create new group with ordered channel list
-        self.created_group = Group(group_nb, list(self.channels), str(group_nb))
+        group_label = self.label if self.label is not None else str(group_nb)
+        self.created_group = Group(group_nb, list(self.channels), group_label)
 
         # Add group to Groups container (sorted insert)
         lightshow.groups.add(self.created_group)
@@ -294,18 +299,14 @@ class GroupRenameAction(Action):
 
 
 class GroupSelectAction(Action):
-    """Action to select a group logically.
-
-    Supports Undo/Redo by storing the previous selected group.
-    """
+    """Action to select a group logically without polluting Undo history."""
 
     name = "group.select"
-    can_undo = True
+    can_undo = False
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.group_nb: typing.Optional[float] = None
-        self.old_group_nb: typing.Optional[float] = None
 
     def configure(self, group_nb: float | None) -> None:
         """Configure the action with the group number to select.
@@ -320,14 +321,5 @@ class GroupSelectAction(Action):
         return f"Group {self.group_nb:g}" if self.group_nb is not None else ""
 
     def execute(self) -> None:
-        self.old_group_nb = self.app.selected_group
-        self.app.selected_group = self.group_nb
-        self.app.emit("group.selected_changed", self.group_nb)
-
-    def undo(self) -> None:
-        self.app.selected_group = self.old_group_nb
-        self.app.emit("group.selected_changed", self.old_group_nb)
-
-    def redo(self) -> None:
         self.app.selected_group = self.group_nb
         self.app.emit("group.selected_changed", self.group_nb)

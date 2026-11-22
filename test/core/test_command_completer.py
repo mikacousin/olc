@@ -206,3 +206,34 @@ def test_completer_palette_and_preset_candidates() -> None:
     res_cp_short = completer.complete("1 CP")
     assert res_cp_short.has_completed is True
     assert res_cp_short.candidates == ["2", "5"]
+
+
+def test_completer_group_crud_and_decimal_ids() -> None:
+    """Test autocomplete for RECORD/UPDATE/DELETE/LABEL GROUP and decimal group IDs."""
+    from olc.show.group import Group
+    from olc.show.lightshow import LightShow
+
+    parser = CommandParser()
+    show = LightShow()
+    show.groups.add(Group(1.0, [1, 2], "One"))
+    show.groups.add(Group(2.5, [3, 4], "Half"))
+
+    completer = CommandCompleter(parser, show)
+
+    res_rec_g = completer.complete("RECORD G")
+    assert res_rec_g.has_completed is True
+    assert res_rec_g.new_text == "RECORD GROUP "
+
+    res_upd_g = completer.complete("UPDATE G")
+    assert res_upd_g.has_completed is True
+    assert res_upd_g.new_text == "UPDATE GROUP "
+
+    res_del = completer.complete("DELETE GROUP")
+    assert res_del.has_completed is True
+    assert "1" in res_del.candidates
+    assert "2.5" in res_del.candidates
+
+    res_lbl = completer.complete("LABEL GROUP")
+    assert res_lbl.has_completed is True
+    assert "1" in res_lbl.candidates
+    assert "2.5" in res_lbl.candidates

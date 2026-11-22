@@ -26,19 +26,23 @@ from olc.core.parser.ast_nodes import (
     ChannelNumberNode,
     ChannelRangeNode,
     DeleteCueCommandNode,
+    DeleteGroupCommandNode,
     DeletePaletteCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
     HomeCommandNode,
     IntensityCommandNode,
+    LabelGroupCommandNode,
     LocateCommandNode,
     RecordCueCommandNode,
+    RecordGroupCommandNode,
     RecordPaletteCommandNode,
     RelativeThruNode,
     SelectOnlyCommandNode,
     SneakCommandNode,
     UnblockCueCommandNode,
     UpdateCueCommandNode,
+    UpdateGroupCommandNode,
     UpdatePaletteCommandNode,
 )
 from olc.core.parser.highlighter import highlight_commandline_markup
@@ -720,6 +724,13 @@ _CONTRACT_CORPUS: tuple[str, ...] = (
     "UPDATE PRESET 1",
     "DELETE BEAM PALETTE 1",
     "DELETE PRESET 1",
+    "RECORD GROUP 1",
+    '10 THRU 1 RECORD GROUP 2.5 LABEL "Contres"',
+    "UPDATE GROUP 2.5",
+    "1 + 5 UPDATE GROUP 2.5",
+    "DELETE GROUP 2.5",
+    'LABEL GROUP 2.5 "Wash"',
+    'GROUP 2.5 LABEL "Front"',
 )
 
 
@@ -832,3 +843,45 @@ def test_parser_expected_tokens_contract() -> None:
     assert TokenType.PALETTE in parser.get_expected_tokens("1 BEAM ")
     assert TokenType.PALETTE in parser.get_expected_tokens("1 INTENSITY ")
     assert TokenType.PALETTE in parser.get_expected_tokens("RECORD FOCUS ")
+
+
+def test_parser_group_crud_and_float_selection() -> None:
+    """Verify RECORD/UPDATE/DELETE/LABEL GROUP commands and float group IDs."""
+    parser = CommandParser()
+
+    g_sel = parser.parse("GROUP 2.5")
+    assert isinstance(g_sel, SelectOnlyCommandNode)
+    assert len(g_sel.selection.items) == 1
+    assert isinstance(g_sel.selection.items[0], GroupSelectionNode)
+    assert g_sel.selection.items[0].group_id == 2.5
+
+    r_auto = parser.parse("RECORD GROUP")
+    assert isinstance(r_auto, RecordGroupCommandNode)
+    assert r_auto.group_id is None
+    assert r_auto.selection is None
+    assert r_auto.label is None
+
+    r_sel = parser.parse('10 THRU 1 RECORD GROUP 2.5 LABEL "Contres"')
+    assert isinstance(r_sel, RecordGroupCommandNode)
+    assert r_sel.group_id == 2.5
+    assert r_sel.selection is not None
+    assert r_sel.label == "Contres"
+
+    u_grp = parser.parse("1 + 5 UPDATE GROUP 2.5")
+    assert isinstance(u_grp, UpdateGroupCommandNode)
+    assert u_grp.group_id == 2.5
+    assert u_grp.selection is not None
+
+    d_grp = parser.parse("DELETE GROUP 2.5")
+    assert isinstance(d_grp, DeleteGroupCommandNode)
+    assert d_grp.group_id == 2.5
+
+    l_verb = parser.parse('LABEL GROUP 2.5 "Wash"')
+    assert isinstance(l_verb, LabelGroupCommandNode)
+    assert l_verb.group_id == 2.5
+    assert l_verb.label == "Wash"
+
+    l_noun = parser.parse('GROUP 2.5 LABEL "Front"')
+    assert isinstance(l_noun, LabelGroupCommandNode)
+    assert l_noun.group_id == 2.5
+    assert l_noun.label == "Front"

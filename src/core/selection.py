@@ -253,11 +253,10 @@ class SelectThruAction(SelectionAction):
 
         if self.old_last is not None and 1 <= to_chan <= MAX_CHANNELS:
             from_chan = self.old_last
-            low = min(from_chan, to_chan)
-            high = max(from_chan, to_chan)
+            step = 1 if to_chan >= from_chan else -1
 
             new_sel = list(self.old_selection)
-            for ch in range(low, high + 1):
+            for ch in range(from_chan, to_chan + step, step):
                 if ch not in new_sel:
                     new_sel.append(ch)
             self.manager.selected_channels = new_sel

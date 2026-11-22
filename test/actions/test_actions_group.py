@@ -263,51 +263,40 @@ def test_groups_container_class() -> None:
     assert groups[0] == g1
 
 
-def test_group_select_action_undo_redo() -> None:
-    """Test group select action, including undo and redo."""
+def test_group_select_action_non_undoable() -> None:
+    """Test group.select updates logical selection without polluting Undo history."""
+    from olc.actions.group import GroupSelectAction
+
+    assert GroupSelectAction.can_undo is False
+
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # Clean groups list and set up group
+    # Clean groups list and set up groups (pushes 2 group.new actions to history)
     app.lightshow.groups.clear()
     app.action_registry.execute("group.new", 1.0)
     app.action_registry.execute("group.new", 2.0)
+    undo_len_before_nav = len(app.history.undo_stack)
 
     # Track selection events
     received_selections: list[float | None] = []
     app.subscribe("group.selected_changed", received_selections.append)
 
-    # 1. Test group.select with group 1.0
+    # 1. Select group 1.0 and group 2.0
     app.action_registry.execute("group.select", 1.0)
     assert app.selected_group == 1.0
-    assert received_selections == [1.0]
-
-    # 2. Test group.select with group 2.0
     app.action_registry.execute("group.select", 2.0)
     assert app.selected_group == 2.0
     assert received_selections == [1.0, 2.0]
 
-    # 3. Undo
+    # Navigation must NOT push onto Undo history
+    assert len(app.history.undo_stack) == undo_len_before_nav
+
+    # 2. Undo acts on last real edit (creation of Group 2.0), not group.select
     app.history.undo()
-    assert app.selected_group == 1.0
-    assert received_selections == [1.0, 2.0, 1.0]
+    assert app.lightshow.groups.get(2.0) is None
 
-    # 4. Undo again
-    app.history.undo()
-    assert app.selected_group is None
-    assert received_selections == [1.0, 2.0, 1.0, None]
-
-    # 5. Redo
-    app.history.redo()
-    assert app.selected_group == 1.0
-    assert received_selections == [1.0, 2.0, 1.0, None, 1.0]
-
-    # 6. Redo again
-    app.history.redo()
-    assert app.selected_group == 2.0
-    assert received_selections == [1.0, 2.0, 1.0, None, 1.0, 2.0]
-
-    # 7. Unselect group
+    # 3. Unselect group
     app.action_registry.execute("group.select", None)
     assert app.selected_group is None
     assert received_selections[-1] is None
@@ -336,15 +325,16 @@ def test_group_pure_selection_methods() -> None:
 
 
 def test_group_new_with_initial_channels() -> None:
-    """Test creating a Group with an initial ordered channel list and Undo/Redo."""
+    """Test creating a Group with initial ordered channels, optional label, and Undo."""
     settings = MagicMock()
     app = CoreApplication(settings)
     app.lightshow.groups.clear()
 
-    app.action_registry.execute("group.new", 4.0, [12, 5, 12, 8])
+    app.action_registry.execute("group.new", 4.0, [12, 5, 12, 8], label="Backlight")
     grp = app.lightshow.groups.get(4.0)
     assert grp is not None
     assert grp.channels == [12, 5, 8]
+    assert grp.text == "Backlight"
 
     app.history.undo()
     assert app.lightshow.groups.get(4.0) is None
@@ -353,3 +343,4 @@ def test_group_new_with_initial_channels() -> None:
     restored = app.lightshow.groups.get(4.0)
     assert restored is not None
     assert restored.channels == [12, 5, 8]
+    assert restored.text == "Backlight"

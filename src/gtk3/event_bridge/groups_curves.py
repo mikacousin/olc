@@ -30,7 +30,6 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.palettes import PalettesTab
-    from olc.gtk3.widgets.group import GroupWidget
     from olc.show.group import Group
 
 
@@ -135,22 +134,10 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        self._safe_refresh_groups()
-
-        text = group.text
-        # Update the widgets in the GroupTab if we renamed
         if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
             group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
-            for child in group_tab.flowbox.get_children():
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                group_widget = fb_child.get_child()
-                # Use duck typing or getattr to read number/name safely
-                if (
-                    group_widget
-                    and getattr(group_widget, "number", None) == group.index
-                ):
-                    typing.cast("GroupWidget", group_widget).name = text
-                    group_widget.queue_draw()
+            if not group_tab.update_group_tile(group):
+                group_tab.refresh()
         return False
 
     def _on_group_selected_changed(self, group_nb: float | None) -> bool:
