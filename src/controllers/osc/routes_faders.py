@@ -63,7 +63,7 @@ class FadersRoutesMixin:
         if not self._is_momentary_press(args):
             return
         fader_bank = self.app.lightshow.fader_bank
-        target_page = fader_bank.active_page + 1
+        target_page = fader_bank.get_next_page(1)
         self._execute_action("fader.set_page", target_page)
 
     @make_method("/olc/fader/page-")
@@ -71,7 +71,7 @@ class FadersRoutesMixin:
         if not self._is_momentary_press(args):
             return
         fader_bank = self.app.lightshow.fader_bank
-        target_page = fader_bank.active_page - 1
+        target_page = fader_bank.get_next_page(-1)
         self._execute_action("fader.set_page", target_page)
 
     @make_method("/olc/fader/1/*/level")

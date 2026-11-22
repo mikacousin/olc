@@ -383,6 +383,12 @@ msgstr "Page -"
 msgid "Page +"
 msgstr "Page +"
 
+msgid "Skip empty fader pages"
+msgstr "Sauter les pages de faders vides"
+
+msgid "Toggle skip empty fader pages"
+msgstr "Basculer le saut des pages de faders vides"
+
 msgid "Appearance"
 msgstr "Apparance"
 

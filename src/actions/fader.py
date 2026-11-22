@@ -536,3 +536,59 @@ class FaderSetPageCountAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Return page count feedback state metadata."""
         return {"page_count": self.page_count}
+
+
+class FaderSetSkipEmptyPagesAction(Action):
+    """Action to toggle skipping empty fader pages during playback navigation."""
+
+    name = "fader.set_skip_empty_pages"
+    history_label = _("Toggle skip empty fader pages")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.skip_empty: bool = False
+        self.old_skip_empty: bool = False
+        self.old_modified: bool = False
+
+    def configure(self, skip_empty: bool) -> None:
+        """Configure whether empty fader pages should be skipped."""
+        self.skip_empty = bool(skip_empty)
+
+    def get_history_details(self) -> str:
+        """Return human-readable enabled/disabled state for history panel."""
+        return _("Enabled") if self.skip_empty else _("Disabled")
+
+    def execute(self) -> None:
+        """Update fader_bank.skip_empty_pages and notify listeners."""
+        fader_bank = self.app.lightshow.fader_bank
+        self.old_skip_empty = bool(getattr(fader_bank, "skip_empty_pages", False))
+        self.old_modified = bool(self.app.lightshow.modified)
+        if self.old_skip_empty == self.skip_empty:
+            self.can_undo = False
+            return
+
+        fader_bank.skip_empty_pages = self.skip_empty
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.skip_empty_pages_changed", self.skip_empty)
+
+    def undo(self) -> None:
+        """Restore previous skip_empty_pages setting."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.skip_empty_pages = self.old_skip_empty
+        if self.old_modified:
+            self.app.lightshow.set_modified()
+        else:
+            self.app.lightshow.set_not_modified()
+        self.app.emit("fader.skip_empty_pages_changed", self.old_skip_empty)
+
+    def redo(self) -> None:
+        """Re-apply skip_empty_pages setting."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.skip_empty_pages = self.skip_empty
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.skip_empty_pages_changed", self.skip_empty)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return skip_empty_pages feedback state metadata."""
+        return {"skip_empty_pages": self.skip_empty}

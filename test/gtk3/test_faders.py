@@ -468,3 +468,60 @@ def test_fader_tab_page_selector_and_hot_resize(app_gui: Application) -> None:
     finally:
         app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app_gui.core.history.clear()
+
+
+def test_virtual_console_skips_empty_pages_while_fader_tab_visits_all(
+    app_gui: Application,
+) -> None:
+    """Verify VC Page+/- skips empty pages when enabled while FaderTab sees all."""
+    app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app_gui.core.history.clear()
+
+    try:
+        # Populated pages: 1, 3, 8
+        app_gui.core.action_registry.execute("fader.assign", 1, 1, FaderType.MAIN)
+        app_gui.core.action_registry.execute("fader.assign", 3, 1, FaderType.MAIN)
+        app_gui.core.action_registry.execute("fader.assign", 8, 1, FaderType.MAIN)
+        app_gui.core.action_registry.execute(
+            "fader.set_skip_empty_pages", skip_empty=True
+        )
+        app_gui.activate_action("virtual_console", None)
+        app_gui.activate_action("faders", None)
+        process_events()
+
+        assert app_gui.virtual_console is not None
+        vc = app_gui.virtual_console
+        assert app_gui.tabs is not None
+        fader_tab = app_gui.tabs.tabs.get("faders")
+        assert isinstance(fader_tab, FaderTab)
+
+        # Virtual Console Page+ skips empty pages: 1 -> 3 -> 8 -> 1
+        assert app_gui.core.lightshow.fader_bank.active_page == 1
+        vc._on_fader_page(vc.fader_page_plus)
+        process_events()
+        assert app_gui.core.lightshow.fader_bank.active_page == 3
+
+        vc._on_fader_page(vc.fader_page_plus)
+        process_events()
+        assert app_gui.core.lightshow.fader_bank.active_page == 8
+
+        vc._on_fader_page(vc.fader_page_plus)
+        process_events()
+        assert app_gui.core.lightshow.fader_bank.active_page == 1
+
+        # Virtual Console Page- wraps backward: 1 -> 8
+        vc._on_fader_page(vc.fader_page_minus)
+        process_events()
+        assert app_gui.core.lightshow.fader_bank.active_page == 8
+
+        # FaderTab editor still steps sequentially through empty page 2
+        assert fader_tab.current_page == 1
+        fader_tab.btn_page_next.clicked()
+        process_events()
+        assert fader_tab.current_page == 2
+
+        vc.close()
+        process_events()
+    finally:
+        app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app_gui.core.history.clear()

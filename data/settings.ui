@@ -251,6 +251,34 @@
             <property name="top-attach">7</property>
           </packing>
         </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="hexpand">True</property>
+            <property name="label" translatable="yes">Skip empty fader pages</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">8</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSwitch" id="switch_skip_empty_fader_pages">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <signal name="state-set" handler="_on_toggle_skip_empty_fader_pages" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">8</property>
+          </packing>
+        </child>
       </object>
     </child>
     <child type="tab">

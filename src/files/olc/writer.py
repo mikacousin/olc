@@ -80,6 +80,7 @@ class OlcWriter(WriteFile):
         home_preset = getattr(self.lightshow, "home_preset", None)
         fader_bank = getattr(self.lightshow, "fader_bank", None)
         fader_pages = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
+        skip_empty = bool(getattr(fader_bank, "skip_empty_pages", False))
         meta: dict[str, typing.Any] = {}
         if title:
             meta["title"] = str(title)
@@ -87,6 +88,8 @@ class OlcWriter(WriteFile):
             meta["home_preset"] = float(home_preset)
         if fader_pages != MAX_FADER_PAGE:
             meta["fader_pages"] = int(fader_pages)
+        if skip_empty:
+            meta["skip_empty_fader_pages"] = True
         if meta:
             self.data["show_metadata"] = meta
 

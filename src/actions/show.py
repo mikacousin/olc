@@ -136,6 +136,7 @@ class ShowNewAction(Action):
             self.app.emit(
                 "fader.page_count_changed", lightshow.fader_bank.max_fader_page
             )
+            self.app.emit("fader.skip_empty_pages_changed", False)
         self.app.emit("show.new")
 
 
@@ -610,6 +611,9 @@ class ShowImportAction(Action):
         if hasattr(lightshow, "fader_bank"):
             fb = lightshow.fader_bank
             snapshot["fader_max_page"] = fb.max_fader_page
+            snapshot["fader_skip_empty_pages"] = bool(
+                getattr(fb, "skip_empty_pages", False)
+            )
             for page in range(1, fb.max_fader_page + 1):
                 for idx in range(1, MAX_FADER_PER_PAGE + 1):
                     fader = fb.faders[page][idx]
@@ -729,6 +733,7 @@ class ShowImportAction(Action):
             fb.reset_faders()
             target_pages = snapshot.get("fader_max_page", MAX_FADER_PAGE)
             fb.set_max_pages(target_pages)
+            fb.skip_empty_pages = bool(snapshot.get("fader_skip_empty_pages", False))
             for (page, idx), (ftype, contents_id, level) in snapshot["faders"].items():
                 if page > fb.max_fader_page:
                     fb.set_max_pages(page)

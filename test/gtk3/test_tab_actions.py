@@ -248,3 +248,47 @@ def test_settings_tab_fader_pages_spin_warning_and_undo_redo(
     finally:
         app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app.core.history.clear()
+
+
+def test_settings_tab_skip_empty_fader_pages_switch(app_gui: Application) -> None:
+    """Test SettingsTab skip_empty_fader_pages switch, Undo/Redo, and show.new."""
+    app = app_gui
+    app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app.core.history.clear()
+
+    try:
+        app.core.action_registry.execute("gui.tab_open", "settings")
+        process_events()
+
+        assert app.tabs is not None
+        settings_tab = typing.cast(SettingsTab, app.tabs.tabs["settings"])
+        sw = settings_tab.switch_skip_empty_fader_pages
+        assert sw is not None
+        assert sw.get_active() is False
+
+        # Enable via UI switch
+        sw.set_active(True)
+        process_events()
+        assert app.core.lightshow.fader_bank.skip_empty_pages is True
+        assert sw.get_state() is True
+
+        # Undo disables in model and UI
+        app.core.history.undo()
+        process_events()
+        assert app.core.lightshow.fader_bank.skip_empty_pages is False
+        assert sw.get_state() is False
+
+        # Redo re-enables in model and UI
+        app.core.history.redo()
+        process_events()
+        assert app.core.lightshow.fader_bank.skip_empty_pages is True
+        assert sw.get_state() is True
+
+        # show.new resets skip_empty_pages to False in model and UI
+        app.core.action_registry.execute("show.new")
+        process_events()
+        assert app.core.lightshow.fader_bank.skip_empty_pages is False
+        assert sw.get_state() is False
+    finally:
+        app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app.core.history.clear()

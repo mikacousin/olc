@@ -101,6 +101,7 @@ from olc.actions.fader import (
     FaderSetLevelAction,
     FaderSetPageAction,
     FaderSetPageCountAction,
+    FaderSetSkipEmptyPagesAction,
 )
 from olc.actions.fixture import (
     FixtureDeleteAction,
@@ -279,6 +280,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         FaderSetLevelAction,
         FaderSetPageAction,
         FaderSetPageCountAction,
+        FaderSetSkipEmptyPagesAction,
         SelectNoneChannelsAction,
         SelectNextChannelAction,
         SelectPreviousChannelAction,

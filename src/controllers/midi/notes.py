@@ -598,13 +598,10 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             fader_bank = self.app.lightshow.fader_bank
-            target_page = fader_bank.active_page + 1
+            target_page = fader_bank.get_next_page(1)
             if self.app is not None and hasattr(self.app, "action_registry"):
                 self.app.action_registry.execute("fader.set_page", target_page)
             else:
-                max_page = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
-                if target_page > max_page:
-                    target_page = 1
                 fader_bank.active_page = target_page
                 self.midi.update_faders()
 
@@ -616,13 +613,10 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             fader_bank = self.app.lightshow.fader_bank
-            target_page = fader_bank.active_page - 1
+            target_page = fader_bank.get_next_page(-1)
             if self.app is not None and hasattr(self.app, "action_registry"):
                 self.app.action_registry.execute("fader.set_page", target_page)
             else:
-                max_page = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
-                if target_page < 1:
-                    target_page = max_page
                 fader_bank.active_page = target_page
                 self.midi.update_faders()
 

@@ -171,6 +171,10 @@ def test_event_bridge_preferences_routing(monkeypatch: pytest.MonkeyPatch) -> No
     core.emit("fader.page_count_changed", 15)
     mock_settings_tab.update_fader_pages_ui.assert_called_once_with(15)
 
+    # 5. Skip empty fader pages changed event
+    core.emit("fader.skip_empty_pages_changed", True)
+    mock_settings_tab.update_skip_empty_fader_pages_ui.assert_called_once_with(True)
+
 
 def test_settings_tab_update_percent_and_default_time() -> None:
     """Test SettingsTab programmatic updates for percentage switch and default time."""
@@ -277,3 +281,81 @@ def test_fader_pages_setting_warning_and_undo_redo() -> None:
     core.history.redo()
     assert fb.max_fader_page == 5
     assert 8 not in fb.faders
+
+
+def test_skip_empty_fader_pages_navigation_action_and_settings() -> None:
+    """Test FaderBank.get_next_page skipping, action Undo/Redo, and SettingsTab."""
+    # pylint: disable=protected-access
+    from olc.show.fader import FaderType
+
+    core = CoreApplication(MagicMock())
+    fb = core.lightshow.fader_bank
+    assert fb.skip_empty_pages is False
+
+    # 1. With all pages empty, even skip_empty=True falls back to 1..N stepping
+    assert fb.get_next_page(1, skip_empty=True) == 2
+    assert fb.get_next_page(-1, skip_empty=True) == 10
+
+    # 2. Only page 4 populated -> jumps to 4 and stays on 4
+    fb.set_fader(4, 1, FaderType.MAIN)
+    fb.active_page = 1
+    assert fb.get_next_page(1, skip_empty=True) == 4
+    fb.active_page = 4
+    assert fb.get_next_page(1, skip_empty=True) == 4
+    assert fb.get_next_page(-1, skip_empty=True) == 4
+
+    # 3. Multiple populated pages (1, 3, 8) -> cyclic skipping + empty-page anchor
+    fb.set_fader(4, 1, FaderType.NONE)
+    fb.set_fader(1, 1, FaderType.MAIN)
+    fb.set_fader(3, 1, FaderType.MAIN)
+    fb.set_fader(8, 1, FaderType.MAIN)
+
+    fb.active_page = 1
+    assert fb.get_next_page(1, skip_empty=True) == 3
+    assert fb.get_next_page(-1, skip_empty=True) == 8
+    fb.active_page = 3
+    assert fb.get_next_page(1, skip_empty=True) == 8
+    assert fb.get_next_page(-1, skip_empty=True) == 1
+    fb.active_page = 8
+    assert fb.get_next_page(1, skip_empty=True) == 1
+    assert fb.get_next_page(-1, skip_empty=True) == 3
+
+    # Starting on empty page 2
+    fb.active_page = 2
+    assert fb.get_next_page(1, skip_empty=True) == 3
+    assert fb.get_next_page(-1, skip_empty=True) == 1
+
+    # 4. Action fader.set_skip_empty_pages + Undo/Redo + SettingsTab handler
+    core.history.clear()
+    core.lightshow.set_not_modified()
+    events: list[bool] = []
+    core.subscribe("fader.skip_empty_pages_changed", events.append)
+
+    tab = SettingsTab.__new__(SettingsTab)
+    tab._updating_settings = False
+    tab.app = MagicMock()
+    tab.app.core = core
+    tab.switch_skip_empty_fader_pages = MagicMock()
+    tab.switch_skip_empty_fader_pages.get_state.return_value = False
+
+    tab._on_toggle_skip_empty_fader_pages(tab.switch_skip_empty_fader_pages, True)
+    assert fb.skip_empty_pages is True
+    assert core.lightshow.modified is True
+    assert events == [True]
+    assert core.history.undo_stack[-1].get_feedback_state() == {
+        "skip_empty_pages": True
+    }
+
+    core.history.undo()
+    assert fb.skip_empty_pages is False
+    assert core.lightshow.modified is False
+    assert events == [True, False]
+
+    core.history.redo()
+    assert fb.skip_empty_pages is True
+    assert core.lightshow.modified is True
+
+    tab.update_skip_empty_fader_pages_ui(True)
+    tab.switch_skip_empty_fader_pages.set_state.assert_called_with(True)
+    tab.switch_skip_empty_fader_pages.set_active.assert_called_with(True)
+    assert not tab._updating_settings

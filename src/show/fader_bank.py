@@ -48,6 +48,7 @@ class FaderBank:
     active_faders: set
     max_fader_page: int
     max_fader_per_page: int
+    skip_empty_pages: bool
     lightshow: typing.Optional[LightShow]
 
     def __init__(self, lightshow: typing.Optional[LightShow] = None) -> None:
@@ -56,6 +57,7 @@ class FaderBank:
         self.faders = {}
         self.max_fader_page = MAX_FADER_PAGE
         self.max_fader_per_page = MAX_FADER_PER_PAGE
+        self.skip_empty_pages = False
         for page in range(1, self.max_fader_page + 1):
             self.faders[page] = {}
             for index in range(1, MAX_FADER_PER_PAGE + 1):
@@ -99,6 +101,7 @@ class FaderBank:
                         for index in range(1, self.max_fader_per_page + 1)
                     }
             self.max_fader_page = MAX_FADER_PAGE
+            self.skip_empty_pages = False
         self.channels = set()
         self.active_faders = set()
         self.update_active_faders()
@@ -125,6 +128,41 @@ class FaderBank:
                     label = str(getattr(self.faders[page][index], "text", ""))
                     populated.append((page, index, ftype, label))
         return populated
+
+    def is_page_populated(self, page: int) -> bool:
+        """Return True if *page* has at least one configured (non-NONE) fader."""
+        if page not in self.faders:
+            return False
+        return any(
+            self.get_fader_type(page, idx) != FaderType.NONE
+            for idx in self.faders[page]
+        )
+
+    def get_populated_pages(self) -> list[int]:
+        """Return sorted list of page numbers (1..max_fader_page) with >= 1 fader."""
+        return [
+            p
+            for p in sorted(self.faders.keys())
+            if 1 <= p <= self.max_fader_page and self.is_page_populated(p)
+        ]
+
+    def get_next_page(self, step: int = 1, *, skip_empty: bool | None = None) -> int:
+        """Compute next or previous playback page, optionally skipping empty pages."""
+        max_p = max(1, int(self.max_fader_page))
+        use_skip = self.skip_empty_pages if skip_empty is None else bool(skip_empty)
+        direction = 1 if step >= 0 else -1
+
+        if use_skip:
+            populated = set(self.get_populated_pages())
+            if populated:
+                for offset in range(1, max_p + 1):
+                    candidate = (
+                        (self.active_page - 1 + direction * offset) % max_p
+                    ) + 1
+                    if candidate in populated:
+                        return candidate
+
+        return ((self.active_page - 1 + direction) % max_p) + 1
 
     def set_max_pages(self, new_max_page: int) -> bool:
         """Resize available fader pages at runtime.

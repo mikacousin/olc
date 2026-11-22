@@ -182,6 +182,22 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             max_pages = getattr(fader_bank, "max_fader_page", 10)
             self.spin_fader_pages.set_value(float(max_pages))
 
+        self.switch_skip_empty_fader_pages = typing.cast(
+            Gtk.Switch | None,
+            builder.get_object("switch_skip_empty_fader_pages"),
+        )
+        if self.switch_skip_empty_fader_pages is not None:
+            core = getattr(self.app, "core", None)
+            lightshow = getattr(core, "lightshow", None) if core is not None else None
+            fader_bank = (
+                getattr(lightshow, "fader_bank", None)
+                if lightshow is not None
+                else None
+            )
+            skip_empty = bool(getattr(fader_bank, "skip_empty_pages", False))
+            self.switch_skip_empty_fader_pages.set_state(skip_empty)
+            self.switch_skip_empty_fader_pages.set_active(skip_empty)
+
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         self.switch_osc.set_state(self.settings.get_boolean("osc"))
@@ -424,6 +440,8 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         )
         max_pages = getattr(fader_bank, "max_fader_page", 10)
         self.update_fader_pages_ui(max_pages)
+        skip_empty = bool(getattr(fader_bank, "skip_empty_pages", False))
+        self.update_skip_empty_fader_pages_ui(skip_empty)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
@@ -657,6 +675,27 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 self.update_fader_pages_ui(current_count)
                 return
         core.action_registry.execute("fader.set_page_count", page_count=new_count)
+
+    def _on_toggle_skip_empty_fader_pages(
+        self, _widget: Gtk.Switch, state: bool
+    ) -> bool:
+        if getattr(self, "_updating_settings", False):
+            return False
+        core = getattr(self.app, "core", None)
+        lightshow = getattr(core, "lightshow", None) if core is not None else None
+        fader_bank = (
+            getattr(lightshow, "fader_bank", None) if lightshow is not None else None
+        )
+        if (
+            core is not None
+            and fader_bank is not None
+            and hasattr(core, "action_registry")
+        ):
+            if bool(getattr(fader_bank, "skip_empty_pages", False)) != bool(state):
+                core.action_registry.execute(
+                    "fader.set_skip_empty_pages", skip_empty=bool(state)
+                )
+        return False
 
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)
@@ -928,6 +967,17 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             if hasattr(self, "spin_fader_pages") and self.spin_fader_pages is not None:
                 if self.spin_fader_pages.get_value_as_int() != int(page_count):
                     self.spin_fader_pages.set_value(float(page_count))
+        finally:
+            self._updating_settings = False
+
+    def update_skip_empty_fader_pages_ui(self, skip_empty: bool) -> None:
+        """Update Skip Empty Fader Pages switch from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            sw = getattr(self, "switch_skip_empty_fader_pages", None)
+            if sw is not None and sw.get_state() != bool(skip_empty):
+                sw.set_state(bool(skip_empty))
+                sw.set_active(bool(skip_empty))
         finally:
             self._updating_settings = False
 

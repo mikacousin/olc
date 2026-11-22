@@ -180,6 +180,12 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             ),
         )
         self.app.core.subscribe(
+            "fader.skip_empty_pages_changed",
+            lambda skip_empty: self._run_idle(
+                self._on_skip_empty_fader_pages_changed, skip_empty
+            ),
+        )
+        self.app.core.subscribe(
             "gui.channels_format_requested",
             lambda fmt=None: self._run_idle(self._on_channels_format_requested, fmt),
         )
@@ -678,6 +684,21 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             if hasattr(settings_tab, "update_fader_pages_ui"):
                 settings_tab.update_fader_pages_ui(page_count)
+        return False
+
+    def _on_skip_empty_fader_pages_changed(self, skip_empty: bool) -> bool:
+        """Handle skip empty fader pages toggle event.
+
+        Args:
+            skip_empty: True if empty fader pages are skipped.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_skip_empty_fader_pages_ui"):
+                settings_tab.update_skip_empty_fader_pages_ui(skip_empty)
         return False
 
     def _on_main_fader_changed(self) -> bool:

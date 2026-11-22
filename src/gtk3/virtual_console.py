@@ -839,9 +839,9 @@ class VirtualConsoleWindow(Gtk.Window):
             fader_bank = self.app.core.lightshow.fader_bank
             target_page = fader_bank.active_page
             if widget is self.fader_page_plus:
-                target_page += 1
+                target_page = fader_bank.get_next_page(1)
             elif widget is self.fader_page_minus:
-                target_page -= 1
+                target_page = fader_bank.get_next_page(-1)
 
             if self.app is not None and hasattr(self.app.core, "action_registry"):
                 self.app.core.action_registry.execute("fader.set_page", target_page)

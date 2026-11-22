@@ -423,6 +423,13 @@ class ParsedData:
             fader_bank = getattr(self.lightshow, "fader_bank", None)
             if fader_bank is not None and hasattr(fader_bank, "set_max_pages"):
                 fader_bank.set_max_pages(int(meta["fader_pages"]))
+        if (
+            "skip_empty_fader_pages" in meta
+            and meta["skip_empty_fader_pages"] is not None
+        ):
+            fader_bank = getattr(self.lightshow, "fader_bank", None)
+            if fader_bank is not None:
+                fader_bank.skip_empty_pages = bool(meta["skip_empty_fader_pages"])
 
     @staticmethod
     def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:
