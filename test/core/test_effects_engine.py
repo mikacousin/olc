@@ -594,3 +594,69 @@ def test_effect_envelope_modes_immediate_rate_and_cascade(
     now_box[0] = 5.1
     app.effects_engine.tick(now=5.1)
     assert app.effects_engine.get_active_instances() == []
+
+
+def test_absolute_intensity_modulation_multi_channel_and_cascade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify multi-channel absolute intensity effects and timer failure cleanup."""
+    app, _sched = _make_headless_app()
+    eff = EffectDefinition(
+        number=13.0,
+        label="AbsMulti",
+        layers=[
+            EffectLayer(
+                parameter="intensity",
+                waveform=WaveformType.SQUARE,
+                mode=EffectMode.ABSOLUTE,
+                duty_cycle=1.0,
+                low_value=20.0,
+                high_value=80.0,
+            )
+        ],
+        entry_mode=EffectEnvelopeMode.FADE_BY_SIZE,
+        cascade=True,
+    )
+    app.lightshow.effects.add(eff)
+
+    base = np.zeros(10, dtype=np.float64)
+
+    # 1. Multi-channel size_scale > 1.0 clamps per channel without ValueError
+    app.effects_engine.start_effect(
+        13.0, [1, 2, 3, 4], size_scale=1.5, fade_in=0.0, now=0.0
+    )
+    out = app.effects_engine.apply_intensity_modulation(base, now=0.1)
+    assert np.allclose(out[:4], 0.8)
+    assert np.allclose(out[4:], 0.0)
+    assert app.effects_engine.apply_channel_intensity(1, 0.0, now=0.1) == pytest.approx(
+        0.8
+    )
+
+    # 2. Half-blending with size_scale=0.5
+    app.effects_engine.start_effect(
+        13.0, [1, 2, 3, 4], size_scale=0.5, fade_in=0.0, now=0.2
+    )
+    out_half = app.effects_engine.apply_intensity_modulation(base, now=0.3)
+    assert np.allclose(out_half[:4], 0.4)
+
+    # 3. Fresh cascade fade-in produces staggered per-channel blend
+    app.effects_engine.stop_all()
+    app.effects_engine.start_effect(
+        13.0, [1, 2, 3, 4], size_scale=1.0, fade_in=2.0, now=0.0
+    )
+    out_casc = app.effects_engine.apply_intensity_modulation(base, now=1.0)
+    assert out_casc[0] == pytest.approx(0.8)
+    assert 0.0 < out_casc[1] < 0.8
+    assert 0.0 < out_casc[2] < out_casc[1]
+    assert out_casc[3] == pytest.approx(0.0)
+
+    # 4. _on_timer_tick clears _timer_handle if tick() raises
+    assert app.effects_engine._timer_handle is not None
+    monkeypatch.setattr(
+        app.effects_engine,
+        "tick",
+        lambda *_a, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    with pytest.raises(RuntimeError, match="boom"):
+        app.effects_engine._on_timer_tick()
+    assert app.effects_engine._timer_handle is None

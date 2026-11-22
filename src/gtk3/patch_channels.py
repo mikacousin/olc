@@ -148,6 +148,7 @@ class PatchChannelsTab(Gtk.Box):
         self.type_column = None
         self._active_curve_device_id = None
         self._active_popover_device_id = None
+        self._needs_idle_refresh: bool = False
         self.tree_columns = {}
         self.cell_renderers = {}
         self.curve_popover = CurveSelectionPopover(
@@ -312,14 +313,18 @@ class PatchChannelsTab(Gtk.Box):
             if curr_path is not None:
                 prev_idx = curr_path.get_indices()[0]
 
-        self.devices_store.clear()
-        if self.scope_mode == "all":
-            if self.sort_mode == "physical":
-                self._populate_all_addresses()
+        self.devices_treeview.set_model(None)
+        try:
+            self.devices_store.clear()
+            if self.scope_mode == "all":
+                if self.sort_mode == "physical":
+                    self._populate_all_addresses()
+                else:
+                    self._populate_all_channels()
             else:
-                self._populate_all_channels()
-        else:
-            self._populate_patched_devices()
+                self._populate_patched_devices()
+        finally:
+            self.devices_treeview.set_model(self.devices_store)
 
         if len(self.devices_store) > 0:
             target_idx = (
@@ -1361,7 +1366,6 @@ class PatchChannelsTab(Gtk.Box):
         if response == Gtk.ResponseType.OK:
             self.app.core.action_registry.execute("patch.set_1on1")
             self.refresh()
-            self.app.core.emit("patch.changed")
 
     def _on_unpatch_all_clicked(self, _button: Gtk.Button) -> None:
         """Prompt confirmation and clear all patch allocations."""
@@ -1379,11 +1383,12 @@ class PatchChannelsTab(Gtk.Box):
         if response == Gtk.ResponseType.OK:
             self.app.core.action_registry.execute("patch.clear")
             self.refresh()
-            self.app.core.emit("patch.changed")
 
     def refresh(self) -> None:
         """Refresh display."""
-        self.fixture_popover.set_library(self.fixture_library)
+        self._needs_idle_refresh = False
+        if self.fixture_popover._library is not self.fixture_library:
+            self.fixture_popover.set_library(self.fixture_library)
         self.populate_devices_store()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:

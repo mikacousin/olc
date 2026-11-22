@@ -36,6 +36,7 @@ from olc.show.lightshow import LightShow
 if typing.TYPE_CHECKING:
     from olc.controllers.midi import Midi
     from olc.controllers.osc import Osc
+    from olc.core.tracking import ResolvedState
     from olc.dmx_engine.engine import CoreEngine
 
 
@@ -64,6 +65,7 @@ class CoreApplication(EventDispatcher):
     dark_theme: bool
     blackout_active: bool
     main_fader_level: float
+    _ZOOM_DEBOUNCE_SECONDS: float = 0.6
 
     def __init__(
         self,
@@ -464,7 +466,9 @@ class CoreApplication(EventDispatcher):
         if self._zoom_timer is not None:
             self._zoom_timer.cancel()
 
-        self._zoom_timer = threading.Timer(0.6, self._finalize_zoom)
+        self._zoom_timer = threading.Timer(
+            self._ZOOM_DEBOUNCE_SECONDS, self._finalize_zoom
+        )
         self._zoom_timer.start()
 
     def _finalize_zoom(self) -> None:
@@ -476,12 +480,25 @@ class CoreApplication(EventDispatcher):
         self.action_registry.execute("gui.zoom", final_zoom)
 
     def get_channel_composite_level(
-        self, channel_idx: int
+        self,
+        channel_idx: int,
+        *,
+        curr_resolved: ResolvedState | None = None,
+        prev_resolved: ResolvedState | None = None,
     ) -> tuple[float, dict[str, float]]:
         """Return (level, color_level) for 0-based *channel_idx* from DMX backend."""
         if self.backend is None:
             return (0.0, {})
-        return self.backend.dmx.get_composite_level(channel_idx)
+        if curr_resolved is None and prev_resolved is None:
+            return self.backend.dmx.get_composite_level(channel_idx)
+        try:
+            return self.backend.dmx.get_composite_level(
+                channel_idx,
+                curr_resolved=curr_resolved,
+                prev_resolved=prev_resolved,
+            )
+        except TypeError:
+            return self.backend.dmx.get_composite_level(channel_idx)
 
     def get_main_fader_value(self) -> float:
         """Return the current Main Fader value [0.0..1.0]."""

@@ -32,6 +32,7 @@ from olc.show.patch import PatchManager
 
 if typing.TYPE_CHECKING:
     from olc.core.dmx_backend import DMXBackend
+    from olc.core.tracking import ResolvedState
     from olc.show.lightshow import LightShow
 
 
@@ -117,11 +118,19 @@ class Dmx:
                 self.frame.pop(index)
                 self._old_frame.pop(index)
 
-    def get_composite_level(self, channel_idx: int) -> tuple[float, dict[str, float]]:
+    def get_composite_level(
+        self,
+        channel_idx: int,
+        *,
+        curr_resolved: ResolvedState | None = None,
+        prev_resolved: ResolvedState | None = None,
+    ) -> tuple[float, dict[str, float]]:
         """Get the normalized composite level [0.0..1.0] and state color for a channel.
 
         Args:
             channel_idx: Channel index (0 to MAX_CHANNELS - 1)
+            curr_resolved: Optional pre-resolved current step state.
+            prev_resolved: Optional pre-resolved previous step state.
 
         Returns:
             Tuple of (composite_level, color_dict)
@@ -136,7 +145,11 @@ class Dmx:
 
         main_pb = self.lightshow.main_playback
         state, _ = classify_channel_tracking_state(
-            main_pb, getattr(main_pb, "position", 0), channel_idx + 1
+            main_pb,
+            getattr(main_pb, "position", 0),
+            channel_idx + 1,
+            curr_resolved=curr_resolved,
+            prev_resolved=prev_resolved,
         )
         color_level = get_tracking_color(state)
         level = float(self.levels["sequence"][channel_idx])

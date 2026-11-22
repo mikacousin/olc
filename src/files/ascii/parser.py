@@ -48,6 +48,7 @@ from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.palette import PaletteCategory
 
 LOGGER = logging.getLogger(__name__)
+_TOKEN_SPLIT_RE = re.compile(r"[\t,/; =><@]+")
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
@@ -254,7 +255,7 @@ class AsciiParser(ReadFile):
             True to continue reading loop, False to stop it
         """
         # Tokenize
-        tokens = re.split(r"[\t,/; =><@]+", line)
+        tokens = _TOKEN_SPLIT_RE.split(line)
         self.keyword = tokens[0].lower()
         # Specials keywords
         if self.keyword == "enddata":

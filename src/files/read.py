@@ -28,6 +28,7 @@ if typing.TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 _AMBIGUOUS_SINGLE_BYTE_ENCODINGS = frozenset({"cp1250", "cp1257", "cp775", "iso8859_2"})
+_LEGACY_ENCODINGS = ["cp1252", "cp1250", "latin_1", "cp850", "mac_roman"]
 
 
 def decode_file_bytes(data: bytes) -> str:
@@ -37,8 +38,11 @@ def decode_file_bytes(data: bytes) -> str:
     except UnicodeDecodeError:
         pass
 
-    matches = from_bytes(data)
+    matches = from_bytes(data, cp_isolation=_LEGACY_ENCODINGS)
     best = matches.best()
+    if best is None:
+        matches = from_bytes(data)
+        best = matches.best()
     if best is None:
         return data.decode("cp1252", errors="replace")
 

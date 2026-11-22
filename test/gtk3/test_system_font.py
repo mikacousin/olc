@@ -211,3 +211,47 @@ def test_fast_pango_numeric_cache_and_anchors() -> None:
 
     # 4. Direct draw_pango_layout_anchored test
     draw_pango_layout_anchored(cr, l1, 20.0, 20.0, anchor=TextAnchor.BOTTOM_LEFT)
+
+
+def test_system_font_manager_weak_listener_cleanup() -> None:
+    """Verify SystemFontManager drops dead bound listeners on GC without leaks."""
+    import gc
+    import weakref
+
+    called: list[int] = []
+
+    class DummyListener:
+        def __init__(self, tag: int) -> None:
+            self.tag = tag
+
+        def on_font(self) -> None:
+            called.append(self.tag)
+
+    gc.collect()
+    before = len(SystemFontManager._listeners)
+    obj1: DummyListener | None = DummyListener(1)
+    obj2 = DummyListener(2)
+    assert obj1 is not None
+    obj1_ref = weakref.ref(obj1)
+    SystemFontManager.register_listener(obj1.on_font)
+    SystemFontManager.register_listener(obj1.on_font)  # Idempotent in set
+    SystemFontManager.register_listener(obj2.on_font)
+    assert len(SystemFontManager._listeners) == before + 2
+
+    SystemFontManager._on_font_changed()
+    assert sorted(called) == [1, 2]
+
+    obj1 = None
+    gc.collect()
+    assert obj1_ref() is None
+    assert len(SystemFontManager._listeners) == before + 1
+
+    called.clear()
+    SystemFontManager._on_font_changed()
+    assert called == [2]
+
+    SystemFontManager.unregister_listener(obj2.on_font)
+    assert len(SystemFontManager._listeners) == before
+    called.clear()
+    SystemFontManager._on_font_changed()
+    assert called == []

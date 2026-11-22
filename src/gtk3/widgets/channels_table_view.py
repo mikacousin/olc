@@ -279,6 +279,8 @@ class ChannelsTableView(Gtk.ScrolledWindow):
         self._visible_channels: list[int] = []
         self._row_snapshots: dict[int, ChannelDisplaySnapshot] = {}
         self._updating_selection = False
+        self._batch_percent_mode: bool | None = None
+        self._batch_indep_channels: set[int] | None = None
 
         self.store = Gtk.ListStore(
             int,  # COL_CHANNEL
@@ -570,6 +572,22 @@ class ChannelsTableView(Gtk.ScrolledWindow):
             return
         self.update_dirty_channels(dirty_channels)
 
+    def _populate_batch_caches(self) -> None:
+        settings = self.channels_view.settings
+        self._batch_percent_mode = (
+            bool(settings.get_boolean("percent")) if settings else True
+        )
+        lightshow = self.channels_view.lightshow
+        self._batch_indep_channels = (
+            set(lightshow.independents.get_channels())
+            if lightshow is not None
+            else set()
+        )
+
+    def _clear_batch_caches(self) -> None:
+        self._batch_percent_mode = None
+        self._batch_indep_channels = None
+
     def update_dirty_channels(self, dirty_channels: Iterable[int] | None) -> int:
         """Update only dirty rows in the ListStore cleanly in one set() per row."""
         if not self._channel_iters:
@@ -582,13 +600,17 @@ class ChannelsTableView(Gtk.ScrolledWindow):
             ]
 
         updated = 0
-        for ch in targets:
-            tree_iter = self._channel_iters.get(ch)
-            if tree_iter is None:
-                continue
-            row = self._build_row_tuple(ch)
-            self.store.set(tree_iter, _ALL_COL_INDICES, list(row))
-            updated += 1
+        self._populate_batch_caches()
+        try:
+            for ch in targets:
+                tree_iter = self._channel_iters.get(ch)
+                if tree_iter is None:
+                    continue
+                row = self._build_row_tuple(ch)
+                self.store.set(tree_iter, _ALL_COL_INDICES, list(row))
+                updated += 1
+        finally:
+            self._clear_batch_caches()
         return updated
 
     def rebuild_rows(self, *, force: bool = False) -> None:
@@ -604,7 +626,11 @@ class ChannelsTableView(Gtk.ScrolledWindow):
             self.sync_selection(self.channels_view.get_selected_channels())
             return
 
+        detach_model = len(visible) > 32
         self._updating_selection = True
+        self._populate_batch_caches()
+        if detach_model:
+            self.treeview.set_model(None)
         try:
             self.store.clear()
             self._channel_iters.clear()
@@ -615,6 +641,9 @@ class ChannelsTableView(Gtk.ScrolledWindow):
                 tree_iter = self.store.append(list(row))
                 self._channel_iters[ch] = tree_iter
         finally:
+            if detach_model:
+                self.treeview.set_model(self.store)
+            self._clear_batch_caches()
             self._updating_selection = False
 
         self.refresh_dynamic_columns()
@@ -625,7 +654,12 @@ class ChannelsTableView(Gtk.ScrolledWindow):
     ) -> str:
         lightshow = self.channels_view.lightshow
         if lightshow is not None:
-            if channel in lightshow.independents.get_channels():
+            indep_channels = (
+                self._batch_indep_channels
+                if self._batch_indep_channels is not None
+                else lightshow.independents.get_channels()
+            )
+            if channel in indep_channels:
                 return INDEP_CH_HEX
             if not lightshow.patch.is_patched(channel):
                 return UNPATCHED_CH_HEX
@@ -637,9 +671,11 @@ class ChannelsTableView(Gtk.ScrolledWindow):
     def _format_intensity_cell(
         self, channel: int, snap: ChannelDisplaySnapshot | None
     ) -> tuple[str, str]:
-        settings = self.channels_view.settings
-        percent_mode = bool(settings.get_boolean("percent")) if settings else True
-        widget = self.channels_view.get_channel_widget(channel)
+        if self._batch_percent_mode is not None:
+            percent_mode = self._batch_percent_mode
+        else:
+            settings = self.channels_view.settings
+            percent_mode = bool(settings.get_boolean("percent")) if settings else True
         readout_low = self.channels_view.readout_mode.strip().lower()
 
         if snap is not None:
@@ -702,6 +738,7 @@ class ChannelsTableView(Gtk.ScrolledWindow):
             return val_txt, fg_hex
 
         # Fallback for Group / Independent / ChannelTime views without snapshots
+        widget = self.channels_view.get_channel_widget(channel)
         raw_lvl = float(widget.level) if widget is not None else 0.0
         fg_hex = (
             _rgb_dict_to_hex(widget.color_level)

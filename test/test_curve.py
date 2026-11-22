@@ -327,3 +327,45 @@ def test_stepped_curve_and_custom_endpoints() -> None:
     assert inverted.get_level(0) == 255
     assert inverted.get_level(128) == 128
     assert inverted.get_level(255) == 0
+
+
+def test_default_curves_cached_and_interpolator_invalidation() -> None:
+    """Verify default curves are shared and PCHIP interpolator cache invalidates."""
+    c1 = Curves(MagicMock())
+    c2 = Curves(MagicMock())
+    for cid in range(7):
+        curve = c1.get_curve(cid)
+        assert curve is not None
+        assert curve is c2.get_curve(cid)
+        assert not curve.editable
+
+    ies = c1.get_curve(3)
+    assert ies is not None
+    assert ies.get_level(0) == 0
+    assert ies.get_level(128) == 130
+    assert ies.get_level(255) == 255
+
+    interp = InterpolateCurve()
+    val0 = interp.evaluate_normalized(0.5)
+    assert val0 == pytest.approx(0.5, abs=0.01)
+    spl_before = interp._get_interpolator()
+    assert interp._get_interpolator() is spl_before
+
+    interp.add_point(128, 200)
+    assert interp._get_interpolator() is not spl_before
+    assert interp.get_level(128) == 200
+
+    spl_after_add = interp._get_interpolator()
+    interp.set_point(1, 128, 60)
+    assert interp._get_interpolator() is not spl_after_add
+    assert interp.get_level(128) == 60
+
+    spl_after_set = interp._get_interpolator()
+    interp.del_point(1)
+    assert interp._get_interpolator() is not spl_after_set
+    assert interp.get_level(128) == 128
+
+    spl_after_del = interp._get_interpolator()
+    interp.set_points([(0, 0), (128, 220), (255, 255)])
+    assert interp._get_interpolator() is not spl_after_del
+    assert interp.get_level(128) == 220

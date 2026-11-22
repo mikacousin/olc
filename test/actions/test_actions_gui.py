@@ -127,6 +127,7 @@ def test_zoom_debouncing() -> None:
     """Test zoom debouncing mechanism."""
     settings = MagicMock()
     app = CoreApplication(settings)
+    app._ZOOM_DEBOUNCE_SECONDS = 0.02
 
     # Trigger zoom twice quickly
     app.zoom("in")
@@ -134,8 +135,8 @@ def test_zoom_debouncing() -> None:
 
     assert app.zoom_level == 1.1
 
-    # Wait for timer to expire (0.6s + safety margin)
-    time.sleep(0.8)
+    # Wait for timer to expire (0.02s + safety margin)
+    time.sleep(0.06)
 
     # Should have committed a single action in the history
     assert app.zoom_level == 1.1

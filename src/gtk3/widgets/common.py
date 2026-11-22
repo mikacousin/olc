@@ -17,6 +17,7 @@ from __future__ import annotations
 import enum
 import math
 import typing
+import weakref
 
 import cairo
 import gi
@@ -31,7 +32,7 @@ class SystemFontManager:
     _cached_font_name: str | None = None
     _cached_family: str | None = None
     _cached_description: Pango.FontDescription | None = None
-    _listeners: list[typing.Callable[[], None]] = []
+    _listeners: set[weakref.ref[typing.Callable[[], None]]] = set()
     _listening_gtk: bool = False
 
     @classmethod
@@ -47,12 +48,33 @@ class SystemFontManager:
             pass
 
     @classmethod
+    def _make_weak_listener(
+        cls,
+        callback: typing.Callable[[], None],
+        *,
+        auto_discard: bool = True,
+    ) -> weakref.ref[typing.Callable[[], None]]:
+        on_dead: typing.Callable[[weakref.ref[typing.Any]], object] | None = (
+            cls._listeners.discard if auto_discard else None
+        )
+        if getattr(callback, "__self__", None) is not None:
+            return typing.cast(
+                weakref.ref[typing.Callable[[], None]],
+                weakref.WeakMethod(callback, on_dead),
+            )
+        return weakref.ref(callback, on_dead)
+
+    @classmethod
     def _on_font_changed(cls, *args: object) -> None:
         cls._cached_font_name = None
         cls._cached_family = None
         cls._cached_description = None
         FastPangoNumericCache.clear()
-        for listener in list(cls._listeners):
+        for ref in list(cls._listeners):
+            listener = ref()
+            if listener is None:
+                cls._listeners.discard(ref)
+                continue
             try:
                 listener()
             except Exception:
@@ -96,14 +118,12 @@ class SystemFontManager:
     def register_listener(cls, callback: typing.Callable[[], None]) -> None:
         """Register a callback to be invoked when the system font changes."""
         cls._ensure_listening()
-        if callback not in cls._listeners:
-            cls._listeners.append(callback)
+        cls._listeners.add(cls._make_weak_listener(callback, auto_discard=True))
 
     @classmethod
     def unregister_listener(cls, callback: typing.Callable[[], None]) -> None:
         """Unregister a font change listener."""
-        if callback in cls._listeners:
-            cls._listeners.remove(callback)
+        cls._listeners.discard(cls._make_weak_listener(callback, auto_discard=False))
 
 
 def get_system_font_family(default: str = "Sans") -> str:

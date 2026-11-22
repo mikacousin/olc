@@ -264,8 +264,17 @@ class ResolvedState:
 
     def has_fcb_move(self, channel: int) -> bool:
         """Return True if Focus, Color, or Beam moved explicitly on *channel*."""
+        ch_states = self.family_states.get(int(channel))
+        if not ch_states:
+            return False
         return any(
-            self.has_move_on_family(channel, fam)
+            ch_states.get(fam)
+            in (
+                TrackingDisplayState.HARD_VALUE,
+                TrackingDisplayState.INTENSITY_UP,
+                TrackingDisplayState.INTENSITY_DOWN,
+                TrackingDisplayState.BLOCK,
+            )
             for fam in ("position", "color", "beam")
         )
 

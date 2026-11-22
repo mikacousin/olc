@@ -17,6 +17,23 @@ FILE_PATH = "test/fixtures/sample.asc"
 gfile = Gio.File.new_for_path(FILE_PATH)
 
 
+@pytest.fixture(scope="module", name="_base_nocturne_imported")
+def base_nocturne_imported_fixture() -> tuple[LightShow, ImportFile]:
+    """Import doc/00  Base  Nocturne.asc once for read-only verification tests."""
+    import pathlib
+
+    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
+    if not asc_path.exists():
+        pytest.skip("doc/00  Base  Nocturne.asc not present")
+
+    lightshow = LightShow()
+    imported = ImportFile(
+        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
+    )
+    imported.parse_sync(auto_import=True)
+    return lightshow, imported
+
+
 def test_import(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test ASCII file importation"""
 
@@ -129,24 +146,10 @@ EndData
 
 
 def test_import_eos_base_nocturne_cuelists_and_labels(
-    monkeypatch: pytest.MonkeyPatch,
+    _base_nocturne_imported: tuple[LightShow, ImportFile],
 ) -> None:
     """Verify doc/00  Base  Nocturne.asc splits 3 CueLists without cue collisions."""
-    import pathlib
-
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
-
-    mock_app = MagicMock()
-    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
-
-    lightshow = LightShow()
-    imported = ImportFile(
-        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
-    )
-    imported.parse_sync(auto_import=False)
+    _lightshow, imported = _base_nocturne_imported
 
     seqs = imported.data.data["sequences"]
     assert set(seqs.keys()) == {1, 2, 3}
@@ -253,24 +256,10 @@ EndData
 
 
 def test_import_eos_base_nocturne_devices_and_params(
-    monkeypatch: pytest.MonkeyPatch,
+    _base_nocturne_imported: tuple[LightShow, ImportFile],
 ) -> None:
     """Verify doc/00  Base  Nocturne.asc imports all moving/LED devices and $$Param."""
-    import pathlib
-
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
-
-    mock_app = MagicMock()
-    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
-
-    lightshow = LightShow()
-    imported = ImportFile(
-        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
-    )
-    imported.parse_sync(auto_import=True)
+    lightshow, _imported = _base_nocturne_imported
 
     # Moving heads 1..5 (Ghibli / Diablo), LEDs 41.., conventionals (21.., 31.., 60)
     for ch in (1, 2, 3, 4, 5, 21, 31, 41, 60):
@@ -913,27 +902,13 @@ EndData
 
 
 def test_import_eos_base_nocturne_palettes_and_refs(
-    monkeypatch: pytest.MonkeyPatch,
+    _base_nocturne_imported: tuple[LightShow, ImportFile],
 ) -> None:
     """Verify Base Nocturne imports palettes and resolves Cue/Preset refs."""
-    import pathlib
-
     from olc.show.fader import FaderType
     from olc.show.palette import PaletteCategory
 
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
-
-    mock_app = MagicMock()
-    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
-
-    lightshow = LightShow()
-    imported = ImportFile(
-        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
-    )
-    imported.parse_sync(auto_import=True)
+    lightshow, _imported = _base_nocturne_imported
 
     # Palette counts
     assert len(lightshow.palettes.list_by_category(PaletteCategory.COLOR)) == 26
@@ -1340,25 +1315,12 @@ EndData
 
 
 def test_import_eos_base_nocturne_slots_units_notes_and_inversions(
-    monkeypatch: pytest.MonkeyPatch,
+    _base_nocturne_imported: tuple[LightShow, ImportFile],
 ) -> None:
     """Verify doc/00  Base  Nocturne.asc preserves case, slots, units, notes."""
     import itertools
-    import pathlib
 
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
-
-    mock_app = MagicMock()
-    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
-
-    lightshow = LightShow()
-    imported = ImportFile(
-        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
-    )
-    imported.parse_sync(auto_import=True)
+    lightshow, _imported = _base_nocturne_imported
 
     # Exact case preserved
     ghibli = lightshow.fixture_library.get("Ayrton", "Ghibli_Extended")
@@ -1664,23 +1626,11 @@ $CueList 1""",
     assert fader.effect_channels == [22, 21]
 
 
-def test_import_eos_base_nocturne_effects(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_import_eos_base_nocturne_effects(
+    _base_nocturne_imported: tuple[LightShow, ImportFile],
+) -> None:
     """Verify doc/00  Base  Nocturne.asc imports its 34 effects and cue refs."""
-    import pathlib
-
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
-
-    mock_app = MagicMock()
-    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
-    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
-
-    lightshow = LightShow()
-    imported = ImportFile(
-        lightshow, Gio.File.new_for_path(str(asc_path)), FileType.ASCII
-    )
-    imported.parse_sync(auto_import=True)
+    lightshow, _imported = _base_nocturne_imported
 
     assert len(lightshow.effects) == 34
     circle = lightshow.effects.get(901.0)

@@ -206,6 +206,8 @@ class Tabs:
                         notebook_nb.remove_page(page)
                 else:
                     notebook_nb.remove_page(page)
+            if hasattr(tab, "destroy") and callable(tab.destroy):
+                tab.destroy()
             self.tabs[tab_name] = None
 
     def move(self, tab_name: str, _from_nb: str, to_nb: str, new_index: int) -> None:

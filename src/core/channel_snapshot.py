@@ -507,6 +507,32 @@ def _is_dev_moving_head(dev: Optional[LightingDevice]) -> bool:
     )
 
 
+_EMPTY_FOCUS_SNAP = AttributeFamilySnapshot(
+    family="focus",
+    available=False,
+    tracking_state=TrackingDisplayState.INACTIVE,
+    is_manual=False,
+    palette_ref=None,
+    summary_value="",
+)
+_EMPTY_COLOR_SNAP = AttributeFamilySnapshot(
+    family="color",
+    available=False,
+    tracking_state=TrackingDisplayState.INACTIVE,
+    is_manual=False,
+    palette_ref=None,
+    summary_value="",
+)
+_EMPTY_BEAM_SNAP = AttributeFamilySnapshot(
+    family="beam",
+    available=False,
+    tracking_state=TrackingDisplayState.INACTIVE,
+    is_manual=False,
+    palette_ref=None,
+    summary_value="",
+)
+
+
 def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many-branches
     dev: Optional[LightingDevice],
     *,
@@ -525,6 +551,26 @@ def _build_device_family_snapshots(  # pylint: disable=too-many-locals, too-many
 ]:
     """Build Focus, Color, and Beam snapshots along with preview_rgb."""
     fx_map = family_effect_refs or {}
+    if (
+        (dev is None or dev.fixture_type == FixtureType.DIMMER)
+        and not fx_map
+        and (
+            resolved_step is None
+            or (
+                channel not in resolved_step.device_values
+                and channel not in resolved_step.palette_refs
+                and channel not in resolved_step.family_states
+            )
+        )
+        and (live_state is None or not live_state.is_channel_manual(channel))
+    ):
+        return (
+            _EMPTY_FOCUS_SNAP,
+            _EMPTY_COLOR_SNAP,
+            _EMPTY_BEAM_SNAP,
+            False,
+            None,
+        )
     step_dev_vals = (
         dict(resolved_step.device_values.get(channel, {}))
         if resolved_step is not None
@@ -979,7 +1025,14 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         intensity_state = TrackingDisplayState.INACTIVE
         intensity_color = dict(_PARK_COLOR)
     else:
-        raw_comp, raw_col = app.get_channel_composite_level(ch - 1)
+        try:
+            raw_comp, raw_col = app.get_channel_composite_level(
+                ch - 1,
+                curr_resolved=resolved_step,
+                prev_resolved=prev_resolved,
+            )
+        except TypeError:
+            raw_comp, raw_col = app.get_channel_composite_level(ch - 1)
         seq_lvl = (
             float(dmx.levels["sequence"][ch - 1])
             if dmx is not None and isinstance(getattr(dmx, "levels", None), dict)

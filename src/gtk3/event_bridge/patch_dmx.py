@@ -21,6 +21,7 @@ import typing
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
+    from olc.gtk3.application import Application
     from olc.gtk3.dmx_outputs import DMXOutputsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
     from olc.gtk3.settings import SettingsTab
@@ -30,11 +31,13 @@ if typing.TYPE_CHECKING:
 class PatchDmxBridgeHandler(BaseEventBridgeHandler):
     """Handles patch changes, DMX outputs, blackout, and universe events."""
 
+    def __init__(self, app: Application) -> None:
+        super().__init__(app)
+        self._patch_refresh_pending: bool = False
+
     def register(self) -> None:
         """Subscribe to Core events for patch, DMX outputs, and universes."""
-        self.app.core.subscribe(
-            "patch.changed", lambda: self._run_idle(self._safe_refresh_patch)
-        )
+        self.app.core.subscribe("patch.changed", self._schedule_patch_refresh)
         self.app.core.subscribe(
             "patch.selected_outputs_changed",
             lambda: self._run_idle(self._on_selected_outputs_changed),
@@ -92,16 +95,34 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             lambda *_: self._run_idle(self._on_artnet_devices_changed),
         )
 
+    def _schedule_patch_refresh(self) -> None:
+        """Mark patch tab stale and coalesce pending idle patch refreshes."""
+        if self.app.tabs:
+            patch_tab = self.app.tabs.tabs.get("patch_channels")
+            if patch_tab is not None and hasattr(patch_tab, "_needs_idle_refresh"):
+                typing.cast("PatchChannelsTab", patch_tab)._needs_idle_refresh = True
+        if not self._patch_refresh_pending:
+            self._patch_refresh_pending = True
+            self._run_idle(self._safe_refresh_patch)
+
     def _safe_refresh_patch(self) -> bool:
         """Refresh patch UI tabs and live channels view safely in the GTK thread.
 
         Returns:
             Always False.
         """
+        self._patch_refresh_pending = False
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         if self.app.tabs:
-            self.app.tabs.refresh_all()
+            for tab_key, tab_obj in self.app.tabs.tabs.items():
+                if tab_obj is None:
+                    continue
+                if tab_key == "patch_channels" and not getattr(
+                    tab_obj, "_needs_idle_refresh", True
+                ):
+                    continue
+                tab_obj.refresh()
             for tab_key in ("sequences", "groups", "cues"):
                 tab_obj = self.app.tabs.tabs.get(tab_key)
                 if tab_obj is not None:

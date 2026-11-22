@@ -82,6 +82,7 @@ class DMXOutputsTab(Gtk.Box):
 
         scrolled.add(self.flowbox)
         self.pack_start(scrolled, True, True, 0)
+        self.connect("destroy", lambda *_: self.cleanup())
 
     def refresh(self) -> None:
         """Refresh display."""
@@ -93,9 +94,13 @@ class DMXOutputsTab(Gtk.Box):
 
     def cleanup(self) -> None:
         """Clean up resources on tab destruction."""
+        for output in self.outputs:
+            output.tab = typing.cast(typing.Any, None)
+        self.outputs.clear()
 
     def rebuild_outputs_ui(self) -> None:
         """Rebuild the output widgets in flowbox for all active universes."""
+        self.cleanup()
         for child in self.flowbox.get_children():
             self.flowbox.remove(child)
         self.outputs = []

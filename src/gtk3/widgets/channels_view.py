@@ -206,20 +206,21 @@ class ChannelsView(Gtk.Box):
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-        self.flowbox.set_filter_func(self.filter_channels, None)
+        self._channel_widgets: list[ChannelWidget] = []
         if self.lightshow and self.settings and self.window and self.tabs:
             for i in range(MAX_CHANNELS):
-                self.flowbox.add(
-                    ChannelWidget(
-                        i + 1,
-                        0,
-                        0,
-                        self.app,
-                        window=self.window,
-                        tabs=self.tabs,
-                        channels_view=typing.cast(typing.Any, self),
-                    )
+                cw = ChannelWidget(
+                    i + 1,
+                    0,
+                    0,
+                    self.app,
+                    window=self.window,
+                    tabs=self.tabs,
+                    channels_view=typing.cast(typing.Any, self),
                 )
+                self._channel_widgets.append(cw)
+                self.flowbox.add(cw)
+        self.flowbox.set_filter_func(self.filter_channels, None)
         self.scrolled.add(self.flowbox)
 
         self.table_view = ChannelsTableView(channels_view=typing.cast(typing.Any, self))
@@ -234,12 +235,20 @@ class ChannelsView(Gtk.Box):
         self.connect("destroy", self._on_destroy_cleanup)
 
     def _on_destroy_cleanup(self, *_args: object) -> None:
-        """Cancel any pending coalesced redraw timer on widget destruction."""
+        """Cancel timers, clear caches, and break child cycles on destruction."""
         if self._redraw_timer_id is not None:
             GLib.source_remove(self._redraw_timer_id)
             self._redraw_timer_id = None
         self._dirty_channels.clear()
         self._dirty_all = False
+        self._on_dirty_flushed_callbacks.clear()
+        self._snapshot_cache.clear()
+        for widget in self._channel_widgets:
+            widget.channels_view = None
+        self._channel_widgets.clear()
+        if hasattr(self, "table_view"):
+            self.table_view._row_snapshots.clear()
+            self.table_view._channel_iters.clear()
 
     def get_channel_snapshot(self, channel: int) -> ChannelDisplaySnapshot | None:
         """Return consolidated ChannelDisplaySnapshot for *channel*, if supported."""
@@ -325,21 +334,28 @@ class ChannelsView(Gtk.Box):
             self._snapshot_cache.clear()
             self._invalidate_step_cache()
             if not is_table:
-                for child in self.flowbox.get_children():
-                    fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                    if fb_child.get_visible():
-                        widget = fb_child.get_child()
-                        if widget is not None:
+                if self._channel_widgets:
+                    for widget in self._channel_widgets:
+                        parent = widget.get_parent()
+                        if parent is not None and parent.get_visible():
                             widget.queue_draw()
                             drawn += 1
+                else:
+                    for child in self.flowbox.get_children():
+                        fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                        if fb_child.get_visible():
+                            widget = fb_child.get_child()
+                            if widget is not None:
+                                widget.queue_draw()
+                                drawn += 1
         else:
             for ch in dirty:
                 self._snapshot_cache.pop(ch, None)
                 if not is_table:
-                    fb_child = self.flowbox.get_child_at_index(ch - 1)
-                    if fb_child is not None and fb_child.get_visible():
-                        widget = fb_child.get_child()
-                        if widget is not None:
+                    widget = self.get_channel_widget(ch)
+                    if widget is not None:
+                        parent = widget.get_parent()
+                        if parent is not None and parent.get_visible():
                             widget.queue_draw()
                             drawn += 1
 
@@ -456,11 +472,15 @@ class ChannelsView(Gtk.Box):
             self.table_view.rebuild_rows(force=True)
         else:
             self.expand_box.set_visible(False)
-            for child in self.flowbox.get_children():
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                widget = fb_child.get_child()
-                if widget is not None and isinstance(widget, ChannelWidget):
+            if self._channel_widgets:
+                for widget in self._channel_widgets:
                     widget.set_display_format(fmt)
+            else:
+                for child in self.flowbox.get_children():
+                    fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                    widget = fb_child.get_child()
+                    if widget is not None and isinstance(widget, ChannelWidget):
+                        widget.set_display_format(fmt)
             self.content_stack.set_visible_child_name("tiles")
             self.flowbox.queue_resize()
         self._persist_tab_setting("display_format", fmt)
@@ -514,14 +534,22 @@ class ChannelsView(Gtk.Box):
         if mode in ("Auto", "Label", "Ref"):
             self._last_ref_readout = mode
         is_table = self.display_format == "Table"
-        for child in self.flowbox.get_children():
-            fb_child = typing.cast(Gtk.FlowBoxChild, child)
-            widget = fb_child.get_child()
-            if widget is not None and isinstance(widget, ChannelWidget):
-                if is_table or not fb_child.get_visible():
+        if self._channel_widgets:
+            for widget in self._channel_widgets:
+                parent = widget.get_parent()
+                if is_table or parent is None or not parent.get_visible():
                     widget.readout_mode = mode
                 else:
                     widget.set_readout_mode(mode)
+        else:
+            for child in self.flowbox.get_children():
+                fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                widget = fb_child.get_child()
+                if widget is not None and isinstance(widget, ChannelWidget):
+                    if is_table or not fb_child.get_visible():
+                        widget.readout_mode = mode
+                    else:
+                        widget.set_readout_mode(mode)
         self._persist_tab_setting("readout_mode", mode)
         for callback in list(self._on_dirty_flushed_callbacks):
             callback(None)
@@ -556,14 +584,24 @@ class ChannelsView(Gtk.Box):
         target = bool(show)
         self.show_labels = target
         is_table = self.display_format == "Table"
-        for child in self.flowbox.get_children():
-            fb_child = typing.cast(Gtk.FlowBoxChild, child)
-            widget = fb_child.get_child()
-            if widget is not None and isinstance(widget, ChannelWidget):
-                if is_table or not fb_child.get_visible():
+        if self._channel_widgets:
+            for widget in self._channel_widgets:
+                if widget.show_labels == target:
+                    continue
+                parent = widget.get_parent()
+                if is_table or parent is None or not parent.get_visible():
                     widget.show_labels = target
                 else:
                     widget.set_show_labels(target)
+        else:
+            for child in self.flowbox.get_children():
+                fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                widget = fb_child.get_child()
+                if widget is not None and isinstance(widget, ChannelWidget):
+                    if is_table or not fb_child.get_visible():
+                        widget.show_labels = target
+                    else:
+                        widget.set_show_labels(target)
         self.table_view.set_show_labels(target)
         self._persist_tab_setting("show_labels", target)
 
@@ -656,6 +694,8 @@ class ChannelsView(Gtk.Box):
         Returns:
             Channel widget
         """
+        if 0 < channel <= len(self._channel_widgets):
+            return self._channel_widgets[channel - 1]
         if 0 < channel <= MAX_CHANNELS:
             flowboxchild = self.flowbox.get_child_at_index(channel - 1)
             if flowboxchild:

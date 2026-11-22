@@ -64,8 +64,10 @@ class _GLibScheduler:
         return GLib.timeout_add(interval_ms, callback)
 
     def source_remove(self, handle: typing.Any) -> None:  # noqa: ANN401
-        if isinstance(handle, int):
-            GLib.source_remove(handle)
+        if isinstance(handle, int) and handle > 0:
+            source = GLib.MainContext.default().find_source_by_id(handle)
+            if source is not None and not source.is_destroyed():
+                GLib.source_remove(handle)
 
 
 class Application(Gtk.Application):

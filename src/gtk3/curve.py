@@ -679,6 +679,9 @@ class CurvesTab(Gtk.Box):
                         self.flowbox.select_child(child)
                         break
         self.check_resize()
+        toplevel = self.get_toplevel()
+        if isinstance(toplevel, Gtk.Window):
+            toplevel.check_resize()
 
     def on_new_curve(self, widget: Gtk.Widget) -> None:
         """Create new curve

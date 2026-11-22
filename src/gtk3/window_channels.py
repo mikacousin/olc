@@ -81,7 +81,11 @@ class LiveView(Gtk.Notebook):
         if self.app.core.backend is None:
             return
         channel_idx = channel - 1
-        level, color_level = self.app.core.get_channel_composite_level(channel_idx)
+        level, color_level = self.app.core.get_channel_composite_level(
+            channel_idx,
+            curr_resolved=resolved_step,
+            prev_resolved=prev_resolved,
+        )
 
         main_fader_val = self.app.core.get_main_fader_value()
         gm_exempt_arr = getattr(
@@ -168,7 +172,9 @@ class LiveView(Gtk.Notebook):
             color_level = get_tracking_color(state)
             if (step is None or target_step == pos) and has_backend:
                 comp_level, comp_color = self.app.core.get_channel_composite_level(
-                    channel - 1
+                    channel - 1,
+                    curr_resolved=curr_resolved,
+                    prev_resolved=prev_resolved,
                 )
                 if (
                     step is None

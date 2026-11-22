@@ -18,36 +18,56 @@ from typing import Callable
 
 
 class RepeatedTimer:
-    """Call a function every 'interval' seconds"""
+    """Call a function every 'interval' seconds using one persistent thread."""
 
     def __init__(
         self, interval: float, function: Callable, *args: object, **kwargs: object
     ) -> None:
-        self._timer: threading.Timer | None = None
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
         self.interval = interval
         self.function = function
         self.args = args
         self.kwargs = kwargs
         self.is_running = False
-        self.next_call = time.time()
+        self.next_call = time.monotonic()
         self.start()
 
-    def _run(self) -> None:
-        self.is_running = False
-        self.start()
-        self.function(*self.args, **self.kwargs)
+    def _loop(self, stop_event: threading.Event) -> None:
+        while not stop_event.is_set():
+            self.next_call += self.interval
+            wait_time = self.next_call - time.monotonic()
+            if wait_time > 0.0 and stop_event.wait(wait_time):
+                break
+            if stop_event.is_set():
+                break
+            self.function(*self.args, **self.kwargs)
+            # Prevent catch-up storms if execution stalls temporarily
+            now = time.monotonic()
+            if self.next_call < now - self.interval:
+                self.next_call = now
 
     def start(self) -> None:
-        """Start function"""
-        if not self.is_running:
-            self.next_call += self.interval
-            self._timer = threading.Timer(self.next_call - time.time(), self._run)
-            self._timer.daemon = True
-            self._timer.start()
-            self.is_running = True
+        """Start periodic execution."""
+        with self._lock:
+            if not self.is_running:
+                stop_event = threading.Event()
+                self._stop_event = stop_event
+                self.is_running = True
+                self.next_call = time.monotonic()
+                thread = threading.Thread(
+                    target=self._loop,
+                    args=(stop_event,),
+                    name="RepeatedTimer",
+                    daemon=True,
+                )
+                self._thread = thread
+                thread.start()
 
     def stop(self) -> None:
-        """Stop function"""
-        if self._timer is not None:
-            self._timer.cancel()
-        self.is_running = False
+        """Stop periodic execution cleanly."""
+        with self._lock:
+            self.is_running = False
+            self._stop_event.set()
+            self._thread = None

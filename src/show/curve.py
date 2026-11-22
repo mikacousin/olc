@@ -366,16 +366,26 @@ class SegmentsCurve(PointsCurve):
         ).astype(np.uint16)
 
 
+_GRID_8 = np.linspace(0.0, 1.0, 256)
+_GRID_16 = np.linspace(0.0, 1.0, 65536)
+
+
 class InterpolateCurve(PointsCurve):
     """Monotonic cubic spline curve using PCHIP interpolation."""
 
+    _interpolator: PchipInterpolator | None
+
     def __init__(self) -> None:
+        self._interpolator = None
         super().__init__(name="Interpolate", editable=True)
 
     def _get_interpolator(self) -> PchipInterpolator:
+        if self._interpolator is not None:
+            return self._interpolator
         xp = [p[0] / 255.0 for p in self.points]
         fp = [p[1] / 255.0 for p in self.points]
-        return PchipInterpolator(xp, fp)
+        self._interpolator = PchipInterpolator(xp, fp)
+        return self._interpolator
 
     def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
         spl = self._get_interpolator()
@@ -391,16 +401,15 @@ class InterpolateCurve(PointsCurve):
         if not hasattr(self, "values_array_16bit") or self.values_array_16bit is None:
             self.values_array_16bit = np.zeros(65536, dtype=np.uint16)
 
+        self._interpolator = None
         spl = self._get_interpolator()
 
         # 8-bit table
-        grid_8 = np.linspace(0.0, 1.0, 256)
-        vals_8 = np.clip(np.round(spl(grid_8) * 255.0), 0.0, 255.0)
+        vals_8 = np.clip(np.round(spl(_GRID_8) * 255.0), 0.0, 255.0)
         self.values_array = vals_8.astype(np.uint8)
 
         # 16-bit table
-        grid_16 = np.linspace(0.0, 1.0, 65536)
-        vals_16 = np.clip(np.round(spl(grid_16) * 65535.0), 0.0, 65535.0)
+        vals_16 = np.clip(np.round(spl(_GRID_16) * 65535.0), 0.0, 65535.0)
         self.values_array_16bit = vals_16.astype(np.uint16)
 
 
@@ -452,6 +461,138 @@ class SteppedCurve(PointsCurve):
         self.values_array_16bit = fp_16[idx_16]
 
 
+_DEFAULT_CURVE_SPECS: dict[
+    int, tuple[str, type[PointsCurve], tuple[tuple[int, int], ...]]
+] = {
+    2: ("Full at 1%", SegmentsCurve, ((2, 0), (3, 255))),
+    3: (
+        "IES Square",
+        InterpolateCurve,
+        (
+            (13, 18),
+            (26, 38),
+            (38, 56),
+            (51, 71),
+            (64, 84),
+            (77, 97),
+            (89, 107),
+            (102, 115),
+            (115, 122),
+            (128, 130),
+            (140, 140),
+            (153, 150),
+            (166, 161),
+            (179, 171),
+            (191, 184),
+            (204, 196),
+            (217, 209),
+            (230, 224),
+            (242, 240),
+        ),
+    ),
+    4: (
+        "Slow Bottom",
+        InterpolateCurve,
+        (
+            (13, 8),
+            (26, 13),
+            (38, 20),
+            (51, 28),
+            (64, 36),
+            (77, 48),
+            (89, 64),
+            (102, 82),
+            (115, 99),
+            (128, 120),
+            (140, 140),
+            (153, 161),
+            (166, 176),
+            (179, 194),
+            (191, 207),
+            (204, 219),
+            (217, 230),
+            (230, 240),
+            (242, 247),
+        ),
+    ),
+    5: (
+        "Fast Bottom",
+        InterpolateCurve,
+        (
+            (13, 26),
+            (26, 51),
+            (38, 74),
+            (51, 94),
+            (64, 110),
+            (77, 122),
+            (89, 133),
+            (102, 140),
+            (115, 150),
+            (128, 158),
+            (140, 166),
+            (153, 173),
+            (166, 181),
+            (179, 189),
+            (191, 199),
+            (204, 209),
+            (217, 219),
+            (230, 230),
+            (242, 242),
+        ),
+    ),
+    6: (
+        "Fast Top",
+        InterpolateCurve,
+        (
+            (13, 13),
+            (26, 26),
+            (38, 33),
+            (51, 41),
+            (64, 46),
+            (77, 51),
+            (89, 56),
+            (102, 64),
+            (115, 74),
+            (128, 89),
+            (140, 107),
+            (153, 128),
+            (166, 148),
+            (179, 168),
+            (191, 189),
+            (204, 207),
+            (217, 227),
+            (230, 242),
+            (242, 250),
+        ),
+    ),
+}
+
+_DEFAULT_CURVES_CACHE: dict[int, Curve] | None = None
+
+
+def _build_default_curves() -> dict[int, Curve]:
+    """Construct built-in immutable system curves (0..6) once per process."""
+    built: dict[int, Curve] = {
+        0: LinearCurve(),
+        1: SquareRootCurve(),
+    }
+    for number, (name, curve_cls, points) in _DEFAULT_CURVE_SPECS.items():
+        curve_obj = curve_cls()
+        curve_obj.editable = False
+        curve_obj.name = name
+        curve_obj.set_points(list(points))
+        built[number] = curve_obj
+    return built
+
+
+def _get_default_curves() -> dict[int, Curve]:
+    """Return cached immutable built-in curves (0..6)."""
+    global _DEFAULT_CURVES_CACHE  # pylint: disable=global-statement
+    if _DEFAULT_CURVES_CACHE is None:
+        _DEFAULT_CURVES_CACHE = _build_default_curves()
+    return _DEFAULT_CURVES_CACHE
+
+
 class Curves:
     """Curves supported by application.
 
@@ -462,124 +603,11 @@ class Curves:
 
     def __init__(self, lightshow: LightShow) -> None:
         self.lightshow = lightshow
-        self.curves = {
-            0: LinearCurve(),
-            1: SquareRootCurve(),
-        }
+        self.curves = {}
         self._default_curves()
 
     def _default_curves(self) -> None:
-        curves = {
-            2: ("Full at 1%", SegmentsCurve, ((2, 0), (3, 255))),
-            3: (
-                "IES Square",
-                InterpolateCurve,
-                (
-                    (13, 18),
-                    (26, 38),
-                    (38, 56),
-                    (51, 71),
-                    (64, 84),
-                    (77, 97),
-                    (89, 107),
-                    (102, 115),
-                    (115, 122),
-                    (128, 130),
-                    (140, 140),
-                    (153, 150),
-                    (166, 161),
-                    (179, 171),
-                    (191, 184),
-                    (204, 196),
-                    (217, 209),
-                    (230, 224),
-                    (242, 240),
-                ),
-            ),
-            4: (
-                "Slow Bottom",
-                InterpolateCurve,
-                (
-                    (13, 8),
-                    (26, 13),
-                    (38, 20),
-                    (51, 28),
-                    (64, 36),
-                    (77, 48),
-                    (89, 64),
-                    (102, 82),
-                    (115, 99),
-                    (128, 120),
-                    (140, 140),
-                    (153, 161),
-                    (166, 176),
-                    (179, 194),
-                    (191, 207),
-                    (204, 219),
-                    (217, 230),
-                    (230, 240),
-                    (242, 247),
-                ),
-            ),
-            5: (
-                "Fast Bottom",
-                InterpolateCurve,
-                (
-                    (13, 26),
-                    (26, 51),
-                    (38, 74),
-                    (51, 94),
-                    (64, 110),
-                    (77, 122),
-                    (89, 133),
-                    (102, 140),
-                    (115, 150),
-                    (128, 158),
-                    (140, 166),
-                    (153, 173),
-                    (166, 181),
-                    (179, 189),
-                    (191, 199),
-                    (204, 209),
-                    (217, 219),
-                    (230, 230),
-                    (242, 242),
-                ),
-            ),
-            6: (
-                "Fast Top",
-                InterpolateCurve,
-                (
-                    (13, 13),
-                    (26, 26),
-                    (38, 33),
-                    (51, 41),
-                    (64, 46),
-                    (77, 51),
-                    (89, 56),
-                    (102, 64),
-                    (115, 74),
-                    (128, 89),
-                    (140, 107),
-                    (153, 128),
-                    (166, 148),
-                    (179, 168),
-                    (191, 189),
-                    (204, 207),
-                    (217, 227),
-                    (230, 242),
-                    (242, 250),
-                ),
-            ),
-        }
-        for number, curve in curves.items():
-            curve_obj = curve[1]()
-            curve_obj.editable = False
-            curve_obj.name = curve[0]
-            if isinstance(curve_obj, PointsCurve):
-                for point in curve[2]:
-                    curve_obj.add_point(point[0], point[1])
-            self.curves[number] = curve_obj
+        self.curves.update(_get_default_curves())
 
     def get_curve(self, number: int) -> Curve | None:
         """Get Curve with number.
@@ -636,10 +664,8 @@ class Curves:
         self.curves.pop(curve_nb, None)
 
     def reset(self) -> None:
-        """Delete additional curves."""
-        keys = []
-        for curve_nb in self.curves:
-            if curve_nb >= 10:
-                keys.append(curve_nb)
+        """Delete additional curves and restore immutable defaults."""
+        keys = [curve_nb for curve_nb in self.curves if curve_nb >= 10]
         for key in keys:
             self.del_curve(key)
+        self.curves.update(_get_default_curves())

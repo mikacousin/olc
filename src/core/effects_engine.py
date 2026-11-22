@@ -775,7 +775,7 @@ class EffectsEngine:
                         target = low_norm + (high_norm - low_norm) * wave
                         blended = result[ch_indices] + (
                             target - result[ch_indices]
-                        ) * min(1.0, size_mult)
+                        ) * np.clip(size_mult, 0.0, 1.0)
                         result[ch_indices] = np.clip(blended, 0.0, 1.0)
             return result
 
@@ -865,7 +865,12 @@ class EffectsEngine:
         return still_running
 
     def _on_timer_tick(self) -> bool:
-        return self.tick()
+        try:
+            return self.tick()
+        except Exception:
+            with self._lock:
+                self._timer_handle = None
+            raise
 
     def _ensure_timer_locked(self) -> None:
         if self._timer_handle is None and self._instances:
