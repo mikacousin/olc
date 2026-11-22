@@ -2,7 +2,7 @@
 
 # Manuel utilisateur — Open Lighting Console
 
-Bienvenue dans le manuel de référence d'**Open Lighting Console (`olc`)** (`0.11.1.beta`).
+Bienvenue dans le manuel de référence d'**Open Lighting Console (`olc`)** (`0.12.0.beta`).
 
 ---
 

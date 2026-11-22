@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/mikacousin/olc?include_prereleases)](https://github.com/mikacousin/olc/releases/latest) [![License](https://img.shields.io/github/license/mikacousin/olc?color=green)](https://github.com/mikacousin/olc/blob/master/COPYING)
 
-**Open Lighting Console (`olc`)** (`0.11.1.beta`) est un jeu d'orgue open source pour Linux conçu pour le théâtre, le spectacle vivant et l'éclairage multi-paramètres. Il associe un moteur temps réel sans interface (`CoreEngine` à 44 Hz), une ligne de commande inspirée d'ETC Eos, la gestion complète de projecteurs asservis et LED, des effets paramétriques et une interface graphique GTK3.
+**Open Lighting Console (`olc`)** (`0.12.0.beta`) est un jeu d'orgue open source pour Linux conçu pour le théâtre, le spectacle vivant et l'éclairage multi-paramètres. Il associe un moteur temps réel sans interface (`CoreEngine` à 44 Hz), une ligne de commande inspirée d'ETC Eos, la gestion complète de projecteurs asservis et LED, des effets paramétriques et une interface graphique GTK3.
 
 > [!NOTE]
 > La documentation a été entièrement refondue dans les deux langues :

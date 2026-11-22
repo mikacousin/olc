@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/mikacousin/olc?include_prereleases)](https://github.com/mikacousin/olc/releases/latest) [![License](https://img.shields.io/github/license/mikacousin/olc?color=green)](https://github.com/mikacousin/olc/blob/master/COPYING)
 
-**Open Lighting Console (`olc`)** (`0.11.1.beta`) is an Open Source Linux lighting console built for theater, live performance, and architectural experimentation. It combines a 44 Hz headless `CoreEngine`, an ETC Eos-inspired command line, multi-parameter intelligent fixture control, parametric effects, and a GTK3 graphical interface.
+**Open Lighting Console (`olc`)** (`0.12.0.beta`) is an Open Source Linux lighting console built for theater, live performance, and architectural experimentation. It combines a 44 Hz headless `CoreEngine`, an ETC Eos-inspired command line, multi-parameter intelligent fixture control, parametric effects, and a GTK3 graphical interface.
 
 > [!NOTE]
 > The documentation has been completely updated in both languages:
