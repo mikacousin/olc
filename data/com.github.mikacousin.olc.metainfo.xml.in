@@ -27,6 +27,19 @@
     </ul>
   </description>
   <releases>
+    <release version="0.12.0.beta" date="2026-11-22">
+      <description>
+        <p>Major feature release transforming Open Lighting Console into a multi-parameter fixture and theater console with ETC Eos-inspired workflow, scientific N-LED colorimetry, and a real-time parametric effects engine.</p>
+        <ul>
+          <li>Intelligent fixtures, Fixture Library editor, GDTF (DIN SPEC 15800) import, and IFCB Device Inspector featuring 16-bit Pan/Tilt encoders and an N-LED color picker (CIE 1931 xy, Duv tint, Lee/Rosco gels with Delta E matching)</li>
+          <li>IFCB Palettes (IP, FP, CP, BP) and Presets (PR) with cascade references, Direct Select, collapsible Inspector, live manual red overrides, and redesigned ordered Groups with rank badges</li>
+          <li>Real-time parametric Effects engine replacing legacy chasers, with 10 built-in templates, 1D/2D Cairo visualizer, cue tracking, and Size/Rate/Size+Rate faders</li>
+          <li>Continuous floating-point [0.0..1.0] DMX pipeline (8/16/24-bit), Summary+ and expandable Table LiveView modes, Flexi filters, timed Sneak, Park/Unpark, Channel/Address Check, Home Preset, and multi-page Faders with Fix pinning</li>
+          <li>Full-width ETC Eos-style LL(1) command line, Virtual Console with F1 shortcut overlays, modernized Curves editor, passive real-time DMX Outputs monitor, workspace persistence, and extended USITT ASCII / ETC Eos import and export</li>
+          <li>Bidirectional normalized OSC with dynamic Pub/Sub subscriptions, OSCQuery/mDNS discovery, bundled TouchOSC templates, HTP DMX-In merging, and decoupled headless backends</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.1.beta" date="2026-10-07">
       <description>
         <p>This release introduces dynamic hot-configuration of DMX universes without restarts, multi-notebook tab management with drag-and-drop, an interactive undo history tab, a massive core action refactoring for headless operation, and major CPU performance optimizations in olc-monitor.</p>
