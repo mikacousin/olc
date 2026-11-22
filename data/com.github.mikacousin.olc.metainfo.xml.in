@@ -11,20 +11,19 @@
   </developer>
   <launchable type="desktop-id">com.github.mikacousin.olc.desktop</launchable>
   <description>
-    <p>Open Lighting Console is a free software to control lights on theater shows.</p>
+    <p>Open Lighting Console is free software to control lighting for theater and live shows.</p>
     <p>Some features:</p>
     <ul>
-      <li>Used Art-Net, sACN and Enttec DMX USB PRO to send DMX</li>
-      <li>RPN syntax</li>
-      <li>Import / Export ASCII Light Cue shows</li>
-      <li>Patch / Unpatch by channels or by outputs</li>
-      <li>Main Playback</li>
-      <li>Chasers</li>
-      <li>Groups</li>
-      <li>Faders</li>
-      <li>Track channels</li>
-      <li>Virtual console with easy MIDI learning for controllers</li>
-      <li>Open Sound Control</li>
+      <li>Multi-protocol DMX engine (Art-Net, sACN, Enttec DMX USB Pro/Mk2) and HTP DMX-In</li>
+      <li>ETC Eos-style command line with Virtual Console and keyboard shortcuts</li>
+      <li>Intelligent fixtures, GDTF import, and N-LED scientific color picker (CIE 1931 xy, Lee/Rosco gels)</li>
+      <li>USITT ASCII and ETC Eos show import and export</li>
+      <li>Patch management and passive real-time DMX Outputs monitor</li>
+      <li>Main Playback with Tracking, Move In Black (MIB), and per-family IFCB timings</li>
+      <li>IFCB Palettes, Presets, and Parametric Effects engine</li>
+      <li>Ordered Groups, configurable multi-page Faders, and Curves editor</li>
+      <li>Track channels view, Live Summary+ tiles, and hybrid expandable Table view</li>
+      <li>Virtual Console with easy MIDI learn and bidirectional OSC / OSCQuery / TouchOSC templates</li>
     </ul>
   </description>
   <releases>
