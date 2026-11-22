@@ -163,6 +163,10 @@ def test_event_bridge_preferences_routing(monkeypatch: pytest.MonkeyPatch) -> No
     core.emit("gui.default_time_changed", 2.5)
     mock_settings_tab.update_default_time_ui.assert_called_once_with(2.5)
 
+    # 3. Home Preset changed event
+    core.emit("show.home_preset_changed", 999.0)
+    mock_settings_tab.update_home_preset_ui.assert_called_once_with(999.0)
+
 
 def test_settings_tab_update_percent_and_default_time() -> None:
     """Test SettingsTab programmatic updates for percentage switch and default time."""
@@ -173,6 +177,8 @@ def test_settings_tab_update_percent_and_default_time() -> None:
     tab.switch_percent.get_state.return_value = False
     tab.spin_default_time = MagicMock()
     tab.spin_default_time.get_value.return_value = 0.0
+    tab.spin_home_preset = MagicMock()
+    tab.spin_home_preset.get_value.return_value = 0.0
 
     # 1. Update percent switch
     tab.update_percent_ui(True)
@@ -184,3 +190,26 @@ def test_settings_tab_update_percent_and_default_time() -> None:
     tab.update_default_time_ui(3.0)
     tab.spin_default_time.set_value.assert_called_once_with(3.0)
     assert not tab._updating_settings
+
+    # 3. Update Home Preset UI, _on_change_home_preset, and refresh()
+    tab.update_home_preset_ui(999.0)
+    tab.spin_home_preset.set_value.assert_called_with(999.0)
+    assert not tab._updating_settings
+
+    tab.update_home_preset_ui(None)
+    tab.spin_home_preset.get_value.return_value = 999.0
+    tab.update_home_preset_ui(None)
+    tab.spin_home_preset.set_value.assert_called_with(0.0)
+
+    core = CoreApplication(MagicMock())
+    tab.app = MagicMock()
+    tab.app.core = core
+    mock_spin = MagicMock()
+    mock_spin.get_value.return_value = 42.0
+    tab._on_change_home_preset(mock_spin)
+    assert core.lightshow.home_preset == pytest.approx(42.0)
+
+    core.lightshow.home_preset = 777.0
+    tab.spin_home_preset.get_value.return_value = 42.0
+    tab.refresh()
+    tab.spin_home_preset.set_value.assert_called_with(777.0)

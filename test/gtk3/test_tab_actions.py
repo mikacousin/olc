@@ -22,6 +22,7 @@ import pytest
 from gi.repository import Gtk
 
 from olc.gtk3.application import Application
+from olc.gtk3.settings import SettingsTab
 from test.gtk3.conftest import process_events  # pylint: disable=wrong-import-order
 
 pytestmark = pytest.mark.gui
@@ -133,3 +134,56 @@ def test_gui_tab_cross_notebook_move(app_gui: Application) -> None:
 
     # Verify tab is in live notebook again
     assert tab.get_parent() is app.window.live_view
+
+
+def test_settings_tab_home_preset_spin_and_undo_redo(app_gui: Application) -> None:
+    """Test SettingsTab Home Preset SpinButton sync with action and show.new."""
+    app = app_gui
+    app.core.lightshow.home_preset = None
+    app.core.history.clear()
+
+    try:
+        app.core.action_registry.execute("gui.tab_open", "settings")
+        process_events()
+
+        assert app.tabs is not None
+        settings_tab = typing.cast(SettingsTab, app.tabs.tabs["settings"])
+        assert settings_tab is not None
+        assert settings_tab.spin_home_preset is not None
+        assert settings_tab.spin_home_preset.get_value() == pytest.approx(0.0)
+
+        # User changes SpinButton to 999.0
+        settings_tab.spin_home_preset.set_value(999.0)
+        process_events()
+        assert app.core.lightshow.home_preset == pytest.approx(999.0)
+
+        # Undo restores None and UI resets to 0.0
+        app.core.history.undo()
+        process_events()
+        assert app.core.lightshow.home_preset is None
+        assert settings_tab.spin_home_preset.get_value() == pytest.approx(0.0)
+
+        # Redo restores 999.0 and UI updates
+        app.core.history.redo()
+        process_events()
+        assert app.core.lightshow.home_preset == pytest.approx(999.0)
+        assert settings_tab.spin_home_preset.get_value() == pytest.approx(999.0)
+
+        # Setting 0.0 clears home_preset
+        settings_tab.spin_home_preset.set_value(0.0)
+        process_events()
+        assert app.core.lightshow.home_preset is None
+
+        # Setting value and creating a new show resets both model and UI
+        settings_tab.spin_home_preset.set_value(50.0)
+        process_events()
+        assert app.core.lightshow.home_preset == pytest.approx(50.0)
+
+        app.core.action_registry.execute("show.new")
+        process_events()
+        assert app.core.lightshow.home_preset is None
+        assert settings_tab.spin_home_preset.get_value() == pytest.approx(0.0)
+    finally:
+        app.core.lightshow.home_preset = None
+        app.core.lightshow.title = ""
+        app.core.history.clear()

@@ -392,3 +392,89 @@ def test_show_open_legacy_olc_without_workspace(tmp_path: pathlib.Path) -> None:
     # Should open without error and maintain valid workspace
     assert isinstance(app.lightshow.workspace, dict)
     assert "version" in app.lightshow.workspace or app.lightshow.workspace == {}
+
+
+def test_show_set_home_preset_and_undo_redo() -> None:
+    """Test show.set_home_preset execution, clearing with 0/None, and Undo/Redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    assert app.lightshow.home_preset is None
+    assert app.lightshow.modified is False
+
+    events: list[float | None] = []
+    app.subscribe("show.home_preset_changed", events.append)
+
+    # Set integer Home Preset 999
+    app.action_registry.execute("show.set_home_preset", preset_number=999.0)
+    assert app.lightshow.home_preset == pytest.approx(999.0)
+    assert app.lightshow.modified is True
+    assert events == [999.0]
+    assert app.history.undo_stack[-1].get_history_details() == "999"
+    assert app.history.undo_stack[-1].get_feedback_state() == {"home_preset": 999.0}
+
+    # Update to decimal preset 999.5
+    app.action_registry.execute("show.set_home_preset", preset_number=999.5)
+    assert app.lightshow.home_preset == pytest.approx(999.5)
+    assert app.history.undo_stack[-1].get_history_details() == "999.5"
+
+    # Clear with 0 -> normalized to None
+    app.action_registry.execute("show.set_home_preset", preset_number=0.0)
+    assert app.lightshow.home_preset is None
+    assert events[-1] is None
+
+    # No-op when setting same value should not pollute undo stack
+    stack_len = len(app.history.undo_stack)
+    app.action_registry.execute("show.set_home_preset", preset_number=None)
+    assert len(app.history.undo_stack) == stack_len
+
+    # Undo back through 999.5 -> 999.0 -> None (also restores unmodified flag)
+    app.history.undo()
+    assert app.lightshow.home_preset == pytest.approx(999.5)
+    app.history.undo()
+    assert app.lightshow.home_preset == pytest.approx(999.0)
+    app.history.undo()
+    assert app.lightshow.home_preset is None
+    assert app.lightshow.modified is False
+
+    # Redo back to 999.0
+    app.history.redo()
+    assert app.lightshow.home_preset == pytest.approx(999.0)
+    assert app.lightshow.modified is True
+
+
+def test_show_new_and_open_reset_home_preset_and_title(tmp_path: pathlib.Path) -> None:
+    """Test show.new, show.open, and show.import snapshot reset/preserve metadata."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    hp_events: list[float | None] = []
+    app.subscribe("show.home_preset_changed", hp_events.append)
+
+    app.lightshow.title = "Existing Title"
+    app.lightshow.home_preset = 999.0
+    app.action_registry.execute("show.new")
+
+    assert app.lightshow.title == ""
+    assert app.lightshow.home_preset is None
+    assert hp_events == [None]
+
+    # Opening an ASCII file without $$HOMEPRESET resets prior home_preset and title
+    app.lightshow.title = "Previous Show"
+    app.lightshow.home_preset = 888.0
+    app.action_registry.execute("show.open", "test/fixtures/sample.asc")
+    assert app.lightshow.title == ""
+    assert app.lightshow.home_preset is None
+
+    # Import snapshot preserves title/home_preset across Undo
+    app.lightshow.title = "Saved Title"
+    app.lightshow.home_preset = 777.0
+    asc_file = tmp_path / "override.asc"
+    asc_file.write_text("IDENT 3:0\n$$TITLE Imported\n$$HOMEPRESET 123\nENDDATA\n")
+
+    app.action_registry.execute("show.import", str(asc_file))
+    assert app.lightshow.title == "Imported"
+    assert app.lightshow.home_preset == pytest.approx(123.0)
+
+    app.history.undo()
+    assert app.lightshow.title == "Saved Title"
+    assert app.lightshow.home_preset == pytest.approx(777.0)

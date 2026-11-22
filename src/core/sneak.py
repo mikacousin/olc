@@ -20,6 +20,7 @@ import time
 import typing
 from dataclasses import dataclass
 
+from olc.actions.device import resolve_home_preset_device_values
 from olc.core.scheduler import ThreadingScheduler, TimerScheduler
 from olc.core.tracking import DEFAULT_PHYSICAL_VALUES, TrackingEngine
 from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType
@@ -368,27 +369,33 @@ class SneakController:
             cue_params = dict(resolved.device_values.get(channel, {}))
 
         emitter_names = {ct.value for ct in COLOR_CHANNEL_TYPES}
+        home_preset_params = resolve_home_preset_device_values(lightshow, channel)
         targets: dict[str, typing.Any] = {}
         home_families: set[str] = set()
+
+        def _find_param_key(p_low: str, mapping: dict[str, typing.Any]) -> str | None:
+            for cand in (p_low, *_PARAM_ALIASES.get(p_low, ())):
+                if cand in mapping:
+                    return cand
+            if p_low in emitter_names:
+                for cand in ("color", "colour"):
+                    if cand in mapping:
+                        return cand
+            return None
 
         for raw_param in sorted(manual_params):
             p_low = str(raw_param).lower()
             if p_low == "intensity":
                 continue
 
-            found_cue_key: str | None = None
-            for cand in (p_low, *_PARAM_ALIASES.get(p_low, ())):
-                if cand in cue_params:
-                    found_cue_key = cand
-                    break
-            if found_cue_key is None and p_low in emitter_names:
-                for cand in ("color", "colour"):
-                    if cand in cue_params:
-                        found_cue_key = cand
-                        break
-
+            found_cue_key = _find_param_key(p_low, cue_params)
             if found_cue_key is not None:
                 targets[found_cue_key] = cue_params[found_cue_key]
+                continue
+
+            found_hp_key = _find_param_key(p_low, home_preset_params)
+            if found_hp_key is not None:
+                targets[found_hp_key] = home_preset_params[found_hp_key]
                 continue
 
             home_families.add(get_parameter_family(p_low))

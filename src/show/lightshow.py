@@ -198,6 +198,8 @@ class LightShow(ShowFile):
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
         if self.app is not None and hasattr(self.app, "effects_engine"):
             self.app.effects_engine.stop_all()
+        self.title = ""
+        self.home_preset = None
         self.fixture_library = populate_builtin_library()
         del self.main_playback.steps[1:]
         self.cues.clear()

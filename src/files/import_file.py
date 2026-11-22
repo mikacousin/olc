@@ -148,6 +148,8 @@ class ImportFile:
 
     def load_all(self) -> None:
         """Load all file"""
+        self.lightshow.title = ""
+        self.lightshow.home_preset = None
         for sequence in self.data.data["sequences"]:
             self.actions["sequences"][sequence] = Action.REPLACE
         self._do_import()

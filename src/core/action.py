@@ -103,6 +103,7 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "sequence.set_tracking_mode": _("Change tracking mode"),
     "show.import": _("Import show"),
     "show.reset_user_levels": _("Reset user levels"),
+    "show.set_home_preset": _("Set Home Preset"),
     "step.update_channel_time": _("Edit channel fade time"),
     "step.update_text": _("Edit step label"),
     "step.update_times": _("Edit step timing"),

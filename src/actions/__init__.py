@@ -206,6 +206,7 @@ from olc.actions.show import (
     ShowOpenAction,
     ShowResetUserLevelsAction,
     ShowSaveAction,
+    ShowSetHomePresetAction,
 )
 
 if typing.TYPE_CHECKING:
@@ -352,6 +353,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         ShowSaveAction,
         ShowExportAsciiAction,
         ShowImportAction,
+        ShowSetHomePresetAction,
         CueClearEditorAction,
         CueSetBlockAction,
         CurveRenameAction,

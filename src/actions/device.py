@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import copy
 import typing
 
 from olc.core.action import Action
@@ -726,6 +727,45 @@ class DeviceAdjustParameterAction(Action):
         }
 
 
+def resolve_home_preset_device_values(
+    lightshow: typing.Any,  # noqa: ANN401
+    channel: int,
+) -> dict[str, typing.Any]:
+    """Resolve Home Preset device parameter overrides for *channel*."""
+    hp_num = getattr(lightshow, "home_preset", None)
+    palettes = getattr(lightshow, "palettes", None)
+    if hp_num is None or palettes is None:
+        return {}
+
+    home_pal = palettes.get(PaletteCategory.PRESET, hp_num)
+    if home_pal is None:
+        return {}
+
+    resolved: dict[str, typing.Any] = {
+        str(k): copy.deepcopy(v)
+        for k, v in home_pal.device_values.get(channel, {}).items()
+    }
+    palette_refs = getattr(home_pal, "palette_refs", None)
+    if palette_refs and channel in palette_refs:
+        for param_name, (ref_cat, ref_num) in palette_refs[channel].items():
+            try:
+                src_pal = palettes.get(ref_cat, ref_num)
+            except (KeyError, ValueError):
+                src_pal = None
+            if src_pal is None or channel not in src_pal.device_values:
+                continue
+            src_vals = src_pal.device_values[channel]
+            if param_name == "*":
+                for k, v in src_vals.items():
+                    key_str = str(k)
+                    if key_str not in resolved:
+                        resolved[key_str] = copy.deepcopy(v)
+            elif param_name in src_vals:
+                resolved[str(param_name)] = copy.deepcopy(src_vals[param_name])
+
+    return {k: v for k, v in resolved.items() if str(k).lower() != "intensity"}
+
+
 def _filter_home_preset_params(
     params: dict[str, typing.Any], category: str | None
 ) -> dict[str, typing.Any]:
@@ -790,13 +830,6 @@ class DeviceHomeAction(Action):
         self._old_live_states = {}
         self._new_live_states = {}
         live_state = getattr(self.app, "live_state", None)
-        hp_num = getattr(self.app.lightshow, "home_preset", None)
-        palettes = getattr(self.app.lightshow, "palettes", None)
-        home_pal = (
-            palettes.get(PaletteCategory.PRESET, hp_num)
-            if hp_num is not None and palettes is not None
-            else None
-        )
 
         for ch in targets:
             dev = patch.devices.get(ch)
@@ -807,10 +840,9 @@ class DeviceHomeAction(Action):
             self.old_states[ch] = {c.address: c.value for c in dev.channels}
             self.old_intensities[ch] = dev.intensity
             dev.home(self.category)
-            if home_pal is not None and ch in home_pal.device_values:
-                filtered = _filter_home_preset_params(
-                    home_pal.device_values[ch], self.category
-                )
+            hp_vals = resolve_home_preset_device_values(self.app.lightshow, ch)
+            if hp_vals:
+                filtered = _filter_home_preset_params(hp_vals, self.category)
                 if filtered:
                     dev.apply_device_values(filtered)
             self.new_states[ch] = {c.address: c.value for c in dev.channels}

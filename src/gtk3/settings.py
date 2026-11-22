@@ -139,6 +139,26 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         else:
             widget6.set_value(80.0)
 
+        adjustment_home = Gtk.Adjustment(
+            value=0.0,
+            lower=0.0,
+            upper=9999.0,
+            step_increment=1.0,
+            page_increment=10.0,
+            page_size=0,
+        )
+        self.spin_home_preset = typing.cast(
+            Gtk.SpinButton | None, builder.get_object("spin_home_preset")
+        )
+        if self.spin_home_preset is not None:
+            self.spin_home_preset.set_adjustment(adjustment_home)
+            core = getattr(self.app, "core", None)
+            lightshow = getattr(core, "lightshow", None) if core is not None else None
+            hp = getattr(lightshow, "home_preset", None)
+            self.spin_home_preset.set_value(
+                float(hp) if hp is not None and hp > 0.0 else 0.0
+            )
+
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         self.switch_osc.set_state(self.settings.get_boolean("osc"))
@@ -368,9 +388,14 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 )
 
     def refresh(self) -> None:
-        """Refresh MIDI ports"""
-        self.liststore_midi.clear()
-        self._populate_midi_ports()
+        """Refresh MIDI ports and show-scoped settings"""
+        if hasattr(self, "liststore_midi"):
+            self.liststore_midi.clear()
+            self._populate_midi_ports()
+        core = getattr(self.app, "core", None)
+        lightshow = getattr(core, "lightshow", None) if core is not None else None
+        hp = getattr(lightshow, "home_preset", None)
+        self.update_home_preset_ui(hp)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
@@ -542,6 +567,20 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         schema = getattr(self.settings.props, "settings_schema", None)
         if schema is None or schema.has_key("channel-check-level"):
             self.settings.set_value("channel-check-level", GLib.Variant("d", level))
+
+    def _on_change_home_preset(self, widget: Gtk.SpinButton) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
+        val = round(widget.get_value(), 1)
+        target: float | None = val if val > 0.0 else None
+        core = getattr(self.app, "core", None)
+        if core is not None and hasattr(core, "action_registry"):
+            lightshow = getattr(core, "lightshow", None)
+            current = getattr(lightshow, "home_preset", None)
+            if current != target:
+                core.action_registry.execute(
+                    "show.set_home_preset", preset_number=target
+                )
 
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)
@@ -788,6 +827,21 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             ):
                 if self.spin_default_time.get_value() != default_time:
                     self.spin_default_time.set_value(default_time)
+        finally:
+            self._updating_settings = False
+
+    def update_home_preset_ui(self, preset_number: float | None) -> None:
+        """Update Home Preset spin button from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            if hasattr(self, "spin_home_preset") and self.spin_home_preset is not None:
+                target_val = (
+                    float(preset_number)
+                    if preset_number is not None and preset_number > 0.0
+                    else 0.0
+                )
+                if abs(self.spin_home_preset.get_value() - target_val) > 1e-6:
+                    self.spin_home_preset.set_value(target_val)
         finally:
             self._updating_settings = False
 

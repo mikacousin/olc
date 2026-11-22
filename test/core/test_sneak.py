@@ -26,8 +26,10 @@ from olc.actions import register_all_actions
 from olc.core.app import CoreApplication
 from olc.core.parser.executor import CommandExecutor
 from olc.core.parser.parser import CommandParser
+from olc.devices import create_moving_head_definition
 from olc.dmx import Dmx
 from olc.show.cue import Cue
+from olc.show.palette import Palette, PaletteCategory
 from olc.show.step import Step
 
 
@@ -334,3 +336,53 @@ def test_channel_sneak_emits_channels_updated() -> None:
 
     executor.execute(parser.parse("1 SNEAK TIME 0"))
     assert [1] in events
+
+
+def test_device_sneak_returns_to_home_preset_without_cue() -> None:
+    """Verify device Sneak (immediate and timed) returns to lightshow.home_preset."""
+    app, _dmx = _create_test_app()
+    fix_def = create_moving_head_definition()
+    app.lightshow.patch.patch_device(1, fix_def, 1, 1)
+    dev = app.lightshow.patch.devices[1]
+
+    app.lightshow.palettes.add(
+        Palette(
+            PaletteCategory.PRESET,
+            999.0,
+            device_values={1: {"pan": 30.0, "tilt": -15.0, "intensity": 1.0}},
+        )
+    )
+    app.lightshow.home_preset = 999.0
+
+    # 1. Timed Sneak 1.0s back to Home Preset
+    app.action_registry.execute(
+        "device.set_pan_tilt", pan=90.0, tilt=25.0, channels=[1]
+    )
+    assert app.live_state.is_param_manual(1, "pan") is True
+
+    affected = app.sneak_controller.sneak_channels([1], duration=1.0)
+    assert affected == [1]
+    assert 1 in app.sneak_controller._device_fades
+    fade = app.sneak_controller._device_fades[1]
+    fade.start_time = 0.0
+
+    with patch("time.monotonic", return_value=0.5):
+        cont = app.sneak_controller._on_tick()
+        assert cont is True
+        assert dev.pan_degrees == pytest.approx(60.0, abs=2.5)
+        assert dev.tilt_degrees == pytest.approx(5.0, abs=2.5)
+
+    with patch("time.monotonic", return_value=1.0):
+        cont = app.sneak_controller._on_tick()
+        assert cont is False
+        assert dev.pan_degrees == pytest.approx(30.0, abs=2.5)
+        assert dev.tilt_degrees == pytest.approx(-15.0, abs=2.5)
+        assert app.live_state.get_manual_params(1) == set()
+
+    # 2. Immediate Sneak 0 back to Home Preset
+    app.action_registry.execute(
+        "device.set_pan_tilt", pan=-60.0, tilt=30.0, channels=[1]
+    )
+    app.sneak_controller.sneak_channels([1], duration=0.0)
+    assert dev.pan_degrees == pytest.approx(30.0, abs=2.5)
+    assert dev.tilt_degrees == pytest.approx(-15.0, abs=2.5)

@@ -20,6 +20,7 @@ import copy
 import os
 import pathlib
 import typing
+from gettext import gettext as _
 
 from olc.core.action import Action
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
@@ -117,6 +118,8 @@ class ShowNewAction(Action):
         lightshow.file = None
         lightshow.file_path = None
         lightshow.basename = ""
+        lightshow.title = ""
+        lightshow.home_preset = None
         lightshow.set_not_modified()
 
         # Reset workspace state to default
@@ -128,6 +131,7 @@ class ShowNewAction(Action):
         self.app.history.clear()
 
         # Emit event
+        self.app.emit("show.home_preset_changed", None)
         self.app.emit("show.new")
 
 
@@ -219,6 +223,8 @@ class ShowOpenAction(Action):
         lightshow.file = file_path_obj
         lightshow.file_path = path
         lightshow.basename = os.path.basename(path)
+        lightshow.title = ""
+        lightshow.home_preset = None
 
         imported = ImportFile(
             lightshow,
@@ -615,7 +621,9 @@ class ShowImportAction(Action):
                     faders_data[(page, idx)] = (ftype, contents_id, fader.level)
         snapshot["faders"] = faders_data
 
-        # 9. Modified state
+        # 9. Show metadata and modified state
+        snapshot["title"] = getattr(lightshow, "title", "")
+        snapshot["home_preset"] = getattr(lightshow, "home_preset", None)
         snapshot["modified"] = bool(lightshow.modified)
 
         return snapshot
@@ -731,6 +739,8 @@ class ShowImportAction(Action):
         cues_map = self._restore_groups_and_cues(self._snapshot, lightshow)
         self._restore_playbacks(self._snapshot, lightshow, cues_map)
         self._restore_independents_and_faders(self._snapshot, lightshow)
+        lightshow.title = self._snapshot.get("title", "")
+        lightshow.home_preset = self._snapshot.get("home_preset", None)
 
         # Restore modified state
         if self._snapshot["modified"]:
@@ -745,3 +755,65 @@ class ShowImportAction(Action):
 
         # Emit imported event to trigger GUI refresh
         self.app.emit("show.imported", self.file_path, self.options)
+
+
+class ShowSetHomePresetAction(Action):
+    """Action to configure the show's Home Preset number with Undo/Redo."""
+
+    name = "show.set_home_preset"
+    history_label = _("Set Home Preset")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.preset_number: float | None = None
+        self.old_home_preset: float | None = None
+        self.old_modified: bool = False
+
+    def configure(self, preset_number: float | None = None) -> None:
+        """Configure target Home Preset number, or None / <= 0 to clear."""
+        if preset_number is None or float(preset_number) <= 0.0:
+            self.preset_number = None
+        else:
+            self.preset_number = round(float(preset_number), 4)
+
+    def get_history_details(self) -> str:
+        """Return formatted Home Preset number or None label for history."""
+        if self.preset_number is None:
+            return _("None")
+        if self.preset_number.is_integer():
+            return str(int(self.preset_number))
+        return str(self.preset_number)
+
+    def execute(self) -> None:
+        """Update lightshow.home_preset and notify listeners."""
+        lightshow = self.app.lightshow
+        self.old_home_preset = getattr(lightshow, "home_preset", None)
+        self.old_modified = bool(getattr(lightshow, "modified", False))
+        if self.old_home_preset == self.preset_number:
+            self.can_undo = False
+            return
+        lightshow.home_preset = self.preset_number
+        lightshow.set_modified()
+        self.app.emit("show.home_preset_changed", self.preset_number)
+
+    def undo(self) -> None:
+        """Restore previous Home Preset number."""
+        lightshow = self.app.lightshow
+        lightshow.home_preset = self.old_home_preset
+        if self.old_modified:
+            lightshow.set_modified()
+        else:
+            lightshow.set_not_modified()
+        self.app.emit("show.home_preset_changed", self.old_home_preset)
+
+    def redo(self) -> None:
+        """Re-apply new Home Preset number."""
+        lightshow = self.app.lightshow
+        lightshow.home_preset = self.preset_number
+        lightshow.set_modified()
+        self.app.emit("show.home_preset_changed", self.preset_number)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return Home Preset state metadata."""
+        return {"home_preset": self.preset_number}

@@ -170,6 +170,10 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             ),
         )
         self.app.core.subscribe(
+            "show.home_preset_changed",
+            lambda preset_num: self._run_idle(self._on_home_preset_changed, preset_num),
+        )
+        self.app.core.subscribe(
             "gui.channels_format_requested",
             lambda fmt=None: self._run_idle(self._on_channels_format_requested, fmt),
         )
@@ -638,6 +642,21 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             if hasattr(settings_tab, "update_default_time_ui"):
                 settings_tab.update_default_time_ui(default_time)
+        return False
+
+    def _on_home_preset_changed(self, preset_number: float | None) -> bool:
+        """Handle show Home Preset change event.
+
+        Args:
+            preset_number: Target Home Preset number, or None if cleared.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_home_preset_ui"):
+                settings_tab.update_home_preset_ui(preset_number)
         return False
 
     def _on_main_fader_changed(self) -> bool:

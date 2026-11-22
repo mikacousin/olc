@@ -356,6 +356,15 @@ msgstr "Temps de transfert par défaut"
 msgid "Default Go Back time"
 msgstr "Temps de Go Back par défaut"
 
+msgid "Home Preset (0 = None)"
+msgstr "Preset Home (0 = Aucun)"
+
+msgid "Set Home Preset"
+msgstr "Définir le Preset Home"
+
+msgid "None"
+msgstr "Aucun"
+
 msgid "Appearance"
 msgstr "Apparance"
 

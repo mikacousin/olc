@@ -21,8 +21,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.actions import register_all_actions
+from olc.actions.device import resolve_home_preset_device_values
 from olc.core.app import CoreApplication
 from olc.devices import create_moving_head_definition
+from olc.show.palette import Palette, PaletteCategory
 
 
 @pytest.fixture
@@ -119,3 +121,51 @@ def test_device_locate_action(test_app: CoreApplication) -> None:
     test_app.history.redo()
     assert dev.intensity == 1.0
     assert dev.pan_degrees == pytest.approx(0.0, abs=0.1)
+
+
+def test_device_home_resolves_home_preset_palette_refs(
+    test_app: CoreApplication,
+) -> None:
+    """Test device.home resolves Home Preset palette_refs and strips intensity."""
+    dev = test_app.lightshow.patch.devices[1]
+    test_app.lightshow.palettes.add(
+        Palette(
+            PaletteCategory.FOCUS,
+            1.0,
+            device_values={1: {"pan": 30.0, "tilt": -15.0}},
+        )
+    )
+    test_app.lightshow.palettes.add(
+        Palette(
+            PaletteCategory.BEAM,
+            2.0,
+            device_values={1: {"zoom": 16.0, "intensity": 0.2}},
+        )
+    )
+    test_app.lightshow.palettes.add(
+        Palette(
+            PaletteCategory.PRESET,
+            999.0,
+            device_values={1: {"intensity": 0.9}},
+            palette_refs={
+                1: {"pan": ("focus", 1.0), "tilt": ("focus", 1.0), "*": ("beam", 2.0)}
+            },
+        )
+    )
+    test_app.lightshow.home_preset = 999.0
+
+    resolved = resolve_home_preset_device_values(test_app.lightshow, 1)
+    assert "intensity" not in resolved
+    assert resolved["pan"] == pytest.approx(30.0)
+    assert resolved["tilt"] == pytest.approx(-15.0)
+    assert resolved["zoom"] == pytest.approx(16.0)
+
+    dev.set_intensity(0.6)
+    dev.set_position_degrees(-80.0, 40.0)
+    dev.set_zoom_degrees(40.0)
+
+    test_app.action_registry.execute("device.home", channels=[1])
+    assert dev.intensity == 0.6
+    assert dev.pan_degrees == pytest.approx(30.0, abs=1.0)
+    assert dev.tilt_degrees == pytest.approx(-15.0, abs=1.0)
+    assert dev.zoom_degrees == pytest.approx(16.0, abs=0.5)
