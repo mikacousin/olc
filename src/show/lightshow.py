@@ -212,7 +212,7 @@ class LightShow(ShowFile):
         self.effects.clear()
         self.groups.clear()
         self.palettes.clear()
-        self.fader_bank.reset_faders()
+        self.fader_bank.reset_faders(reset_page_count=True)
         self.independents = Independents(lightshow_type)
         self.patch.patch_empty()
         self.universe_map = default_universe_map()

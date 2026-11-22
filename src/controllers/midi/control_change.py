@@ -56,8 +56,12 @@ class MidiControlChanges:
             "effect_rate": [0, -1],
             "effect_size": [0, -1],
         }
-        for i in range(1, 101):
-            self.control_change[f"fader_{i}"] = [0, -1]
+        self.ensure_fader_pages(10)
+
+    def ensure_fader_pages(self, max_pages: int) -> None:
+        """Ensure CC slots exist up to *max_pages* pages of faders."""
+        for i in range(1, max(1, int(max_pages)) * 10 + 1):
+            self.control_change.setdefault(f"fader_{i}", [0, -1])
 
     def _get_strv(self, key: str) -> list[str]:
         """Read a list-of-strings preference from the application settings.

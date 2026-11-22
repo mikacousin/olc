@@ -17,9 +17,10 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from olc.core.action import Action
-from olc.define import MAX_FADER_PAGE
+from olc.define import MAX_ALLOWED_FADER_PAGES, MAX_FADER_PAGE
 from olc.show.fader import FaderEffect, FaderType
 
 if typing.TYPE_CHECKING:
@@ -346,11 +347,12 @@ class FaderSetPageAction(Action):
     def execute(self) -> None:
         """Apply the active page to the fader bank and emit event."""
         fader_bank = self.app.lightshow.fader_bank
+        max_page = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
 
         target_page = self.page
         if target_page < 1:
-            target_page = MAX_FADER_PAGE
-        elif target_page > MAX_FADER_PAGE:
+            target_page = max_page
+        elif target_page > max_page:
             target_page = 1
 
         if fader_bank.active_page != target_page:
@@ -402,3 +404,135 @@ class FaderFlashAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Return the feedback state for this action."""
         return {"active": self.pressed, "index": self.index}
+
+
+def _snapshot_fader(
+    app: CoreApplication, page: int, index: int
+) -> dict[str, typing.Any]:
+    """Capture complete configuration and level of fader at *(page, index)*."""
+    fader_bank = app.lightshow.fader_bank
+    fader_type = fader_bank.get_fader_type(page, index)
+    fader = fader_bank.faders[page][index]
+    if fader_type == FaderType.CHANNELS:
+        raw_ch = getattr(fader, "channels_dict", None) or getattr(
+            fader, "contents", None
+        )
+        contents: typing.Any = dict(raw_ch) if isinstance(raw_ch, dict) else {}
+    else:
+        contents = _get_fader_contents_number(app, page, index)
+    return {
+        "fader_type": fader_type,
+        "contents": contents,
+        "level": float(getattr(fader, "level", 0.0)),
+        "text": str(getattr(fader, "text", "")),
+        "exempt_grand_master": bool(getattr(fader, "exempt_grand_master", False)),
+        "intensity_master": bool(getattr(fader, "intensity_master", False)),
+        "control_mode": str(getattr(fader, "control_mode", "size")),
+        "effect_channels": list(getattr(fader, "effect_channels", [])),
+        "base_channels": dict(getattr(fader, "base_channels", {})),
+    }
+
+
+def _restore_fader(
+    app: CoreApplication,
+    page: int,
+    index: int,
+    snap: dict[str, typing.Any],
+) -> None:
+    """Restore a fader at *(page, index)* from *snap*."""
+    fader_bank = app.lightshow.fader_bank
+    fader_bank.set_fader(page, index, snap["fader_type"], snap["contents"])
+    restored = fader_bank.faders[page][index]
+    if snap["exempt_grand_master"]:
+        restored.exempt_grand_master = True
+    if snap["intensity_master"] and hasattr(restored, "intensity_master"):
+        restored.intensity_master = True
+    if isinstance(restored, FaderEffect):
+        restored.set_control_mode(snap["control_mode"])
+        restored.set_effect_channels(snap["effect_channels"])
+        if snap["base_channels"]:
+            restored.set_base_channels(snap["base_channels"])
+    if snap["text"] and not restored.text:
+        restored.text = snap["text"]
+    if snap["level"] > 0.0 and not snap["fader_type"] == FaderType.MAIN:
+        restored.set_level(float(snap["level"]))
+
+
+class FaderSetPageCountAction(Action):
+    """Action to resize total available fader pages at runtime with Undo/Redo."""
+
+    name = "fader.set_page_count"
+    history_label = _("Set fader pages")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.page_count: int = MAX_FADER_PAGE
+        self.old_page_count: int = MAX_FADER_PAGE
+        self.old_active_page: int = 1
+        self.old_modified: bool = False
+        self._removed_faders: dict[tuple[int, int], dict[str, typing.Any]] = {}
+
+    def configure(self, page_count: int) -> None:
+        """Configure target total number of fader pages (1..100)."""
+        self.page_count = max(1, min(MAX_ALLOWED_FADER_PAGES, int(page_count)))
+
+    def get_history_details(self) -> str:
+        """Return target page count string for history panel."""
+        return str(self.page_count)
+
+    def execute(self) -> None:
+        """Resize fader bank pages and snapshot removed non-empty faders."""
+        fader_bank = self.app.lightshow.fader_bank
+        self.old_page_count = fader_bank.max_fader_page
+        self.old_active_page = fader_bank.active_page
+        self.old_modified = bool(self.app.lightshow.modified)
+        if self.page_count == self.old_page_count:
+            self.can_undo = False
+            return
+
+        self._removed_faders = {}
+        if self.page_count < self.old_page_count:
+            for p in range(self.page_count + 1, self.old_page_count + 1):
+                for idx in range(1, fader_bank.max_fader_per_page + 1):
+                    if fader_bank.get_fader_type(p, idx) != FaderType.NONE:
+                        self._removed_faders[(p, idx)] = _snapshot_fader(
+                            self.app, p, idx
+                        )
+
+        page_clamped = fader_bank.set_max_pages(self.page_count)
+        self.app.lightshow.set_modified()
+        if page_clamped:
+            self.app.emit("fader.page_changed", fader_bank.active_page)
+        self.app.emit("fader.page_count_changed", self.page_count)
+
+    def undo(self) -> None:
+        """Restore previous fader page count and any removed faders."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.set_max_pages(self.old_page_count)
+        for (p, idx), snap in self._removed_faders.items():
+            _restore_fader(self.app, p, idx, snap)
+
+        page_changed = fader_bank.active_page != self.old_active_page
+        fader_bank.active_page = self.old_active_page
+        if self.old_modified:
+            self.app.lightshow.set_modified()
+        else:
+            self.app.lightshow.set_not_modified()
+
+        if page_changed:
+            self.app.emit("fader.page_changed", fader_bank.active_page)
+        self.app.emit("fader.page_count_changed", self.old_page_count)
+
+    def redo(self) -> None:
+        """Re-apply target fader page count."""
+        fader_bank = self.app.lightshow.fader_bank
+        page_clamped = fader_bank.set_max_pages(self.page_count)
+        self.app.lightshow.set_modified()
+        if page_clamped:
+            self.app.emit("fader.page_changed", fader_bank.active_page)
+        self.app.emit("fader.page_count_changed", self.page_count)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return page count feedback state metadata."""
+        return {"page_count": self.page_count}

@@ -894,7 +894,9 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
 
     pal5 = Palette(PaletteCategory.PRESET, 5.0, text="Gradin", channels={20: 1.0})
     ls.palettes.add(pal5)
+    ls.fader_bank.set_max_pages(15)
     ls.fader_bank.set_fader(1, 1, FaderType.PRESET, 5.0)
+    ls.fader_bank.set_fader(15, 3, FaderType.PRESET, 5.0)
     fader = ls.fader_bank.faders[1][1]
     assert isinstance(fader, FaderPreset)
     fader.exempt_grand_master = True
@@ -939,3 +941,5 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
     assert isinstance(r_fader, FaderPreset)
     assert r_fader.exempt_grand_master is True
     assert r_fader.intensity_master is True
+    assert ls2.fader_bank.max_fader_page == 15
+    assert ls2.fader_bank.get_fader_type(15, 3) == FaderType.PRESET

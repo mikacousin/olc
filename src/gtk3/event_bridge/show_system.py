@@ -174,6 +174,12 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             lambda preset_num: self._run_idle(self._on_home_preset_changed, preset_num),
         )
         self.app.core.subscribe(
+            "fader.page_count_changed",
+            lambda page_count: self._run_idle(
+                self._on_fader_page_count_changed, page_count
+            ),
+        )
+        self.app.core.subscribe(
             "gui.channels_format_requested",
             lambda fmt=None: self._run_idle(self._on_channels_format_requested, fmt),
         )
@@ -657,6 +663,21 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             if hasattr(settings_tab, "update_home_preset_ui"):
                 settings_tab.update_home_preset_ui(preset_number)
+        return False
+
+    def _on_fader_page_count_changed(self, page_count: int) -> bool:
+        """Handle fader page count change event.
+
+        Args:
+            page_count: New maximum number of fader pages.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_fader_pages_ui"):
+                settings_tab.update_fader_pages_ui(page_count)
         return False
 
     def _on_main_fader_changed(self) -> bool:

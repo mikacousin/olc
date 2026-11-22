@@ -37,9 +37,13 @@ class MidiPitchWheel:
             "crossfade_out": -1,
             "crossfade_in": -1,
         }
-        for i in range(10):
+        self.ensure_fader_pages(10)
+
+    def ensure_fader_pages(self, max_pages: int) -> None:
+        """Ensure PitchWheel slots exist up to *max_pages* pages of faders."""
+        for i in range(max(1, int(max_pages))):
             for j in range(9):
-                self.pitchwheel[f"fader_{j + i * 10 + 1}"] = j
+                self.pitchwheel.setdefault(f"fader_{j + i * 10 + 1}", j)
 
     def reset(self) -> None:
         """Remove all MIDI pitchwheel"""

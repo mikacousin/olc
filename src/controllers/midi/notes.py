@@ -166,19 +166,29 @@ class MidiNotes:
         }
         for i in range(10):
             self.notes[f"number_{i}"] = [0, -1]
-        for i in range(10):
-            for j in range(10):
-                if j < 8:
-                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, 24 + j]
-                elif j == 8:
-                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, 84]
-                else:
-                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, -1]
-                if j < 8:
-                    self.notes[f"fader_{j + i * 10 + 1}"] = [0, 104 + j]
-                else:
-                    self.notes[f"fader_{j + i * 10 + 1}"] = [0, -1]
         self.cc_notes = {action: [0, -1] for action in self.notes}
+        self.ensure_fader_pages(MAX_FADER_PAGE)
+
+    def ensure_fader_pages(self, max_pages: int) -> None:
+        """Ensure note and CC-note slots exist up to *max_pages* pages of faders."""
+        for i in range(max(1, int(max_pages))):
+            for j in range(10):
+                flash_key = f"flash_{j + i * 10 + 1}"
+                if flash_key not in self.notes:
+                    if j < 8:
+                        self.notes[flash_key] = [0, 24 + j]
+                    elif j == 8:
+                        self.notes[flash_key] = [0, 84]
+                    else:
+                        self.notes[flash_key] = [0, -1]
+                    self.cc_notes.setdefault(flash_key, [0, -1])
+                fader_key = f"fader_{j + i * 10 + 1}"
+                if fader_key not in self.notes:
+                    if j < 8:
+                        self.notes[fader_key] = [0, 104 + j]
+                    else:
+                        self.notes[fader_key] = [0, -1]
+                    self.cc_notes.setdefault(fader_key, [0, -1])
 
     def reset(self) -> None:
         """Remove all MIDI note"""
@@ -592,7 +602,8 @@ class MidiNotes:
             if self.app is not None and hasattr(self.app, "action_registry"):
                 self.app.action_registry.execute("fader.set_page", target_page)
             else:
-                if target_page > MAX_FADER_PAGE:
+                max_page = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
+                if target_page > max_page:
                     target_page = 1
                 fader_bank.active_page = target_page
                 self.midi.update_faders()
@@ -609,8 +620,9 @@ class MidiNotes:
             if self.app is not None and hasattr(self.app, "action_registry"):
                 self.app.action_registry.execute("fader.set_page", target_page)
             else:
+                max_page = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
                 if target_page < 1:
-                    target_page = MAX_FADER_PAGE
+                    target_page = max_page
                 fader_bank.active_page = target_page
                 self.midi.update_faders()
 

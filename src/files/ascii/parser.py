@@ -21,8 +21,8 @@ import typing
 from enum import Enum, auto
 
 from olc.define import (
+    MAX_ALLOWED_FADER_PAGES,
     MAX_CHANNELS,
-    MAX_FADER_PAGE,
     MAX_FADER_PER_PAGE,
     NB_UNIVERSES,
     UNIVERSES,
@@ -1477,7 +1477,7 @@ class AsciiParser(ReadFile):
             self.state = State.NO_PRIMARY
             return
         fader_num = int(self.args[0])
-        max_faders = MAX_FADER_PAGE * MAX_FADER_PER_PAGE
+        max_faders = MAX_ALLOWED_FADER_PAGES * MAX_FADER_PER_PAGE
         if not 1 <= fader_num <= max_faders:
             LOGGER.debug(
                 "Ignoring Eos $FaderDef %d outside OLC fader range 1..%d",

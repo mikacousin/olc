@@ -34,6 +34,10 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
             lambda page: self._run_idle(self._on_fader_page_changed, page),
         )
         self.app.core.subscribe(
+            "fader.page_count_changed",
+            lambda count: self._run_idle(self._on_fader_page_count_changed, count),
+        )
+        self.app.core.subscribe(
             "fader.level_changed",
             lambda fader_index, level: self._run_idle(
                 self._on_fader_level_changed, fader_index, level
@@ -69,6 +73,20 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
         """
         if self.app.virtual_console:
             self.app.virtual_console.update_page_display()
+        return False
+
+    def _on_fader_page_count_changed(self, _count: int) -> bool:
+        """Refresh FaderTab when total available fader pages change.
+
+        Args:
+            _count: Updated total fader page count.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
+            fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
+            fader_tab.refresh()
         return False
 
     def _on_fader_level_changed(self, fader_index: int, level: float) -> bool:

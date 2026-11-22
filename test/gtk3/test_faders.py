@@ -25,7 +25,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
-from olc.gtk3.fader import FaderEdit, FaderTab  # noqa: E402
+from olc.gtk3.fader import FaderTab  # noqa: E402
 from olc.show.fader_bank import FaderType  # noqa: E402
 from olc.show.palette import Palette, PaletteCategory  # noqa: E402
 
@@ -45,25 +45,7 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
     assert isinstance(fader_tab, FaderTab)
 
     # 2. Get first fader (page 1, index 1)
-    fader_edit = None
-    for child in fader_tab.stack.get_children():
-        if not isinstance(child, Gtk.Container):
-            continue
-        for hbox in child.get_children():
-            if not isinstance(hbox, Gtk.Container):
-                continue
-            for widget in hbox.get_children():
-                if (
-                    isinstance(widget, FaderEdit)
-                    and widget.page == 1
-                    and widget.index == 1
-                ):
-                    fader_edit = widget
-                    break
-            if fader_edit:
-                break
-        if fader_edit:
-            break
+    fader_edit = fader_tab.fader_widgets.get((1, 1))
 
     assert fader_edit is not None, "FaderEdit for page 1, index 1 not found"
     assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
@@ -431,3 +413,58 @@ def test_fader_tab_effect_assignment_and_virtual_console_effect_key(
     app_gui.core.action_registry.execute("commandline.clear")
     vc.close()
     process_events()
+
+
+def test_fader_tab_page_selector_and_hot_resize(app_gui: Application) -> None:
+    """Test FaderTab Page -/SpinButton/Page + selector and hot page resize."""
+    app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app_gui.core.history.clear()
+
+    try:
+        app_gui.activate_action("faders", None)
+        process_events()
+
+        assert app_gui.tabs is not None
+        fader_tab = app_gui.tabs.tabs.get("faders")
+        assert isinstance(fader_tab, FaderTab)
+
+        # On-demand instantiation: only Page 1 widgets exist initially
+        assert fader_tab.current_page == 1
+        assert len(fader_tab.fader_widgets) == 10
+        assert set(fader_tab.fader_widgets.keys()) == {(1, i) for i in range(1, 11)}
+
+        # Page + increments to page 2
+        fader_tab.btn_page_next.clicked()
+        process_events()
+        assert fader_tab.current_page == 2
+        assert fader_tab.spin_page.get_value_as_int() == 2
+        assert set(fader_tab.fader_widgets.keys()) == {(2, i) for i in range(1, 11)}
+
+        # Page - wraps cleanly from 2 -> 1 -> 10
+        fader_tab.btn_page_prev.clicked()
+        process_events()
+        assert fader_tab.current_page == 1
+        fader_tab.btn_page_prev.clicked()
+        process_events()
+        assert fader_tab.current_page == 10
+        assert set(fader_tab.fader_widgets.keys()) == {(10, i) for i in range(1, 11)}
+
+        # Hot-increase to 15 pages and navigate via SpinButton to page 14
+        app_gui.core.action_registry.execute("fader.set_page_count", page_count=15)
+        process_events()
+        assert fader_tab.label_total_pages.get_text() == "/ 15"
+        fader_tab.spin_page.set_value(14.0)
+        process_events()
+        assert fader_tab.current_page == 14
+        assert (14, 1) in fader_tab.fader_widgets
+
+        # Hot-decrease to 5 pages clamps current_page cleanly to 5
+        app_gui.core.action_registry.execute("fader.set_page_count", page_count=5)
+        process_events()
+        assert fader_tab.current_page == 5
+        assert fader_tab.spin_page.get_value_as_int() == 5
+        assert fader_tab.label_total_pages.get_text() == "/ 5"
+        assert set(fader_tab.fader_widgets.keys()) == {(5, i) for i in range(1, 11)}
+    finally:
+        app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app_gui.core.history.clear()

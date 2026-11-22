@@ -150,6 +150,8 @@ class ImportFile:
         """Load all file"""
         self.lightshow.title = ""
         self.lightshow.home_preset = None
+        if hasattr(self.lightshow, "fader_bank"):
+            self.lightshow.fader_bank.reset_faders(reset_page_count=True)
         for sequence in self.data.data["sequences"]:
             self.actions["sequences"][sequence] = Action.REPLACE
         self._do_import()

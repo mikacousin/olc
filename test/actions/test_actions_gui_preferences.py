@@ -167,6 +167,10 @@ def test_event_bridge_preferences_routing(monkeypatch: pytest.MonkeyPatch) -> No
     core.emit("show.home_preset_changed", 999.0)
     mock_settings_tab.update_home_preset_ui.assert_called_once_with(999.0)
 
+    # 4. Fader page count changed event
+    core.emit("fader.page_count_changed", 15)
+    mock_settings_tab.update_fader_pages_ui.assert_called_once_with(15)
+
 
 def test_settings_tab_update_percent_and_default_time() -> None:
     """Test SettingsTab programmatic updates for percentage switch and default time."""
@@ -213,3 +217,63 @@ def test_settings_tab_update_percent_and_default_time() -> None:
     tab.spin_home_preset.get_value.return_value = 42.0
     tab.refresh()
     tab.spin_home_preset.set_value.assert_called_with(777.0)
+
+
+def test_fader_pages_setting_warning_and_undo_redo() -> None:
+    """Test hot fader page count setting, reduction warning cancel/ok, and Undo."""
+    # pylint: disable=protected-access
+    from olc.show.fader import FaderType
+    from olc.show.palette import Palette, PaletteCategory
+
+    core = CoreApplication(MagicMock())
+    fb = core.lightshow.fader_bank
+    assert fb.max_fader_page == 10
+
+    # Configure preset and assign fader on page 8 at level 0.6
+    core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 3.0, "Warm", channels={1: 1.0})
+    )
+    core.action_registry.execute("fader.assign", 8, 2, FaderType.PRESET, 3.0)
+    core.action_registry.execute("fader.set_level", 8, 2, 0.6)
+    core.action_registry.execute("fader.set_page", 8)
+    assert fb.active_page == 8
+    core.history.clear()
+
+    tab = SettingsTab.__new__(SettingsTab)
+    tab._updating_settings = False
+    tab.app = MagicMock()
+    tab.app.core = core
+    tab.spin_fader_pages = MagicMock()
+    tab.spin_fader_pages.get_value_as_int.return_value = 10
+
+    # 1. Cancel warning on reduction (10 -> 5): preserves page count & fader
+    tab._confirm_fader_pages_reduction = MagicMock(return_value=False)  # type: ignore[method-assign]
+    mock_spin = MagicMock()
+    mock_spin.get_value_as_int.return_value = 5
+    tab.spin_fader_pages.get_value_as_int.return_value = 5
+    tab._on_change_fader_pages(mock_spin)
+
+    assert tab._confirm_fader_pages_reduction.called
+    assert fb.max_fader_page == 10
+    assert fb.get_fader_type(8, 2) == FaderType.PRESET
+    tab.spin_fader_pages.set_value.assert_called_with(10.0)
+
+    # 2. Confirm warning on reduction (10 -> 5): drops pages > 5 & clamps active_page
+    tab._confirm_fader_pages_reduction = MagicMock(return_value=True)  # type: ignore[method-assign]
+    tab._on_change_fader_pages(mock_spin)
+
+    assert fb.max_fader_page == 5
+    assert fb.active_page == 5
+    assert 8 not in fb.faders
+
+    # 3. Undo restores page 8, fader (8, 2), level 0.6, and active_page 8
+    core.history.undo()
+    assert fb.max_fader_page == 10
+    assert fb.active_page == 8
+    assert fb.get_fader_type(8, 2) == FaderType.PRESET
+    assert fb.faders[8][2].level == pytest.approx(0.6)
+
+    # 4. Redo drops back to 5 pages
+    core.history.redo()
+    assert fb.max_fader_page == 5
+    assert 8 not in fb.faders

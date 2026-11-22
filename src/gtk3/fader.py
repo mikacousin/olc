@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from gi.repository import Gtk
 
@@ -397,15 +398,51 @@ class FaderTab(Gtk.Box):
         self.settings = settings
         self.fader_bank = self.lightshow.fader_bank
         self.fader_widgets: dict[tuple[int, int], FaderEdit] = {}
+        max_pages = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        self.current_page: int = 1
+        self._updating_page_selector = False
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.stack = Gtk.Stack()
-        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        self._populate_faders()
-        stack_switcher = Gtk.StackSwitcher()
-        stack_switcher.set_stack(self.stack)
-        vbox.pack_start(stack_switcher, False, True, 0)
-        vbox.pack_start(self.stack, True, True, 0)
+
+        nav_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        nav_box.set_halign(Gtk.Align.CENTER)
+        nav_box.set_margin_top(6)
+        nav_box.set_margin_bottom(6)
+
+        self.btn_page_prev = Gtk.Button(label=_("Page -"))
+        self.btn_page_prev.connect("clicked", self._on_page_prev_clicked)
+        nav_box.pack_start(self.btn_page_prev, False, False, 0)
+
+        lbl_page = Gtk.Label(label=_("Page"))
+        nav_box.pack_start(lbl_page, False, False, 0)
+
+        self.page_adjustment = Gtk.Adjustment(
+            value=float(self.current_page),
+            lower=1.0,
+            upper=float(max_pages),
+            step_increment=1.0,
+            page_increment=5.0,
+            page_size=0.0,
+        )
+        self.spin_page = Gtk.SpinButton(
+            adjustment=self.page_adjustment, climb_rate=1.0, digits=0
+        )
+        self.spin_page.set_numeric(True)
+        self.spin_page.connect("value-changed", self._on_spin_page_changed)
+        nav_box.pack_start(self.spin_page, False, False, 0)
+
+        self.label_total_pages = Gtk.Label(label=f"/ {max_pages}")
+        nav_box.pack_start(self.label_total_pages, False, False, 0)
+
+        self.btn_page_next = Gtk.Button(label=_("Page +"))
+        self.btn_page_next.connect("clicked", self._on_page_next_clicked)
+        nav_box.pack_start(self.btn_page_next, False, False, 0)
+
+        self.page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self._populate_active_page()
+
+        vbox.pack_start(nav_box, False, False, 0)
+        vbox.pack_start(self.page_box, True, True, 0)
 
         scrollable = Gtk.ScrolledWindow()
         scrollable.set_vexpand(True)
@@ -414,21 +451,59 @@ class FaderTab(Gtk.Box):
         scrollable.add(vbox)
         self.add(scrollable)
 
+    def _on_page_prev_clicked(self, _btn: Gtk.Button) -> None:
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        target = self.current_page - 1 if self.current_page > 1 else max_p
+        self.set_page(target)
+
+    def _on_page_next_clicked(self, _btn: Gtk.Button) -> None:
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        target = self.current_page + 1 if self.current_page < max_p else 1
+        self.set_page(target)
+
+    def _on_spin_page_changed(self, widget: Gtk.SpinButton) -> None:
+        if self._updating_page_selector:
+            return
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        target = max(1, min(max_p, widget.get_value_as_int()))
+        if target != self.current_page:
+            self.set_page(target)
+
+    def set_page(self, page: int) -> None:
+        """Select a fader page and instantiate its widgets on demand."""
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        target = max(1, min(max_p, int(page)))
+        self.current_page = target
+        self._sync_page_selector_ui()
+        self._populate_active_page()
+
+    def _sync_page_selector_ui(self) -> None:
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        self._updating_page_selector = True
+        try:
+            self.page_adjustment.set_upper(float(max_p))
+            if self.spin_page.get_value_as_int() != self.current_page:
+                self.spin_page.set_value(float(self.current_page))
+            self.label_total_pages.set_text(f"/ {max_p}")
+        finally:
+            self._updating_page_selector = False
+
     def refresh(self) -> None:
-        """Refresh display in-place if structure hasn't changed, else rebuild pages."""
-        current_keys = set(self.fader_widgets.keys())
+        """Refresh active page display or rebuild on page clamp/resize."""
+        max_p = max(1, int(getattr(self.fader_bank, "max_fader_page", 10)))
+        page_clamped = False
+        if self.current_page > max_p:
+            self.current_page = max_p
+            page_clamped = True
+
+        self._sync_page_selector_ui()
         expected_keys = {
-            (page, index)
-            for page, faders in self.fader_bank.faders.items()
-            for index in faders.keys()
+            (self.current_page, index)
+            for index in self.fader_bank.faders.get(self.current_page, {}).keys()
         }
 
-        if current_keys != expected_keys:
-            widgets = self.stack.get_children()
-            for widget in widgets:
-                self.stack.remove(widget)
-            self._populate_faders()
-            self.show_all()
+        if page_clamped or set(self.fader_widgets.keys()) != expected_keys:
+            self._populate_active_page()
         else:
             for widget in self.fader_widgets.values():
                 widget.refresh()
@@ -437,30 +512,32 @@ class FaderTab(Gtk.Box):
         """Close Tab on close clicked"""
         self.tabs.close("faders")
 
-    def _populate_faders(self) -> None:
-        """Add faders to tab"""
+    def _populate_active_page(self) -> None:
+        """Instantiate FaderEdit widgets for the currently selected page only."""
+        for child in list(self.page_box.get_children()):
+            self.page_box.remove(child)
         self.fader_widgets.clear()
-        for page, faders in self.fader_bank.faders.items():
-            vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-            hbox1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            hbox1.set_homogeneous(True)
-            hbox2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            hbox2.set_homogeneous(True)
-            for index in faders.keys():
-                fader_edit = FaderEdit(
-                    page,
-                    index,
-                    lightshow=self.lightshow,
-                    tabs=self.tabs,
-                    window=self.window,
-                    settings=self.settings,
-                )
-                self.fader_widgets[(page, index)] = fader_edit
-                # Display faders on 2 lines
-                if index <= self.fader_bank.max_fader_per_page / 2:
-                    hbox1.add(fader_edit)
-                else:
-                    hbox2.add(fader_edit)
-            vbox.add(hbox1)
-            vbox.add(hbox2)
-            self.stack.add_titled(vbox, str(page), f"Page {page}")
+
+        faders = self.fader_bank.faders.get(self.current_page, {})
+        hbox1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        hbox1.set_homogeneous(True)
+        hbox2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        hbox2.set_homogeneous(True)
+        for index in faders.keys():
+            fader_edit = FaderEdit(
+                self.current_page,
+                index,
+                lightshow=self.lightshow,
+                tabs=self.tabs,
+                window=self.window,
+                settings=self.settings,
+            )
+            self.fader_widgets[(self.current_page, index)] = fader_edit
+            # Display faders on 2 lines
+            if index <= self.fader_bank.max_fader_per_page / 2:
+                hbox1.add(fader_edit)
+            else:
+                hbox2.add(fader_edit)
+        self.page_box.add(hbox1)
+        self.page_box.add(hbox2)
+        self.page_box.show_all()

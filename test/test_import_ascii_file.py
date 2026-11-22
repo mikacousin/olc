@@ -2117,13 +2117,17 @@ $FaderDef 1
    $$Target S 20
 $FaderDef 300
    $$Target S 50
+$FaderDef 1300
+   $$Target S 50
 EndData
 """
     with caplog.at_level(logging.DEBUG, logger="olc.files.ascii.parser"):
         imported = _parse_asc(monkeypatch, tmp_path, asc_content)
     show = imported.lightshow
 
-    assert "Ignoring Eos $FaderDef 300" in caplog.text
+    assert "Ignoring Eos $FaderDef 1300" in caplog.text
+    assert show.fader_bank.max_fader_page == 30
+    assert show.fader_bank.get_fader_type(30, 10) == FaderType.PRESET
 
     # Patch labels and $$Options P / T / S
     dev21 = show.patch.get_device(21)

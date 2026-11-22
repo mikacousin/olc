@@ -365,6 +365,24 @@ msgstr "Définir le Preset Home"
 msgid "None"
 msgstr "Aucun"
 
+msgid "Number of fader pages"
+msgstr "Nombre de pages de faders"
+
+msgid "Set fader pages"
+msgstr "Définir le nombre de pages de faders"
+
+msgid "Reduce Fader Pages?"
+msgstr "Réduire le nombre de pages de faders ?"
+
+msgid "{count} configured fader(s) on page(s) {pages} will be lost if you reduce the number of pages to {target}. Do you want to continue?"
+msgstr "{count} fader(s) configuré(s) sur la/les page(s) {pages} seront perdus si vous réduisez le nombre de pages à {target}. Voulez-vous continuer ?"
+
+msgid "Page -"
+msgstr "Page -"
+
+msgid "Page +"
+msgstr "Page +"
+
 msgid "Appearance"
 msgstr "Apparance"
 

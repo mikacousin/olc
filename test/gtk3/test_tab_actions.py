@@ -187,3 +187,64 @@ def test_settings_tab_home_preset_spin_and_undo_redo(app_gui: Application) -> No
         app.core.lightshow.home_preset = None
         app.core.lightshow.title = ""
         app.core.history.clear()
+
+
+def test_settings_tab_fader_pages_spin_warning_and_undo_redo(
+    app_gui: Application, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test SettingsTab spin_fader_pages hot update, reduction warning, and Undo."""
+    from olc.show.fader import FaderType
+
+    app = app_gui
+    app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app.core.history.clear()
+
+    try:
+        app.core.action_registry.execute("gui.tab_open", "settings")
+        process_events()
+
+        assert app.tabs is not None
+        settings_tab = typing.cast(SettingsTab, app.tabs.tabs["settings"])
+        assert settings_tab.spin_fader_pages is not None
+        assert settings_tab.spin_fader_pages.get_value_as_int() == 10
+
+        # Increase hot to 15 pages
+        settings_tab.spin_fader_pages.set_value(15.0)
+        process_events()
+        assert app.core.lightshow.fader_bank.max_fader_page == 15
+
+        # Populate a fader on page 12
+        app.core.action_registry.execute("fader.assign", 12, 1, FaderType.MAIN)
+        process_events()
+
+        # Cancel reduction warning -> stays at 15 and widget reverts to 15
+        monkeypatch.setattr(
+            settings_tab,
+            "_confirm_fader_pages_reduction",
+            lambda _new, _pop: False,
+        )
+        settings_tab.spin_fader_pages.set_value(5.0)
+        process_events()
+        assert app.core.lightshow.fader_bank.max_fader_page == 15
+        assert settings_tab.spin_fader_pages.get_value_as_int() == 15
+        assert app.core.lightshow.fader_bank.get_fader_type(12, 1) == FaderType.MAIN
+
+        # Confirm reduction warning -> drops to 5, Undo brings page 12 back
+        monkeypatch.setattr(
+            settings_tab,
+            "_confirm_fader_pages_reduction",
+            lambda _new, _pop: True,
+        )
+        settings_tab.spin_fader_pages.set_value(5.0)
+        process_events()
+        assert app.core.lightshow.fader_bank.max_fader_page == 5
+        assert 12 not in app.core.lightshow.fader_bank.faders
+
+        app.core.history.undo()
+        process_events()
+        assert app.core.lightshow.fader_bank.max_fader_page == 15
+        assert app.core.lightshow.fader_bank.get_fader_type(12, 1) == FaderType.MAIN
+        assert settings_tab.spin_fader_pages.get_value_as_int() == 15
+    finally:
+        app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app.core.history.clear()

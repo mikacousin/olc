@@ -19,6 +19,7 @@ import pathlib
 import typing
 
 from olc.controllers.midi import Midi
+from olc.define import MAX_FADER_PAGE
 from olc.files.write import WriteFile
 from olc.show.curve import LimitCurve, PointsCurve
 from olc.show.effect import serialize_effect_refs
@@ -77,11 +78,15 @@ class OlcWriter(WriteFile):
     def _show_metadata(self) -> None:
         title = getattr(self.lightshow, "title", "")
         home_preset = getattr(self.lightshow, "home_preset", None)
+        fader_bank = getattr(self.lightshow, "fader_bank", None)
+        fader_pages = getattr(fader_bank, "max_fader_page", MAX_FADER_PAGE)
         meta: dict[str, typing.Any] = {}
         if title:
             meta["title"] = str(title)
         if home_preset is not None:
             meta["home_preset"] = float(home_preset)
+        if fader_pages != MAX_FADER_PAGE:
+            meta["fader_pages"] = int(fader_pages)
         if meta:
             self.data["show_metadata"] = meta
 

@@ -176,6 +176,7 @@ class Midi:
         """Subscribe to Core events to drive hardware feedback (headless safe)."""
         core = self.app
         core.subscribe("fader.page_changed", self._on_fader_page_changed)
+        core.subscribe("fader.page_count_changed", self.ensure_fader_pages)
         core.subscribe("fader.level_changed", self._on_fader_level_changed)
         core.subscribe("fader.flash_changed", self._on_fader_flash_changed)
         core.subscribe("fader.changed", self._on_fader_changed)
@@ -193,6 +194,12 @@ class Midi:
         core.subscribe("playback.goback_completed", self._on_playback_goback_completed)
         core.subscribe("playback.stopped", self._on_playback_stopped)
         core.subscribe("playback.xfade_moved", self._on_playback_xfade_moved)
+
+    def ensure_fader_pages(self, max_pages: int) -> None:
+        """Ensure MIDI mapping slots exist up to *max_pages* fader pages."""
+        self.messages.notes.ensure_fader_pages(max_pages)
+        self.messages.control_change.ensure_fader_pages(max_pages)
+        self.messages.pitchwheel.ensure_fader_pages(max_pages)
 
     def _on_fader_page_changed(self, _page: int) -> None:
         """Sync MIDI faders and LCD when the fader page changes."""

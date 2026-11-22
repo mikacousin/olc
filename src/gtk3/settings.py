@@ -159,6 +159,29 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 float(hp) if hp is not None and hp > 0.0 else 0.0
             )
 
+        adjustment_pages = Gtk.Adjustment(
+            value=10.0,
+            lower=1.0,
+            upper=100.0,
+            step_increment=1.0,
+            page_increment=10.0,
+            page_size=0.0,
+        )
+        self.spin_fader_pages = typing.cast(
+            Gtk.SpinButton | None, builder.get_object("spin_fader_pages")
+        )
+        if self.spin_fader_pages is not None:
+            self.spin_fader_pages.set_adjustment(adjustment_pages)
+            core = getattr(self.app, "core", None)
+            lightshow = getattr(core, "lightshow", None) if core is not None else None
+            fader_bank = (
+                getattr(lightshow, "fader_bank", None)
+                if lightshow is not None
+                else None
+            )
+            max_pages = getattr(fader_bank, "max_fader_page", 10)
+            self.spin_fader_pages.set_value(float(max_pages))
+
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         self.switch_osc.set_state(self.settings.get_boolean("osc"))
@@ -396,6 +419,11 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
         lightshow = getattr(core, "lightshow", None) if core is not None else None
         hp = getattr(lightshow, "home_preset", None)
         self.update_home_preset_ui(hp)
+        fader_bank = (
+            getattr(lightshow, "fader_bank", None) if lightshow is not None else None
+        )
+        max_pages = getattr(fader_bank, "max_fader_page", 10)
+        self.update_fader_pages_ui(max_pages)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
@@ -581,6 +609,54 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 core.action_registry.execute(
                     "show.set_home_preset", preset_number=target
                 )
+
+    def _confirm_fader_pages_reduction(
+        self,
+        new_count: int,
+        populated: list[tuple[int, int, typing.Any, str]],
+    ) -> bool:
+        """Prompt user before reducing pages when populated faders would be lost."""
+        pages_str = ", ".join(str(p) for p in sorted({p for p, _, _, _ in populated}))
+        dialog = Gtk.MessageDialog(
+            transient_for=getattr(self.app, "window", None),
+            modal=True,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text=_("Reduce Fader Pages?"),
+        )
+        dialog.format_secondary_text(
+            _(
+                "{count} configured fader(s) on page(s) {pages} will be lost "
+                "if you reduce the number of pages to {target}. "
+                "Do you want to continue?"
+            ).format(count=len(populated), pages=pages_str, target=new_count)
+        )
+        response = dialog.run()
+        dialog.destroy()
+        return response == Gtk.ResponseType.OK
+
+    def _on_change_fader_pages(self, widget: Gtk.SpinButton) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
+        new_count = widget.get_value_as_int()
+        core = getattr(self.app, "core", None)
+        lightshow = getattr(core, "lightshow", None) if core is not None else None
+        fader_bank = (
+            getattr(lightshow, "fader_bank", None) if lightshow is not None else None
+        )
+        if core is None or fader_bank is None or not hasattr(core, "action_registry"):
+            return
+        current_count = getattr(fader_bank, "max_fader_page", 10)
+        if new_count == current_count:
+            return
+        if new_count < current_count:
+            populated = fader_bank.get_populated_faders_above_page(new_count)
+            if populated and not self._confirm_fader_pages_reduction(
+                new_count, populated
+            ):
+                self.update_fader_pages_ui(current_count)
+                return
+        core.action_registry.execute("fader.set_page_count", page_count=new_count)
 
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)
@@ -842,6 +918,16 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 )
                 if abs(self.spin_home_preset.get_value() - target_val) > 1e-6:
                     self.spin_home_preset.set_value(target_val)
+        finally:
+            self._updating_settings = False
+
+    def update_fader_pages_ui(self, page_count: int) -> None:
+        """Update Fader Pages spin button from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            if hasattr(self, "spin_fader_pages") and self.spin_fader_pages is not None:
+                if self.spin_fader_pages.get_value_as_int() != int(page_count):
+                    self.spin_fader_pages.set_value(float(page_count))
         finally:
             self._updating_settings = False
 

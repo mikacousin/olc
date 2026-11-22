@@ -80,7 +80,7 @@ class ShowNewAction(Action):
 
         # Reset fader bank
         if hasattr(lightshow, "fader_bank"):
-            lightshow.fader_bank.reset_faders()
+            lightshow.fader_bank.reset_faders(reset_page_count=True)
 
         # Reset independents
         lightshow.independents = Independents(lightshow)
@@ -132,6 +132,10 @@ class ShowNewAction(Action):
 
         # Emit event
         self.app.emit("show.home_preset_changed", None)
+        if hasattr(lightshow, "fader_bank"):
+            self.app.emit(
+                "fader.page_count_changed", lightshow.fader_bank.max_fader_page
+            )
         self.app.emit("show.new")
 
 
@@ -605,7 +609,8 @@ class ShowImportAction(Action):
         faders_data: dict[tuple[int, int], tuple[FaderType, typing.Any, float]] = {}
         if hasattr(lightshow, "fader_bank"):
             fb = lightshow.fader_bank
-            for page in range(1, MAX_FADER_PAGE + 1):
+            snapshot["fader_max_page"] = fb.max_fader_page
+            for page in range(1, fb.max_fader_page + 1):
                 for idx in range(1, MAX_FADER_PER_PAGE + 1):
                     fader = fb.faders[page][idx]
                     ftype = fb.get_fader_type(page, idx)
@@ -722,7 +727,11 @@ class ShowImportAction(Action):
         if hasattr(lightshow, "fader_bank"):
             fb = lightshow.fader_bank
             fb.reset_faders()
+            target_pages = snapshot.get("fader_max_page", MAX_FADER_PAGE)
+            fb.set_max_pages(target_pages)
             for (page, idx), (ftype, contents_id, level) in snapshot["faders"].items():
+                if page > fb.max_fader_page:
+                    fb.set_max_pages(page)
                 if ftype != FaderType.NONE:
                     fb.set_fader(page, idx, ftype, contents_id)
                     fb.faders[page][idx].set_level(level)

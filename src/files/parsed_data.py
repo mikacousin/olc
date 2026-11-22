@@ -356,6 +356,11 @@ class ParsedData:
             ):
                 continue
             if number <= MAX_FADER_PER_PAGE:
+                if (
+                    isinstance(page, int)
+                    and page > self.lightshow.fader_bank.max_fader_page
+                ):
+                    self.lightshow.fader_bank.set_max_pages(page)
                 self.lightshow.fader_bank.set_fader(page, number, fader_type, contents)
                 fader_obj = self.lightshow.fader_bank.faders[page][number]
                 if fader_obj is not None:
@@ -405,7 +410,7 @@ class ParsedData:
                     break
 
     def import_show_metadata(self) -> None:
-        """Apply show-level metadata (title, home_preset) to lightshow."""
+        """Apply show-level metadata (title, home_preset, fader_pages) to lightshow."""
         meta = self.data.get("show_metadata")
         if not isinstance(meta, dict):
             return
@@ -414,6 +419,10 @@ class ParsedData:
         if "home_preset" in meta:
             hp = meta["home_preset"]
             self.lightshow.home_preset = float(hp) if hp is not None else None
+        if "fader_pages" in meta and meta["fader_pages"] is not None:
+            fader_bank = getattr(self.lightshow, "fader_bank", None)
+            if fader_bank is not None and hasattr(fader_bank, "set_max_pages"):
+                fader_bank.set_max_pages(int(meta["fader_pages"]))
 
     @staticmethod
     def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:
