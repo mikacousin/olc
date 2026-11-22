@@ -144,9 +144,12 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
             fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
             fader_tab.refresh()
         fader_bank = self.app.core.lightshow.fader_bank
-        if self.app.virtual_console and page == fader_bank.active_page:
+        if self.app.virtual_console and (
+            page == fader_bank.active_page
+            or fader_bank.resolve_page(fader_bank.active_page, index) == page
+        ):
             vc = self.app.virtual_console
-            fader = fader_bank.faders[page][index]
+            fader = fader_bank.get_fader(index)
             vc.updating_fader = True
             try:
                 vc.faders[index - 1].set_value(round(fader.level * 255))

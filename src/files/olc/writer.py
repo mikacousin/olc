@@ -274,10 +274,11 @@ class OlcWriter(WriteFile):
                         "type": int(content_type),
                         "text": fader.text,
                     }
-                if number in self.data["faders"] and getattr(
-                    fader, "exempt_grand_master", False
-                ):
-                    self.data["faders"][number]["exempt_grand_master"] = True
+                if number in self.data["faders"]:
+                    if getattr(fader, "exempt_grand_master", False):
+                        self.data["faders"][number]["exempt_grand_master"] = True
+                    if self.lightshow.fader_bank.is_fader_fixed(page, index):
+                        self.data["faders"][number]["fixed"] = True
         if not self.data["faders"]:
             del self.data["faders"]
 

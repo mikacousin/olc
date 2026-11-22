@@ -916,6 +916,8 @@ class AsciiParser(ReadFile):
             fader["exempt_grand_master"] = True
         elif self.keyword == "$$intensitymaster":
             fader["intensity_master"] = True
+        elif self.keyword == "$$fixed":
+            fader["fixed"] = True
 
     def _get_level(self, level: str) -> float:
         if level.startswith("h"):

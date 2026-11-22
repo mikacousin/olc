@@ -525,3 +525,69 @@ def test_virtual_console_skips_empty_pages_while_fader_tab_visits_all(
     finally:
         app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app_gui.core.history.clear()
+
+
+def test_fader_edit_fix_across_all_pages_and_virtual_console(
+    app_gui: Application,
+) -> None:
+    """Verify FaderEdit Fix toggle, Page origin badge, and VC sticky state."""
+    app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app_gui.core.lightshow.palettes.clear()
+    app_gui.core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 1.0, "Preset A", channels={1: 1.0})
+    )
+    app_gui.core.history.clear()
+
+    try:
+        app_gui.core.action_registry.execute(
+            "fader.assign", 1, 1, FaderType.PRESET, 1.0
+        )
+        app_gui.activate_action("faders", None)
+        app_gui.activate_action("virtual_console", None)
+        process_events()
+
+        assert app_gui.tabs is not None
+        assert app_gui.virtual_console is not None
+        fader_tab = app_gui.tabs.tabs.get("faders")
+        vc = app_gui.virtual_console
+        assert isinstance(fader_tab, FaderTab)
+
+        fader_edit_p1 = fader_tab.fader_widgets.get((1, 1))
+        assert fader_edit_p1 is not None
+        assert fader_edit_p1.fix_button.get_sensitive() is True
+        assert fader_edit_p1.fix_button.get_active() is False
+
+        # Fix fader (1, 1) and set its level to 50%
+        fader_edit_p1.fix_button.set_active(True)
+        app_gui.core.action_registry.execute("fader.set_level", 1, 1, 0.5)
+        process_events()
+        assert app_gui.core.lightshow.fader_bank.is_fader_fixed(1, 1) is True
+
+        # Switch FaderTab to page 2 -> shows origin indicator
+        fader_tab.set_page(2)
+        process_events()
+        fader_edit_p2 = fader_tab.fader_widgets.get((2, 1))
+        assert fader_edit_p2 is not None
+        assert fader_edit_p2.fix_button.get_active() is False
+        assert fader_edit_p2.fixed_origin_label.get_visible() is True
+        assert "1" in fader_edit_p2.fixed_origin_label.get_text()
+
+        # Switch Virtual Console to page 2 -> fader 1 stays at 50% with label Preset A
+        vc._on_fader_page(vc.fader_page_plus)
+        process_events()
+        assert vc.page_number.get_label() == "2"
+        assert vc.faders[0].get_value() == pytest.approx(128.0, abs=1.0)
+        assert vc.flashes[0].label == "Preset A"
+
+        # Unfixing reveals empty fader 1 on page 2 and hides origin label
+        app_gui.core.action_registry.execute("fader.set_fixed", 1, 1, False)
+        process_events()
+        assert vc.faders[0].get_value() == 0.0
+        assert vc.flashes[0].label == ""
+        assert fader_edit_p2.fixed_origin_label.get_visible() is False
+
+        vc.close()
+        process_events()
+    finally:
+        app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app_gui.core.history.clear()

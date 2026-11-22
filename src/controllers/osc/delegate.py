@@ -190,7 +190,7 @@ class OSCDelegate(
         self._emit_osc(
             "faders", "/olc/fader/page/label", page_lbl, sender_addr=sender_addr
         )
-        for fader in fader_bank.faders[page].values():
+        for fader in fader_bank.iter_page_faders(page):
             lbl_path = f"/olc/fader/1/{fader.index}/label"
             lvl_path = f"/olc/fader/1/{fader.index}/level"
             lbl_txt = fader.text or f"Fader {fader.index}"
@@ -206,7 +206,7 @@ class OSCDelegate(
             fader_bank = self.app.lightshow.fader_bank
             self._publish("faders", "/olc/fader/page", page)
             self._publish("faders", "/olc/fader/page/label", f"Page {page}")
-            for fader in fader_bank.faders[page].values():
+            for fader in fader_bank.iter_page_faders(page):
                 self._publish("faders", f"/olc/fader/1/{fader.index}/label", fader.text)
                 self._publish(
                     "faders",
@@ -231,8 +231,11 @@ class OSCDelegate(
         """Send OSC feedback when a fader label or assignment changes."""
         if self.osc is not None:
             fader_bank = self.app.lightshow.fader_bank
-            if page == fader_bank.active_page:
-                fader = fader_bank.faders[page][index]
+            if (
+                page == fader_bank.active_page
+                or fader_bank.resolve_page(fader_bank.active_page, index) == page
+            ):
+                fader = fader_bank.get_fader(index)
                 self._publish("faders", f"/olc/fader/1/{index}/label", fader.text)
                 self._publish(
                     "faders",

@@ -614,6 +614,7 @@ class ShowImportAction(Action):
             snapshot["fader_skip_empty_pages"] = bool(
                 getattr(fb, "skip_empty_pages", False)
             )
+            snapshot["fixed_faders"] = dict(getattr(fb, "fixed_faders", {}))
             for page in range(1, fb.max_fader_page + 1):
                 for idx in range(1, MAX_FADER_PER_PAGE + 1):
                     fader = fb.faders[page][idx]
@@ -741,6 +742,11 @@ class ShowImportAction(Action):
                     fb.set_fader(page, idx, ftype, contents_id)
                     fb.faders[page][idx].set_level(level)
             fb.update_active_faders()
+            fb.fixed_faders = {
+                int(k): int(v)
+                for k, v in snapshot.get("fixed_faders", {}).items()
+                if 1 <= int(v) <= fb.max_fader_page
+            }
             fb.update_levels()
 
     def _restore_snapshot(self) -> None:

@@ -204,7 +204,7 @@ class Midi:
     def _on_fader_page_changed(self, _page: int) -> None:
         """Sync MIDI faders and LCD when the fader page changes."""
         fader_bank = self.lightshow.fader_bank
-        for fader in fader_bank.faders[fader_bank.active_page].values():
+        for fader in fader_bank.iter_page_faders():
             if 0 < fader.index <= len(self.faders.faders):
                 self.faders.faders[fader.index - 1].set_state(fader.level)
         self.update_faders()
@@ -227,8 +227,10 @@ class Midi:
     def _on_fader_changed(self, page: int, index: int) -> None:
         """Refresh controller when a fader assignment changes."""
         fader_bank = self.lightshow.fader_bank
-        if page == fader_bank.active_page and index in fader_bank.faders.get(page, {}):
-            self.update_fader(fader_bank.faders[page][index])
+        if fader_bank.resolve_page(
+            fader_bank.active_page, index
+        ) == page and index in fader_bank.faders.get(page, {}):
+            self.update_fader(fader_bank.get_fader(index))
         else:
             self.update_faders()
 
@@ -400,7 +402,7 @@ class Midi:
     def update_faders(self) -> None:
         """Send faders value and update LCD display"""
         fader_bank = self.lightshow.fader_bank
-        for fader in fader_bank.faders[fader_bank.active_page].values():
+        for fader in fader_bank.iter_page_faders():
             midi_name = f"fader_{fader.index}"
             channel, control = self.messages.control_change.control_change[midi_name]
             if control != -1:

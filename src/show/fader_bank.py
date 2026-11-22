@@ -49,6 +49,7 @@ class FaderBank:
     max_fader_page: int
     max_fader_per_page: int
     skip_empty_pages: bool
+    fixed_faders: dict[int, int]
     lightshow: typing.Optional[LightShow]
 
     def __init__(self, lightshow: typing.Optional[LightShow] = None) -> None:
@@ -58,6 +59,7 @@ class FaderBank:
         self.max_fader_page = MAX_FADER_PAGE
         self.max_fader_per_page = MAX_FADER_PER_PAGE
         self.skip_empty_pages = False
+        self.fixed_faders = {}
         for page in range(1, self.max_fader_page + 1):
             self.faders[page] = {}
             for index in range(1, MAX_FADER_PER_PAGE + 1):
@@ -73,20 +75,61 @@ class FaderBank:
         """Get parent application instance safely."""
         return self.lightshow.app if self.lightshow else None
 
-    def get_fader(self, index: int) -> Fader:
-        """Get fader on active page
+    def resolve_page(self, page: int, index: int) -> int:
+        """Return fixed source page for *index* if fixed and valid, else *page*."""
+        src_page = self.fixed_faders.get(index)
+        if (
+            src_page is not None
+            and src_page in self.faders
+            and self.get_fader_type(src_page, index) != FaderType.NONE
+        ):
+            return src_page
+        return page
 
-        Args:
-            index: Fader index
+    def is_fader_fixed(self, page: int, index: int) -> bool:
+        """Return True if fader *(page, index)* is fixed across all pages."""
+        return self.fixed_faders.get(index) == page
 
-        Returns:
-            Fader object
-        """
-        return self.faders[self.active_page][index]
+    def get_fixed_source_page(self, index: int) -> int | None:
+        """Return source page fixing column *index*, or None if not fixed."""
+        src_page = self.fixed_faders.get(index)
+        if (
+            src_page is not None
+            and src_page in self.faders
+            and self.get_fader_type(src_page, index) != FaderType.NONE
+        ):
+            return src_page
+        return None
+
+    def set_fader_fixed(self, page: int, index: int, fixed: bool) -> None:
+        """Fix or unfix fader at *(page, index)* across all pages."""
+        if fixed:
+            if (
+                page in self.faders
+                and index in self.faders[page]
+                and self.get_fader_type(page, index) != FaderType.NONE
+            ):
+                self.fixed_faders[index] = page
+        elif self.fixed_faders.get(index) == page:
+            self.fixed_faders.pop(index, None)
+
+    def get_fader(self, index: int, page: int | None = None) -> Fader:
+        """Get effective fader on active (or specified) page, honoring fixed faders."""
+        target_page = self.active_page if page is None else page
+        effective_page = self.resolve_page(target_page, index)
+        return self.faders[effective_page][index]
+
+    def iter_page_faders(self, page: int | None = None) -> list[Fader]:
+        """Return ordered list of effective faders for *page* (default active_page)."""
+        return [
+            self.get_fader(index, page)
+            for index in range(1, self.max_fader_per_page + 1)
+        ]
 
     def reset_faders(self, reset_page_count: bool = False) -> None:
         """Reset all faders"""
         self.active_page = 1
+        self.fixed_faders = {}
         for page in sorted(list(self.faders.keys())):
             for index in range(1, MAX_FADER_PER_PAGE + 1):
                 self.set_fader(page, index, FaderType.NONE)
@@ -199,6 +242,10 @@ class FaderBank:
                     fader.set_level(0)
             del self.faders[page]
 
+        for idx, src_p in list(self.fixed_faders.items()):
+            if src_p > target:
+                del self.fixed_faders[idx]
+
         self.max_fader_page = target
         page_clamped = False
         if self.active_page > target:
@@ -268,6 +315,8 @@ class FaderBank:
 
             self._set_fader_contents(page, index, fader_type, contents)
         else:
+            if fader_type == FaderType.NONE and self.fixed_faders.get(index) == page:
+                self.fixed_faders.pop(index, None)
             if not isinstance(self.faders[page][index], FaderMain):
                 self.faders[page][index].set_level(0)
             self._set_fader_type(page, index, fader_type, contents)

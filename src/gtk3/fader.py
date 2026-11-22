@@ -50,6 +50,8 @@ class FaderEdit(Gtk.Box):
     page: int
     index: int
     label: Gtk.Label
+    fix_button: Gtk.ToggleButton
+    fixed_origin_label: Gtk.Label
     type_button: Gtk.MenuButton
     contents_button: Gtk.MenuButton
     effect_controls_box: Gtk.Box | None
@@ -77,10 +79,20 @@ class FaderEdit(Gtk.Box):
         self.effect_controls_box = None
         self.effect_mode_button = None
         self.effect_channels_button = None
+        self._updating_fix = False
 
         fader = self.lightshow.fader_bank.faders[page][index]
 
         self.label = Gtk.Label()
+        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        header_box.pack_start(self.label, True, True, 0)
+        self.fix_button = Gtk.ToggleButton(label=_("Fix"))
+        self.fix_button.set_tooltip_text(_("Fix this fader across all pages"))
+        self.fix_button.connect("toggled", self._on_fix_toggled)
+        header_box.pack_start(self.fix_button, False, False, 0)
+
+        self.fixed_origin_label = Gtk.Label()
+        self.fixed_origin_label.set_no_show_all(True)
 
         fader_type: list[tuple[FaderType, str]] = [
             (FaderType.NONE, ""),
@@ -114,11 +126,45 @@ class FaderEdit(Gtk.Box):
         else:
             self._fader_none()
 
-        self.add(self.label)
+        self.add(header_box)
+        self.add(self.fixed_origin_label)
         self.add(self.type_button)
         self.add(self.contents_button)
         if self.effect_controls_box is not None:
             self.add(self.effect_controls_box)
+        self._update_fix_ui()
+
+    def _update_fix_ui(self) -> None:
+        """Synchronize Fix toggle button and cross-page fixed indicator."""
+        fader_bank = self.lightshow.fader_bank
+        fader_type = fader_bank.get_fader_type(self.page, self.index)
+        is_fixed_here = fader_bank.is_fader_fixed(self.page, self.index)
+        src_page = fader_bank.get_fixed_source_page(self.index)
+
+        self._updating_fix = True
+        try:
+            self.fix_button.set_active(is_fixed_here)
+            self.fix_button.set_sensitive(fader_type != FaderType.NONE or is_fixed_here)
+        finally:
+            self._updating_fix = False
+
+        if src_page is not None and src_page != self.page:
+            msg = _("Fixed on Page {page}").format(page=src_page)
+            self.fixed_origin_label.set_markup(
+                f"<span foreground='#e59933' size='small'>{msg}</span>"
+            )
+            self.fixed_origin_label.set_visible(True)
+        else:
+            self.fixed_origin_label.set_visible(False)
+
+    def _on_fix_toggled(self, widget: Gtk.ToggleButton) -> None:
+        if self._updating_fix:
+            return
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.set_fixed", self.page, self.index, widget.get_active()
+            )
 
     def _fader_none(self) -> None:
         """Create edition of not defined fader"""
@@ -359,6 +405,7 @@ class FaderEdit(Gtk.Box):
         self.add(self.contents_button)
         if self.effect_controls_box is not None:
             self.add(self.effect_controls_box)
+        self._update_fix_ui()
         self.show_all()
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:

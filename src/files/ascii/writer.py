@@ -460,6 +460,8 @@ class AsciiWriter(WriteFile):
                         self.stream.write(bytes("$$EXCLUDE 9\n", "ascii"))
                     if getattr(fader, "intensity_master", False):
                         self.stream.write(bytes("$$INTENSITYMASTER\n", "ascii"))
+                    if self.lightshow.fader_bank.is_fader_fixed(page, index):
+                        self.stream.write(bytes("$$FIXED\n", "ascii"))
                     if content_type == FaderType.EFFECT:
                         if eff_chs := getattr(fader, "effect_channels", []):
                             self._save_channel_list(list(eff_chs))

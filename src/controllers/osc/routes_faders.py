@@ -54,7 +54,7 @@ class FadersRoutesMixin:
         fader_bank = self.app.lightshow.fader_bank
         if self.osc is not None:
             self._send("/olc/fader/page", fader_bank.active_page)
-            for fader in fader_bank.faders[fader_bank.active_page].values():
+            for fader in fader_bank.iter_page_faders():
                 self._send(f"/olc/fader/1/{fader.index}/label", fader.text)
             self.send_full_sync()
 

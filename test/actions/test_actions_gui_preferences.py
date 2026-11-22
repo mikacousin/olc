@@ -359,3 +359,99 @@ def test_skip_empty_fader_pages_navigation_action_and_settings() -> None:
     tab.switch_skip_empty_fader_pages.set_state.assert_called_with(True)
     tab.switch_skip_empty_fader_pages.set_active.assert_called_with(True)
     assert not tab._updating_settings
+
+
+def test_fader_set_fixed_preservation_skip_empty_and_undo_redo() -> None:
+    """Test fixing a fader across all pages, masking underlying pages, and Undo/Redo."""
+    from olc.show.fader import FaderType
+    from olc.show.palette import Palette, PaletteCategory
+
+    core = CoreApplication(MagicMock())
+    fb = core.lightshow.fader_bank
+    core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 1.0, "Master Sub", channels={1: 1.0})
+    )
+    core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 2.0, "Page2 Sub", channels={2: 1.0})
+    )
+    core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 5.0, "Page5 Sub", channels={3: 1.0})
+    )
+
+    # Configure faders on (1, 10), (2, 10), and (5, 1)
+    core.action_registry.execute("fader.assign", 1, 10, FaderType.PRESET, 1.0)
+    core.action_registry.execute("fader.assign", 2, 10, FaderType.PRESET, 2.0)
+    core.action_registry.execute("fader.assign", 5, 1, FaderType.PRESET, 5.0)
+    core.history.clear()
+    core.lightshow.set_not_modified()
+
+    fixed_events: list[tuple[int, int, bool]] = []
+    core.subscribe(
+        "fader.fixed_changed",
+        lambda p, i, f: fixed_events.append((p, i, f)),
+    )
+
+    # 1. Fix (1, 10) across all pages
+    core.action_registry.execute("fader.set_fixed", 1, 10, True)
+    assert fb.is_fader_fixed(1, 10) is True
+    assert fixed_events == [(1, 10, True)]
+    assert core.lightshow.modified is True
+
+    # Switching to page 3 resolves fader 10 to (1, 10), and set_level / flash target it
+    core.action_registry.execute("fader.set_page", 3)
+    assert fb.active_page == 3
+    assert fb.get_fader(10) is fb.faders[1][10]
+
+    lvl_events: list[tuple[int, float]] = []
+    flash_events: list[tuple[int, bool]] = []
+    core.subscribe(
+        "fader.level_changed", lambda idx, lvl: lvl_events.append((idx, lvl))
+    )
+    core.subscribe(
+        "fader.flash_changed", lambda idx, st: flash_events.append((idx, st))
+    )
+
+    core.action_registry.execute("fader.set_level", 3, 10, 0.75)
+    assert fb.faders[1][10].level == pytest.approx(0.75)
+    assert lvl_events == [(10, 0.75)]
+
+    core.action_registry.execute("fader.flash", 3, 10, True)
+    assert fb.faders[1][10].level == pytest.approx(1.0)
+    assert flash_events == [(10, True)]
+    core.action_registry.execute("fader.flash", 3, 10, False)
+    assert fb.faders[1][10].level == pytest.approx(0.75)
+
+    # 2. Non-destructive preservation on page 2
+    assert fb.get_fader(10, page=2) is fb.faders[1][10]
+    assert fb.faders[2][10].contents is not None
+    assert fb.faders[2][10].contents.number == 2.0
+
+    # Undo unfixes (1, 10) and restores underlying page 2 access + unmodified flag
+    core.history.undo()
+    assert fb.is_fader_fixed(1, 10) is False
+    assert core.lightshow.modified is False
+    assert fb.get_fader(10, page=2) is fb.faders[2][10]
+    core.history.redo()
+    assert fb.is_fader_fixed(1, 10) is True
+
+    # 3. skip_empty_pages still skips empty pages 2,3,4,6..10 even with (1, 10) fixed
+    fb.set_fader(2, 10, FaderType.NONE)
+    fb.active_page = 1
+    assert fb.get_next_page(1, skip_empty=True) == 5
+    fb.active_page = 5
+    assert fb.get_next_page(1, skip_empty=True) == 1
+
+    # 4. fader.clear on fixed (1, 10) unfixes it and Undo restores fixed state
+    core.action_registry.execute("fader.clear", 1, 10)
+    assert fb.is_fader_fixed(1, 10) is False
+    core.history.undo()
+    assert fb.is_fader_fixed(1, 10) is True
+
+    # 5. fader.set_page_count dropping fixed fader on page 8 restores it on Undo
+    core.action_registry.execute("fader.assign", 8, 4, FaderType.MAIN)
+    core.action_registry.execute("fader.set_fixed", 8, 4, True)
+    assert fb.is_fader_fixed(8, 4) is True
+    core.action_registry.execute("fader.set_page_count", page_count=5)
+    assert fb.get_fixed_source_page(4) is None
+    core.history.undo()
+    assert fb.is_fader_fixed(8, 4) is True

@@ -509,7 +509,7 @@ class VirtualConsoleWindow(Gtk.Window):
             text = f"flash_{i + 1}"
             self.flashes[i].text = text
         fader_bank = self.app.core.lightshow.fader_bank
-        for fader in fader_bank.faders[fader_bank.active_page].values():
+        for fader in fader_bank.iter_page_faders():
             # Flash with fader name
             self.flashes[fader.index - 1].label = fader.text
             # Fader at fader level
@@ -853,7 +853,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """Update fader page labels and values on virtual console."""
         fader_bank = self.app.core.lightshow.fader_bank
         self.page_number.set_label(str(fader_bank.active_page))
-        for fader in fader_bank.faders[fader_bank.active_page].values():
+        for fader in fader_bank.iter_page_faders():
             text = f"fader_{fader.index + ((fader_bank.active_page - 1) * 10)}"
             self.faders[fader.index - 1].text = text
             val = round(fader.level * 255)
@@ -1522,7 +1522,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     "fader.set_level", fader_bank.active_page, index, value / 255
                 )
             else:
-                fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
+                fader_bank.get_fader(index).set_level(value / 255)
 
     def _fader_clicked(self, fader: FaderWidget) -> None:
         """Fader clicked

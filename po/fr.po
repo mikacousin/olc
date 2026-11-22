@@ -389,6 +389,24 @@ msgstr "Sauter les pages de faders vides"
 msgid "Toggle skip empty fader pages"
 msgstr "Basculer le saut des pages de faders vides"
 
+msgid "Fix"
+msgstr "Fixer"
+
+msgid "Fix fader"
+msgstr "Fixer le fader"
+
+msgid "Fix this fader across all pages"
+msgstr "Fixer ce fader sur toutes les pages"
+
+msgid "Fixed on Page {page}"
+msgstr "Fixé sur la page {page}"
+
+msgid "Fixed"
+msgstr "Fixé"
+
+msgid "Unfixed"
+msgstr "Défixé"
+
 msgid "Appearance"
 msgstr "Apparance"
 

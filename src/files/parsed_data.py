@@ -370,6 +370,8 @@ class ParsedData:
                         fader_obj, "intensity_master"
                     ):
                         fader_obj.intensity_master = True
+                if values.get("fixed"):
+                    self.lightshow.fader_bank.set_fader_fixed(page, number, True)
                 if fader_type == FaderType.EFFECT:
                     eff_chs = values.get("effect_channels")
                     if isinstance(eff_chs, list) and hasattr(

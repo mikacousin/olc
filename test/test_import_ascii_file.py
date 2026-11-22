@@ -2439,6 +2439,7 @@ def test_ascii_writer_section_6_3_and_6_4_roundtrip(
 
     show.fader_bank.set_fader(1, 1, FaderType.PRESET, 5.0)
     show.fader_bank.set_fader(1, 2, FaderType.PRESET, 6.0)
+    show.fader_bank.set_fader_fixed(1, 1, True)
     f1 = show.fader_bank.faders[1][1]
     f2 = show.fader_bank.faders[1][2]
     assert isinstance(f1, FaderPreset) and isinstance(f2, FaderPreset)
@@ -2509,7 +2510,9 @@ def test_ascii_writer_section_6_3_and_6_4_roundtrip(
     rf1 = reloaded.fader_bank.faders[1][1]
     rf2 = reloaded.fader_bank.faders[1][2]
     assert isinstance(rf1, FaderPreset) and rf1.exempt_grand_master is True
+    assert reloaded.fader_bank.is_fader_fixed(1, 1) is True
     assert isinstance(rf2, FaderPreset) and rf2.intensity_master is True
+    assert reloaded.fader_bank.is_fader_fixed(1, 2) is False
 
     rfx11 = reloaded.effects.get(11.0)
     assert rfx11 is not None

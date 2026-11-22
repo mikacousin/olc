@@ -80,6 +80,7 @@ class FaderAssignAction(Action):
         self.old_contents: float | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
+        self.old_fixed_source: int | None = None
 
     def configure(
         self,
@@ -108,6 +109,9 @@ class FaderAssignAction(Action):
             self.page, self.index
         )
         self.old_contents = _get_fader_contents_number(self.app, self.page, self.index)
+        self.old_fixed_source = self.app.lightshow.fader_bank.get_fixed_source_page(
+            self.index
+        )
         old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
@@ -131,6 +135,10 @@ class FaderAssignAction(Action):
         if isinstance(restored, FaderEffect):
             restored.set_control_mode(self.old_control_mode)
             restored.set_effect_channels(self.old_effect_channels)
+        if self.old_fixed_source is not None:
+            self.app.lightshow.fader_bank.set_fader_fixed(
+                self.old_fixed_source, self.index, True
+            )
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
 
@@ -166,6 +174,7 @@ class FaderClearAction(Action):
         self.old_contents: float | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
+        self.old_fixed_source: int | None = None
 
     def configure(self, page: int, index: int) -> None:
         """Configure the fader to clear.
@@ -183,6 +192,9 @@ class FaderClearAction(Action):
             self.page, self.index
         )
         self.old_contents = _get_fader_contents_number(self.app, self.page, self.index)
+        self.old_fixed_source = self.app.lightshow.fader_bank.get_fixed_source_page(
+            self.index
+        )
         old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
@@ -206,6 +218,10 @@ class FaderClearAction(Action):
         if isinstance(restored, FaderEffect):
             restored.set_control_mode(self.old_control_mode)
             restored.set_effect_channels(self.old_effect_channels)
+        if self.old_fixed_source is not None:
+            self.app.lightshow.fader_bank.set_fader_fixed(
+                self.old_fixed_source, self.index, True
+            )
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
 
@@ -316,8 +332,11 @@ class FaderSetLevelAction(Action):
     def execute(self) -> None:
         """Apply the level to the fader and emit event for remote synchronization."""
         fader_bank = self.app.lightshow.fader_bank
-        fader_bank.faders[self.page][self.index].set_level(self.level)
-        if self.page == fader_bank.active_page:
+        effective_page = fader_bank.resolve_page(self.page, self.index)
+        fader_bank.faders[effective_page][self.index].set_level(self.level)
+        if effective_page == fader_bank.resolve_page(
+            fader_bank.active_page, self.index
+        ):
             self.app.emit("fader.level_changed", self.index, self.level)
 
 
@@ -392,13 +411,16 @@ class FaderFlashAction(Action):
     def execute(self) -> None:
         """Execute the flash action."""
         fader_bank = self.app.lightshow.fader_bank
-        fader = fader_bank.faders[self.page][self.index]
+        effective_page = fader_bank.resolve_page(self.page, self.index)
+        fader = fader_bank.faders[effective_page][self.index]
         if self.pressed:
             fader.flash_on()
         else:
             fader.flash_off()
 
-        if self.page == fader_bank.active_page:
+        if effective_page == fader_bank.resolve_page(
+            fader_bank.active_page, self.index
+        ):
             self.app.emit("fader.flash_changed", self.index, self.pressed)
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
@@ -430,6 +452,7 @@ def _snapshot_fader(
         "control_mode": str(getattr(fader, "control_mode", "size")),
         "effect_channels": list(getattr(fader, "effect_channels", [])),
         "base_channels": dict(getattr(fader, "base_channels", {})),
+        "fixed": fader_bank.is_fader_fixed(page, index),
     }
 
 
@@ -456,6 +479,8 @@ def _restore_fader(
         restored.text = snap["text"]
     if snap["level"] > 0.0 and not snap["fader_type"] == FaderType.MAIN:
         restored.set_level(float(snap["level"]))
+    if snap.get("fixed"):
+        fader_bank.set_fader_fixed(page, index, True)
 
 
 class FaderSetPageCountAction(Action):
@@ -592,3 +617,93 @@ class FaderSetSkipEmptyPagesAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Return skip_empty_pages feedback state metadata."""
         return {"skip_empty_pages": self.skip_empty}
+
+
+class FaderSetFixedAction(Action):
+    """Action to fix or unfix a fader across all fader pages with Undo/Redo."""
+
+    name = "fader.set_fixed"
+    history_label = _("Fix fader")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.page: int = 1
+        self.index: int = 1
+        self.fixed: bool | None = None
+        self._applied_fixed: bool = False
+        self.old_source_page: int | None = None
+        self.old_modified: bool = False
+
+    def configure(self, page: int, index: int, fixed: bool | None = None) -> None:
+        """Configure target fader *(page, index)* and optional explicit fixed state."""
+        self.page = int(page)
+        self.index = int(index)
+        self.fixed = None if fixed is None else bool(fixed)
+
+    def get_history_details(self) -> str:
+        """Return formatted page, index, and fixed state for history panel."""
+        state_str = _("Fixed") if self._applied_fixed else _("Unfixed")
+        return f"P{self.page}.{self.index} ({state_str})"
+
+    def execute(self) -> None:
+        """Apply fixed/unfixed state on target fader column and notify listeners."""
+        fader_bank = self.app.lightshow.fader_bank
+        if (
+            self.page not in fader_bank.faders
+            or self.index not in fader_bank.faders[self.page]
+        ):
+            self.can_undo = False
+            return
+
+        currently_fixed_here = fader_bank.is_fader_fixed(self.page, self.index)
+        target_fixed = (not currently_fixed_here) if self.fixed is None else self.fixed
+        if (
+            target_fixed
+            and fader_bank.get_fader_type(self.page, self.index) == FaderType.NONE
+        ):
+            self.can_undo = False
+            return
+        if target_fixed == currently_fixed_here:
+            self.can_undo = False
+            return
+
+        self._applied_fixed = target_fixed
+        self.old_source_page = fader_bank.get_fixed_source_page(self.index)
+        self.old_modified = bool(self.app.lightshow.modified)
+
+        fader_bank.set_fader_fixed(self.page, self.index, target_fixed)
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.fixed_changed", self.page, self.index, target_fixed)
+        self.app.emit("fader.changed", fader_bank.active_page, self.index)
+
+    def undo(self) -> None:
+        """Restore previous fixed column ownership."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.fixed_faders.pop(self.index, None)
+        if self.old_source_page is not None:
+            fader_bank.set_fader_fixed(self.old_source_page, self.index, True)
+        if self.old_modified:
+            self.app.lightshow.set_modified()
+        else:
+            self.app.lightshow.set_not_modified()
+
+        is_now_fixed = fader_bank.is_fader_fixed(self.page, self.index)
+        self.app.emit("fader.fixed_changed", self.page, self.index, is_now_fixed)
+        self.app.emit("fader.changed", fader_bank.active_page, self.index)
+
+    def redo(self) -> None:
+        """Re-apply fixed/unfixed state on target fader column."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.set_fader_fixed(self.page, self.index, self._applied_fixed)
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.fixed_changed", self.page, self.index, self._applied_fixed)
+        self.app.emit("fader.changed", fader_bank.active_page, self.index)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return fixed state metadata."""
+        return {
+            "page": self.page,
+            "index": self.index,
+            "fixed": self._applied_fixed,
+        }

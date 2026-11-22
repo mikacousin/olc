@@ -77,7 +77,7 @@ class MackieLCD:
     def show_faders(self) -> None:
         """Show faders name"""
         fader_bank = self.fader_bank
-        for fader in fader_bank.faders[fader_bank.active_page].values():
+        for fader in fader_bank.iter_page_faders():
             if fader.index <= 8:
                 text = fader.text[:7]
                 strip = fader.index - 1

@@ -898,6 +898,7 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
     ls.fader_bank.skip_empty_pages = True
     ls.fader_bank.set_fader(1, 1, FaderType.PRESET, 5.0)
     ls.fader_bank.set_fader(15, 3, FaderType.PRESET, 5.0)
+    ls.fader_bank.set_fader_fixed(15, 3, True)
     fader = ls.fader_bank.faders[1][1]
     assert isinstance(fader, FaderPreset)
     fader.exempt_grand_master = True
@@ -945,3 +946,4 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
     assert ls2.fader_bank.max_fader_page == 15
     assert ls2.fader_bank.skip_empty_pages is True
     assert ls2.fader_bank.get_fader_type(15, 3) == FaderType.PRESET
+    assert ls2.fader_bank.is_fader_fixed(15, 3) is True

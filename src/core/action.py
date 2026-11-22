@@ -68,6 +68,7 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "dmx.test_output": _("Test DMX output"),
     "fader.assign": _("Assign fader"),
     "fader.clear": _("Clear fader"),
+    "fader.set_fixed": _("Fix fader"),
     "fader.set_page_count": _("Set fader pages"),
     "fader.set_skip_empty_pages": _("Toggle skip empty fader pages"),
     "fixture.delete": _("Delete fixture profile"),
