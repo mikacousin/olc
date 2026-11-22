@@ -222,11 +222,11 @@ def test_midi_notes_palette_and_preset_command_injection() -> None:
             "commandline.append_char", text
         )
 
-    # Existing "preset" key must still open the memories tab
+    # Existing "preset" key must still open the cues tab
     app.action_registry.execute.reset_mock()
     msg_tab = mido.Message("note_on", channel=0, note=10, velocity=127)
     notes._dispatch("preset", msg_tab)
-    app.action_registry.execute.assert_called_once_with("gui.tab_open", "memories")
+    app.action_registry.execute.assert_called_once_with("gui.tab_open", "cues")
 
     # effect.tap_tempo and effect.stop MIDI note actions
     app.action_registry.execute.reset_mock()

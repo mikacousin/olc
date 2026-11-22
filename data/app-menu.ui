@@ -49,7 +49,7 @@
     </item>
     <item>
       <attribute name="label" translatable="yes">Cues</attribute>
-      <attribute name="action">app.memories</attribute>
+      <attribute name="action">app.cues</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Groups</attribute>

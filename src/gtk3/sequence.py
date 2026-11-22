@@ -626,24 +626,24 @@ class SequenceTab(Gtk.Grid):
         keystring = self.commandline.get_string()
         if keystring == "":
             if step:
-                mem_val = sequence.get_next_cue(step=step)
-                assert mem_val is not None
-                mem = mem_val
+                cue_val = sequence.get_next_cue(step=step)
+                assert cue_val is not None
+                cue_num = cue_val
                 step += 1
             else:
-                mem = 1.0
+                cue_num = 1.0
                 step = 1
         else:
-            mem = float(keystring)
-            found, step = sequence.get_step(cue=mem)
+            cue_num = float(keystring)
+            found, step = sequence.get_step(cue=cue_num)
             self.app.core.action_registry.execute("commandline.clear")
 
         if not found:
-            self._create_cue(sequence, mem, step)
+            self._create_cue(sequence, cue_num, step)
         else:
-            self._update_cue(sequence, mem)
+            self._update_cue(sequence, cue_num)
 
-    def _create_cue(self, sequence: Sequence, mem: float, step: int) -> None:
+    def _create_cue(self, sequence: Sequence, cue_num: float, step: int) -> None:
         """Create new cue inside the sequence"""
         channels = {}
         for channel in range(MAX_CHANNELS):
@@ -654,21 +654,21 @@ class SequenceTab(Gtk.Grid):
                     channels[channel + 1] = channel_widget.level
 
         self.window.app.core.action_registry.execute(
-            "sequence.insert_step", sequence.index, step, mem, channels
+            "sequence.insert_step", sequence.index, step, cue_num, channels
         )
         self.window.app.core.action_registry.execute(
-            "cue.clear_editor", mem, int(sequence.index)
+            "cue.clear_editor", cue_num, int(sequence.index)
         )
 
-    def _update_cue(self, sequence: Sequence, mem: float) -> None:
+    def _update_cue(self, sequence: Sequence, cue_num: float) -> None:
         """Update existing cue inside the sequence"""
-        dialog = ConfirmationDialog(f"Update cue {mem} ?", self.window)
+        dialog = ConfirmationDialog(f"Update cue {cue_num} ?", self.window)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()
             return
 
-        step_idx = sequence.get_step(cue=mem)[1]
+        step_idx = sequence.get_step(cue=cue_num)[1]
         cue = sequence.steps[step_idx].cue
         if cue is None:
             dialog.destroy()

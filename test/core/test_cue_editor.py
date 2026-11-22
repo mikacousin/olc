@@ -67,7 +67,7 @@ def test_cue_set_temp_channels_action() -> None:
     # Trigger events tracing
     changed_events = []
     app.subscribe(
-        "cue_editor.changed", lambda seq, mem: changed_events.append((seq, mem))
+        "cue_editor.changed", lambda seq, cue_num: changed_events.append((seq, cue_num))
     )
 
     # Execute temp levels set action

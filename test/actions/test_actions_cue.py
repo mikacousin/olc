@@ -38,8 +38,12 @@ def test_cue_insert_update_set_level() -> None:
     created_events = []
     updated_events = []
 
-    app.subscribe("cue.created", lambda seq, mem: created_events.append((seq, mem)))
-    app.subscribe("cue.updated", lambda seq, mem: updated_events.append((seq, mem)))
+    app.subscribe(
+        "cue.created", lambda seq, cue_num: created_events.append((seq, cue_num))
+    )
+    app.subscribe(
+        "cue.updated", lambda seq, cue_num: updated_events.append((seq, cue_num))
+    )
 
     # 1. Test cue.insert (empty cue)
     app.action_registry.execute("cue.insert", 1.0, 0)
@@ -99,9 +103,15 @@ def test_cue_rename_and_copy() -> None:
     deleted_events = []
     updated_events = []
 
-    app.subscribe("cue.created", lambda seq, mem: created_events.append((seq, mem)))
-    app.subscribe("cue.deleted", lambda seq, mem: deleted_events.append((seq, mem)))
-    app.subscribe("cue.updated", lambda seq, mem: updated_events.append((seq, mem)))
+    app.subscribe(
+        "cue.created", lambda seq, cue_num: created_events.append((seq, cue_num))
+    )
+    app.subscribe(
+        "cue.deleted", lambda seq, cue_num: deleted_events.append((seq, cue_num))
+    )
+    app.subscribe(
+        "cue.updated", lambda seq, cue_num: updated_events.append((seq, cue_num))
+    )
 
     # Insert baseline cue 1.0
     app.action_registry.execute("cue.insert", 1.0, 0)
@@ -175,8 +185,12 @@ def test_cue_delete() -> None:
     created_events = []
     deleted_events = []
 
-    app.subscribe("cue.created", lambda seq, mem: created_events.append((seq, mem)))
-    app.subscribe("cue.deleted", lambda seq, mem: deleted_events.append((seq, mem)))
+    app.subscribe(
+        "cue.created", lambda seq, cue_num: created_events.append((seq, cue_num))
+    )
+    app.subscribe(
+        "cue.deleted", lambda seq, cue_num: deleted_events.append((seq, cue_num))
+    )
 
     # Insert baseline cue 2.0
     app.action_registry.execute("cue.insert", 2.0, 0)

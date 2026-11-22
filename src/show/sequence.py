@@ -507,8 +507,8 @@ class Sequence:
 
             # Set main window's subtitle
             subtitle = (
-                f"Mem. : {get_cue(self.steps[position]).number} "
-                f"{self.steps[position].text} - Next Mem. : "
+                f"Cue : {get_cue(self.steps[position]).number} "
+                f"{self.steps[position].text} - Next Cue : "
                 f"{get_cue(self.steps[position + 1]).number} "
                 f"{self.steps[position + 1].text}"
             )
@@ -562,9 +562,9 @@ class Sequence:
             )
 
         subtitle = (
-            f"Mem. : {get_cue(self.steps[position]).number} "
+            f"Cue : {get_cue(self.steps[position]).number} "
             f"{self.steps[position].text}"
-            f" - Next Mem. : {get_cue(self.steps[position - 1]).number} "
+            f" - Next Cue : {get_cue(self.steps[position - 1]).number} "
             f"{self.steps[position - 1].text}"
         )
 

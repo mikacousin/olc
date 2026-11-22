@@ -1629,7 +1629,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.tabs.tabs["groups"],
             self.app.tabs.tabs["indes"],
             self.app.tabs.tabs["faders"],
-            self.app.tabs.tabs["memories"],
+            self.app.tabs.tabs["cues"],
             self.app.tabs.tabs["sequences"],
         ):
             channels_view = getattr(child, "channels_view", None)

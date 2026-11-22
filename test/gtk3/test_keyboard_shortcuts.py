@@ -641,12 +641,12 @@ def test_cue_treeview_cell_editing_space(
     cmdline = app_gui.core.commandline
 
     cmdline.clear()
-    app_gui.open_memories()
+    app_gui.open_cues()
     process_events()
 
     from olc.gtk3.cue import CuesEditionTab
 
-    cues_tab = win.tabs_manager.tabs["memories"]
+    cues_tab = win.tabs_manager.tabs["cues"]
     assert isinstance(cues_tab, CuesEditionTab)
     if len(app_gui.core.lightshow.cues) == 0:
         from olc.show.cue import Cue

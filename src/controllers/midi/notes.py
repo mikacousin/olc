@@ -566,7 +566,7 @@ class MidiNotes:
             self.app.emit("button.pressed", "preset", False)
         elif msg.velocity == 127:
             self.app.emit("button.pressed", "preset", True)
-            self.app.action_registry.execute("gui.tab_open", "memories")
+            self.app.action_registry.execute("gui.tab_open", "cues")
 
     def track(self, msg: mido.Message) -> None:
         """Track channels

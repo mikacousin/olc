@@ -340,8 +340,8 @@ def test_cue_and_seq_channels_view_isolation_from_live(
     main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))
     main_pb.last = len(main_pb.steps)
 
-    # Open Memories & Sequences tabs
-    app_gui.activate_action("memories", None)
+    # Open Cues & Sequences tabs
+    app_gui.activate_action("cues", None)
     app_gui.activate_action("sequences", None)
     process_events()
 
@@ -350,12 +350,12 @@ def test_cue_and_seq_channels_view_isolation_from_live(
 
     assert app_gui.tabs is not None
     assert app_gui.window is not None
-    mem_tab = app_gui.tabs.tabs.get("memories")
+    cues_tab = app_gui.tabs.tabs.get("cues")
     seq_tab = app_gui.tabs.tabs.get("sequences")
-    assert isinstance(mem_tab, CuesEditionTab)
+    assert isinstance(cues_tab, CuesEditionTab)
     assert isinstance(seq_tab, SequenceTab)
 
-    mem_tab.channels_view.set_display_format("Summary+")
+    cues_tab.channels_view.set_display_format("Summary+")
     seq_tab.channels_view.set_display_format("Summary+")
     seq_tab.refresh()
     seq_tab.treeview2.set_cursor(Gtk.TreePath.new_from_indices([0]), None, False)
@@ -363,22 +363,22 @@ def test_cue_and_seq_channels_view_isolation_from_live(
     process_events()
 
     live_w1 = app_gui.window.live_view.channels_view.get_channel_widget(1)
-    mem_w1 = mem_tab.channels_view.get_channel_widget(1)
+    cues_w1 = cues_tab.channels_view.get_channel_widget(1)
     seq_w1 = seq_tab.channels_view.get_channel_widget(1)
-    assert live_w1 is not None and mem_w1 is not None and seq_w1 is not None
+    assert live_w1 is not None and cues_w1 is not None and seq_w1 is not None
 
     assert live_w1.get_preview_rgb() == pytest.approx((0.0, 0.0, 1.0), abs=0.02)
-    assert mem_w1.get_preview_rgb() == pytest.approx((1.0, 0.0, 0.0), abs=0.02)
+    assert cues_w1.get_preview_rgb() == pytest.approx((1.0, 0.0, 0.0), abs=0.02)
     assert seq_w1.get_preview_rgb() == pytest.approx((1.0, 0.0, 0.0), abs=0.02)
 
-    mem_snap = mem_w1.get_snapshot()
+    cues_snap = cues_w1.get_snapshot()
     seq_snap = seq_w1.get_snapshot()
-    assert mem_snap is not None and mem_snap.color.palette_ref is not None
-    assert mem_snap.color.palette_ref.label == "Cue Red"
+    assert cues_snap is not None and cues_snap.color.palette_ref is not None
+    assert cues_snap.color.palette_ref.label == "Cue Red"
     assert seq_snap is not None and seq_snap.color.palette_ref is not None
     assert seq_snap.color.palette_ref.label == "Cue Red"
 
-    _draw_to_surface(mem_w1)
+    _draw_to_surface(cues_w1)
     _draw_to_surface(seq_w1)
 
 

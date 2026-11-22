@@ -629,8 +629,8 @@ def _next_step(sequence: Sequence) -> int:
 
     # Main window's subtitle
     subtitle = (
-        f"Mem. : {get_cue(sequence.steps[sequence.position]).number} "
-        f"{sequence.steps[sequence.position].text} - Next Mem. : "
+        f"Cue : {get_cue(sequence.steps[sequence.position]).number} "
+        f"{sequence.steps[sequence.position].text} - Next Cue : "
         f"{get_cue(sequence.steps[next_step]).number} "
         f"{sequence.steps[next_step].text}"
     )
@@ -1250,8 +1250,8 @@ class ThreadGoBack(threading.Thread):
         self.sequence.position = prev_step
 
         subtitle = (
-            f"Mem. : {get_cue(self.sequence.steps[prev_step]).number} "
-            f"{self.sequence.steps[prev_step].text} - Next Mem. : "
+            f"Cue : {get_cue(self.sequence.steps[prev_step]).number} "
+            f"{self.sequence.steps[prev_step].text} - Next Cue : "
             f"{get_cue(self.sequence.steps[prev_step + 1]).number} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )

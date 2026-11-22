@@ -343,12 +343,12 @@ def test_show_workspace_persistence_headless(tmp_path: pathlib.Path) -> None:
         "active_pane": "live",
         "panes": {
             "live": {"tabs": ["channels", "groups"], "active_tab": "groups"},
-            "playback": {"tabs": ["playback", "memories"], "active_tab": "memories"},
+            "playback": {"tabs": ["playback", "cues"], "active_tab": "cues"},
         },
         "tab_settings": {
             "channels": {"view_mode": "Patched"},
             "groups": {"view_mode": "Patched"},
-            "memories": {"view_mode": "Active"},
+            "cues": {"view_mode": "Active"},
         },
         "virtual_console": {"open": True},
     }

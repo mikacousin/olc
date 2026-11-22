@@ -244,7 +244,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                     cue = steps[1].cue
                     number = cue.number
                     text = cue.text
-                    subtitle = f"Mem. : 0.0 - Next Mem. : {number} {text}"
+                    subtitle = f"Cue : 0.0 - Next Cue : {number} {text}"
                 else:
                     subtitle = ""
                 self.app.window.header.set_subtitle(subtitle)
@@ -308,7 +308,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "dmx_outputs": app.open_dmx_outputs,
                 "patch_channels": app.open_patch_channels,
                 "track_channels": app.open_track_channels,
-                "memories": app.open_memories,
+                "cues": app.open_cues,
                 "sequences": app.open_sequences,
                 "groups": app.open_groups,
                 "palettes": app.open_palettes,
@@ -617,7 +617,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             self.app.window.live_view.channels_view.update()
 
         if self.app.tabs:
-            for tab_key in ("sequences", "groups", "memories"):
+            for tab_key in ("sequences", "groups", "cues"):
                 tab_obj = self.app.tabs.tabs.get(tab_key)
                 if tab_obj is not None:
                     channels_view = getattr(tab_obj, "channels_view", None)

@@ -71,47 +71,47 @@ def test_tab_actions() -> None:
     assert app.tabs.active_tabs["playback"] == "dmx_outputs"
     assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs"]
 
-    # 2. Open another tab "memories"
-    app.action_registry.execute("gui.tab_open", "memories", "playback")
-    assert app.tabs.active_tabs["playback"] == "memories"
-    assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs", "memories"]
+    # 2. Open another tab "cues"
+    app.action_registry.execute("gui.tab_open", "cues", "playback")
+    assert app.tabs.active_tabs["playback"] == "cues"
+    assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs", "cues"]
 
-    # 3. Move "memories" within same notebook to index 0
-    app.action_registry.execute("gui.tab_move", "memories", "playback", "playback", 0)
-    assert app.tabs.notebooks["playback"] == ["memories", "playback", "dmx_outputs"]
+    # 3. Move "cues" within same notebook to index 0
+    app.action_registry.execute("gui.tab_move", "cues", "playback", "playback", 0)
+    assert app.tabs.notebooks["playback"] == ["cues", "playback", "dmx_outputs"]
 
     # Undo move
     app.history.undo()
-    assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs", "memories"]
+    assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs", "cues"]
 
     # Redo move
     app.history.redo()
-    assert app.tabs.notebooks["playback"] == ["memories", "playback", "dmx_outputs"]
+    assert app.tabs.notebooks["playback"] == ["cues", "playback", "dmx_outputs"]
 
-    # 4. Close "memories"
-    app.action_registry.execute("gui.tab_close", "memories")
+    # 4. Close "cues"
+    app.action_registry.execute("gui.tab_close", "cues")
     assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs"]
     assert app.tabs.active_tabs["playback"] == "playback"
 
     # Undo close
     app.history.undo()
-    assert app.tabs.notebooks["playback"] == ["memories", "playback", "dmx_outputs"]
-    assert app.tabs.active_tabs["playback"] == "memories"
+    assert app.tabs.notebooks["playback"] == ["cues", "playback", "dmx_outputs"]
+    assert app.tabs.active_tabs["playback"] == "cues"
 
-    # 5. Move "memories" between notebooks (playback to live)
+    # 5. Move "cues" between notebooks (playback to live)
     assert app.tabs.notebooks["live"] == ["channels"]
     assert app.tabs.active_tabs["live"] == "channels"
 
-    app.action_registry.execute("gui.tab_move", "memories", "playback", "live", 0)
+    app.action_registry.execute("gui.tab_move", "cues", "playback", "live", 0)
     assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs"]
     assert app.tabs.active_tabs["playback"] == "playback"
-    assert app.tabs.notebooks["live"] == ["memories", "channels"]
-    assert app.tabs.active_tabs["live"] == "memories"
+    assert app.tabs.notebooks["live"] == ["cues", "channels"]
+    assert app.tabs.active_tabs["live"] == "cues"
 
     # Undo move between notebooks
     app.history.undo()
-    assert app.tabs.notebooks["playback"] == ["memories", "playback", "dmx_outputs"]
-    assert app.tabs.active_tabs["playback"] == "memories"
+    assert app.tabs.notebooks["playback"] == ["cues", "playback", "dmx_outputs"]
+    assert app.tabs.active_tabs["playback"] == "cues"
     assert app.tabs.notebooks["live"] == ["channels"]
     assert app.tabs.active_tabs["live"] == "channels"
 
@@ -119,8 +119,8 @@ def test_tab_actions() -> None:
     app.history.redo()
     assert app.tabs.notebooks["playback"] == ["playback", "dmx_outputs"]
     assert app.tabs.active_tabs["playback"] == "playback"
-    assert app.tabs.notebooks["live"] == ["memories", "channels"]
-    assert app.tabs.active_tabs["live"] == "memories"
+    assert app.tabs.notebooks["live"] == ["cues", "channels"]
+    assert app.tabs.active_tabs["live"] == "cues"
 
 
 def test_zoom_debouncing() -> None:

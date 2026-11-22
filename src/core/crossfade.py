@@ -216,8 +216,8 @@ class CrossFade:
         cue_text = main_pb.steps[main_pb.position].text
         next_cue = get_cue(main_pb.steps[next_step]).number
         subtitle = (
-            f"Mem. :{cue} {cue_text} "
-            f"- Next Mem. : {next_cue} "
+            f"Cue : {cue} {cue_text} "
+            f"- Next Cue : {next_cue} "
             f"{main_pb.steps[next_step].text}"
         )
         self.app.emit("crossfade.at_full", next_step, subtitle)

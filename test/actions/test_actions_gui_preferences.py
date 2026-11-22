@@ -146,7 +146,7 @@ def test_event_bridge_preferences_routing(monkeypatch: pytest.MonkeyPatch) -> No
         "settings": mock_settings_tab,
         "sequences": MagicMock(),
         "groups": MagicMock(),
-        "memories": MagicMock(),
+        "cues": MagicMock(),
     }
 
     _bridge = GuiEventBridge(mock_app)
@@ -157,7 +157,7 @@ def test_event_bridge_preferences_routing(monkeypatch: pytest.MonkeyPatch) -> No
     mock_app.window.live_view.channels_view.update.assert_called_once()
     mock_app.tabs.tabs["sequences"].channels_view.update.assert_called_once()
     mock_app.tabs.tabs["groups"].channels_view.update.assert_called_once()
-    mock_app.tabs.tabs["memories"].channels_view.update.assert_called_once()
+    mock_app.tabs.tabs["cues"].channels_view.update.assert_called_once()
 
     # 2. Default time event
     core.emit("gui.default_time_changed", 2.5)

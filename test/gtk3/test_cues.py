@@ -39,12 +39,12 @@ def test_cues_edition_tab_behavior(app_gui: Application) -> None:
     app_gui.core.lightshow.cues.clear()
     app_gui.core.lightshow.cues.append(Cue(0, 1.0, {}, "Cue 1"))
 
-    # 2. Open memories/cues tab
-    app_gui.activate_action("memories", None)
+    # 2. Open cues tab
+    app_gui.activate_action("cues", None)
     process_events()
 
     assert app_gui.tabs is not None
-    cues_tab = app_gui.tabs.tabs.get("memories")
+    cues_tab = app_gui.tabs.tabs.get("cues")
     assert isinstance(cues_tab, CuesEditionTab)
     assert cues_tab.treeview is not None
 
@@ -100,11 +100,11 @@ def test_cues_edition_tab_device_values_and_colors(app_gui: Application) -> None
     cue = Cue(0, 1.0, {1: 0.5}, "Mixed Cue", device_values={2: {"intensity": 1.0}})
     app_gui.core.lightshow.cues.append(cue)
 
-    app_gui.activate_action("memories", None)
+    app_gui.activate_action("cues", None)
     process_events()
 
     assert app_gui.tabs is not None
-    cues_tab = app_gui.tabs.tabs.get("memories")
+    cues_tab = app_gui.tabs.tabs.get("cues")
     assert isinstance(cues_tab, CuesEditionTab)
     cues_tab.refresh()
     process_events()

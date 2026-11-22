@@ -121,7 +121,7 @@ class LightShow(ShowFile):
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
         self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
-        # List of global memories
+        # List of global cues
         self.cues = Cues(self)
         # Secondary sequences (2..N) and parametric Effects Manager
         self.sequences = []

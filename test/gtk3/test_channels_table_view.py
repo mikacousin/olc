@@ -502,19 +502,19 @@ def test_table_view_selection_sync_with_tiles_inspector_and_isolation(
         device_values={1: {"intensity": 0.9, "color": "#FF0000"}},
     )
     app_gui.core.lightshow.cues.append(cue)
-    app_gui.activate_action("memories", None)
+    app_gui.activate_action("cues", None)
     process_events()
     app_gui.core.action_registry.execute("cue.select", (1.0, 0))
     process_events()
 
-    mem_tab = app_gui.tabs.tabs.get("memories")
-    assert isinstance(mem_tab, CuesEditionTab)
-    mem_tab.channels_view.set_view_mode_by_name("Patched")
-    mem_tab.channels_view.set_display_format("Table")
+    cues_tab = app_gui.tabs.tabs.get("cues")
+    assert isinstance(cues_tab, CuesEditionTab)
+    cues_tab.channels_view.set_view_mode_by_name("Patched")
+    cues_tab.channels_view.set_display_format("Table")
     process_events()
 
-    mem_tv = mem_tab.channels_view.table_view
-    assert len(mem_tv.store) == 2
-    assert mem_tv.store[0][COL_CHANNEL] == 1
-    assert mem_tv.store[0][COL_SWATCH_R] == pytest.approx(1.0, abs=0.02)
-    assert mem_tv.store[0][COL_SWATCH_B] == pytest.approx(0.0, abs=0.02)
+    cues_tv = cues_tab.channels_view.table_view
+    assert len(cues_tv.store) == 2
+    assert cues_tv.store[0][COL_CHANNEL] == 1
+    assert cues_tv.store[0][COL_SWATCH_R] == pytest.approx(1.0, abs=0.02)
+    assert cues_tv.store[0][COL_SWATCH_B] == pytest.approx(0.0, abs=0.02)

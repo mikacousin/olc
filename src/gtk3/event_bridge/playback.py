@@ -251,8 +251,8 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                     number_step = cue_step.number if cue_step is not None else 0.0
                     number_next = cue_next.number if cue_next is not None else 0.0
                     subtitle = (
-                        f"Mem. : {number_step} "
-                        f"{sequence.steps[sequence.position].text} - Next Mem. : "
+                        f"Cue : {number_step} "
+                        f"{sequence.steps[sequence.position].text} - Next Cue : "
                         f"{number_next} "
                         f"{sequence.steps[sequence.position + 1].text}"
                     )
@@ -445,12 +445,12 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             seq.queue_draw()
 
         # Update Window's subtitle
-        cue_mem = feedback.get("cue_number", 0.0)
+        cue_num = feedback.get("cue_number", 0.0)
         cue_txt = feedback.get("cue_text", "")
-        next_mem = feedback.get("next_cue_number", 0.0)
+        next_cue_num = feedback.get("next_cue_number", 0.0)
         next_txt = feedback.get("next_cue_text", "")
 
-        subtitle = f"Mem. : {cue_mem} {cue_txt} - Next Mem. : {next_mem} {next_txt}"
+        subtitle = f"Cue : {cue_num} {cue_txt} - Next Cue : {next_cue_num} {next_txt}"
         update_ui(subtitle, typing.cast(typing.Any, self.app))
 
     def sync_virtual_console(self) -> None:

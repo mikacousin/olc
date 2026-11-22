@@ -250,28 +250,28 @@ def test_flexi_subclasses_and_filtered_navigation(app_gui: Application) -> None:
     assert live_cv.get_selected_channels() == [3]
 
     # CueChannelsView: Devices, Selected, Manual (uncommitted cue_editor level)
-    app_gui.open_memories()
+    app_gui.open_cues()
     process_events()
-    mem_tab = app_gui.tabs.tabs.get("memories")
-    assert isinstance(mem_tab, CuesEditionTab)
+    cues_tab = app_gui.tabs.tabs.get("cues")
+    assert isinstance(cues_tab, CuesEditionTab)
     app_gui.core.action_registry.execute("cue.select", (1.0, 1))
     app_gui.core.action_registry.execute("cue.set_temp_channels", 1.0, 1, {2: 180})
     process_events()
 
-    mem_cv = mem_tab.channels_view
-    mem_cv.set_view_mode_by_name("Devices")
+    cues_cv = cues_tab.channels_view
+    cues_cv.set_view_mode_by_name("Devices")
     process_events()
-    assert mem_cv.get_visible_channels() == [2, 3]
+    assert cues_cv.get_visible_channels() == [2, 3]
 
-    mem_cv.set_view_mode_by_name("Manual")
+    cues_cv.set_view_mode_by_name("Manual")
     process_events()
-    assert mem_cv.get_visible_channels() == [2]
+    assert cues_cv.get_visible_channels() == [2]
 
-    mem_cv.selection_manager.selected_channels = [1]
-    mem_cv.sync_selection_to_gui([1])
-    mem_cv.set_view_mode_by_name("Selected")
+    cues_cv.selection_manager.selected_channels = [1]
+    cues_cv.sync_selection_to_gui([1])
+    cues_cv.set_view_mode_by_name("Selected")
     process_events()
-    assert mem_cv.get_visible_channels() == [1]
+    assert cues_cv.get_visible_channels() == [1]
 
     # GroupChannelsView: Devices, Selected, Manual
     app_gui.open_groups()
@@ -489,7 +489,7 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
     seq.add_step(Step(sequence=1, cue=cue1))
     app_gui.core.lightshow.main_playback = seq
 
-    # 1. Configure Live ChannelsView + Memories + Sequences + Groups
+    # 1. Configure Live ChannelsView + Cues + Sequences + Groups
     live_cv = app_gui.window.live_view.channels_view
     live_cv.set_view_mode_by_name("Devices")
     live_cv.set_readout_mode("Label")
@@ -498,22 +498,22 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
     live_cv.set_family_expanded("color", True)
     live_cv.set_display_format("Table")
 
-    app_gui.open_memories()
+    app_gui.open_cues()
     app_gui.open_sequences()
     app_gui.open_groups()
     process_events()
 
-    mem_tab = app_gui.tabs.tabs.get("memories")
+    cues_tab = app_gui.tabs.tabs.get("cues")
     seq_tab = app_gui.tabs.tabs.get("sequences")
     grp_tab = app_gui.tabs.tabs.get("groups")
-    assert isinstance(mem_tab, CuesEditionTab)
+    assert isinstance(cues_tab, CuesEditionTab)
     assert isinstance(seq_tab, SequenceTab)
     assert isinstance(grp_tab, GroupTab)
 
-    mem_tab.channels_view.set_view_mode_by_name("Manual")
-    mem_tab.channels_view.set_display_format("Summary+")
-    mem_tab.channels_view.set_readout_mode("DMX")
-    mem_tab.channels_view.set_show_labels(False)
+    cues_tab.channels_view.set_view_mode_by_name("Manual")
+    cues_tab.channels_view.set_display_format("Summary+")
+    cues_tab.channels_view.set_readout_mode("DMX")
+    cues_tab.channels_view.set_show_labels(False)
 
     seq_tab.channels_view.set_view_mode_by_name("Patched")
     seq_tab.channels_view.set_family_expanded("beam", True)
@@ -525,17 +525,17 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
     grp_tab.channels_view.set_show_labels(True)
     process_events()
 
-    # 2. Close & reopen Memories tab -> settings preserved
-    app_gui.tabs.close_physically("memories")
+    # 2. Close & reopen Cues tab -> settings preserved
+    app_gui.tabs.close_physically("cues")
     process_events()
-    app_gui.open_memories()
+    app_gui.open_cues()
     process_events()
-    reopened_mem = app_gui.tabs.tabs.get("memories")
-    assert isinstance(reopened_mem, CuesEditionTab)
-    assert reopened_mem.channels_view.get_view_mode_name() == "Manual"
-    assert reopened_mem.channels_view.get_display_format() == "Summary+"
-    assert reopened_mem.channels_view.get_readout_mode() == "DMX"
-    assert reopened_mem.channels_view.get_show_labels() is False
+    reopened_cues = app_gui.tabs.tabs.get("cues")
+    assert isinstance(reopened_cues, CuesEditionTab)
+    assert reopened_cues.channels_view.get_view_mode_name() == "Manual"
+    assert reopened_cues.channels_view.get_display_format() == "Summary+"
+    assert reopened_cues.channels_view.get_readout_mode() == "DMX"
+    assert reopened_cues.channels_view.get_show_labels() is False
 
     # 3. Full save -> new -> open round-trip
     save_path = str(tmp_path / "channels_workspace.olc")
@@ -569,17 +569,17 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
     assert "Fixture / Label" not in live_cv.table_view.get_column_titles()
     assert "Pan" in live_cv.table_view.get_column_titles()
 
-    restored_mem = app_gui.tabs.tabs.get("memories")
+    restored_cues = app_gui.tabs.tabs.get("cues")
     restored_seq = app_gui.tabs.tabs.get("sequences")
     restored_grp = app_gui.tabs.tabs.get("groups")
-    assert isinstance(restored_mem, CuesEditionTab)
+    assert isinstance(restored_cues, CuesEditionTab)
     assert isinstance(restored_seq, SequenceTab)
     assert isinstance(restored_grp, GroupTab)
 
-    assert restored_mem.channels_view.get_view_mode_name() == "Manual"
-    assert restored_mem.channels_view.get_display_format() == "Summary+"
-    assert restored_mem.channels_view.get_readout_mode() == "DMX"
-    assert restored_mem.channels_view.get_show_labels() is False
+    assert restored_cues.channels_view.get_view_mode_name() == "Manual"
+    assert restored_cues.channels_view.get_display_format() == "Summary+"
+    assert restored_cues.channels_view.get_readout_mode() == "DMX"
+    assert restored_cues.channels_view.get_show_labels() is False
 
     assert restored_seq.channels_view.get_view_mode_name() == "Patched"
     assert restored_seq.channels_view.get_display_format() == "Table"

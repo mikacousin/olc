@@ -349,7 +349,7 @@ class ImportFile:
             cue = self.lightshow.main_playback.steps[1].cue
             number = cue.number if cue is not None else 0.0
             text = cue.text if cue is not None else ""
-            subtitle = f"Mem. : 0.0 - Next Mem. : {number} {text}"
+            subtitle = f"Cue : 0.0 - Next Cue : {number} {text}"
             self.window.header.set_subtitle(subtitle)
         if self.window is not None and self.window.playback is not None:
             self.window.playback.update_xfade_display(0)

@@ -308,7 +308,7 @@ class Application(Gtk.Application):
             "patch_channels": "patch_channels",
             "fixtures": "fixtures_cb",
             "curves": "curves",
-            "memories": "memories_cb",
+            "cues": "cues_cb",
             "groups": "groups_cb",
             "palettes": "palettes_cb",
             "effects": "effects_cb",
@@ -548,16 +548,16 @@ class Application(Gtk.Application):
         if self.tabs:
             self.tabs.open("track_channels", TrackChannelsTab, "Track Channels", self)
 
-    def memories_cb(
+    def cues_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
-        """Create Memories Tab"""
-        self.core.action_registry.execute("gui.tab_open", "memories")
+        """Create Cues Tab"""
+        self.core.action_registry.execute("gui.tab_open", "cues")
 
-    def open_memories(self) -> None:
-        """Open Memories tab UI."""
+    def open_cues(self) -> None:
+        """Open Cues tab UI."""
         if self.tabs:
-            self.tabs.open("memories", CuesEditionTab, "Memories", self)
+            self.tabs.open("cues", CuesEditionTab, "Cues", self)
 
     def groups_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

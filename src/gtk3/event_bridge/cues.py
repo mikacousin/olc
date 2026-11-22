@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""GUI event bridge handler for cues and memories."""
+"""GUI event bridge handler for cues."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ if typing.TYPE_CHECKING:
 
 # pylint: disable=too-few-public-methods
 class CueBridgeHandler(BaseEventBridgeHandler):
-    """Handles cue and memory event synchronization to the GUI."""
+    """Handles cue event synchronization to the GUI."""
 
     def register(self) -> None:
         """Subscribe to Core events for cues and cue editor."""
@@ -88,7 +88,7 @@ class CueBridgeHandler(BaseEventBridgeHandler):
         return False
 
     def _safe_refresh_cues(self, sequence: int, number: float) -> bool:
-        """Refresh the cues (memories) tab and playback UI safely in the GTK thread.
+        """Refresh the cues tab and playback UI safely in the GTK thread.
 
         Args:
             sequence: Sequence number.
@@ -98,15 +98,13 @@ class CueBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("memories") is not None:
-                memories_tab = typing.cast(
-                    "CuesEditionTab", self.app.tabs.tabs["memories"]
-                )
-                path, _ = memories_tab.treeview.get_cursor()
+            if self.app.tabs.tabs.get("cues") is not None:
+                cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
+                path, _ = cues_tab.treeview.get_cursor()
                 if path:
                     row = path.get_indices()[0]
-                    if 0 <= row < len(memories_tab.lightshow.cues):
-                        selected_cue = memories_tab.lightshow.cues[row]
+                    if 0 <= row < len(cues_tab.lightshow.cues):
+                        selected_cue = cues_tab.lightshow.cues[row]
                         if (
                             selected_cue.sequence == sequence
                             and selected_cue.number == number
@@ -114,7 +112,7 @@ class CueBridgeHandler(BaseEventBridgeHandler):
                             self.app.core.action_registry.execute(
                                 "cue.clear_editor", number, sequence
                             )
-                memories_tab.refresh()
+                cues_tab.refresh()
             if self.app.tabs.tabs.get("sequences") is not None:
                 sequences_tab = typing.cast(
                     "SequenceTab", self.app.tabs.tabs["sequences"]
@@ -137,7 +135,7 @@ class CueBridgeHandler(BaseEventBridgeHandler):
         return False
 
     def _safe_refresh_cue_editor(self, sequence: int, number: float) -> bool:
-        """Refresh the channel view in memories tab when temporary overrides change.
+        """Refresh the channel view in cues tab when temporary overrides change.
 
         Args:
             sequence: Sequence number.
@@ -147,20 +145,18 @@ class CueBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("memories") is not None:
-                memories_tab = typing.cast(
-                    "CuesEditionTab", self.app.tabs.tabs["memories"]
-                )
-                path, _ = memories_tab.treeview.get_cursor()
+            if self.app.tabs.tabs.get("cues") is not None:
+                cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
+                path, _ = cues_tab.treeview.get_cursor()
                 if path:
                     row = path.get_indices()[0]
-                    if 0 <= row < len(memories_tab.lightshow.cues):
-                        selected_cue = memories_tab.lightshow.cues[row]
+                    if 0 <= row < len(cues_tab.lightshow.cues):
+                        selected_cue = cues_tab.lightshow.cues[row]
                         if (
                             selected_cue.sequence == sequence
                             and selected_cue.number == number
                         ):
-                            memories_tab.channels_view.update()
+                            cues_tab.channels_view.update()
         return False
 
     def _update_live_view_active_cue(self, sequence: int, number: float) -> None:
@@ -199,7 +195,7 @@ class CueBridgeHandler(BaseEventBridgeHandler):
         Returns:
             Always False.
         """
-        if self.app.tabs and self.app.tabs.tabs.get("memories") is not None:
-            memories_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["memories"])
-            memories_tab.select_cue_graphically(cue_id)
+        if self.app.tabs and self.app.tabs.tabs.get("cues") is not None:
+            cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
+            cues_tab.select_cue_graphically(cue_id)
         return False

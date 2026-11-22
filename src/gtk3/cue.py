@@ -76,9 +76,9 @@ class CuesEditionTab(Gtk.Paned):
         # List of Cues
         self.liststore = Gtk.ListStore(str, str, int)
 
-        for mem in self.lightshow.cues:
-            channels = mem.get_active_channels_count()
-            self.liststore.append([str(mem.number), mem.text, channels])
+        for cue in self.lightshow.cues:
+            channels = cue.get_active_channels_count()
+            self.liststore.append([str(cue.number), cue.text, channels])
 
         self.filter = self.liststore.filter_new()
 
@@ -151,15 +151,15 @@ class CuesEditionTab(Gtk.Paned):
         """Refresh display by syncing the liststore without clearing it entirely"""
         self._updating_selection = True
         try:
-            actual_cues = {str(mem.number): mem for mem in self.lightshow.cues}
+            actual_cues = {str(cue.number): cue for cue in self.lightshow.cues}
             store = self.liststore
             it = store.get_iter_first()
-            existing_memories = set()
+            existing_cues = set()
 
             while isinstance(it, Gtk.TreeIter):
-                mem_str = store.get_value(it, 0)
-                if mem_str in actual_cues:
-                    cue = actual_cues[mem_str]
+                cue_str = store.get_value(it, 0)
+                if cue_str in actual_cues:
+                    cue = actual_cues[cue_str]
                     nb_chan = cue.get_active_channels_count()
 
                     curr_text = store.get_value(it, 1)
@@ -170,25 +170,25 @@ class CuesEditionTab(Gtk.Paned):
                     if curr_chan != nb_chan:
                         store.set_value(it, 2, nb_chan)
 
-                    existing_memories.add(mem_str)
+                    existing_cues.add(cue_str)
                     it = store.iter_next(it)
                 else:
                     it = store.remove(it)
 
-            for mem in self.lightshow.cues:
-                mem_str = str(mem.number)
-                if mem_str not in existing_memories:
-                    nb_chan = mem.get_active_channels_count()
+            for cue in self.lightshow.cues:
+                cue_str = str(cue.number)
+                if cue_str not in existing_cues:
+                    nb_chan = cue.get_active_channels_count()
                     insert_idx = 0
                     it_insert = store.get_iter_first()
                     while isinstance(it_insert, Gtk.TreeIter):
-                        curr_mem_val = float(store.get_value(it_insert, 0))
-                        if mem.number < curr_mem_val:
+                        curr_cue_val = float(store.get_value(it_insert, 0))
+                        if cue.number < curr_cue_val:
                             break
                         insert_idx += 1
                         it_insert = store.iter_next(it_insert)
 
-                    store.insert(insert_idx, [mem_str, mem.text, nb_chan])
+                    store.insert(insert_idx, [cue_str, cue.text, nb_chan])
 
             self.channels_view.update()
         finally:
@@ -196,7 +196,7 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
-        self.tabs.close("memories")
+        self.tabs.close("cues")
 
     def _text_edited(self, _widget: Gtk.CellRendererText, path: str, text: str) -> None:
         cue = self.lightshow.cues[int(path)]
@@ -326,8 +326,8 @@ class CuesEditionTab(Gtk.Paned):
         if not is_float(self.commandline.get_string()):
             return False
 
-        mem = float(self.commandline.get_string())
-        if not mem:
+        cue_num = float(self.commandline.get_string())
+        if not cue_num:
             return False
 
         # Find selected cue
@@ -336,7 +336,7 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
             src_cue = self.lightshow.cues[row]
             self.window.app.core.action_registry.execute(
-                "cue.copy", src_cue.number, mem, src_cue.sequence
+                "cue.copy", src_cue.number, cue_num, src_cue.sequence
             )
 
         self.app.core.action_registry.execute("commandline.clear")
@@ -354,11 +354,11 @@ class CuesEditionTab(Gtk.Paned):
             return True
 
         # Insert cue with the given number
-        mem = float(keystring)
+        cue_num = float(keystring)
 
         # Cue already exist ?
         for item in self.lightshow.cues:
-            if item.number == mem:
+            if item.number == cue_num:
                 return False
 
         # Find selected cue
@@ -372,7 +372,7 @@ class CuesEditionTab(Gtk.Paned):
             channels = None
 
         self.window.app.core.action_registry.execute(
-            "cue.insert", mem, sequence, channels
+            "cue.insert", cue_num, sequence, channels
         )
         self.app.core.action_registry.execute("commandline.clear")
         return True
@@ -415,7 +415,7 @@ class CuesEditionTab(Gtk.Paned):
 
 
 class CueChannelsView(ChannelsView):
-    """Channels View isolated to the currently selected Cue in Memories tab."""
+    """Channels View isolated to the currently selected Cue in Cues tab."""
 
     is_live_view: bool = False
 
@@ -646,7 +646,7 @@ class CueChannelsView(ChannelsView):
             self.lightshow is None
             or not self.lightshow.cues
             or self.tabs is None
-            or self.tabs.tabs.get("memories") is None
+            or self.tabs.tabs.get("cues") is None
         ):
             child.set_visible(False)
             return False
@@ -688,7 +688,7 @@ class CueChannelsView(ChannelsView):
     def __filter_active(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
         if (
             self.tabs is None
-            or self.tabs.tabs.get("memories") is None
+            or self.tabs.tabs.get("cues") is None
             or self.lightshow is None
         ):
             return False
@@ -743,7 +743,7 @@ class CueChannelsView(ChannelsView):
     def __filter_all(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
         if (
             self.tabs is None
-            or self.tabs.tabs.get("memories") is None
+            or self.tabs.tabs.get("cues") is None
             or self.lightshow is None
         ):
             return False

@@ -926,15 +926,15 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             self.app.core.action_registry.execute("playback.record_cue")
         else:
-            mem = float(keystring)
-            found, step = self.app.core.lightshow.main_playback.get_step(cue=mem)
+            cue_num = float(keystring)
+            found, step = self.app.core.lightshow.main_playback.get_step(cue=cue_num)
             if not found:
                 self.app.core.action_registry.execute(
-                    "playback.record_cue", number=mem, step=step
+                    "playback.record_cue", number=cue_num, step=step
                 )
             else:
                 self.app.core.action_registry.execute(
-                    "playback.update_active_step", number=mem
+                    "playback.update_active_step", number=cue_num
                 )
 
         self.app.core.action_registry.execute("commandline.clear")

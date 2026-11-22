@@ -59,7 +59,7 @@ msgid "Curves"
 msgstr "Courbes"
 
 msgid "Cues"
-msgstr "Mémoires"
+msgstr "Cues"
 
 msgid "Groups"
 msgstr "Groupes"
@@ -250,27 +250,27 @@ msgstr "Go"
 
 msgctxt "shortcut window"
 msgid "Next Cue"
-msgstr "Aller à la mémoire suivante"
+msgstr "Aller à la cue suivante"
 
 msgctxt "shortcut window"
 msgid "Prev Cue"
-msgstr "Aller à la mémoire précédente"
+msgstr "Aller à la cue précédente"
 
 msgctxt "shortcut window"
 msgid "Goto Cue"
-msgstr "Aller à la mémoire"
+msgstr "Aller à la cue"
 
 msgctxt "shortcut window"
 msgid "Cue"
-msgstr "Mémoire"
+msgstr "Cue"
 
 msgctxt "shortcut window"
 msgid "Update cue"
-msgstr "Mettre à jour la mémoire"
+msgstr "Mettre à jour la cue"
 
 msgctxt "shortcut window"
 msgid "Record cue"
-msgstr "Enregistrer mémoire"
+msgstr "Enregistrer cue"
 
 msgid "Cancel"
 msgstr "Annuler"

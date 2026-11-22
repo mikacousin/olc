@@ -131,7 +131,7 @@ class ChannelBridgeHandler(BaseEventBridgeHandler):
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.mark_channels_dirty(None)
         if self.app.tabs:
-            for tab_key in ("memories", "sequences"):
+            for tab_key in ("cues", "sequences"):
                 tab_obj = self.app.tabs.tabs.get(tab_key)
                 if tab_obj is not None:
                     cv = getattr(tab_obj, "channels_view", None)
