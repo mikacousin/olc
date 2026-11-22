@@ -22,9 +22,16 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, Gtk  # noqa: E402
+from gi.repository import Gio, Gtk, Pango  # noqa: E402
 
 from olc.devices.builtin import populate_builtin_library  # noqa: E402
+from olc.devices.channel import ChannelType  # noqa: E402
+from olc.devices.device import FixtureType  # noqa: E402
+from olc.devices.fixture import (  # noqa: E402
+    ChannelDefinition,
+    DmxModeDefinition,
+    FixtureDefinition,
+)
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
@@ -311,3 +318,70 @@ def test_fixture_library_tab_eos_import_display_and_apply(
         app_gui.core.emit("fixture_library.changed")
         app_gui.core.emit("patch.changed")
         process_events()
+
+
+def test_fixture_library_tab_width_bounded_on_long_gdtf_profile(
+    app_gui: Application,
+) -> None:
+    """Verify long mode names, channel labels, and notes never bloat tab width."""
+    fixtures_tab = FixtureLibraryTab(app=app_gui)
+    process_events()
+
+    try:
+        dimmer_def = fixtures_tab.fixture_library.get("Generic", "Dimmer")
+        fixtures_tab.load_definition(dimmer_def)
+        process_events()
+        base_min_width, _ = fixtures_tab.get_preferred_width()
+
+        long_fdef = FixtureDefinition(
+            manufacturer="Robe Lighting",
+            model="Robin Arianne 6 Ultra Extended Edition",
+            fixture_type=FixtureType.MOVING_HEAD,
+            notes="Very long fixture description text " * 12,
+            dmx_modes=[
+                DmxModeDefinition(
+                    name="Mode 3 - Full+ScreenPix Extended 58ch Profile",
+                    description="Long DMX mode description string for width test",
+                    channel_defs=[
+                        ChannelDefinition(
+                            ChannelType.PAN,
+                            offset=0,
+                            fine_offset=1,
+                            label="ScreenPixEffectSelectionUltraLongLabel",
+                            physical_unit="deg",
+                        ),
+                        ChannelDefinition(
+                            ChannelType.INTENSITY,
+                            offset=2,
+                            label="Dimmer",
+                            physical_unit="%",
+                        ),
+                    ],
+                )
+            ],
+            is_builtin=False,
+        )
+        fixtures_tab.load_definition(long_fdef)
+        process_events()
+
+        long_min_width, _ = fixtures_tab.get_preferred_width()
+        assert long_min_width <= 650
+        assert abs(long_min_width - base_min_width) <= 30
+
+        text_cells = [
+            c
+            for c in fixtures_tab.combo_modes.get_cells()
+            if isinstance(c, Gtk.CellRendererText)
+        ]
+        assert text_cells
+        assert all(
+            c.get_property("ellipsize") == Pango.EllipsizeMode.END for c in text_cells
+        )
+        assert fixtures_tab.lbl_status.get_ellipsize() == Pango.EllipsizeMode.END
+        assert (
+            fixtures_tab.lbl_mode_footprint.get_ellipsize() == Pango.EllipsizeMode.END
+        )
+        assert fixtures_tab.lbl_range_context.get_ellipsize() == Pango.EllipsizeMode.END
+        assert fixtures_tab.lbl_color_info.get_ellipsize() == Pango.EllipsizeMode.END
+    finally:
+        fixtures_tab.cleanup()

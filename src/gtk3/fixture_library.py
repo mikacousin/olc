@@ -20,7 +20,7 @@ import typing
 from gettext import gettext as _
 from typing import Optional
 
-from gi.repository import GdkPixbuf, Gtk
+from gi.repository import GdkPixbuf, Gtk, Pango
 
 from olc.devices.channel import ChannelRange, ChannelType, MergeMode
 from olc.devices.color import EmitterProfile, FixtureColorProfile
@@ -127,8 +127,8 @@ class FixtureLibraryTab(Gtk.Box):
         left_box = self._build_catalog_pane()
         right_box = self._build_editor_pane()
 
-        paned.pack1(left_box, False, False)
-        paned.pack2(right_box, True, False)
+        paned.pack1(left_box, False, True)
+        paned.pack2(right_box, True, True)
         self.pack_start(paned, True, True, 0)
         self.show_all()
 
@@ -142,6 +142,7 @@ class FixtureLibraryTab(Gtk.Box):
         # Search bar
         self.search_entry = Gtk.SearchEntry()
         self.search_entry.set_placeholder_text(_("Search fixtures..."))
+        self.search_entry.set_width_chars(10)
         self.search_entry.connect("search-changed", self._on_search_changed)
         box.pack_start(self.search_entry, False, False, 2)
 
@@ -183,27 +184,27 @@ class FixtureLibraryTab(Gtk.Box):
         scroll.add(self.cat_tree)
         box.pack_start(scroll, True, True, 2)
 
-        # Catalog Action Toolbar (compact buttons)
-        tbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=3)
+        # Catalog Action Toolbar (compact 2x2 grid to fit narrow catalog pane)
+        tbar = Gtk.Grid(column_spacing=4, row_spacing=4, column_homogeneous=True)
         self.btn_import_gdtf = Gtk.Button(label=_("GDTF"))
         self.btn_import_gdtf.set_tooltip_text(_("Import GDTF File"))
         self.btn_import_gdtf.connect("clicked", self._on_import_gdtf_clicked)
-        tbar.pack_start(self.btn_import_gdtf, False, False, 0)
+        tbar.attach(self.btn_import_gdtf, 0, 0, 1, 1)
 
         self.btn_new = Gtk.Button(label=_("New"))
         self.btn_new.set_tooltip_text(_("Create New Custom Fixture"))
         self.btn_new.connect("clicked", self._on_new_clicked)
-        tbar.pack_start(self.btn_new, False, False, 0)
+        tbar.attach(self.btn_new, 1, 0, 1, 1)
 
         self.btn_duplicate = Gtk.Button(label=_("Duplicate"))
         self.btn_duplicate.set_tooltip_text(_("Duplicate Selected Profile to Edit"))
         self.btn_duplicate.connect("clicked", self._on_duplicate_clicked)
-        tbar.pack_start(self.btn_duplicate, False, False, 0)
+        tbar.attach(self.btn_duplicate, 0, 1, 1, 1)
 
         self.btn_delete = Gtk.Button(label=_("Delete"))
         self.btn_delete.set_tooltip_text(_("Delete Selected User Profile"))
         self.btn_delete.connect("clicked", self._on_delete_clicked)
-        tbar.pack_end(self.btn_delete, False, False, 0)
+        tbar.attach(self.btn_delete, 1, 1, 1, 1)
 
         box.pack_start(tbar, False, False, 2)
         return box
@@ -221,21 +222,23 @@ class FixtureLibraryTab(Gtk.Box):
 
         # Thumbnail
         self.thumbnail_image = Gtk.Image.new_from_icon_name(
-            "applications-multimedia", Gtk.IconSize.DND
+            "applications-multimedia", Gtk.IconSize.DIALOG
         )
-        self.thumbnail_image.set_size_request(38, 38)
+        self.thumbnail_image.set_pixel_size(48)
+        self.thumbnail_image.set_size_request(48, 48)
         header_grid.attach(self.thumbnail_image, 0, 0, 1, 2)
 
         # Manufacturer Entry
         header_grid.attach(Gtk.Label(label=_("Mfg:"), xalign=0), 1, 0, 1, 1)
         self.entry_mfg = Gtk.Entry()
-        self.entry_mfg.set_width_chars(12)
+        self.entry_mfg.set_width_chars(10)
         header_grid.attach(self.entry_mfg, 2, 0, 1, 1)
 
         # Model Entry
         header_grid.attach(Gtk.Label(label=_("Model:"), xalign=0), 3, 0, 1, 1)
         self.entry_model = Gtk.Entry()
-        self.entry_model.set_width_chars(14)
+        self.entry_model.set_width_chars(10)
+        self.entry_model.set_hexpand(True)
         header_grid.attach(self.entry_model, 4, 0, 1, 1)
 
         # Type Combo
@@ -248,12 +251,14 @@ class FixtureLibraryTab(Gtk.Box):
         # Notes Entry
         header_grid.attach(Gtk.Label(label=_("Notes:"), xalign=0), 3, 1, 1, 1)
         self.entry_notes = Gtk.Entry()
+        self.entry_notes.set_width_chars(10)
         self.entry_notes.set_hexpand(True)
         header_grid.attach(self.entry_notes, 4, 1, 1, 1)
 
         # Status Banner & Actions
         action_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.lbl_status = Gtk.Label(label="", xalign=0)
+        self.lbl_status.set_ellipsize(Pango.EllipsizeMode.END)
         action_bar.pack_start(self.lbl_status, True, True, 0)
 
         self.btn_apply = Gtk.Button(label=_("Apply to Show"))
@@ -265,6 +270,7 @@ class FixtureLibraryTab(Gtk.Box):
 
         # Stack Notebook for Sub-views
         self.stack = Gtk.Stack()
+        self.stack.set_hhomogeneous(False)
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
 
         stack_switcher = Gtk.StackSwitcher()
@@ -290,43 +296,56 @@ class FixtureLibraryTab(Gtk.Box):
     def _build_modes_page(self) -> Gtk.Box:
         page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
-        # Mode Selection & Management Toolbar
-        mode_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        mode_bar.pack_start(Gtk.Label(label=_("Mode:"), xalign=0), False, False, 0)
+        # Mode Selection & Management Toolbar (2 compact rows)
+        mode_controls = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+
+        mode_row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        mode_row1.pack_start(Gtk.Label(label=_("Mode:"), xalign=0), False, False, 0)
 
         self.combo_modes = Gtk.ComboBoxText()
+        self.combo_modes.set_size_request(120, -1)
+        for cell in self.combo_modes.get_cells():
+            if isinstance(cell, Gtk.CellRendererText):
+                cell.set_property("ellipsize", Pango.EllipsizeMode.END)
         self.combo_modes.connect("changed", self._on_mode_combo_changed)
-        mode_bar.pack_start(self.combo_modes, False, False, 0)
-
-        self.lbl_mode_footprint = Gtk.Label(label="", xalign=0)
-        mode_bar.pack_start(self.lbl_mode_footprint, False, False, 4)
+        mode_row1.pack_start(self.combo_modes, True, True, 0)
 
         self.btn_add_mode = Gtk.Button(label=_("+ Mode"))
         self.btn_add_mode.set_tooltip_text(_("Add New DMX Mode"))
         self.btn_add_mode.connect("clicked", self._on_add_mode_clicked)
-        mode_bar.pack_start(self.btn_add_mode, False, False, 0)
+        mode_row1.pack_start(self.btn_add_mode, False, False, 0)
 
         self.btn_dup_mode = Gtk.Button(label=_("Duplicate"))
         self.btn_dup_mode.set_tooltip_text(_("Duplicate Active Mode"))
         self.btn_dup_mode.connect("clicked", self._on_duplicate_mode_clicked)
-        mode_bar.pack_start(self.btn_dup_mode, False, False, 0)
+        mode_row1.pack_start(self.btn_dup_mode, False, False, 0)
 
         self.btn_del_mode = Gtk.Button(label=_("Delete"))
         self.btn_del_mode.set_tooltip_text(_("Delete Active Mode"))
         self.btn_del_mode.connect("clicked", self._on_delete_mode_clicked)
-        mode_bar.pack_start(self.btn_del_mode, False, False, 0)
+        mode_row1.pack_start(self.btn_del_mode, False, False, 0)
 
-        mode_bar.pack_start(Gtk.Label(label=_("Name:"), xalign=0), False, False, 2)
+        mode_controls.pack_start(mode_row1, False, False, 0)
+
+        mode_row2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        mode_row2.pack_start(Gtk.Label(label=_("Name:"), xalign=0), False, False, 0)
         self.entry_mode_name = Gtk.Entry()
         self.entry_mode_name.set_width_chars(10)
-        mode_bar.pack_start(self.entry_mode_name, False, False, 0)
+        mode_row2.pack_start(self.entry_mode_name, True, True, 0)
 
         self.entry_mode_desc = Gtk.Entry()
         self.entry_mode_desc.set_placeholder_text(_("Mode description"))
+        self.entry_mode_desc.set_width_chars(8)
         self.entry_mode_desc.set_hexpand(True)
-        mode_bar.pack_start(self.entry_mode_desc, True, True, 0)
+        mode_row2.pack_start(self.entry_mode_desc, True, True, 0)
 
-        page_box.pack_start(mode_bar, False, False, 2)
+        self.lbl_mode_footprint = Gtk.Label(label="", xalign=1)
+        self.lbl_mode_footprint.set_ellipsize(Pango.EllipsizeMode.END)
+        self.lbl_mode_footprint.set_max_width_chars(28)
+        mode_row2.pack_start(self.lbl_mode_footprint, False, False, 4)
+
+        mode_controls.pack_start(mode_row2, False, False, 0)
+        page_box.pack_start(mode_controls, False, False, 2)
 
         # Paned: Channels Table (Left) | Channel Inspector (Right)
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -389,12 +408,12 @@ class FixtureLibraryTab(Gtk.Box):
         ch_actions_bar.pack_start(self.btn_del_ch, False, False, 0)
 
         left_ch_box.pack_start(ch_actions_bar, False, False, 2)
-        paned.pack1(left_ch_box, True, False)
+        paned.pack1(left_ch_box, True, True)
 
         # Right: Channel Inspector Form
         inspector_scroll = Gtk.ScrolledWindow()
-        inspector_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        inspector_scroll.set_min_content_width(230)
+        inspector_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        inspector_scroll.set_min_content_width(210)
 
         insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         insp_box.set_margin_start(8)
@@ -411,6 +430,7 @@ class FixtureLibraryTab(Gtk.Box):
         # Label
         grid.attach(Gtk.Label(label=_("Label:"), xalign=0), 0, 0, 1, 1)
         self.entry_ch_label = Gtk.Entry()
+        self.entry_ch_label.set_width_chars(10)
         self.entry_ch_label.set_hexpand(True)
         grid.attach(self.entry_ch_label, 1, 0, 1, 1)
 
@@ -462,6 +482,7 @@ class FixtureLibraryTab(Gtk.Box):
 
         grid.attach(Gtk.Label(label=_("Unit:"), xalign=0), 0, 9, 1, 1)
         self.entry_ch_unit = Gtk.Entry()
+        self.entry_ch_unit.set_width_chars(8)
         self.entry_ch_unit.set_placeholder_text(_("deg, %, lux..."))
         grid.attach(self.entry_ch_unit, 1, 9, 1, 1)
 
@@ -472,7 +493,7 @@ class FixtureLibraryTab(Gtk.Box):
         insp_box.pack_start(self.btn_update_ch, False, False, 4)
 
         inspector_scroll.add(insp_box)
-        paned.pack2(inspector_scroll, False, False)
+        paned.pack2(inspector_scroll, False, True)
 
         page_box.pack_start(paned, True, True, 2)
         return page_box
@@ -487,6 +508,7 @@ class FixtureLibraryTab(Gtk.Box):
             label=_("Select a channel in Modes & Channels to view/edit its ranges"),
             xalign=0,
         )
+        self.lbl_range_context.set_ellipsize(Pango.EllipsizeMode.END)
         page_box.pack_start(self.lbl_range_context, False, False, 2)
 
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -533,12 +555,12 @@ class FixtureLibraryTab(Gtk.Box):
         r_actions.pack_start(self.btn_del_rng, False, False, 0)
 
         left_box.pack_start(r_actions, False, False, 2)
-        paned.pack1(left_box, True, False)
+        paned.pack1(left_box, True, True)
 
         # Right: Range Inspector
         insp_scroll = Gtk.ScrolledWindow()
-        insp_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        insp_scroll.set_min_content_width(220)
+        insp_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        insp_scroll.set_min_content_width(200)
 
         insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         insp_box.set_margin_start(8)
@@ -553,6 +575,7 @@ class FixtureLibraryTab(Gtk.Box):
         grid = Gtk.Grid(column_spacing=6, row_spacing=4)
         grid.attach(Gtk.Label(label=_("Slot Label:"), xalign=0), 0, 0, 1, 1)
         self.entry_rng_label = Gtk.Entry()
+        self.entry_rng_label.set_width_chars(10)
         self.entry_rng_label.set_hexpand(True)
         grid.attach(self.entry_rng_label, 1, 0, 1, 1)
 
@@ -575,7 +598,7 @@ class FixtureLibraryTab(Gtk.Box):
         insp_box.pack_start(self.btn_update_rng, False, False, 4)
 
         insp_scroll.add(insp_box)
-        paned.pack2(insp_scroll, False, False)
+        paned.pack2(insp_scroll, False, True)
 
         page_box.pack_start(paned, True, True, 2)
         return page_box
@@ -590,6 +613,7 @@ class FixtureLibraryTab(Gtk.Box):
         self.lbl_color_info = Gtk.Label(
             label=_("CIE 1931 xyY Color Calibration & Emitters"), xalign=0
         )
+        self.lbl_color_info.set_ellipsize(Pango.EllipsizeMode.END)
         top_bar.pack_start(self.lbl_color_info, True, True, 0)
 
         self.btn_preset_rgb = Gtk.Button(label=_("Preset sRGB"))
@@ -653,12 +677,12 @@ class FixtureLibraryTab(Gtk.Box):
         em_actions.pack_start(self.btn_del_em, False, False, 0)
 
         left_box.pack_start(em_actions, False, False, 2)
-        paned.pack1(left_box, True, False)
+        paned.pack1(left_box, True, True)
 
         # Right: Emitter Inspector
         insp_scroll = Gtk.ScrolledWindow()
-        insp_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        insp_scroll.set_min_content_width(220)
+        insp_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        insp_scroll.set_min_content_width(200)
 
         insp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         insp_box.set_margin_start(8)
@@ -673,6 +697,7 @@ class FixtureLibraryTab(Gtk.Box):
         grid = Gtk.Grid(column_spacing=6, row_spacing=4)
         grid.attach(Gtk.Label(label=_("Name:"), xalign=0), 0, 0, 1, 1)
         self.entry_em_name = Gtk.Entry()
+        self.entry_em_name.set_width_chars(10)
         self.entry_em_name.set_hexpand(True)
         grid.attach(self.entry_em_name, 1, 0, 1, 1)
 
@@ -698,7 +723,7 @@ class FixtureLibraryTab(Gtk.Box):
         insp_box.pack_start(self.btn_update_em, False, False, 4)
 
         insp_scroll.add(insp_box)
-        paned.pack2(insp_scroll, False, False)
+        paned.pack2(insp_scroll, False, True)
 
         page_box.pack_start(paned, True, True, 2)
         return page_box
@@ -812,8 +837,9 @@ class FixtureLibraryTab(Gtk.Box):
         self.entry_model.set_text(self.active_definition.model)
         self.combo_type.set_active_id(self.active_definition.fixture_type.value)
         self.entry_notes.set_text(self.active_definition.notes)
+        self.entry_notes.set_tooltip_text(self.active_definition.notes or None)
 
-        # Thumbnail display
+        # Thumbnail display (fixed 48x48 box to keep header height/width steady)
         if self.active_definition.thumbnail:
             try:
                 loader = GdkPixbuf.PixbufLoader()
@@ -821,16 +847,18 @@ class FixtureLibraryTab(Gtk.Box):
                 loader.close()
                 pixbuf = loader.get_pixbuf()
                 if pixbuf:
-                    scaled = pixbuf.scale_simple(56, 56, GdkPixbuf.InterpType.BILINEAR)
+                    scaled = pixbuf.scale_simple(48, 48, GdkPixbuf.InterpType.BILINEAR)
                     self.thumbnail_image.set_from_pixbuf(scaled)
             except Exception:
                 self.thumbnail_image.set_from_icon_name(
                     "applications-multimedia", Gtk.IconSize.DIALOG
                 )
+                self.thumbnail_image.set_pixel_size(48)
         else:
             self.thumbnail_image.set_from_icon_name(
                 "applications-multimedia", Gtk.IconSize.DIALOG
             )
+            self.thumbnail_image.set_pixel_size(48)
 
         used = self.patch.count_devices_using_definition(fdef.manufacturer, fdef.model)
         if fdef.is_builtin:
@@ -913,11 +941,14 @@ class FixtureLibraryTab(Gtk.Box):
             return
         try:
             mode = self.active_definition.get_mode(mode_name)
+            self.combo_modes.set_tooltip_text(mode.name)
             self.entry_mode_name.set_text(mode.name)
             self.entry_mode_desc.set_text(mode.description)
-            self.lbl_mode_footprint.set_text(
+            footprint_txt = (
                 f"Footprint: {mode.footprint()}ch ({mode.channel_count()} logical)"
             )
+            self.lbl_mode_footprint.set_text(footprint_txt)
+            self.lbl_mode_footprint.set_tooltip_text(footprint_txt)
             self._load_mode_channels(mode)
         except KeyError:
             pass
@@ -995,9 +1026,9 @@ class FixtureLibraryTab(Gtk.Box):
     def _load_channel_ranges(self, ch_def: ChannelDefinition) -> None:
         self.ranges_store.clear()
         c_type = ch_def.channel_type.value
-        self.lbl_range_context.set_text(
-            f"Channel #{ch_def.offset + 1} '{ch_def.label}' ({c_type}) Ranges:"
-        )
+        ctx_txt = f"Channel #{ch_def.offset + 1} '{ch_def.label}' ({c_type}) Ranges:"
+        self.lbl_range_context.set_text(ctx_txt)
+        self.lbl_range_context.set_tooltip_text(ctx_txt)
         for rng in ch_def.ranges:
             snap = rng.snap_value or rng.value_min
             self.ranges_store.append([rng.label, rng.value_min, rng.value_max, snap])
