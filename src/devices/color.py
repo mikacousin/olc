@@ -205,6 +205,64 @@ class EmitterProfile:
         return f"<Emitter '{self.name}' {self.cie}{wl} ≈{self.srgb.hex()}>"
 
 
+_M_XYZ_TO_BRADFORD = np.array(
+    [
+        [0.8951, 0.2664, -0.1614],
+        [-0.7502, 1.7135, 0.0367],
+        [0.0389, -0.0685, 1.0296],
+    ],
+    dtype=float,
+)
+_M_BRADFORD_TO_XYZ = np.linalg.inv(_M_XYZ_TO_BRADFORD)
+
+
+def _xyz_to_uv_prime(xyz_vec: np.ndarray) -> tuple[float, float]:
+    """Convert CIE XYZ array [X, Y, Z] to CIE 1976 (u', v') chromaticity."""
+    denom = float(xyz_vec[0] + 15.0 * xyz_vec[1] + 3.0 * xyz_vec[2])
+    if denom <= 1e-9:
+        return (0.19783, 0.46832)  # D65 u'v' fallback
+    return (
+        float(4.0 * xyz_vec[0] / denom),
+        float(9.0 * xyz_vec[1] / denom),
+    )
+
+
+@dataclass
+class FilterProfile:
+    """Colorimetric profile of an individual subtractive dichroic filter (C, M, Y)."""
+
+    name: str
+    cie: CIExyY
+    gdtf_attribute: str = ""
+    gamma: float = 1.0
+
+    @property
+    def xyz(self) -> CIEXYZ:
+        """CIE XYZ coordinates of this filter at 100% insertion under white."""
+        return self.cie.to_XYZ()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize filter profile to dictionary."""
+        d: dict[str, Any] = {
+            "name": self.name,
+            "cie": self.cie.to_dict(),
+            "gdtf_attribute": self.gdtf_attribute,
+        }
+        if self.gamma != 1.0:
+            d["gamma"] = float(self.gamma)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FilterProfile:
+        """Deserialize filter profile from dictionary."""
+        return cls(
+            name=str(data.get("name", "")),
+            cie=CIExyY.from_dict(data.get("cie", {})),
+            gdtf_attribute=str(data.get("gdtf_attribute", "")),
+            gamma=float(data.get("gamma", 1.0)),
+        )
+
+
 def convex_hull_2d(
     points: Iterable[tuple[float, float]],
 ) -> list[tuple[float, float]]:
@@ -235,12 +293,14 @@ def convex_hull_2d(
 
 @dataclass
 class FixtureColorProfile:
-    """Complete colorimetric profile of a multi-emitter LED fixture."""
+    """Complete colorimetric profile of an additive or subtractive color fixture."""
 
     fixture_name: str
     emitters: list[EmitterProfile] = field(default_factory=list)
     white_point: CIExyY = field(default_factory=lambda: CIExyY(0.3127, 0.3290, 100.0))
     color_space_mode: str = "sRGB"
+    mixing_mode: str = "additive"
+    filters: list[FilterProfile] = field(default_factory=list)
 
     def get_emitter(self, name: str) -> Optional[EmitterProfile]:
         """Retrieve emitter profile by name (case-insensitive)."""
@@ -250,19 +310,135 @@ class FixtureColorProfile:
                 return e
         return None
 
+    def get_filter(self, name: str) -> Optional[FilterProfile]:
+        """Retrieve subtractive filter profile by name (case-insensitive)."""
+        name_lower = name.lower()
+        for flt in self.filters:
+            if flt.name.lower() == name_lower:
+                return flt
+        return None
+
     @property
     def emitter_count(self) -> int:
-        """Total number of physical emitters in this fixture."""
+        """Total number of physical emitters (or filters) in this fixture."""
+        if self.mixing_mode == "subtractive":
+            return len(self.filters)
         return len(self.emitters)
 
     @property
     def mixing_matrix(self) -> np.ndarray:
         """Spectral mixing matrix (3 x N) where each column is an emitter's XYZ."""
+        if not self.emitters:
+            return np.zeros((3, 0), dtype=float)
         return np.column_stack([e.xyz.as_array() for e in self.emitters])
+
+    def _ordered_cmy_filters(
+        self,
+    ) -> tuple[FilterProfile, FilterProfile, FilterProfile]:
+        """Return (Cyan, Magenta, Yellow) FilterProfiles with dichroic defaults."""
+        defaults = {
+            "cyan": FilterProfile(
+                "Cyan", CIExyY(0.1500, 0.3000, 60.0), gdtf_attribute="ColorSub_C"
+            ),
+            "magenta": FilterProfile(
+                "Magenta", CIExyY(0.3800, 0.1750, 28.0), gdtf_attribute="ColorSub_M"
+            ),
+            "yellow": FilterProfile(
+                "Yellow", CIExyY(0.4550, 0.4950, 88.0), gdtf_attribute="ColorSub_Y"
+            ),
+        }
+        attr_map = {
+            "colorsub_c": "cyan",
+            "colorsub_m": "magenta",
+            "colorsub_y": "yellow",
+        }
+        resolved = dict(defaults)
+        for flt in self.filters:
+            key = flt.name.lower()
+            if key not in resolved:
+                key = attr_map.get(flt.gdtf_attribute.lower(), "")
+            if key in resolved:
+                resolved[key] = flt
+        return resolved["cyan"], resolved["magenta"], resolved["yellow"]
+
+    def neugebauer_primaries(self) -> dict[tuple[int, int, int], np.ndarray]:
+        """Compute the 8 Neugebauer XYZ primaries for subtractive CMY mixing."""
+        w_xyz = self.white_point.to_XYZ().as_array()
+        c_flt, m_flt, y_flt = self._ordered_cmy_filters()
+        c_xyz = c_flt.xyz.as_array()
+        m_xyz = m_flt.xyz.as_array()
+        y_xyz = y_flt.xyz.as_array()
+
+        w_lms = np.maximum(_M_XYZ_TO_BRADFORD @ w_xyz, 1e-6)
+        t_c = np.clip((_M_XYZ_TO_BRADFORD @ c_xyz) / w_lms, 1e-4, 1.0)
+        t_m = np.clip((_M_XYZ_TO_BRADFORD @ m_xyz) / w_lms, 1e-4, 1.0)
+        t_y = np.clip((_M_XYZ_TO_BRADFORD @ y_xyz) / w_lms, 1e-4, 1.0)
+
+        def to_xyz(lms: np.ndarray) -> np.ndarray:
+            return np.maximum(_M_BRADFORD_TO_XYZ @ lms, 0.0)
+
+        return {
+            (0, 0, 0): w_xyz,
+            (1, 0, 0): c_xyz,
+            (0, 1, 0): m_xyz,
+            (0, 0, 1): y_xyz,
+            (0, 1, 1): to_xyz(w_lms * t_m * t_y),  # Red = M + Y
+            (1, 0, 1): to_xyz(w_lms * t_c * t_y),  # Green = C + Y
+            (1, 1, 0): to_xyz(w_lms * t_c * t_m),  # Blue = C + M
+            (1, 1, 1): to_xyz(w_lms * t_c * t_m * t_y),  # Black = C + M + Y
+        }
+
+    def evaluate_subtractive_xyz_array(
+        self,
+        c: float,
+        m: float,
+        y: float,
+        primaries: Optional[dict[tuple[int, int, int], np.ndarray]] = None,
+    ) -> np.ndarray:
+        """Evaluate subtractive CMY mixing via trilinear Neugebauer interpolation."""
+        c_flt, m_flt, y_flt = self._ordered_cmy_filters()
+        c_n = max(0.0, min(1.0, float(c))) ** max(1e-3, c_flt.gamma)
+        m_n = max(0.0, min(1.0, float(m))) ** max(1e-3, m_flt.gamma)
+        y_n = max(0.0, min(1.0, float(y))) ** max(1e-3, y_flt.gamma)
+        prims = primaries if primaries is not None else self.neugebauer_primaries()
+
+        ic, im, iy = 1.0 - c_n, 1.0 - m_n, 1.0 - y_n
+        xyz = (
+            ic * im * iy * prims[(0, 0, 0)]
+            + c_n * im * iy * prims[(1, 0, 0)]
+            + ic * m_n * iy * prims[(0, 1, 0)]
+            + ic * im * y_n * prims[(0, 0, 1)]
+            + ic * m_n * y_n * prims[(0, 1, 1)]
+            + c_n * im * y_n * prims[(1, 0, 1)]
+            + c_n * m_n * iy * prims[(1, 1, 0)]
+            + c_n * m_n * y_n * prims[(1, 1, 1)]
+        )
+        return np.maximum(xyz, 0.0)
+
+    def evaluate_subtractive(self, c: float, m: float, y: float) -> CIEXYZ:
+        """Evaluate subtractive CMY mixing (c, m, y in [0, 1]) returning CIEXYZ."""
+        arr = self.evaluate_subtractive_xyz_array(c, m, y)
+        return CIEXYZ(float(arr[0]), float(arr[1]), float(arr[2]))
 
     @property
     def gamut_polygon(self) -> list[tuple[float, float]]:
-        """Convex hull vertices of all chromatic emitters in CIE xy space."""
+        """Convex hull vertices of all chromatic primaries in CIE xy space."""
+        if self.mixing_mode == "subtractive":
+            prims = self.neugebauer_primaries()
+            pts: list[tuple[float, float]] = []
+            for key in (
+                (1, 0, 0),
+                (1, 0, 1),
+                (0, 0, 1),
+                (0, 1, 1),
+                (0, 1, 0),
+                (1, 1, 0),
+            ):
+                vec = prims[key]
+                s = float(vec[0] + vec[1] + vec[2])
+                if s > 1e-9:
+                    pts.append((float(vec[0] / s), float(vec[1] / s)))
+            return convex_hull_2d(pts)
         pts = [
             (e.cie.x, e.cie.y) for e in self.emitters if e.cie.x > 0.0 or e.cie.y > 0.0
         ]
@@ -299,12 +475,17 @@ class FixtureColorProfile:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize fixture colorimetric profile to dictionary."""
-        return {
+        d: dict[str, Any] = {
             "fixture_name": self.fixture_name,
             "emitters": [e.to_dict() for e in self.emitters],
             "white_point": self.white_point.to_dict(),
             "color_space_mode": self.color_space_mode,
         }
+        if self.mixing_mode != "additive":
+            d["mixing_mode"] = self.mixing_mode
+        if self.filters:
+            d["filters"] = [f.to_dict() for f in self.filters]
+        return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FixtureColorProfile:
@@ -314,14 +495,51 @@ class FixtureColorProfile:
             emitters=[EmitterProfile.from_dict(ed) for ed in data.get("emitters", [])],
             white_point=CIExyY.from_dict(data.get("white_point", {})),
             color_space_mode=str(data.get("color_space_mode", "sRGB")),
+            mixing_mode=str(data.get("mixing_mode", "additive")),
+            filters=[FilterProfile.from_dict(fd) for fd in data.get("filters", [])],
         )
 
     def __repr__(self) -> str:
-        names = ", ".join(e.name for e in self.emitters)
+        if self.mixing_mode == "subtractive":
+            names = ", ".join(f.name for f in self.filters)
+        else:
+            names = ", ".join(e.name for e in self.emitters)
         return (
             f"<FixtureColorProfile '{self.fixture_name}' "
-            f"[{names}] gamut={self.gamut_area:.4f}>"
+            f"({self.mixing_mode}) [{names}] gamut={self.gamut_area:.4f}>"
         )
+
+
+def default_cmy_profile(
+    fixture_name: str = "CMY Fixture",
+    white_point: Optional[CIExyY] = None,
+) -> FixtureColorProfile:
+    """Build a standard dichroic CMY subtractive FixtureColorProfile."""
+    wp = white_point if white_point is not None else CIExyY(0.3127, 0.3290, 100.0)
+    return FixtureColorProfile(
+        fixture_name=fixture_name,
+        emitters=[],
+        white_point=wp,
+        color_space_mode="sRGB",
+        mixing_mode="subtractive",
+        filters=[
+            FilterProfile(
+                name="Cyan",
+                cie=CIExyY(0.1500, 0.3000, 60.0),
+                gdtf_attribute="ColorSub_C",
+            ),
+            FilterProfile(
+                name="Magenta",
+                cie=CIExyY(0.3800, 0.1750, 28.0),
+                gdtf_attribute="ColorSub_M",
+            ),
+            FilterProfile(
+                name="Yellow",
+                cie=CIExyY(0.4550, 0.4950, 88.0),
+                gdtf_attribute="ColorSub_Y",
+            ),
+        ],
+    )
 
 
 def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
@@ -385,23 +603,38 @@ def _extract_colorspace_rgb(cs: Any) -> list[EmitterProfile]:  # noqa: ANN401
     ]
 
 
-def _gdtf_has_rgb_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
-    """Return True if any DMX mode in the GDTF fixture uses additive R/G/B."""
-    rgb_attrs = {
-        "ColorAdd_R",
-        "ColorAdd_G",
-        "ColorAdd_B",
-        "ColorRGB_Red",
-        "ColorRGB_Green",
-        "ColorRGB_Blue",
-    }
+def _gdtf_has_channels(gdtf_fixture: Any, attrs: set[str]) -> bool:  # noqa: ANN401
+    """Return True if any DMX mode in the GDTF fixture uses one of *attrs*."""
     for mode in getattr(gdtf_fixture, "dmx_modes", []) or []:
         dmx_chs = getattr(mode, "dmx_channels", None)
         if dmx_chs is not None and hasattr(dmx_chs, "as_dict"):
             for ch in dmx_chs.as_dict():
-                if ch.get("attribute") in rgb_attrs:
+                if ch.get("attribute") in attrs:
                     return True
     return False
+
+
+def _gdtf_has_rgb_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
+    """Return True if any DMX mode in the GDTF fixture uses additive R/G/B."""
+    return _gdtf_has_channels(
+        gdtf_fixture,
+        {
+            "ColorAdd_R",
+            "ColorAdd_G",
+            "ColorAdd_B",
+            "ColorRGB_Red",
+            "ColorRGB_Green",
+            "ColorRGB_Blue",
+        },
+    )
+
+
+def _gdtf_has_subtractive_channels(gdtf_fixture: Any) -> bool:  # noqa: ANN401
+    """Return True if any DMX mode in the GDTF fixture uses subtractive CMY."""
+    return _gdtf_has_channels(
+        gdtf_fixture,
+        {"ColorSub_C", "ColorSub_M", "ColorSub_Y"},
+    )
 
 
 def _extract_node_link_name(value: Any) -> str:  # noqa: ANN401
@@ -512,6 +745,56 @@ def extract_color_profile(  # pylint: disable=too-many-locals
         )
 
     cs = getattr(gdtf_fixture, "color_space", None)
+    mode = (
+        str(getattr(cs, "mode", "sRGB")) if cs and getattr(cs, "mode", None) else "sRGB"
+    )
+    wp = (
+        CIExyY(cs.white_point.x, cs.white_point.y, cs.white_point.Y)
+        if mode == "Custom" and hasattr(cs, "white_point") and cs.white_point
+        else CIExyY(0.3127, 0.3290, 100.0)
+    )
+
+    if not emitters and (
+        _gdtf_has_subtractive_channels(gdtf_fixture)
+        or bool(getattr(gdtf_fixture, "filters", []))
+    ):
+        filter_attr_map = {
+            "cyan": "ColorSub_C",
+            "magenta": "ColorSub_M",
+            "yellow": "ColorSub_Y",
+        }
+        filters: list[FilterProfile] = []
+        for f_obj in getattr(gdtf_fixture, "filters", []) or []:
+            f_color = getattr(f_obj, "color", None)
+            if f_color is None:
+                continue
+            f_name = getattr(f_obj, "name", "") or ""
+            f_attr = filter_attr_map.get(f_name.lower(), "")
+            filters.append(
+                FilterProfile(
+                    name=f_name,
+                    cie=CIExyY(
+                        x=float(getattr(f_color, "x", 0.0)),
+                        y=float(getattr(f_color, "y", 0.0)),
+                        Y=float(getattr(f_color, "Y", 100.0)),
+                    ),
+                    gdtf_attribute=f_attr,
+                )
+            )
+        if not filters:
+            return default_cmy_profile(fixture_name=name, white_point=wp)
+        sub_profile = FixtureColorProfile(
+            fixture_name=name,
+            emitters=[],
+            white_point=wp,
+            color_space_mode=mode,
+            mixing_mode="subtractive",
+            filters=filters,
+        )
+        c_flt, m_flt, y_flt = sub_profile._ordered_cmy_filters()
+        sub_profile.filters = [c_flt, m_flt, y_flt]
+        return sub_profile
+
     existing_lower = {e.name.lower() for e in emitters}
     has_all_rgb = {"red", "green", "blue"}.issubset(existing_lower)
     if not has_all_rgb and (
@@ -528,15 +811,6 @@ def extract_color_profile(  # pylint: disable=too-many-locals
         raise ValueError(
             f"No emitters found in '{name}'. Ensure GDTF has an <Emitters> section."
         )
-
-    mode = (
-        str(getattr(cs, "mode", "sRGB")) if cs and getattr(cs, "mode", None) else "sRGB"
-    )
-    wp = (
-        CIExyY(cs.white_point.x, cs.white_point.y, cs.white_point.Y)
-        if mode == "Custom" and hasattr(cs, "white_point") and cs.white_point
-        else CIExyY(0.3127, 0.3290, 100.0)
-    )
 
     return FixtureColorProfile(
         fixture_name=name,
@@ -820,6 +1094,9 @@ class ColorMatcher:
         target: CIEXYZ,
         strategy: str = "spectral",
     ) -> MatchResult:
+        if profile.mixing_mode == "subtractive":
+            return self._solve_subtractive_cmy(profile, target)
+
         full_m = profile.mixing_matrix  # (3, N)
         mat_m = full_m.copy()
         target_vec = target.as_array()  # (3,)
@@ -882,6 +1159,108 @@ class ColorMatcher:
             warning=warning,
             ratios=norm_weights,
             normalized_weights=norm_weights,
+        )
+
+    def _solve_subtractive_cmy(  # pylint: disable=too-many-locals
+        self,
+        profile: FixtureColorProfile,
+        target: CIEXYZ,
+    ) -> MatchResult:
+        """Solve subtractive CMY flags (min(c,m,y) == 0) in CIE 1976 u'v' space."""
+        prims = profile.neugebauer_primaries()
+        sum_xyz = target.X + target.Y + target.Z
+        if sum_xyz <= 1e-9 or target.Y <= 1e-9:
+            achieved_xyz = profile.evaluate_subtractive(0.0, 0.0, 0.0)
+            return MatchResult(
+                fixture_name=profile.fixture_name,
+                emitter_names=["Cyan", "Magenta", "Yellow"],
+                coefficients=[0.0, 0.0, 0.0],
+                dmx_values=[0, 0, 0],
+                achieved_xyz=achieved_xyz,
+                delta_e=0.0,
+                warning="",
+                ratios=[0.0, 0.0, 0.0],
+                normalized_weights=[0.0, 0.0, 0.0],
+            )
+
+        target_x = target.X / sum_xyz
+        target_y = target.Y / sum_xyz
+        inside_gamut = profile.contains_xy(target_x, target_y)
+        u_t, v_t = _xyz_to_uv_prime(target.as_array())
+
+        def _eval_face(face_idx: int, uv: np.ndarray) -> np.ndarray:
+            a, b = float(uv[0]), float(uv[1])
+            if face_idx == 0:
+                xyz = profile.evaluate_subtractive_xyz_array(a, b, 0.0, prims)
+            elif face_idx == 1:
+                xyz = profile.evaluate_subtractive_xyz_array(a, 0.0, b, prims)
+            else:
+                xyz = profile.evaluate_subtractive_xyz_array(0.0, a, b, prims)
+            u_p, v_p = _xyz_to_uv_prime(xyz)
+            return np.array([u_p - u_t, v_p - v_t], dtype=float)
+
+        best_c, best_m, best_y = 0.0, 0.0, 0.0
+        best_cost = float("inf")
+        try:
+            from scipy.optimize import (  # pylint: disable=import-outside-toplevel
+                least_squares,
+            )
+
+            for face_idx in (0, 1, 2):
+                res = least_squares(
+                    lambda uv, f=face_idx: _eval_face(f, uv),
+                    x0=np.array([0.25, 0.25], dtype=float),
+                    bounds=(0.0, 1.0),
+                    method="trf",
+                    xtol=1e-6,
+                    ftol=1e-6,
+                )
+                cost = float(res.cost)
+                if cost < best_cost:
+                    best_cost = cost
+                    a, b = float(res.x[0]), float(res.x[1])
+                    if face_idx == 0:
+                        best_c, best_m, best_y = a, b, 0.0
+                    elif face_idx == 1:
+                        best_c, best_m, best_y = a, 0.0, b
+                    else:
+                        best_c, best_m, best_y = 0.0, a, b
+        except ImportError:
+            # Coarse fallback if scipy is unavailable
+            grid = np.linspace(0.0, 1.0, 21)
+            for face_idx in (0, 1, 2):
+                for a in grid:
+                    for b in grid:
+                        err = _eval_face(face_idx, np.array([a, b]))
+                        cost = float(err[0] ** 2 + err[1] ** 2)
+                        if cost < best_cost:
+                            best_cost = cost
+                            if face_idx == 0:
+                                best_c, best_m, best_y = float(a), float(b), 0.0
+                            elif face_idx == 1:
+                                best_c, best_m, best_y = float(a), 0.0, float(b)
+                            else:
+                                best_c, best_m, best_y = 0.0, float(a), float(b)
+
+        achieved_xyz = profile.evaluate_subtractive(best_c, best_m, best_y)
+        eval_xyz = achieved_xyz
+        if achieved_xyz.Y > 1e-6 and target.Y > 1e-6:
+            scale = target.Y / achieved_xyz.Y
+            eval_xyz = CIEXYZ(
+                achieved_xyz.X * scale, achieved_xyz.Y * scale, achieved_xyz.Z * scale
+            )
+
+        weights = [best_c, best_m, best_y]
+        return MatchResult(
+            fixture_name=profile.fixture_name,
+            emitter_names=["Cyan", "Magenta", "Yellow"],
+            coefficients=[round(w * 100.0, 1) for w in weights],
+            dmx_values=[round(w * 255.0) for w in weights],
+            achieved_xyz=achieved_xyz,
+            delta_e=self._delta_e(target, eval_xyz),
+            warning="" if inside_gamut else "out of gamut",
+            ratios=weights,
+            normalized_weights=weights,
         )
 
     @staticmethod

@@ -46,9 +46,25 @@ def profile_signature(profile: FixtureColorProfile) -> tuple[Any, ...]:
     """Hashable identity of a color profile (profiles may be copied per device)."""
     return (
         profile.fixture_name,
+        profile.mixing_mode,
+        (
+            round(profile.white_point.x, 5),
+            round(profile.white_point.y, 5),
+            round(profile.white_point.Y, 3),
+        ),
         tuple(
             (e.name, round(e.cie.x, 5), round(e.cie.y, 5), round(e.cie.Y, 3))
             for e in profile.emitters
+        ),
+        tuple(
+            (
+                f.name,
+                round(f.cie.x, 5),
+                round(f.cie.y, 5),
+                round(f.cie.Y, 3),
+                round(f.gamma, 3),
+            )
+            for f in profile.filters
         ),
     )
 

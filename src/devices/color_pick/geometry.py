@@ -20,7 +20,12 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
+from olc.devices.color import (
+    CIExyY,
+    EmitterProfile,
+    FixtureColorProfile,
+    default_cmy_profile,
+)
 
 from .conversions import (
     XY,
@@ -102,9 +107,13 @@ def convex_hull_2d(points: Iterable[XY]) -> list[XY]:
 
 
 def effective_color_profile(device: object) -> Optional[FixtureColorProfile]:
-    """Return device color_profile, completing missing R/G/B emitters from channels."""
+    """Return device color_profile, completing missing R/G/B or CMY defaults."""
     profile: Optional[FixtureColorProfile] = getattr(device, "color_profile", None)
+    if profile is not None and profile.mixing_mode == "subtractive":
+        return profile
     if profile is None:
+        if getattr(device, "is_subtractive_cmy", False):
+            return default_cmy_profile(getattr(device, "label", "") or "CMY Fixture")
         return None
     existing = {e.name.lower() for e in profile.emitters}
     if {"red", "green", "blue"}.issubset(existing):
@@ -135,8 +144,8 @@ def effective_color_profile(device: object) -> Optional[FixtureColorProfile]:
 
 
 def profile_gamut_xy(profile: FixtureColorProfile) -> list[XY]:
-    """Convex hull of a fixture profile's emitters in CIE 1931 (x, y) space."""
-    return convex_hull_2d((e.cie.x, e.cie.y) for e in profile.emitters)
+    """Convex hull of a fixture profile's color gamut in CIE 1931 (x, y) space."""
+    return profile.gamut_polygon
 
 
 def profile_gamut_hs(profile: FixtureColorProfile) -> list[tuple[float, float]]:
@@ -150,6 +159,8 @@ def device_emitters_xy(device: object) -> list[XY]:
     profile = effective_color_profile(device)
     pts: list[XY] = []
     if profile is not None:
+        if profile.mixing_mode == "subtractive":
+            return profile.gamut_polygon
         pts.extend((e.cie.x, e.cie.y) for e in profile.emitters)
     if len(pts) < 3:
         for ch in getattr(device, "channels", []) or []:

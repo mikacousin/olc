@@ -532,6 +532,14 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             c_val = c if c is not None else 0.0
             m_val = m if m is not None else 0.0
             y_val = y if y is not None else 0.0
+            if (
+                self.color_profile is not None
+                and self.color_profile.mixing_mode == "subtractive"
+            ):
+                rgb = self.color_profile.evaluate_subtractive(
+                    c_val, m_val, y_val
+                ).to_srgb()
+                return (rgb.r, rgb.g, rgb.b)
             return (
                 max(0.0, min(1.0, 1.0 - c_val)),
                 max(0.0, min(1.0, 1.0 - m_val)),
@@ -668,12 +676,20 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             c_val = float(self._base_emitters.get(ChannelType.CYAN, 0.0))
             m_val = float(self._base_emitters.get(ChannelType.MAGENTA, 0.0))
             y_val = float(self._base_emitters.get(ChannelType.YELLOW, 0.0))
-            self._target_color = sRGB(
-                max(0.0, min(1.0, 1.0 - c_val)),
-                max(0.0, min(1.0, 1.0 - m_val)),
-                max(0.0, min(1.0, 1.0 - y_val)),
-            )
-            self._target_cie = self._target_color.to_XYZ().to_xyY()
+            if (
+                self.color_profile is not None
+                and self.color_profile.mixing_mode == "subtractive"
+            ):
+                xyz = self.color_profile.evaluate_subtractive(c_val, m_val, y_val)
+                self._target_cie = xyz.to_xyY()
+                self._target_color = xyz.to_srgb()
+            else:
+                self._target_color = sRGB(
+                    max(0.0, min(1.0, 1.0 - c_val)),
+                    max(0.0, min(1.0, 1.0 - m_val)),
+                    max(0.0, min(1.0, 1.0 - y_val)),
+                )
+                self._target_cie = self._target_color.to_XYZ().to_xyY()
             return
         default_cie: dict[ChannelType, CIExyY] = {
             ChannelType.RED: CIExyY(0.6400, 0.3300, 21.26),
@@ -698,14 +714,17 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "coloradd_gy": ChannelType.LIME,
             "cyan": ChannelType.CYAN,
             "coloradd_c": ChannelType.CYAN,
+            "colorsub_c": ChannelType.CYAN,
             "indigo": ChannelType.INDIGO,
             "royal blue": ChannelType.INDIGO,
             "blue-cyan": ChannelType.INDIGO,
             "coloradd_bc": ChannelType.INDIGO,
             "magenta": ChannelType.MAGENTA,
             "coloradd_m": ChannelType.MAGENTA,
+            "colorsub_m": ChannelType.MAGENTA,
             "yellow": ChannelType.YELLOW,
             "coloradd_y": ChannelType.YELLOW,
+            "colorsub_y": ChannelType.YELLOW,
             "red-orange": ChannelType.RED,
             "coloradd_ry": ChannelType.RED,
         }
@@ -766,14 +785,17 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "coloradd_gy": ChannelType.LIME,
             "cyan": ChannelType.CYAN,
             "coloradd_c": ChannelType.CYAN,
+            "colorsub_c": ChannelType.CYAN,
             "indigo": ChannelType.INDIGO,
             "royal blue": ChannelType.INDIGO,
             "blue-cyan": ChannelType.INDIGO,
             "coloradd_bc": ChannelType.INDIGO,
             "magenta": ChannelType.MAGENTA,
             "coloradd_m": ChannelType.MAGENTA,
+            "colorsub_m": ChannelType.MAGENTA,
             "yellow": ChannelType.YELLOW,
             "coloradd_y": ChannelType.YELLOW,
+            "colorsub_y": ChannelType.YELLOW,
             "red-orange": ChannelType.RED,
             "coloradd_ry": ChannelType.RED,
         }
