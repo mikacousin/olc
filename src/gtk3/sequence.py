@@ -39,6 +39,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
     from olc.show.lightshow import LightShow
+    from olc.show.step import Step
 
 __all__ = [
     "TRACKING_COLORS",
@@ -48,6 +49,47 @@ __all__ = [
     "classify_channel_tracking_state",
     "get_tracking_color",
 ]
+
+
+def format_step_tooltip(step_obj: Step, title: str) -> str | None:
+    """Return detailed tooltip text for a step column, or None if not applicable."""
+    if title == "Channel Time" and step_obj.channel_time:
+        lines = []
+        for ch in sorted(step_obj.channel_time):
+            ct = step_obj.channel_time[ch]
+            d_str = time_to_string(ct.delay)
+            t_str = time_to_string(ct.time)
+            lines.append(
+                f"Ch {ch}: {d_str}/{t_str}s" if ct.delay else f"Ch {ch}: {t_str}s"
+            )
+        return "\n".join(lines[:20])
+
+    family_map = {"Pos": "position", "Color": "color", "Beam": "beam"}
+    if title in family_map:
+        fam = family_map[title]
+        d_val = getattr(step_obj, f"delay_{fam}")
+        t_val = getattr(step_obj, f"time_{fam}")
+        if d_val is not None or t_val is not None:
+            d_txt = SequenceTab._format_family_time(d_val) or "inherited"
+            t_txt = SequenceTab._format_family_time(t_val) or "inherited"
+            return f"{title} — Delay: {d_txt}  Time: {t_txt}"
+
+    cue = step_obj.cue
+    if title == "Flags" and cue is not None:
+        names = []
+        if cue.is_block:
+            names.append("Block (B)")
+        if cue.is_int_block:
+            names.append("Intensity Block (IB)")
+        if cue.is_assert:
+            names.append("Assert (A)")
+        if names:
+            return ", ".join(names)
+
+    if title == "Notes" and cue is not None and cue.notes:
+        return cue.notes
+
+    return None
 
 
 # pylint: disable=too-many-instance-attributes, too-many-lines, too-many-public-methods
@@ -797,7 +839,7 @@ class SequenceTab(Gtk.Grid):
             flags.append("A")
         return " ".join(flags)
 
-    def _on_treeview2_query_tooltip(  # pylint: disable=too-many-return-statements,too-many-locals
+    def _on_treeview2_query_tooltip(
         self,
         treeview: Gtk.TreeView,
         x: int,
@@ -821,50 +863,11 @@ class SequenceTab(Gtk.Grid):
         step_idx = int(self.liststore2[path][0])
         if step_idx < 0 or step_idx >= len(sequence.steps):
             return False
-        step_obj = sequence.steps[step_idx]
-        title = col.get_title() or ""
-
-        if title == "Channel Time" and step_obj.channel_time:
-            lines = []
-            for ch in sorted(step_obj.channel_time):
-                ct = step_obj.channel_time[ch]
-                d_str = time_to_string(ct.delay)
-                t_str = time_to_string(ct.time)
-                lines.append(
-                    f"Ch {ch}: {d_str}/{t_str}s" if ct.delay else f"Ch {ch}: {t_str}s"
-                )
-            tooltip.set_text("\n".join(lines[:20]))
-            return True
-
-        family_map = {"Pos": "position", "Color": "color", "Beam": "beam"}
-        if title in family_map:
-            fam = family_map[title]
-            d_val = getattr(step_obj, f"delay_{fam}")
-            t_val = getattr(step_obj, f"time_{fam}")
-            if d_val is not None or t_val is not None:
-                d_txt = self._format_family_time(d_val) or "inherited"
-                t_txt = self._format_family_time(t_val) or "inherited"
-                tooltip.set_text(f"{title} — Delay: {d_txt}  Time: {t_txt}")
-                return True
-
-        cue = step_obj.cue
-        if title == "Flags" and cue is not None:
-            names = []
-            if cue.is_block:
-                names.append("Block (B)")
-            if cue.is_int_block:
-                names.append("Intensity Block (IB)")
-            if cue.is_assert:
-                names.append("Assert (A)")
-            if names:
-                tooltip.set_text(", ".join(names))
-                return True
-
-        if title == "Notes" and cue is not None and cue.notes:
-            tooltip.set_text(cue.notes)
-            return True
-
-        return False
+        text = format_step_tooltip(sequence.steps[step_idx], col.get_title() or "")
+        if not text:
+            return False
+        tooltip.set_text(text)
+        return True
 
     @staticmethod
     def _format_step_fx_status(sequence: Sequence, step: int) -> tuple[str, str | None]:

@@ -19,6 +19,7 @@ import typing
 from gi.repository import Gdk, Gtk, Pango
 
 from olc.define import time_to_string
+from olc.gtk3.sequence import SequenceTab, format_step_tooltip
 from olc.gtk3.widgets.sequential import SequentialWidget
 
 if typing.TYPE_CHECKING:
@@ -83,6 +84,39 @@ def step_filter_func2(
     return int(model[treeiter][0]) > lightshow.main_playback.position + 1
 
 
+def _empty_playback_row(
+    step_str: str = "",
+    background: str = "#232729",
+    weight: int = 0,
+    sentinel: int = 1,
+) -> list[typing.Any]:
+    """Build an empty/sentinel row matching cues_liststore1 schema."""
+    return [
+        step_str,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        background,
+        weight,
+        sentinel,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        None,
+        False,
+    ]
+
+
 # pylint: disable=too-many-instance-attributes
 class MainPlaybackView(Gtk.Notebook):
     """Main Playback View"""
@@ -99,9 +133,7 @@ class MainPlaybackView(Gtk.Notebook):
         self.populate_sequence()
 
         if self.app and self.app.core.lightshow.main_playback.last == 1:
-            self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
+            self.cues_liststore1.append(_empty_playback_row(sentinel=1))
 
         self.append_page(self.grid, Gtk.Label(label="Main Playback"))
         self.set_tab_reorderable(self.grid, True)
@@ -117,7 +149,28 @@ class MainPlaybackView(Gtk.Notebook):
     def _setup_treeviews(self) -> None:
         """Init ListStores and TreeViews"""
         self.cues_liststore1 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, int, int
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            int,
+            int,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            str,
+            bool,
         )
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(step_filter_func1, self)
@@ -132,31 +185,50 @@ class MainPlaybackView(Gtk.Notebook):
         treeview = Gtk.TreeView(model=model)
         treeview.set_enable_search(False)
         treeview.get_selection().set_mode(Gtk.SelectionMode.NONE)
+        treeview.set_has_tooltip(True)
+        treeview.connect("query-tooltip", self._on_treeview_query_tooltip)
 
         columns = [
-            "Step",
-            "Cue",
-            "Text",
-            "Wait",
-            "Delay Out",
-            "Out",
-            "Delay In",
-            "In",
-            "Channel Time",
+            (0, "Step"),
+            (1, "Cue"),
+            (2, "Text"),
+            (3, "Wait"),
+            (4, "Delay Out"),
+            (5, "Out"),
+            (6, "Delay In"),
+            (7, "In"),
+            (8, "Channel Time"),
+            (12, "Pos"),
+            (13, "Color"),
+            (14, "Beam"),
+            (15, "FX"),
+            (16, "Flags"),
+            (17, "Total"),
+            (18, "Link"),
+            (19, "Notes"),
         ]
-        for i, column_title in enumerate(columns):
+        for display_idx, (store_idx, column_title) in enumerate(columns):
             renderer = Gtk.CellRendererText()
-            if i % 2 == 0:
+            if display_idx % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
+            if store_idx == 19:
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
 
             column = Gtk.TreeViewColumn(title=column_title, cell_renderer=renderer)
-            column.add_attribute(renderer, "text", i)
+            column.add_attribute(renderer, "text", store_idx)
             if is_main:
                 column.add_attribute(renderer, "background", 9)
                 column.add_attribute(renderer, "weight", 10)
+            if store_idx == 15:
+                column.add_attribute(renderer, "foreground", 20)
+                column.add_attribute(renderer, "foreground-set", 21)
 
-            if i == 2:
-                column.set_min_width(400)
+            if store_idx == 2:
+                column.set_min_width(200)
+                column.set_resizable(True)
+                column.set_expand(True)
+            elif store_idx == 19:
+                column.set_min_width(120)
                 column.set_resizable(True)
             treeview.append_column(column)
 
@@ -167,13 +239,20 @@ class MainPlaybackView(Gtk.Notebook):
         scrollable2 = Gtk.ScrolledWindow()
         scrollable2.set_vexpand(True)
         scrollable2.set_hexpand(True)
-        scrollable2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
+        scrollable2.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.EXTERNAL)
         scrollable2.add(self.treeview2)
 
+        scrollable1 = Gtk.ScrolledWindow()
+        scrollable1.set_hexpand(True)
+        scrollable1.set_propagate_natural_height(True)
+        scrollable1.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        scrollable1.set_hadjustment(scrollable2.get_hadjustment())
+        scrollable1.add(self.treeview1)
+
         self.grid = Gtk.Grid(row_homogeneous=False)
-        self.grid.attach(self.treeview1, 0, 0, 1, 1)
+        self.grid.attach(scrollable1, 0, 0, 1, 1)
         self.grid.attach_next_to(
-            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
+            self.sequential, scrollable1, Gtk.PositionType.BOTTOM, 1, 1
         )
         self.grid.attach_next_to(
             scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
@@ -184,24 +263,53 @@ class MainPlaybackView(Gtk.Notebook):
         self.cues_liststore1.clear()
         self.populate_sequence()
 
+    def _on_treeview_query_tooltip(
+        self,
+        treeview: Gtk.TreeView,
+        x: int,
+        y: int,
+        keyboard_mode: bool,
+        tooltip: Gtk.Tooltip,
+    ) -> bool:
+        """Provide tooltips for Channel Time, IFCB timings, Flags, and Notes."""
+        if keyboard_mode or not self.app:
+            return False
+        bx, by = treeview.convert_widget_to_bin_window_coords(x, y)
+        hit = treeview.get_path_at_pos(bx, by)
+        if hit is None:
+            return False
+        path, col, _cx, _cy = hit
+        model = treeview.get_model()
+        if path is None or col is None or model is None:
+            return False
+        step_text = model[path][0]
+        if not step_text:
+            return False
+        step_idx = int(step_text)
+        steps = self.app.core.lightshow.main_playback.steps
+        if step_idx < 0 or step_idx >= len(steps):
+            return False
+        text = format_step_tooltip(steps[step_idx], col.get_title() or "")
+        if not text:
+            return False
+        tooltip.set_text(text)
+        return True
+
     def populate_sequence(self) -> None:
         """Display main playback"""
         if not self.app:
             return
         lightshow = self.app.core.lightshow
-        self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-        )
-        self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-        )
+        self.cues_liststore1.append(_empty_playback_row(sentinel=0))
+        self.cues_liststore1.append(_empty_playback_row(sentinel=1))
         for i in range(lightshow.main_playback.last):
-            wait = time_to_string(lightshow.main_playback.steps[i].wait)
-            t_out = time_to_string(lightshow.main_playback.steps[i].time_out)
-            d_out = time_to_string(lightshow.main_playback.steps[i].delay_out)
-            t_in = time_to_string(lightshow.main_playback.steps[i].time_in)
-            d_in = time_to_string(lightshow.main_playback.steps[i].delay_in)
-            channel_time = str(len(lightshow.main_playback.steps[i].channel_time))
+            step_obj = lightshow.main_playback.steps[i]
+            wait = time_to_string(step_obj.wait)
+            t_out = time_to_string(step_obj.time_out)
+            d_out = time_to_string(step_obj.delay_out)
+            t_in = time_to_string(step_obj.time_in)
+            d_in = time_to_string(step_obj.delay_in)
+            channel_time = str(len(step_obj.channel_time))
             if channel_time == "0":
                 channel_time = ""
             if i == 0:
@@ -214,29 +322,41 @@ class MainPlaybackView(Gtk.Notebook):
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
             if i in (0, lightshow.main_playback.last - 1):
                 self.cues_liststore1.append(
-                    [
-                        str(i),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        background,
-                        Pango.Weight.NORMAL,
-                        99,
-                    ]
+                    _empty_playback_row(
+                        step_str=str(i),
+                        background=background,
+                        weight=Pango.Weight.NORMAL,
+                        sentinel=99,
+                    )
                 )
             else:
-                cue = lightshow.main_playback.steps[i].cue
+                cue = step_obj.cue
                 cue_number = str(cue.number) if cue is not None else ""
+                pos = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                    step_obj.delay_position, step_obj.time_position
+                )
+                color = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                    step_obj.delay_color, step_obj.time_color
+                )
+                beam = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                    step_obj.delay_beam, step_obj.time_beam
+                )
+                fx_text, fx_color = SequenceTab._format_step_fx_status(  # pylint: disable=protected-access
+                    lightshow.main_playback, i
+                )
+                flags_text = SequenceTab._format_cue_flags(cue)  # pylint: disable=protected-access
+                total_text = SequenceTab._format_family_time(step_obj.total_time)  # pylint: disable=protected-access
+                link_text = (
+                    f"P{cue.execute_preset:g}"
+                    if cue is not None and cue.execute_preset is not None
+                    else ""
+                )
+                notes_text = cue.notes if cue is not None else ""
                 self.cues_liststore1.append(
                     [
                         str(i),
                         cue_number,
-                        str(lightshow.main_playback.steps[i].text),
+                        str(step_obj.text),
                         wait,
                         d_out,
                         str(t_out),
@@ -246,6 +366,16 @@ class MainPlaybackView(Gtk.Notebook):
                         background,
                         weight,
                         99,
+                        pos,
+                        color,
+                        beam,
+                        fx_text,
+                        flags_text,
+                        total_text,
+                        link_text,
+                        notes_text,
+                        fx_color,
+                        fx_color is not None,
                     ]
                 )
         self.update_active_cues_display()
