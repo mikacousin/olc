@@ -491,3 +491,12 @@ msgstr "Notifications du bureau"
 
 msgid "Toggle notifications"
 msgstr "Activer/désactiver les notifications"
+
+msgid "Toggle cue assert"
+msgstr "Basculer le drapeau Assert de la cue"
+
+msgid "Toggle cue intensity block"
+msgstr "Basculer le blocage d'intensité de la cue"
+
+msgid "Edit cue notes"
+msgstr "Éditer les notes de la cue"

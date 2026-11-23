@@ -268,3 +268,50 @@ def test_sequence_tab_fx_column_display(app_gui: Application) -> None:
     assert seq_tab.liststore2[3][12] == ""
     assert seq_tab.liststore2[3][13] is None
     assert seq_tab.liststore2[3][14] is False
+
+
+@pytest.mark.gui
+def test_sequence_tab_flags_total_link_and_notes(app_gui: Application) -> None:
+    """Verify Flags, Total, Link, Notes columns and Block/Int Block/Assert buttons."""
+    app_gui.core.action_registry.execute("sequence.insert_step", 1.0, 1, 1.0, {1: 255})
+    step = app_gui.core.lightshow.main_playback.steps[1]
+    assert step.cue is not None
+    step.cue.execute_preset = 12.0
+
+    app_gui.activate_action("sequences", None)
+    process_events()
+    assert app_gui.tabs is not None
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.refresh()
+    process_events()
+
+    col_titles = [col.get_title() for col in seq_tab.treeview2.get_columns()]
+    assert col_titles[13:] == ["Flags", "Total", "Link", "Notes"]
+
+    # Initial Total and Link
+    assert seq_tab.liststore2[0][16] == "5"
+    assert seq_tab.liststore2[0][17] == "P12"
+
+    # Toggle Block, Int Block, Assert via header buttons
+    seq_tab.block_btn.set_active(True)
+    process_events()
+    seq_tab.int_block_btn.set_active(True)
+    process_events()
+    seq_tab.assert_btn.set_active(True)
+    process_events()
+
+    assert step.cue.is_block is True
+    assert step.cue.is_int_block is True
+    assert step.cue.is_assert is True
+    assert seq_tab.liststore2[0][15] == "B IB A"
+
+    # Inline edit Notes
+    seq_tab.notes_edited(
+        typing.cast(typing.Any, None),
+        Gtk.TreePath.new_from_indices([0]),
+        "Follow spot ready",
+    )
+    process_events()
+    assert step.cue.notes == "Follow spot ready"
+    assert seq_tab.liststore2[0][18] == "Follow spot ready"

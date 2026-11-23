@@ -18,10 +18,14 @@
 
 from __future__ import annotations
 
+import typing
+
 import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
+
+from gi.repository import Gtk  # noqa: E402
 
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.sequence import (  # noqa: E402
@@ -217,6 +221,24 @@ def test_sequence_tab_ifcb_columns_and_action(app_gui: Application) -> None:
         "step.update_times", 1.0, 1, time_position=-1.0
     )
     process_events()
+    assert step.time_position is None
+    assert seq_tab.liststore2[0][8] == ""
+
+    # Family delay/time compact display and inline editing ('delay/time')
+    seq_tab.pos_edited(
+        typing.cast(typing.Any, None), Gtk.TreePath.new_from_indices([0]), "2/4"
+    )
+    process_events()
+    assert step.delay_position == pytest.approx(2.0)
+    assert step.time_position == pytest.approx(4.0)
+    assert seq_tab.liststore2[0][8] == "2/4"
+
+    # Empty string resets both delay and fade time to inherited None
+    seq_tab.pos_edited(
+        typing.cast(typing.Any, None), Gtk.TreePath.new_from_indices([0]), ""
+    )
+    process_events()
+    assert step.delay_position is None
     assert step.time_position is None
     assert seq_tab.liststore2[0][8] == ""
 

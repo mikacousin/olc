@@ -366,3 +366,40 @@ def test_cue_select_action_undo_redo() -> None:
     app.action_registry.execute("cue.select", None)
     assert app.selected_cue is None
     assert received_selections[-1] is None
+
+
+def test_cue_flags_and_notes_actions_with_undo_redo() -> None:
+    """Test cue.set_block, cue.set_int_block, cue.set_assert, and cue.set_notes."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute("sequence.new", 2.0)
+    app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0, {1: 200})
+
+    seq = app.lightshow.get_sequence(2.0)
+    assert seq is not None
+    cue = seq.steps[1].cue
+    assert cue is not None
+
+    app.action_registry.execute("cue.set_block", 10.0, True, 2)
+    assert cue.is_block is True
+    app.history.undo()
+    assert cue.is_block is False
+    app.history.redo()
+    assert cue.is_block is True
+
+    app.action_registry.execute("cue.set_int_block", 10.0, True, 2)
+    assert cue.is_int_block is True
+    app.history.undo()
+    assert cue.is_int_block is False
+
+    app.action_registry.execute("cue.set_assert", 10.0, True, 2)
+    assert cue.is_assert is True
+    app.history.undo()
+    assert cue.is_assert is False
+
+    app.action_registry.execute("cue.set_notes", 10.0, "Spot cue note", 2)
+    assert cue.notes == "Spot cue note"
+    app.history.undo()
+    assert cue.notes == ""
+    app.history.redo()
+    assert cue.notes == "Spot cue note"

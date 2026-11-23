@@ -73,6 +73,7 @@ class SequenceTab(Gtk.Grid):
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
+        self._updating_flag_btns: bool = False
         self._setup_header_bar()
         self._setup_sequences_list()
         self._setup_cues_list()
@@ -103,6 +104,67 @@ class SequenceTab(Gtk.Grid):
         self.mib_btn.set_active(initial_mib)
         self.mib_btn.connect("toggled", self._on_mib_toggled)
         self.header_box.pack_start(self.mib_btn, False, False, 0)
+
+        self.header_box.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
+        )
+
+        self.block_btn = Gtk.ToggleButton(label="Block")
+        self.block_btn.set_tooltip_text("Toggle Block flag (B) on selected cue")
+        self.block_btn.connect("toggled", self._on_flag_toggled, "cue.set_block")
+        self.header_box.pack_start(self.block_btn, False, False, 0)
+
+        self.int_block_btn = Gtk.ToggleButton(label="Int Block")
+        self.int_block_btn.set_tooltip_text(
+            "Toggle Intensity Block flag (IB) on selected cue"
+        )
+        self.int_block_btn.connect(
+            "toggled", self._on_flag_toggled, "cue.set_int_block"
+        )
+        self.header_box.pack_start(self.int_block_btn, False, False, 0)
+
+        self.assert_btn = Gtk.ToggleButton(label="Assert")
+        self.assert_btn.set_tooltip_text("Toggle Assert flag (A) on selected cue")
+        self.assert_btn.connect("toggled", self._on_flag_toggled, "cue.set_assert")
+        self.header_box.pack_start(self.assert_btn, False, False, 0)
+
+    def _on_flag_toggled(self, button: Gtk.ToggleButton, action_name: str) -> None:
+        if self._updating_flag_btns:
+            return
+        sequence = self.get_selected_sequence()
+        step = self.get_selected_step()
+        if sequence is None or step is None or step >= len(sequence.steps):
+            return
+        cue = sequence.steps[step].cue
+        if cue is None:
+            return
+        self.window.app.core.action_registry.execute(
+            action_name, cue.number, button.get_active(), int(sequence.index)
+        )
+
+    def _sync_flag_buttons(self) -> None:
+        """Synchronize Block / Int Block / Assert toggle buttons with selected cue."""
+        if not hasattr(self, "block_btn"):
+            return
+        sequence = self.get_selected_sequence()
+        step = self.get_selected_step()
+        cue = (
+            sequence.steps[step].cue
+            if sequence is not None and step is not None and step < len(sequence.steps)
+            else None
+        )
+        self._updating_flag_btns = True
+        try:
+            has_cue = cue is not None
+            for btn, attr in (
+                (self.block_btn, "is_block"),
+                (self.int_block_btn, "is_int_block"),
+                (self.assert_btn, "is_assert"),
+            ):
+                btn.set_sensitive(has_cue)
+                btn.set_active(bool(getattr(cue, attr, False)) if cue else False)
+        finally:
+            self._updating_flag_btns = False
 
     def _on_tracking_mode_toggled(self, button: Gtk.ToggleButton) -> None:
         self.set_tracking_mode(button.get_active())
@@ -201,56 +263,58 @@ class SequenceTab(Gtk.Grid):
             str,
             str,
             bool,
+            str,
+            str,
+            str,
+            str,
         )
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
+        self.treeview2.set_has_tooltip(True)
         self.treeview2.connect("cursor-changed", self.on_cue_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
+        self.treeview2.connect("query-tooltip", self._on_treeview2_query_tooltip)
 
-        columns = [
-            "Step",
-            "Cue",
-            "Text",
-            "Wait",
-            "Delay Out",
-            "Out",
-            "Delay In",
-            "In",
-            "Pos",
-            "Color",
-            "Beam",
-            "Channel Time",
-            "FX",
+        column_specs: list[tuple[str, int, typing.Callable[..., None] | None]] = [
+            ("Step", 0, None),
+            ("Cue", 1, None),
+            ("Text", 2, self.text_edited),
+            ("Wait", 3, self.wait_edited),
+            ("Delay Out", 4, self.delay_out_edited),
+            ("Out", 5, self.out_edited),
+            ("Delay In", 6, self.delay_in_edited),
+            ("In", 7, self.in_edited),
+            ("Pos", 8, self.pos_edited),
+            ("Color", 9, self.color_edited),
+            ("Beam", 10, self.beam_edited),
+            ("Channel Time", 11, None),
+            ("FX", 12, None),
+            ("Flags", 15, None),
+            ("Total", 16, None),
+            ("Link", 17, None),
+            ("Notes", 18, self.notes_edited),
         ]
-        edit_callbacks = {
-            2: self.text_edited,
-            3: self.wait_edited,
-            4: self.delay_out_edited,
-            5: self.out_edited,
-            6: self.delay_in_edited,
-            7: self.in_edited,
-            8: self.pos_edited,
-            9: self.color_edited,
-            10: self.beam_edited,
-        }
-        for i, column_title in enumerate(columns):
+        for view_idx, (column_title, model_idx, edit_cb) in enumerate(column_specs):
             renderer = Gtk.CellRendererText()
-            if i % 2 == 0:
+            if view_idx % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
 
-            if i in edit_callbacks:
+            if edit_cb is not None:
                 renderer.set_property("editable", True)
-                renderer.connect("edited", edit_callbacks[i])
+                renderer.connect("edited", edit_cb)
                 renderer.connect("editing-started", self._on_editing_started)
 
             column = Gtk.TreeViewColumn(column_title, renderer)
-            column.add_attribute(renderer, "text", i)
-            if i == 2:
+            column.add_attribute(renderer, "text", model_idx)
+            if model_idx == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
-            elif i == 12:
+            elif model_idx == 12:
                 column.add_attribute(renderer, "foreground", 13)
                 column.add_attribute(renderer, "foreground-set", 14)
+            elif model_idx == 18:
+                column.set_min_width(150)
+                column.set_resizable(True)
 
             self.treeview2.append_column(column)
 
@@ -420,43 +484,58 @@ class SequenceTab(Gtk.Grid):
             "step.update_times", sequence.index, step, delay_in=time
         )
 
-    def pos_edited(
-        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
-    ) -> None:
-        """Position family time edited (empty string resets to inherited None)."""
+    def _edit_family_timing(self, path: Gtk.TreePath, text: str, family: str) -> None:
+        """Update family delay/fade timing ('delay/time', 'time', or '' to reset)."""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
-        time = -1.0 if text.strip() == "" else string_to_time(text)
+        raw = text.strip()
+        kwargs: dict[str, float]
+        if raw == "":
+            kwargs = {f"time_{family}": -1.0, f"delay_{family}": -1.0}
+        elif "/" in raw:
+            d_part, t_part = (p.strip() for p in raw.split("/", 1))
+            d_val = -1.0 if d_part in ("", "-") else string_to_time(d_part)
+            t_val = -1.0 if t_part in ("", "-") else string_to_time(t_part)
+            kwargs = {f"delay_{family}": d_val, f"time_{family}": t_val}
+        else:
+            kwargs = {f"time_{family}": string_to_time(raw)}
         self.window.app.core.action_registry.execute(
-            "step.update_times", sequence.index, step, time_position=time
+            "step.update_times", sequence.index, step, **kwargs
         )
+
+    def pos_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Position family time edited (empty string resets to inherited None)."""
+        self._edit_family_timing(path, text, "position")
 
     def color_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
         """Color family time edited (empty string resets to inherited None)."""
-        sequence = self.get_selected_sequence()
-        if not sequence:
-            return
-        step = int(self.liststore2[path][0])
-        time = -1.0 if text.strip() == "" else string_to_time(text)
-        self.window.app.core.action_registry.execute(
-            "step.update_times", sequence.index, step, time_color=time
-        )
+        self._edit_family_timing(path, text, "color")
 
     def beam_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
         """Beam family time edited (empty string resets to inherited None)."""
+        self._edit_family_timing(path, text, "beam")
+
+    def notes_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Cue notes edited inline."""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
-        time = -1.0 if text.strip() == "" else string_to_time(text)
+        cue = sequence.steps[step].cue
+        if cue is None:
+            return
         self.window.app.core.action_registry.execute(
-            "step.update_times", sequence.index, step, time_beam=time
+            "cue.set_notes", cue.number, text, int(sequence.index)
         )
 
     def text_edited(
@@ -483,6 +562,7 @@ class SequenceTab(Gtk.Grid):
 
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select cue"""
+        self._sync_flag_buttons()
         self.channels_view.update()
 
     def on_sequence_changed(
@@ -699,6 +779,100 @@ class SequenceTab(Gtk.Grid):
             return "0"
         return time_to_string(val)
 
+    @classmethod
+    def _format_family_timing(
+        cls, delay: Optional[float], fade: Optional[float]
+    ) -> str:
+        """Format optional family delay and fade time ('time' or 'delay/time')."""
+        fade_str = cls._format_family_time(fade)
+        if delay is None:
+            return fade_str
+        delay_str = cls._format_family_time(delay)
+        return f"{delay_str}/{fade_str or '-'}"
+
+    @staticmethod
+    def _format_cue_flags(cue: object | None) -> str:
+        """Return compact flag string ('B', 'IB', 'A') for a Cue."""
+        if cue is None:
+            return ""
+        flags: list[str] = []
+        if getattr(cue, "is_block", False):
+            flags.append("B")
+        if getattr(cue, "is_int_block", False):
+            flags.append("IB")
+        if getattr(cue, "is_assert", False):
+            flags.append("A")
+        return " ".join(flags)
+
+    def _on_treeview2_query_tooltip(  # pylint: disable=too-many-return-statements,too-many-locals
+        self,
+        treeview: Gtk.TreeView,
+        x: int,
+        y: int,
+        keyboard_mode: bool,
+        tooltip: Gtk.Tooltip,
+    ) -> bool:
+        """Provide tooltips for Channel Time, IFCB timings, Flags, and Notes."""
+        if keyboard_mode:
+            return False
+        bx, by = treeview.convert_widget_to_bin_window_coords(x, y)
+        hit = treeview.get_path_at_pos(bx, by)
+        if hit is None:
+            return False
+        path, col, _cx, _cy = hit
+        if path is None or col is None:
+            return False
+        sequence = self.get_selected_sequence()
+        if sequence is None:
+            return False
+        step_idx = int(self.liststore2[path][0])
+        if step_idx < 0 or step_idx >= len(sequence.steps):
+            return False
+        step_obj = sequence.steps[step_idx]
+        title = col.get_title() or ""
+
+        if title == "Channel Time" and step_obj.channel_time:
+            lines = []
+            for ch in sorted(step_obj.channel_time):
+                ct = step_obj.channel_time[ch]
+                d_str = time_to_string(ct.delay)
+                t_str = time_to_string(ct.time)
+                lines.append(
+                    f"Ch {ch}: {d_str}/{t_str}s" if ct.delay else f"Ch {ch}: {t_str}s"
+                )
+            tooltip.set_text("\n".join(lines[:20]))
+            return True
+
+        family_map = {"Pos": "position", "Color": "color", "Beam": "beam"}
+        if title in family_map:
+            fam = family_map[title]
+            d_val = getattr(step_obj, f"delay_{fam}")
+            t_val = getattr(step_obj, f"time_{fam}")
+            if d_val is not None or t_val is not None:
+                d_txt = self._format_family_time(d_val) or "inherited"
+                t_txt = self._format_family_time(t_val) or "inherited"
+                tooltip.set_text(f"{title} — Delay: {d_txt}  Time: {t_txt}")
+                return True
+
+        cue = step_obj.cue
+        if title == "Flags" and cue is not None:
+            names = []
+            if cue.is_block:
+                names.append("Block (B)")
+            if cue.is_int_block:
+                names.append("Intensity Block (IB)")
+            if cue.is_assert:
+                names.append("Assert (A)")
+            if names:
+                tooltip.set_text(", ".join(names))
+                return True
+
+        if title == "Notes" and cue is not None and cue.notes:
+            tooltip.set_text(cue.notes)
+            return True
+
+        return False
+
     @staticmethod
     def _format_step_fx_status(sequence: Sequence, step: int) -> tuple[str, str | None]:
         """Return (label, foreground_hex) summarizing effects for a sequence step."""
@@ -775,15 +949,25 @@ class SequenceTab(Gtk.Grid):
         d_out = time_to_string(step_obj.delay_out)
         t_in = time_to_string(step_obj.time_in)
         d_in = time_to_string(step_obj.delay_in)
-        t_pos = self._format_family_time(step_obj.time_position)
-        t_color = self._format_family_time(step_obj.time_color)
-        t_beam = self._format_family_time(step_obj.time_beam)
+        t_pos = self._format_family_timing(
+            step_obj.delay_position, step_obj.time_position
+        )
+        t_color = self._format_family_timing(step_obj.delay_color, step_obj.time_color)
+        t_beam = self._format_family_timing(step_obj.delay_beam, step_obj.time_beam)
         channel_time = str(len(step_obj.channel_time))
         if channel_time == "0":
             channel_time = ""
         cue = step_obj.cue
         cue_number = str(cue.number) if cue is not None else ""
         fx_text, fx_color = self._format_step_fx_status(sequence, step)
+        flags_text = self._format_cue_flags(cue)
+        total_str = time_to_string(step_obj.total_time)
+        link_str = (
+            f"P{cue.execute_preset:g}"
+            if cue is not None and cue.execute_preset is not None
+            else ""
+        )
+        notes_str = cue.notes if cue is not None else ""
         self.liststore2.insert(
             step - 1,
             [
@@ -802,6 +986,10 @@ class SequenceTab(Gtk.Grid):
                 fx_text,
                 fx_color,
                 fx_color is not None,
+                flags_text,
+                total_str,
+                link_str,
+                notes_str,
             ],
         )
 
@@ -823,6 +1011,7 @@ class SequenceTab(Gtk.Grid):
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
         self.treeview2.set_cursor(path, None, False)
+        self._sync_flag_buttons()
 
     def update_sequence_display(self, step: int) -> None:
         """Update Sequence display
