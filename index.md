@@ -6,8 +6,6 @@
 
 **Open Lighting Console (`olc`)** (`0.12.0.beta`) is an Open Source Linux lighting console built for theater, live performance, and architectural experimentation. It combines a 44 Hz headless `CoreEngine`, an ETC Eos-inspired command line, multi-parameter intelligent fixture control, parametric effects, and a GTK3 graphical interface.
 
-> [!NOTE]
-> The documentation has been completely updated in both languages:
 > - **[Read the English User Manual](doc.en/index.md)**
 > - **[Lire le manuel utilisateur en français](doc.fr/index.md)**
 

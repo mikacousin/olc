@@ -6,8 +6,6 @@
 
 **Open Lighting Console (`olc`)** (`0.12.0.beta`) est un jeu d'orgue open source pour Linux conçu pour le théâtre, le spectacle vivant et l'éclairage multi-paramètres. Il associe un moteur temps réel sans interface (`CoreEngine` à 44 Hz), une ligne de commande inspirée d'ETC Eos, la gestion complète de projecteurs asservis et LED, des effets paramétriques et une interface graphique GTK3.
 
-> [!NOTE]
-> La documentation a été entièrement refondue dans les deux langues :
 > - **[Consulter le manuel utilisateur en français](doc.fr/index.md)**
 > - **[Read the English User Manual](doc.en/index.md)**
 
