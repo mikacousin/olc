@@ -30,8 +30,8 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 sys.path.insert(1, "@pythondir@")
 
-from olc.core.engine import CoreEngine  # noqa: E402
-from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
+from olc.dmx_engine.engine import CoreEngine  # noqa: E402
+from olc.dmx_engine.universe_config import Protocol, UniverseMap  # noqa: E402
 
 
 def get_cpu_info() -> dict[str, str | int]:

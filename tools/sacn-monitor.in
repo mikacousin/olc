@@ -48,8 +48,9 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
-from olc.core.engine import CoreEngine  # noqa: E402
-from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
+
+from olc.dmx_engine.engine import CoreEngine  # noqa: E402
+from olc.dmx_engine.universe_config import Protocol, UniverseMap  # noqa: E402
 
 CSS_DATA = """
 .dmx-grid {

@@ -23,9 +23,9 @@ import time
 
 sys.path.insert(1, "@pythondir@")
 
-from olc.core import CoreEngine
-from olc.core.app import CoreApplication
-from olc.core.universe_config import Protocol, UniverseMap
+from olc.core.app import CoreApplication  # noqa: E402
+from olc.dmx_engine.engine import CoreEngine  # noqa: E402
+from olc.dmx_engine.universe_config import Protocol, UniverseMap  # noqa: E402
 
 app = CoreApplication(None)
 universe_map = UniverseMap(8)
