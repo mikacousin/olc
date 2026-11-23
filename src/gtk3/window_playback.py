@@ -460,6 +460,7 @@ class MainPlaybackView(Gtk.Notebook):
             row[14] = SequenceTab._format_family_timing(  # pylint: disable=protected-access
                 step_obj.delay_beam, step_obj.time_beam
             )
+            row[17] = SequenceTab._format_family_time(step_obj.total_time)  # pylint: disable=protected-access
 
     def show_timeleft(self, i: float) -> None:
         """Display countdowns during Go and color crossfade of active cues
@@ -532,15 +533,17 @@ class MainPlaybackView(Gtk.Notebook):
         self._update_family_timeleft(step, i)
 
     def _update_family_timeleft(self, step: int, elapsed_ms: float) -> None:
-        """Update Pos, Color, and Beam countdowns during an active crossfade."""
+        """Update Total, Pos, Color, and Beam countdowns during an active crossfade."""
         if not self.app:
             return
         step_obj = self.app.core.lightshow.main_playback.steps[step]
+        row = self.cues_liststore1[step + 2]
+        rem_total = max(0.0, step_obj.total_time - elapsed_ms / 1000.0)
+        row[17] = SequenceTab._format_family_time(rem_total)  # pylint: disable=protected-access
+
         wait_ms = step_obj.wait * 1000.0
         if elapsed_ms <= wait_ms:
             return
-
-        row = self.cues_liststore1[step + 2]
         for fam, col_idx in (("position", 12), ("color", 13), ("beam", 14)):
             if not step_obj.has_explicit_family_timing(fam):
                 continue

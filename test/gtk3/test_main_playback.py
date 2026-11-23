@@ -112,24 +112,28 @@ def test_main_playback_enriched_columns_and_live_updates(app_gui: Application) -
     )
     assert format_step_tooltip(step, "Notes") == "Blackout on beat"
 
-    # Real-time IFCB countdown during crossfade (main_playback.position == 0 -> step 1)
-    # Pos: delay=2s, fade=4s; Color: fade=1.5s; Beam: inherited ('')
+    # Real-time IFCB and Total countdown during crossfade (position 0 -> step 1)
+    # Pos: delay=2s, fade=4s; Color: fade=1.5s; Beam: inherited (''); Total: 6s
     playback.show_timeleft(1000.0)
     assert row[12] == "1/4"
     assert row[13] == "0.5"
     assert row[14] == ""
+    assert row[17] == "5"
 
     playback.show_timeleft(3000.0)
     assert row[12] == "0/3"
     assert row[13] == "0"
     assert row[14] == ""
+    assert row[17] == "3"
 
     playback.show_timeleft(6000.0)
     assert row[12] == "0/0"
     assert row[13] == "0"
+    assert row[17] == "0"
 
     # Restored after transition completes
     playback.display_times()
     assert row[12] == "2/4"
     assert row[13] == "1.5"
     assert row[14] == ""
+    assert row[17] == "6"
