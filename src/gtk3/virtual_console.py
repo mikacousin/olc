@@ -1628,7 +1628,6 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.app.tabs and child in (
             self.app.tabs.tabs["indes"],
             self.app.tabs.tabs["faders"],
-            self.app.tabs.tabs["cues"],
             self.app.tabs.tabs["sequences"],
         ):
             channels_view = getattr(child, "channels_view", None)

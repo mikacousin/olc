@@ -48,10 +48,6 @@
       <attribute name="action">app.curves</attribute>
     </item>
     <item>
-      <attribute name="label" translatable="yes">Cues</attribute>
-      <attribute name="action">app.cues</attribute>
-    </item>
-    <item>
       <attribute name="label" translatable="yes">Groups</attribute>
       <attribute name="action">app.groups</attribute>
     </item>

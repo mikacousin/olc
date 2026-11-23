@@ -25,7 +25,6 @@ if typing.TYPE_CHECKING:
     from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
     from olc.gtk3.channel_time import ChanneltimeTab
-    from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.device_inspector import DeviceInspectorWidget
     from olc.gtk3.dmx_outputs import DMXOutputsTab
@@ -44,7 +43,6 @@ if typing.TYPE_CHECKING:
 
     TabWidget = (
         ChanneltimeTab
-        | CuesEditionTab
         | CurvesTab
         | DeviceInspectorWidget
         | DMXOutputsTab
@@ -90,7 +88,6 @@ class Tabs:
             "groups": None,
             "history": None,
             "indes": None,
-            "cues": None,
             "dmx_outputs": None,
             "palettes": None,
             "patch_channels": None,
@@ -537,7 +534,6 @@ class Tabs:
             "dmx_outputs": app_any.open_dmx_outputs,
             "patch_channels": app_any.open_patch_channels,
             "track_channels": app_any.open_track_channels,
-            "cues": app_any.open_cues,
             "sequences": app_any.open_sequences,
             "groups": app_any.open_groups,
             "palettes": app_any.open_palettes,

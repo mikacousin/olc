@@ -24,7 +24,6 @@ from olc.gtk3.widgets.channels_view import VIEW_MODES
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
-    from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.track_channels import TrackChannelsTab
 
@@ -58,10 +57,6 @@ class CueBridgeHandler(BaseEventBridgeHandler):
             lambda sequence, number: self._run_idle(
                 self._safe_refresh_cue_editor, sequence, number
             ),
-        )
-        self.app.core.subscribe(
-            "cue.selected_changed",
-            lambda cue_id: self._run_idle(self._on_cue_selected_changed, cue_id),
         )
         self.app.core.subscribe(
             "playback.cue_recorded",
@@ -98,21 +93,6 @@ class CueBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.tabs:
-            if self.app.tabs.tabs.get("cues") is not None:
-                cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
-                path, _ = cues_tab.treeview.get_cursor()
-                if path:
-                    row = path.get_indices()[0]
-                    if 0 <= row < len(cues_tab.lightshow.cues):
-                        selected_cue = cues_tab.lightshow.cues[row]
-                        if (
-                            selected_cue.sequence == sequence
-                            and selected_cue.number == number
-                        ):
-                            self.app.core.action_registry.execute(
-                                "cue.clear_editor", number, sequence
-                            )
-                cues_tab.refresh()
             if self.app.tabs.tabs.get("sequences") is not None:
                 sequences_tab = typing.cast(
                     "SequenceTab", self.app.tabs.tabs["sequences"]
@@ -134,29 +114,19 @@ class CueBridgeHandler(BaseEventBridgeHandler):
                 live_cv.refresh_filter()
         return False
 
-    def _safe_refresh_cue_editor(self, sequence: int, number: float) -> bool:
-        """Refresh the channel view in cues tab when temporary overrides change.
+    def _safe_refresh_cue_editor(self, _sequence: int, _number: float) -> bool:
+        """Refresh the sequence channels view when temporary overrides change.
 
         Args:
-            sequence: Sequence number.
-            number: Cue number.
+            _sequence: Sequence number.
+            _number: Cue number.
 
         Returns:
             Always False.
         """
-        if self.app.tabs:
-            if self.app.tabs.tabs.get("cues") is not None:
-                cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
-                path, _ = cues_tab.treeview.get_cursor()
-                if path:
-                    row = path.get_indices()[0]
-                    if 0 <= row < len(cues_tab.lightshow.cues):
-                        selected_cue = cues_tab.lightshow.cues[row]
-                        if (
-                            selected_cue.sequence == sequence
-                            and selected_cue.number == number
-                        ):
-                            cues_tab.channels_view.update()
+        if self.app.tabs and self.app.tabs.tabs.get("sequences") is not None:
+            sequences_tab = typing.cast("SequenceTab", self.app.tabs.tabs["sequences"])
+            sequences_tab.channels_view.update()
         return False
 
     def _update_live_view_active_cue(self, sequence: int, number: float) -> None:
@@ -185,17 +155,3 @@ class CueBridgeHandler(BaseEventBridgeHandler):
             if widget:
                 widget.next_level = active_cue.get_level(channel)
         channels_view.mark_channels_dirty(None, invalidate_step=True)
-
-    def _on_cue_selected_changed(self, cue_id: tuple[float, int] | None) -> bool:
-        """Synchronize the logical cue selection to the GUI.
-
-        Args:
-            cue_id: (cue_number, sequence_number) tuple or None.
-
-        Returns:
-            Always False.
-        """
-        if self.app.tabs and self.app.tabs.tabs.get("cues") is not None:
-            cues_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["cues"])
-            cues_tab.select_cue_graphically(cue_id)
-        return False

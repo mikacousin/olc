@@ -32,8 +32,8 @@ from olc.core.selection import SelectAddAction  # noqa: E402
 from olc.devices.channel import Channel, ChannelType, FixtureType  # noqa: E402
 from olc.devices.device import LightingDevice  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
-from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
+from olc.gtk3.sequence import SequenceTab  # noqa: E402
 from olc.gtk3.widgets.channel import (  # noqa: E402
     _MANUAL_CORAL,
     _PALETTE_CYAN,
@@ -501,31 +501,40 @@ def test_table_view_selection_sync_with_tiles_inspector_and_isolation(
     assert fb_child0.is_selected() is True
     assert fb_child1 is not None and fb_child1.is_selected() is True
 
-    # CueChannelsView in Table mode stays isolated from Live Blue
+    # SeqChannelsView in Table mode stays isolated from Live Blue
     cue = Cue(
-        0,
+        1,
         1.0,
         {1: 0.9},
         "Red Cue",
         device_values={1: {"intensity": 0.9, "color": "#FF0000"}},
     )
-    app_gui.core.lightshow.cues.append(cue)
-    app_gui.activate_action("cues", None)
-    process_events()
-    app_gui.core.action_registry.execute("cue.select", (1.0, 0))
+    from olc.show.step import Step
+
+    main_pb = app_gui.core.lightshow.main_playback
+    main_pb.steps.clear()
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))
+    main_pb.steps.append(Step(sequence=1, cue=cue))
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))
+    main_pb.last = len(main_pb.steps)
+
+    app_gui.activate_action("sequences", None)
     process_events()
 
-    cues_tab = app_gui.tabs.tabs.get("cues")
-    assert isinstance(cues_tab, CuesEditionTab)
-    cues_tab.channels_view.set_view_mode_by_name("Patched")
-    cues_tab.channels_view.set_display_format("Table")
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.refresh()
+    seq_tab.treeview2.set_cursor(Gtk.TreePath.new_from_indices([0]), None, False)
+    seq_tab.on_cue_changed(seq_tab.treeview2)
+    seq_tab.channels_view.set_view_mode_by_name("Patched")
+    seq_tab.channels_view.set_display_format("Table")
     process_events()
 
-    cues_tv = cues_tab.channels_view.table_view
-    assert len(cues_tv.store) == 2
-    assert cues_tv.store[0][COL_CHANNEL] == 1
-    assert cues_tv.store[0][COL_SWATCH_R] == pytest.approx(1.0, abs=0.02)
-    assert cues_tv.store[0][COL_SWATCH_B] == pytest.approx(0.0, abs=0.02)
+    seq_tv = seq_tab.channels_view.table_view
+    assert len(seq_tv.store) == 2
+    assert seq_tv.store[0][COL_CHANNEL] == 1
+    assert seq_tv.store[0][COL_SWATCH_R] == pytest.approx(1.0, abs=0.02)
+    assert seq_tv.store[0][COL_SWATCH_B] == pytest.approx(0.0, abs=0.02)
 
 
 def test_live_manual_palette_red_vs_cue_cyan_and_param_isolation(

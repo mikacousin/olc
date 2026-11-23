@@ -328,7 +328,6 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "dmx_outputs": app.open_dmx_outputs,
                 "patch_channels": app.open_patch_channels,
                 "track_channels": app.open_track_channels,
-                "cues": app.open_cues,
                 "sequences": app.open_sequences,
                 "groups": app.open_groups,
                 "palettes": app.open_palettes,
@@ -637,7 +636,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             self.app.window.live_view.channels_view.update()
 
         if self.app.tabs:
-            for tab_key in ("sequences", "groups", "cues"):
+            for tab_key in ("sequences", "groups"):
                 tab_obj = self.app.tabs.tabs.get(tab_key)
                 if tab_obj is not None:
                     channels_view = getattr(tab_obj, "channels_view", None)

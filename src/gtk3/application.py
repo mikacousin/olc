@@ -31,7 +31,6 @@ from olc.core.app import CoreApplication  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
-from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.curve import CurvesTab  # noqa: E402
 from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
@@ -323,7 +322,6 @@ class Application(Gtk.Application):
             "patch_channels": "patch_channels",
             "fixtures": "fixtures_cb",
             "curves": "curves",
-            "cues": "cues_cb",
             "groups": "groups_cb",
             "palettes": "palettes_cb",
             "effects": "effects_cb",
@@ -562,17 +560,6 @@ class Application(Gtk.Application):
         """Open Track Channels tab UI."""
         if self.tabs:
             self.tabs.open("track_channels", TrackChannelsTab, "Track Channels", self)
-
-    def cues_cb(
-        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
-    ) -> None:
-        """Create Cues Tab"""
-        self.core.action_registry.execute("gui.tab_open", "cues")
-
-    def open_cues(self) -> None:
-        """Open Cues tab UI."""
-        if self.tabs:
-            self.tabs.open("cues", CuesEditionTab, "Cues", self)
 
     def groups_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

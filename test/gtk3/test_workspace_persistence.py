@@ -23,8 +23,8 @@ import pathlib
 import pytest
 
 from olc.gtk3.application import Application
-from olc.gtk3.cue import CuesEditionTab
 from olc.gtk3.group import GroupTab
+from olc.gtk3.sequence import SequenceTab
 from test.gtk3.conftest import process_events  # pylint: disable=wrong-import-order
 
 pytestmark = pytest.mark.gui
@@ -74,12 +74,12 @@ def test_full_workspace_persistence_on_save_and_open(
     assert app_gui.tabs is not None
     assert app_gui.window is not None
 
-    # 1. Open and configure cues tab
-    app_gui.open_cues()
+    # 1. Open and configure sequences tab
+    app_gui.open_sequences()
     process_events()
-    cues_tab = app_gui.tabs.tabs.get("cues")
-    assert isinstance(cues_tab, CuesEditionTab)
-    cues_tab.channels_view.set_view_mode_by_name("Active")
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.channels_view.set_view_mode_by_name("Active")
     process_events()
 
     # 2. Open and configure groups tab
@@ -99,7 +99,7 @@ def test_full_workspace_persistence_on_save_and_open(
     # 4. Reset via show.new
     app_gui.core.action_registry.execute("show.new")
     process_events()
-    assert app_gui.tabs.tabs.get("cues") is None
+    assert app_gui.tabs.tabs.get("sequences") is None
     assert app_gui.tabs.tabs.get("groups") is None
 
     # 5. Reopen saved show via show.open
@@ -107,13 +107,13 @@ def test_full_workspace_persistence_on_save_and_open(
     process_events()
 
     # 6. Verify tabs are restored
-    restored_cues = app_gui.tabs.tabs.get("cues")
+    restored_seq = app_gui.tabs.tabs.get("sequences")
     restored_grp = app_gui.tabs.tabs.get("groups")
-    assert isinstance(restored_cues, CuesEditionTab)
+    assert isinstance(restored_seq, SequenceTab)
     assert isinstance(restored_grp, GroupTab)
 
     # 7. Verify display parameters
-    assert restored_cues.channels_view.get_view_mode_name() == "Active"
+    assert restored_seq.channels_view.get_view_mode_name() == "Active"
     assert restored_grp.channels_view.get_view_mode_name() == "Patched"
 
 
@@ -133,18 +133,18 @@ def test_legacy_show_open_in_gui_applies_default_workspace(
     with gzip.open(str(legacy_file), "wb") as f:
         f.write(json.dumps(data).encode("utf-8"))
 
-    # Open cues first to have an extra tab
-    app_gui.open_cues()
+    # Open sequences first to have an extra tab
+    app_gui.open_sequences()
     process_events()
     assert app_gui.tabs is not None
-    assert app_gui.tabs.tabs.get("cues") is not None
+    assert app_gui.tabs.tabs.get("sequences") is not None
 
     # Open legacy file
     app_gui.core.action_registry.execute("show.open", str(legacy_file))
     process_events()
 
     # Extra tab should have closed, leaving default layout
-    assert app_gui.tabs.tabs.get("cues") is None
+    assert app_gui.tabs.tabs.get("sequences") is None
 
 
 def test_show_with_paned_positions_opens_cleanly(

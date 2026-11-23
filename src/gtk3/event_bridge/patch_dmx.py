@@ -123,7 +123,7 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
                 ):
                     continue
                 tab_obj.refresh()
-            for tab_key in ("sequences", "groups", "cues"):
+            for tab_key in ("sequences", "groups"):
                 tab_obj = self.app.tabs.tabs.get(tab_key)
                 if tab_obj is not None:
                     channels_view = getattr(tab_obj, "channels_view", None)
