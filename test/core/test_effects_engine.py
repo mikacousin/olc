@@ -660,3 +660,64 @@ def test_absolute_intensity_modulation_multi_channel_and_cascade(
     with pytest.raises(RuntimeError, match="boom"):
         app.effects_engine._on_timer_tick()
     assert app.effects_engine._timer_handle is None
+
+
+def test_phase_accumulation_continuity_and_zero_rate_freeze() -> None:
+    """Verify phase continuity on rate changes and strict 0x Freeze/Resume."""
+    from olc.show.fader import fader_level_to_rate_scale
+
+    # 1. Musical rate curve calibration
+    assert fader_level_to_rate_scale(0.0) == pytest.approx(0.0)
+    assert fader_level_to_rate_scale(0.25) == pytest.approx(0.5)
+    assert fader_level_to_rate_scale(0.5) == pytest.approx(1.0)
+    assert fader_level_to_rate_scale(0.75) == pytest.approx(2.0)
+    assert fader_level_to_rate_scale(1.0) == pytest.approx(4.0)
+
+    app, _sched = _make_headless_app()
+    eff = EffectDefinition(
+        number=14.0,
+        label="PhaseSine",
+        cycle_time=4.0,
+        layers=[
+            EffectLayer(
+                parameter="intensity",
+                waveform=WaveformType.SINE,
+                mode=EffectMode.ABSOLUTE,
+                low_value=0.0,
+                high_value=100.0,
+            )
+        ],
+        entry_mode=EffectEnvelopeMode.IMMEDIATE,
+    )
+    app.lightshow.effects.add(eff)
+    base = np.zeros(4, dtype=np.float64)
+
+    # Run 0.0 -> 5.0s at 1.0x (1.25 cycles)
+    app.effects_engine.start_effect(14.0, [1], rate_scale=1.0, size_scale=1.0, now=0.0)
+    val_before = float(app.effects_engine.apply_intensity_modulation(base, now=5.0)[0])
+
+    # Change rate to 2.0x at t=5.0s -> NO phase jump at t=5.0s
+    app.effects_engine.start_effect(14.0, [1], rate_scale=2.0, size_scale=1.0, now=5.0)
+    val_after = float(app.effects_engine.apply_intensity_modulation(base, now=5.0)[0])
+    assert val_after == pytest.approx(val_before, abs=1e-6)
+
+    # Advance 1.0s at 2.0x (cycle_time=4.0 -> +0.5 cycles -> 1.75 cycles)
+    val_later = float(app.effects_engine.apply_intensity_modulation(base, now=6.0)[0])
+    assert val_later != pytest.approx(val_after, abs=0.1)
+
+    # Freeze (rate_scale = 0.0) at t=6.0s and advance to t=20.0s -> strictly frozen
+    app.effects_engine.start_effect(14.0, [1], rate_scale=0.0, size_scale=1.0, now=6.0)
+    val_frozen_start = float(
+        app.effects_engine.apply_intensity_modulation(base, now=6.0)[0]
+    )
+    val_frozen_end = float(
+        app.effects_engine.apply_intensity_modulation(base, now=20.0)[0]
+    )
+    assert val_frozen_end == pytest.approx(val_frozen_start, abs=1e-6)
+
+    # Resume at t=20.0s -> resumes smoothly from frozen phase (no jump at t=20.0s)
+    app.effects_engine.start_effect(14.0, [1], rate_scale=1.0, size_scale=1.0, now=20.0)
+    val_resumed = float(
+        app.effects_engine.apply_intensity_modulation(base, now=20.0)[0]
+    )
+    assert val_resumed == pytest.approx(val_frozen_end, abs=1e-6)

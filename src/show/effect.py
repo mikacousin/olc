@@ -310,6 +310,8 @@ class ActiveEffectInstance:
     rate_fade_duration: float = 0.0
     cascade_fade: bool = False
     remove_on_fade_end: bool = False
+    accumulated_cycles: float = 0.0
+    last_phase_time: float | None = None
 
     def __post_init__(self) -> None:
         self.effect_number = round(float(self.effect_number), 3)
@@ -350,19 +352,48 @@ class ActiveEffectInstance:
     def effective_rate_scale(self, now: float) -> float:
         """Compute current rate_scale including any active rate fade envelope."""
         if self.rate_fade_duration <= 0.0:
-            return max(0.01, self.rate_scale)
+            return max(0.0, self.rate_scale)
         elapsed = max(0.0, now - self.rate_fade_start_time)
         if elapsed >= self.rate_fade_duration:
-            self.rate_scale = max(0.01, self.fade_target_rate)
+            self.rate_scale = max(0.0, self.fade_target_rate)
             self.rate_fade_duration = 0.0
             return self.rate_scale
         progress = elapsed / self.rate_fade_duration
         self.rate_scale = max(
-            0.01,
+            0.0,
             self.fade_start_rate
             + (self.fade_target_rate - self.fade_start_rate) * progress,
         )
         return self.rate_scale
+
+    def advance_phase(self, now: float, cycle_time: float) -> float:
+        """Integrate and return accumulated cycles up to timestamp *now*."""
+        if self.last_phase_time is None:
+            self.last_phase_time = (
+                self.start_timestamp if self.start_timestamp > 0.0 else now
+            )
+        dt = now - self.last_phase_time
+        if dt > 0.0:
+            rate_mult = self.effective_rate_scale(now)
+            if rate_mult > 0.0:
+                period = max(0.05, float(cycle_time) / rate_mult)
+                self.accumulated_cycles += dt / period
+            self.last_phase_time = now
+        return self.accumulated_cycles
+
+    def phase_cycles_at(self, now: float, cycle_time: float) -> float:
+        """Project accumulated cycles to timestamp *now* without mutating state."""
+        ref_t = (
+            self.start_timestamp
+            if self.last_phase_time is None
+            else self.last_phase_time
+        )
+        dt = max(0.0, now - ref_t)
+        rate_mult = self.effective_rate_scale(now)
+        if dt > 0.0 and rate_mult > 0.0:
+            period = max(0.05, float(cycle_time) / rate_mult)
+            return self.accumulated_cycles + dt / period
+        return self.accumulated_cycles
 
     def effective_channel_size_scales(
         self, now: float, thetas: np.ndarray

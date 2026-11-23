@@ -270,13 +270,21 @@ def test_fader_assign_effect_starts_scales_and_stops() -> None:
     active = app.effects_engine.get_active_instances()
     assert active[0].size_scale == pytest.approx(0.5)
 
-    # Switch to rate control mode and move fader to 75% (rate_scale = 1.5)
+    # Switch to rate control mode and move fader to 75% (musical rate_scale = 2.0)
     fader.control_mode = "rate"
     app.action_registry.execute("fader.set_level", 1, 1, 0.75)
     active = app.effects_engine.get_active_instances()
-    assert active[0].rate_scale == pytest.approx(1.5)
+    assert active[0].rate_scale == pytest.approx(2.0)
 
-    # Bring fader to 0% -> stops effect
+    # Bring fader to 0% in rate mode -> freezes effect (rate_scale = 0.0)
+    app.action_registry.execute("fader.set_level", 1, 1, 0.0)
+    active = app.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].rate_scale == pytest.approx(0.0)
+
+    # Switch back to size mode and bring fader to 0% -> stops effect
+    fader.control_mode = "size"
+    app.action_registry.execute("fader.set_level", 1, 1, 0.5)
     app.action_registry.execute("fader.set_level", 1, 1, 0.0)
     assert len(app.effects_engine.get_active_instances()) == 0
 
@@ -310,7 +318,7 @@ def test_fader_effect_both_mode_and_format_target_channels() -> None:
     fader.set_effect_channels([1, 3, 5, 7])
     assert fader.format_target_channels() == "Ch 1,3… (4)"
 
-    # 'both' mode scales size = level and rate = max(0.05, level * 2.0)
+    # 'both' mode scales size = level and rate = fader_level_to_rate_scale(level)
     fader.set_effect_channels([1, 2])
     fader.set_control_mode("both")
     app.action_registry.execute("fader.set_level", 1, 1, 0.5)
@@ -319,10 +327,10 @@ def test_fader_effect_both_mode_and_format_target_channels() -> None:
     assert active[0].size_scale == pytest.approx(0.5)
     assert active[0].rate_scale == pytest.approx(1.0)
 
-    app.action_registry.execute("fader.set_level", 1, 1, 0.8)
+    app.action_registry.execute("fader.set_level", 1, 1, 0.75)
     active = app.effects_engine.get_active_instances()
-    assert active[0].size_scale == pytest.approx(0.8)
-    assert active[0].rate_scale == pytest.approx(1.6)
+    assert active[0].size_scale == pytest.approx(0.75)
+    assert active[0].rate_scale == pytest.approx(2.0)
 
 
 def test_fader_configure_effect_and_assign_clear_undo_restore() -> None:

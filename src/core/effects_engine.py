@@ -415,8 +415,10 @@ class EffectsEngine:
         """Configure entry size/rate ramps on *inst* according to *eff.entry_mode*."""
         mode = getattr(eff, "entry_mode", EffectEnvelopeMode.FADE_BY_SIZE)
         tgt_size = max(0.0, float(target_size))
-        tgt_rate = max(0.01, float(target_rate))
+        tgt_rate = max(0.0, float(target_rate))
         inst.remove_on_fade_end = False
+        if is_existing:
+            inst.advance_phase(t_now, eff.cycle_time)
 
         if fade_in <= 0.0 or mode == EffectEnvelopeMode.IMMEDIATE:
             inst.size_scale = tgt_size
@@ -568,6 +570,7 @@ class EffectsEngine:
                 wings_override=wings_override,
                 direction_override=direction_override,
                 start_timestamp=t_now,
+                last_phase_time=t_now,
             )
             self._configure_entry_envelope(
                 inst, eff, size_scale, rate_scale, fade_in, t_now, is_existing=False
@@ -621,6 +624,8 @@ class EffectsEngine:
                         fade_chs = [c for c in inst.channels if c in ch_set]
                         inst.channels = stay_chs
                         remaining.append(inst)
+                        if eff is not None:
+                            inst.advance_phase(t_now, eff.cycle_time)
                         fading_copy = ActiveEffectInstance(
                             effect_number=inst.effect_number,
                             channels=fade_chs,
@@ -631,6 +636,8 @@ class EffectsEngine:
                             wings_override=inst.wings_override,
                             direction_override=inst.direction_override,
                             start_timestamp=inst.start_timestamp,
+                            accumulated_cycles=inst.accumulated_cycles,
+                            last_phase_time=inst.last_phase_time,
                         )
                         if self._configure_exit_envelope(
                             fading_copy, eff, fade_out, t_now
@@ -740,14 +747,11 @@ class EffectsEngine:
                 ch_indices = np.array([ch - 1 for _, ch in valid_pairs], dtype=np.int64)
                 theta = theta_all[sel_indices]
                 size_mult = size_all[sel_indices]
-                elapsed = max(0.0, t_now - inst.start_timestamp)
-                rate_mult = inst.effective_rate_scale(t_now)
-                period = max(0.05, eff.cycle_time / max(0.01, rate_mult))
+                cycles = inst.phase_cycles_at(t_now, eff.cycle_time)
 
                 for layer in int_layers:
-                    freq = layer.freq_mult / period
                     phi_raw = (
-                        elapsed * freq
+                        cycles * layer.freq_mult
                         - theta
                         + (layer.phase_offset_deg + inst.phase_offset_deg) / 360.0
                     )
@@ -832,6 +836,7 @@ class EffectsEngine:
                 eff = show.effects.get(inst.effect_number)
                 if eff is None or not inst.channels:
                     continue
+                inst.advance_phase(t_now, eff.cycle_time)
                 if any(layer.parameter == "intensity" for layer in eff.layers):
                     has_intensity_effect = True
                 dev_changed, col_changed = self._evaluate_device_layers_locked(
@@ -1030,16 +1035,13 @@ class EffectsEngine:
 
         theta = self._compute_instance_thetas(eff, inst)
         size_all = inst.effective_channel_size_scales(t_now, theta)
-        elapsed = max(0.0, t_now - inst.start_timestamp)
-        rate_mult = inst.effective_rate_scale(t_now)
-        period = max(0.05, eff.cycle_time / max(0.01, rate_mult))
+        cycles = inst.advance_phase(t_now, eff.cycle_time)
 
         # Precompute waveform array per device layer
         layer_waves: list[tuple[EffectLayer, np.ndarray]] = []
         for layer in dev_layers:
-            freq = layer.freq_mult / period
             phi_raw = (
-                elapsed * freq
+                cycles * layer.freq_mult
                 - theta
                 + (layer.phase_offset_deg + inst.phase_offset_deg) / 360.0
             )

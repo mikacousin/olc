@@ -476,6 +476,17 @@ class FaderSequence(Fader):
 VALID_EFFECT_CONTROL_MODES: tuple[str, ...] = ("size", "rate", "both")
 
 
+def fader_level_to_rate_scale(level: float) -> float:
+    """Map fader level [0.0..1.0] to musical rate multiplier.
+
+    0.0 -> 0.0 (Freeze), 0.25 -> 0.5x, 0.5 -> 1.0x, 0.75 -> 2.0x, 1.0 -> 4.0x.
+    """
+    lvl = max(0.0, min(1.0, float(level)))
+    if lvl <= 0.0:
+        return 0.0
+    return float(2.0 ** (4.0 * (lvl - 0.5)))
+
+
 class FaderEffect(Fader):
     """Fader controlling a procedural EffectDefinition (Size, Rate, or Both)."""
 
@@ -640,10 +651,10 @@ class FaderEffect(Fader):
             self.channels = set(target_channels)
             if self.control_mode == "rate":
                 size_scale = 1.0
-                rate_scale = max(0.05, float(self.level) * 2.0)
+                rate_scale = fader_level_to_rate_scale(self.level)
             elif self.control_mode == "both":
                 size_scale = float(self.level)
-                rate_scale = max(0.05, float(self.level) * 2.0)
+                rate_scale = fader_level_to_rate_scale(self.level)
             else:
                 size_scale = float(self.level)
                 rate_scale = 1.0
@@ -655,6 +666,28 @@ class FaderEffect(Fader):
             )
             engine.tick()
             self.app.emit("effect.applied", self.contents.number, list(target_channels))
+        elif self.control_mode == "rate":
+            eff_num = round(float(self.contents.number), 3)
+            active_inst = next(
+                (
+                    inst
+                    for inst in engine.get_active_instances()
+                    if inst.effect_number == eff_num
+                ),
+                None,
+            )
+            if active_inst is not None:
+                target_channels = self.get_target_channels()
+                engine.start_effect(
+                    self.contents.number,
+                    target_channels,
+                    rate_scale=0.0,
+                    size_scale=1.0,
+                )
+                engine.tick()
+                self.app.emit(
+                    "effect.applied", self.contents.number, list(target_channels)
+                )
         else:
             stopped = engine.stop_effect(effect_number=self.contents.number)
             engine.tick()
