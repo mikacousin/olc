@@ -315,3 +315,22 @@ def test_sequence_tab_flags_total_link_and_notes(app_gui: Application) -> None:
     process_events()
     assert step.cue.notes == "Follow spot ready"
     assert seq_tab.liststore2[0][18] == "Follow spot ready"
+
+
+@pytest.mark.gui
+def test_sequence_tab_sequences_sorted_by_number(app_gui: Application) -> None:
+    """Verify sequences in liststore1 are sorted in ascending order by number."""
+    app_gui.core.action_registry.execute("sequence.new", 5.0)
+    app_gui.core.action_registry.execute("sequence.new", 2.0)
+
+    app_gui.activate_action("sequences", None)
+    process_events()
+    assert app_gui.tabs is not None
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.refresh()
+    process_events()
+
+    seq_numbers = [row[0] for row in seq_tab.liststore1]
+    assert seq_numbers == sorted(seq_numbers)
+    assert seq_numbers == [1, 2, 5]

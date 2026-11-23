@@ -214,17 +214,17 @@ class SequenceTab(Gtk.Grid):
         self.set_mib_enabled(new_state)
         return new_state
 
+    def _populate_sequences_list(self) -> None:
+        """Populate liststore1 sorted by ascending sequence number."""
+        sequences = [self.lightshow.main_playback, *self.lightshow.sequences]
+        sequences.sort(key=lambda seq: seq.index)
+        for seq in sequences:
+            self.liststore1.append([seq.index, seq.text])
+
     def _setup_sequences_list(self) -> None:
         """Setup the sequence selection list"""
         self.liststore1 = Gtk.ListStore(int, str)
-        self.liststore1.append(
-            [
-                self.lightshow.main_playback.index,
-                self.lightshow.main_playback.text,
-            ]
-        )
-        for seq in self.lightshow.sequences:
-            self.liststore1.append([seq.index, seq.text])
+        self._populate_sequences_list()
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
@@ -334,14 +334,7 @@ class SequenceTab(Gtk.Grid):
                 selected_seq_index = self.liststore1[row][0]
 
         self.liststore1.clear()
-        self.liststore1.append(
-            [
-                self.lightshow.main_playback.index,
-                self.lightshow.main_playback.text,
-            ]
-        )
-        for seq in self.lightshow.sequences:
-            self.liststore1.append([seq.index, seq.text])
+        self._populate_sequences_list()
         self.treeview1.set_model(self.liststore1)
 
         selected_iter = None
