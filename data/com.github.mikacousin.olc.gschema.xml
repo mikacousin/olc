@@ -6,6 +6,11 @@
       <summary>Display in percent</summary>
       <description>Display levels in percent state.</description>
     </key>
+    <key name="notifications" type="b">
+      <default>true</default>
+      <summary>Enable desktop notifications</summary>
+      <description>Display desktop notifications for DMX, Art-Net, sACN, and Enttec events.</description>
+    </key>
     <key name="percent-level" type="i">
       <default>5</default>
       <summary>Percent level</summary>

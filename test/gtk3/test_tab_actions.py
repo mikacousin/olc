@@ -292,3 +292,50 @@ def test_settings_tab_skip_empty_fader_pages_switch(app_gui: Application) -> Non
     finally:
         app.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app.core.history.clear()
+
+
+def test_settings_tab_notifications_switch(app_gui: Application) -> None:
+    """Test SettingsTab desktop notifications switch, GSettings, and Undo/Redo."""
+    app = app_gui
+    app.core.history.clear()
+    schema = getattr(app.settings.props, "settings_schema", None)
+    if (
+        schema is not None
+        and hasattr(schema, "has_key")
+        and not schema.has_key("notifications")
+    ):
+        pytest.skip("GSettings schema not yet compiled with 'notifications' key")
+
+    orig_enabled = bool(app.settings.get_boolean("notifications"))
+    app.settings.set_boolean("notifications", True)
+
+    try:
+        app.core.action_registry.execute("gui.tab_open", "settings")
+        process_events()
+
+        assert app.tabs is not None
+        settings_tab = typing.cast(SettingsTab, app.tabs.tabs["settings"])
+        sw = settings_tab.switch_notifications
+        assert sw is not None
+        assert sw.get_active() is True
+
+        # Disable via UI switch
+        sw.set_active(False)
+        process_events()
+        assert app.settings.get_boolean("notifications") is False
+        assert sw.get_state() is False
+
+        # Undo restores True in GSettings and UI
+        app.core.history.undo()
+        process_events()
+        assert app.settings.get_boolean("notifications") is True
+        assert sw.get_state() is True
+
+        # Redo disables again in GSettings and UI
+        app.core.history.redo()
+        process_events()
+        assert app.settings.get_boolean("notifications") is False
+        assert sw.get_state() is False
+    finally:
+        app.settings.set_boolean("notifications", orig_enabled)
+        app.core.history.clear()

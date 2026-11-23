@@ -21,6 +21,10 @@ import pathlib
 import sys
 from collections.abc import Generator
 
+# Use an in-memory GSettings backend so tests neither mutate user dconf state
+# nor depend on a running D-Bus session.
+os.environ.setdefault("GSETTINGS_BACKEND", "memory")
+
 # Dynamic module aliasing to allow importing 'olc' from 'src' without installation
 _root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _root_dir not in sys.path:

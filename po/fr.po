@@ -485,3 +485,9 @@ msgid "{count} active transmitter detected on this universe."
 msgid_plural "{count} active transmitters detected on this universe."
 msgstr[0] "{count} émetteur actif détecté sur cet univers."
 msgstr[1] "{count} émetteurs actifs détectés sur cet univers."
+
+msgid "Desktop notifications"
+msgstr "Notifications du bureau"
+
+msgid "Toggle notifications"
+msgstr "Activer/désactiver les notifications"

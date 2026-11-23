@@ -198,6 +198,17 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             self.switch_skip_empty_fader_pages.set_state(skip_empty)
             self.switch_skip_empty_fader_pages.set_active(skip_empty)
 
+        self.switch_notifications = typing.cast(
+            Gtk.Switch | None,
+            builder.get_object("switch_notifications"),
+        )
+        if self.switch_notifications is not None:
+            notif_enabled = True
+            if schema is None or schema.has_key("notifications"):
+                notif_enabled = bool(self.settings.get_boolean("notifications"))
+            self.switch_notifications.set_state(notif_enabled)
+            self.switch_notifications.set_active(notif_enabled)
+
     def _setup_osc(self, builder: Gtk.Builder) -> None:
         self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         self.switch_osc.set_state(self.settings.get_boolean("osc"))
@@ -697,6 +708,25 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
                 )
         return False
 
+    def _on_toggle_notifications(self, _widget: Gtk.Switch, state: bool) -> bool:
+        """Enable or disable desktop notifications."""
+        if getattr(self, "_updating_settings", False):
+            return False
+        if (
+            self.app is not None
+            and hasattr(self.app, "core")
+            and self.app.core is not None
+            and hasattr(self.app.core, "action_registry")
+        ):
+            self.app.core.action_registry.execute(
+                "gui.set_notifications", enabled=bool(state)
+            )
+        else:
+            schema = getattr(self.settings.props, "settings_schema", None)
+            if schema is None or schema.has_key("notifications"):
+                self.settings.set_boolean("notifications", bool(state))
+        return False
+
     def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)
 
@@ -978,6 +1008,17 @@ class SettingsTab(Gtk.Box, UniversesSettingsMixin):
             if sw is not None and sw.get_state() != bool(skip_empty):
                 sw.set_state(bool(skip_empty))
                 sw.set_active(bool(skip_empty))
+        finally:
+            self._updating_settings = False
+
+    def update_notifications_ui(self, enabled: bool) -> None:
+        """Update desktop notifications switch from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            sw = getattr(self, "switch_notifications", None)
+            if sw is not None and sw.get_state() != bool(enabled):
+                sw.set_state(bool(enabled))
+                sw.set_active(bool(enabled))
         finally:
             self._updating_settings = False
 

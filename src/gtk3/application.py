@@ -276,6 +276,19 @@ class Application(Gtk.Application):
 
     def on_backend_notification(self, title: str, body: str) -> None:
         """Handle notifications triggered by backend (Dmx)."""
+        settings = getattr(self, "settings", None)
+        if settings is not None and hasattr(settings, "get_boolean"):
+            props = getattr(settings, "props", None)
+            schema = (
+                getattr(props, "settings_schema", None) if props is not None else None
+            )
+            if (
+                schema is None
+                or not hasattr(schema, "has_key")
+                or schema.has_key("notifications")
+            ):
+                if not settings.get_boolean("notifications"):
+                    return
         notification = Gio.Notification()
         notification.set_title(title)
         notification.set_body(body)

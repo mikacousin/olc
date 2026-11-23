@@ -455,3 +455,56 @@ def test_fader_set_fixed_preservation_skip_empty_and_undo_redo() -> None:
     assert fb.get_fixed_source_page(4) is None
     core.history.undo()
     assert fb.is_fader_fixed(8, 4) is True
+
+
+def test_set_notifications_action_and_undo_redo() -> None:
+    """Test gui.set_notifications action execution, Undo, and Redo."""
+    settings = MagicMock()
+    settings.get_boolean.return_value = True
+
+    app = CoreApplication(settings)
+
+    events: list[bool] = []
+
+    def on_notifications_changed(enabled: bool) -> None:
+        events.append(enabled)
+
+    app.subscribe("gui.notifications_changed", on_notifications_changed)
+
+    action = app.action_registry.get("gui.set_notifications")
+    assert action is not None
+    assert action.can_undo is True
+
+    # 1. Disable desktop notifications
+    app.action_registry.execute("gui.set_notifications", enabled=False)
+    settings.set_boolean.assert_called_with("notifications", False)
+    assert events == [False]
+    assert len(app.history.undo_stack) == 1
+
+    # 2. Undo -> restores True
+    app.history.undo()
+    settings.set_boolean.assert_called_with("notifications", True)
+    assert events == [False, True]
+
+    # 3. Redo -> re-applies False
+    app.history.redo()
+    settings.set_boolean.assert_called_with("notifications", False)
+    assert events == [False, True, False]
+
+
+def test_backend_notification_respects_notifications_setting() -> None:
+    """Verify Application.on_backend_notification honors the notifications setting."""
+    # pylint: disable=import-outside-toplevel
+    from olc.gtk3.application import Application
+
+    settings = MagicMock()
+    fake_app = MagicMock(spec=Application)
+    fake_app.settings = settings
+
+    settings.get_boolean.return_value = False
+    Application.on_backend_notification(fake_app, "Alert", "Body")
+    fake_app.send_notification.assert_not_called()
+
+    settings.get_boolean.return_value = True
+    Application.on_backend_notification(fake_app, "Alert", "Body")
+    fake_app.send_notification.assert_called_once()

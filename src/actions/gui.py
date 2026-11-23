@@ -504,6 +504,73 @@ class SetPercentDisplayAction(Action):
         return {"percent": self.percent}
 
 
+def _has_notifications_key(settings: object) -> bool:
+    props = getattr(settings, "props", None)
+    schema = getattr(props, "settings_schema", None) if props is not None else None
+    return (
+        schema is None
+        or not hasattr(schema, "has_key")
+        or bool(schema.has_key("notifications"))
+    )
+
+
+class SetNotificationsAction(Action):
+    """Action to toggle or set desktop notifications."""
+
+    name = "gui.set_notifications"
+    history_label = _("Toggle notifications")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.enabled: bool = True
+        self.old_enabled: bool = True
+
+    def configure(self, enabled: bool) -> None:
+        """Configure the desktop notifications setting.
+
+        Args:
+            enabled: True to enable desktop notifications, False to disable them.
+        """
+        self.enabled = bool(enabled)
+
+    def execute(self) -> None:
+        """Apply desktop notifications setting and emit change event."""
+        settings = getattr(self.app, "settings", None)
+        if (
+            settings is not None
+            and hasattr(settings, "get_boolean")
+            and _has_notifications_key(settings)
+        ):
+            self.old_enabled = bool(settings.get_boolean("notifications"))
+            if hasattr(settings, "set_boolean"):
+                settings.set_boolean("notifications", self.enabled)
+        else:
+            self.old_enabled = True
+
+        self.app.emit("gui.notifications_changed", self.enabled)
+
+    def undo(self) -> None:
+        """Restore previous desktop notifications setting."""
+        settings = getattr(self.app, "settings", None)
+        if (
+            settings is not None
+            and hasattr(settings, "set_boolean")
+            and _has_notifications_key(settings)
+        ):
+            settings.set_boolean("notifications", self.old_enabled)
+
+        self.app.emit("gui.notifications_changed", self.old_enabled)
+
+    def redo(self) -> None:
+        """Re-apply desktop notifications setting."""
+        self.execute()
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return notifications state metadata."""
+        return {"notifications": self.enabled}
+
+
 class SetDefaultTimeAction(Action):
     """Action to set default cue transfer time."""
 
