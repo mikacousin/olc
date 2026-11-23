@@ -443,26 +443,23 @@ class MainPlaybackView(Gtk.Notebook):
             return
         lightshow = self.app.core.lightshow
         step = lightshow.main_playback.position
-        t_wait = lightshow.main_playback.steps[step].wait
-        self.cues_liststore1[step + 2][3] = time_to_string(t_wait)
-        d_out = lightshow.main_playback.steps[step].delay_out
-        self.cues_liststore1[step + 2][4] = time_to_string(d_out)
-        t_out = lightshow.main_playback.steps[step].time_out
-        self.cues_liststore1[step + 2][5] = time_to_string(t_out)
-        d_in = lightshow.main_playback.steps[step].delay_in
-        self.cues_liststore1[step + 2][6] = time_to_string(d_in)
-        t_in = lightshow.main_playback.steps[step].time_in
-        self.cues_liststore1[step + 2][7] = time_to_string(t_in)
-        t_wait = lightshow.main_playback.steps[step + 1].wait
-        self.cues_liststore1[step + 3][3] = time_to_string(t_wait)
-        d_out = lightshow.main_playback.steps[step + 1].delay_out
-        self.cues_liststore1[step + 3][4] = time_to_string(d_out)
-        t_out = lightshow.main_playback.steps[step + 1].time_out
-        self.cues_liststore1[step + 3][5] = time_to_string(t_out)
-        d_in = lightshow.main_playback.steps[step + 1].delay_in
-        self.cues_liststore1[step + 3][6] = time_to_string(d_in)
-        t_in = lightshow.main_playback.steps[step + 1].time_in
-        self.cues_liststore1[step + 3][7] = time_to_string(t_in)
+        for offset in (0, 1):
+            step_obj = lightshow.main_playback.steps[step + offset]
+            row = self.cues_liststore1[step + 2 + offset]
+            row[3] = time_to_string(step_obj.wait)
+            row[4] = time_to_string(step_obj.delay_out)
+            row[5] = time_to_string(step_obj.time_out)
+            row[6] = time_to_string(step_obj.delay_in)
+            row[7] = time_to_string(step_obj.time_in)
+            row[12] = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                step_obj.delay_position, step_obj.time_position
+            )
+            row[13] = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                step_obj.delay_color, step_obj.time_color
+            )
+            row[14] = SequenceTab._format_family_timing(  # pylint: disable=protected-access
+                step_obj.delay_beam, step_obj.time_beam
+            )
 
     def show_timeleft(self, i: float) -> None:
         """Display countdowns during Go and color crossfade of active cues
@@ -532,6 +529,39 @@ class MainPlaybackView(Gtk.Notebook):
         else:
             time = (wait - i) / 1000
             self.cues_liststore1[step + 2][3] = time_to_string(time)
+        self._update_family_timeleft(step, i)
+
+    def _update_family_timeleft(self, step: int, elapsed_ms: float) -> None:
+        """Update Pos, Color, and Beam countdowns during an active crossfade."""
+        if not self.app:
+            return
+        step_obj = self.app.core.lightshow.main_playback.steps[step]
+        wait_ms = step_obj.wait * 1000.0
+        if elapsed_ms <= wait_ms:
+            return
+
+        row = self.cues_liststore1[step + 2]
+        for fam, col_idx in (("position", 12), ("color", 13), ("beam", 14)):
+            if not step_obj.has_explicit_family_timing(fam):
+                continue
+            explicit_delay = getattr(step_obj, f"delay_{fam}")
+            explicit_time = getattr(step_obj, f"time_{fam}")
+            eff_delay_ms = getattr(step_obj, f"effective_delay_{fam}") * 1000.0
+            eff_time_ms = getattr(step_obj, f"effective_time_{fam}") * 1000.0
+
+            if elapsed_ms <= wait_ms + eff_delay_ms:
+                if explicit_delay is not None:
+                    rem_delay = max(0.0, (wait_ms + eff_delay_ms - elapsed_ms) / 1000.0)
+                    fade_str = SequenceTab._format_family_time(explicit_time) or "-"  # pylint: disable=protected-access
+                    row[col_idx] = (
+                        f"{SequenceTab._format_family_time(rem_delay)}/{fade_str}"  # pylint: disable=protected-access
+                    )
+            else:
+                rem_time = max(
+                    0.0, (wait_ms + eff_delay_ms + eff_time_ms - elapsed_ms) / 1000.0
+                )
+                rem_str = SequenceTab._format_family_time(rem_time)  # pylint: disable=protected-access
+                row[col_idx] = f"0/{rem_str}" if explicit_delay is not None else rem_str
 
     def update_cue_crossfade_color(self, step: int, progress: float) -> None:
         """Crossfade active cues color background

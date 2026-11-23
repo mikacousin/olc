@@ -265,10 +265,10 @@ def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
     process_events()
     assert reopened_tab.is_sidebar_visible()
 
-    # 5. Paned position
-    reopened_tab.set_position(150)
+    # 5. Paned position (>= 190px sidebar_box minimum width)
+    reopened_tab.set_position(250)
     process_events()
-    assert reopened_tab.get_position() == 150
+    assert reopened_tab.get_position() == 250
 
 
 def test_limit_curve_point_and_spin_sync(app_gui: Application) -> None:
