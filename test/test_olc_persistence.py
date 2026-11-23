@@ -939,3 +939,57 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
     assert ls2.fader_bank.skip_empty_pages is True
     assert ls2.fader_bank.get_fader_type(15, 3) == FaderType.PRESET
     assert ls2.fader_bank.is_fader_fixed(15, 3) is True
+
+
+def test_olc_persistence_fx_masters_and_effect_bus_fields(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for EffectDefinition buses and FaderEffectMaster."""
+    from olc.show.effect import EffectDefinition, EffectLayer
+    from olc.show.fader import FaderEffectMaster, FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    eff = EffectDefinition(
+        number=2.0,
+        label="Bus FX",
+        layers=[EffectLayer(parameter="intensity")],
+        speed_master=3,
+        speed_multiplier=0.5,
+        rate_master=2,
+        size_master=4,
+    )
+    app.lightshow.effects.add(eff)
+    app.lightshow.fader_bank.set_fader(1, 2, FaderType.FX_MASTER, ("speed", 3))
+    fader = app.lightshow.fader_bank.faders[1][2]
+    assert isinstance(fader, FaderEffectMaster)
+    fader.set_level(0.5)  # 240 * 0.25 = 60 BPM
+
+    save_path = tmp_path / "fx_masters.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    re_eff = app2.lightshow.effects.get(2.0)
+    assert re_eff is not None
+    assert re_eff.speed_master == 3
+    assert re_eff.speed_multiplier == pytest.approx(0.5)
+    assert re_eff.rate_master == 2
+    assert re_eff.size_master == 4
+
+    re_fader = app2.lightshow.fader_bank.faders[1][2]
+    assert isinstance(re_fader, FaderEffectMaster)
+    assert re_fader.master_kind == "speed"
+    assert re_fader.master_id == 3
+    assert re_fader.level == pytest.approx(0.5)
+    assert app2.effects_engine.get_speed_master_bpm(3) == pytest.approx(60.0)
+
+    # Rate master flash_on resets to 1:1 (level 0.5)
+    app2.lightshow.fader_bank.set_fader(1, 3, FaderType.FX_MASTER, ("rate", 2))
+    rate_fader = app2.lightshow.fader_bank.faders[1][3]
+    assert isinstance(rate_fader, FaderEffectMaster)
+    rate_fader.set_level(0.75)
+    assert app2.effects_engine.get_rate_master(2) == pytest.approx(2.0)
+    rate_fader.flash_on()
+    assert rate_fader.level == pytest.approx(0.5)
+    assert app2.effects_engine.get_rate_master(2) == pytest.approx(1.0)

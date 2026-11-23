@@ -291,6 +291,12 @@ def evaluate_waveform(
     return np.zeros_like(phi, dtype=np.float64)
 
 
+NUM_SPEED_MASTERS = 8
+NUM_RATE_MASTERS = 4
+NUM_SIZE_MASTERS = 4
+SPEED_MASTER_MAX_BPM = 240.0
+
+
 # pylint: disable=too-many-instance-attributes
 class EffectsEngine:
     """Real-time 40 Hz non-destructive parametric Effects Engine."""
@@ -317,6 +323,23 @@ class EffectsEngine:
         self._last_modulated_state: dict[int, dict[str, Any]] = {}
         # Tap-tempo history timestamps
         self._tap_timestamps: list[float] = []
+        # Decoupled FX Master buses
+        self._speed_masters_bpm: dict[int, float] = {
+            i: 120.0 for i in range(1, NUM_SPEED_MASTERS + 1)
+        }
+        self._rate_masters: dict[int, float] = {
+            i: 1.0 for i in range(1, NUM_RATE_MASTERS + 1)
+        }
+        self._size_masters: dict[int, float] = {
+            i: 1.0 for i in range(1, NUM_SIZE_MASTERS + 1)
+        }
+        self._speed_master_frozen: dict[int, bool] = {
+            i: False for i in range(1, NUM_SPEED_MASTERS + 1)
+        }
+        self._rate_master_frozen: dict[int, bool] = {
+            i: False for i in range(1, NUM_RATE_MASTERS + 1)
+        }
+        self._speed_master_taps: dict[int, list[float]] = {}
 
     @property
     def lightshow(self) -> LightShow | None:
@@ -343,6 +366,185 @@ class EffectsEngine:
         ch_int = int(channel)
         with self._lock:
             return [inst for inst in self._instances if ch_int in inst.channels]
+
+    # -- Decoupled Speed / Rate / Size Master buses ---------------------------
+
+    def _resolve_effect_masters_locked(
+        self, eff: EffectDefinition
+    ) -> tuple[float | None, float, float, float]:
+        """Return (speed_bpm, speed_multiplier, rate_master, size_master)."""
+        sm_id = getattr(eff, "speed_master", None)
+        if sm_id is None:
+            speed_bpm: float | None = None
+        elif self._speed_master_frozen.get(sm_id, False):
+            speed_bpm = 0.0
+        else:
+            speed_bpm = float(self._speed_masters_bpm.get(sm_id, 120.0))
+
+        speed_mult = float(getattr(eff, "speed_multiplier", 1.0))
+
+        rm_id = getattr(eff, "rate_master", None)
+        if rm_id is None:
+            rate_master = 1.0
+        elif self._rate_master_frozen.get(rm_id, False):
+            rate_master = 0.0
+        else:
+            rate_master = float(self._rate_masters.get(rm_id, 1.0))
+
+        sz_id = getattr(eff, "size_master", None)
+        size_master = (
+            1.0 if sz_id is None else float(self._size_masters.get(sz_id, 1.0))
+        )
+        return speed_bpm, speed_mult, rate_master, size_master
+
+    def _advance_all_phases_locked(self, t_now: float) -> None:
+        """Integrate phases of all active instances up to *t_now*."""
+        show = self.lightshow
+        if show is None:
+            return
+        for inst in self._instances:
+            eff = show.effects.get(inst.effect_number)
+            if eff is None:
+                continue
+            speed_bpm, speed_mult, rate_m, _size_m = (
+                self._resolve_effect_masters_locked(eff)
+            )
+            inst.advance_phase(
+                t_now,
+                eff.cycle_time,
+                master_rate=rate_m,
+                speed_bpm=speed_bpm,
+                speed_multiplier=speed_mult,
+            )
+
+    def _emit_master_changed(self, kind: str, master_id: int, value: float) -> None:
+        if self.app is not None and hasattr(self.app, "emit"):
+            self.app.emit("effect.master_changed", kind, int(master_id), float(value))
+
+    def get_speed_master_bpm(self, master_id: int) -> float:
+        """Return current BPM of Speed Master *master_id*."""
+        with self._lock:
+            return float(self._speed_masters_bpm.get(int(master_id), 120.0))
+
+    def set_speed_master_bpm(
+        self, master_id: int, bpm: float, *, now: float | None = None
+    ) -> float:
+        """Set Speed Master *master_id* BPM (0.0 .. SPEED_MASTER_MAX_BPM)."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = max(1, min(NUM_SPEED_MASTERS, int(master_id)))
+        clamped = max(0.0, min(SPEED_MASTER_MAX_BPM, float(bpm)))
+        with self._lock:
+            self._advance_all_phases_locked(t_now)
+            self._speed_masters_bpm[mid] = clamped
+        self._emit_master_changed("speed", mid, clamped)
+        return clamped
+
+    def scale_speed_master(
+        self, master_id: int, factor: float, *, now: float | None = None
+    ) -> float:
+        """Multiply Speed Master *master_id* BPM by *factor* (e.g. 0.5 or 2.0)."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = max(1, min(NUM_SPEED_MASTERS, int(master_id)))
+        with self._lock:
+            self._advance_all_phases_locked(t_now)
+            cur = self._speed_masters_bpm.get(mid, 120.0)
+            new_bpm = max(1.0, min(SPEED_MASTER_MAX_BPM, cur * float(factor)))
+            self._speed_masters_bpm[mid] = new_bpm
+        self._emit_master_changed("speed", mid, new_bpm)
+        return new_bpm
+
+    def tap_speed_master(
+        self, master_id: int, *, now: float | None = None
+    ) -> float | None:
+        """Record a tap timestamp for Speed Master *master_id* and return BPM."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = max(1, min(NUM_SPEED_MASTERS, int(master_id)))
+        new_bpm: float | None = None
+        with self._lock:
+            taps = self._speed_master_taps.setdefault(mid, [])
+            if taps and (t_now - taps[-1]) > 3.0:
+                taps.clear()
+            taps.append(t_now)
+            if len(taps) > 5:
+                del taps[:-5]
+            if len(taps) >= 2:
+                intervals = [
+                    b - a for a, b in zip(taps, taps[1:], strict=False) if b > a
+                ]
+                if intervals:
+                    mean_dt = sum(intervals) / len(intervals)
+                    new_bpm = max(
+                        1.0, min(SPEED_MASTER_MAX_BPM, 60.0 / max(0.05, mean_dt))
+                    )
+                    self._advance_all_phases_locked(t_now)
+                    self._speed_masters_bpm[mid] = new_bpm
+        if new_bpm is not None:
+            self._emit_master_changed("speed", mid, new_bpm)
+        return new_bpm
+
+    def get_rate_master(self, master_id: int) -> float:
+        """Return current multiplier of Rate Master *master_id*."""
+        with self._lock:
+            return float(self._rate_masters.get(int(master_id), 1.0))
+
+    def set_rate_master(
+        self, master_id: int, rate: float, *, now: float | None = None
+    ) -> float:
+        """Set Rate Master *master_id* multiplier (>= 0.0)."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = max(1, min(NUM_RATE_MASTERS, int(master_id)))
+        clamped = max(0.0, float(rate))
+        with self._lock:
+            self._advance_all_phases_locked(t_now)
+            self._rate_masters[mid] = clamped
+        self._emit_master_changed("rate", mid, clamped)
+        return clamped
+
+    def get_size_master(self, master_id: int) -> float:
+        """Return current scale [0.0..1.0] of Size Master *master_id*."""
+        with self._lock:
+            return float(self._size_masters.get(int(master_id), 1.0))
+
+    def set_size_master(
+        self, master_id: int, size: float, *, now: float | None = None
+    ) -> float:
+        """Set Size Master *master_id* scale [0.0..1.0]."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = max(1, min(NUM_SIZE_MASTERS, int(master_id)))
+        clamped = max(0.0, min(1.0, float(size)))
+        with self._lock:
+            self._advance_all_phases_locked(t_now)
+            self._size_masters[mid] = clamped
+        self._emit_master_changed("size", mid, clamped)
+        return clamped
+
+    def is_master_frozen(self, kind: str, master_id: int) -> bool:
+        """Return True if Speed or Rate Master *master_id* is frozen."""
+        mid = int(master_id)
+        with self._lock:
+            if kind == "speed":
+                return bool(self._speed_master_frozen.get(mid, False))
+            if kind == "rate":
+                return bool(self._rate_master_frozen.get(mid, False))
+            return False
+
+    def toggle_master_freeze(
+        self, kind: str, master_id: int, *, now: float | None = None
+    ) -> bool:
+        """Toggle freeze state on a Speed or Rate Master; return new freeze state."""
+        t_now = time.monotonic() if now is None else float(now)
+        mid = int(master_id)
+        frozen = False
+        with self._lock:
+            self._advance_all_phases_locked(t_now)
+            if kind == "speed":
+                frozen = not self._speed_master_frozen.get(mid, False)
+                self._speed_master_frozen[mid] = frozen
+            elif kind == "rate":
+                frozen = not self._rate_master_frozen.get(mid, False)
+                self._rate_master_frozen[mid] = frozen
+        self._emit_master_changed(kind, mid, 0.0 if frozen else 1.0)
+        return frozen
 
     def is_channel_intensity_modulated(self, channel: int) -> bool:
         """Return True if *channel* has an active intensity layer."""
@@ -411,6 +613,9 @@ class EffectsEngine:
         t_now: float,
         *,
         is_existing: bool,
+        master_rate: float = 1.0,
+        speed_bpm: float | None = None,
+        speed_multiplier: float = 1.0,
     ) -> None:
         """Configure entry size/rate ramps on *inst* according to *eff.entry_mode*."""
         mode = getattr(eff, "entry_mode", EffectEnvelopeMode.FADE_BY_SIZE)
@@ -418,7 +623,13 @@ class EffectsEngine:
         tgt_rate = max(0.0, float(target_rate))
         inst.remove_on_fade_end = False
         if is_existing:
-            inst.advance_phase(t_now, eff.cycle_time)
+            inst.advance_phase(
+                t_now,
+                eff.cycle_time,
+                master_rate=master_rate,
+                speed_bpm=speed_bpm,
+                speed_multiplier=speed_multiplier,
+            )
 
         if fade_in <= 0.0 or mode == EffectEnvelopeMode.IMMEDIATE:
             inst.size_scale = tgt_size
@@ -543,6 +754,9 @@ class EffectsEngine:
                     existing.blocks_override = blocks_override
                     existing.wings_override = wings_override
                     existing.direction_override = direction_override
+                    speed_bpm, speed_mult, rate_m, _size_m = (
+                        self._resolve_effect_masters_locked(eff)
+                    )
                     self._configure_entry_envelope(
                         existing,
                         eff,
@@ -551,6 +765,9 @@ class EffectsEngine:
                         fade_in,
                         t_now,
                         is_existing=True,
+                        master_rate=rate_m,
+                        speed_bpm=speed_bpm,
+                        speed_multiplier=speed_mult,
                     )
                     self._ensure_timer_locked()
                     return existing
@@ -625,7 +842,16 @@ class EffectsEngine:
                         inst.channels = stay_chs
                         remaining.append(inst)
                         if eff is not None:
-                            inst.advance_phase(t_now, eff.cycle_time)
+                            speed_bpm, speed_mult, rate_m, _size_m = (
+                                self._resolve_effect_masters_locked(eff)
+                            )
+                            inst.advance_phase(
+                                t_now,
+                                eff.cycle_time,
+                                master_rate=rate_m,
+                                speed_bpm=speed_bpm,
+                                speed_multiplier=speed_mult,
+                            )
                         fading_copy = ActiveEffectInstance(
                             effect_number=inst.effect_number,
                             channels=fade_chs,
@@ -732,8 +958,11 @@ class EffectsEngine:
                 ]
                 if not int_layers:
                     continue
+                speed_bpm, speed_mult, rate_m, size_m = (
+                    self._resolve_effect_masters_locked(eff)
+                )
                 theta_all = self._compute_instance_thetas(eff, inst)
-                size_all = inst.effective_channel_size_scales(t_now, theta_all)
+                size_all = inst.effective_channel_size_scales(t_now, theta_all) * size_m
                 if not np.any(size_all > 0.0):
                     continue
                 valid_pairs = [
@@ -747,7 +976,13 @@ class EffectsEngine:
                 ch_indices = np.array([ch - 1 for _, ch in valid_pairs], dtype=np.int64)
                 theta = theta_all[sel_indices]
                 size_mult = size_all[sel_indices]
-                cycles = inst.phase_cycles_at(t_now, eff.cycle_time)
+                cycles = inst.phase_cycles_at(
+                    t_now,
+                    eff.cycle_time,
+                    master_rate=rate_m,
+                    speed_bpm=speed_bpm,
+                    speed_multiplier=speed_mult,
+                )
 
                 for layer in int_layers:
                     phi_raw = (
@@ -836,7 +1071,16 @@ class EffectsEngine:
                 eff = show.effects.get(inst.effect_number)
                 if eff is None or not inst.channels:
                     continue
-                inst.advance_phase(t_now, eff.cycle_time)
+                speed_bpm, speed_mult, rate_m, _size_m = (
+                    self._resolve_effect_masters_locked(eff)
+                )
+                inst.advance_phase(
+                    t_now,
+                    eff.cycle_time,
+                    master_rate=rate_m,
+                    speed_bpm=speed_bpm,
+                    speed_multiplier=speed_mult,
+                )
                 if any(layer.parameter == "intensity" for layer in eff.layers):
                     has_intensity_effect = True
                 dev_changed, col_changed = self._evaluate_device_layers_locked(
@@ -1033,9 +1277,16 @@ class EffectsEngine:
         if not dev_layers:
             return set(), set()
 
+        speed_bpm, speed_mult, rate_m, size_m = self._resolve_effect_masters_locked(eff)
         theta = self._compute_instance_thetas(eff, inst)
-        size_all = inst.effective_channel_size_scales(t_now, theta)
-        cycles = inst.advance_phase(t_now, eff.cycle_time)
+        size_all = inst.effective_channel_size_scales(t_now, theta) * size_m
+        cycles = inst.advance_phase(
+            t_now,
+            eff.cycle_time,
+            master_rate=rate_m,
+            speed_bpm=speed_bpm,
+            speed_multiplier=speed_mult,
+        )
 
         # Precompute waveform array per device layer
         layer_waves: list[tuple[EffectLayer, np.ndarray]] = []

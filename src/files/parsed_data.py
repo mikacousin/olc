@@ -372,6 +372,17 @@ class ParsedData:
                         fader_obj.intensity_master = True
                 if values.get("fixed"):
                     self.lightshow.fader_bank.set_fader_fixed(page, number, True)
+                if fader_type == FaderType.FX_MASTER:
+                    m_kind = str(values.get("master_kind", "speed"))
+                    m_id = int(values.get("master_id", 1))
+                    if hasattr(fader_obj, "set_contents"):
+                        fader_obj.set_contents((m_kind, m_id))
+                    if values.get("text"):
+                        fader_obj.text = str(values["text"])
+                    if values.get("level") is not None and hasattr(
+                        fader_obj, "set_level"
+                    ):
+                        fader_obj.set_level(float(values["level"]))
                 if fader_type == FaderType.EFFECT:
                     eff_chs = values.get("effect_channels")
                     if isinstance(eff_chs, list) and hasattr(

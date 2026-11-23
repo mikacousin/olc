@@ -186,6 +186,10 @@ class EffectDefinition:
     entry_mode: EffectEnvelopeMode = EffectEnvelopeMode.FADE_BY_SIZE
     exit_mode: EffectEnvelopeMode = EffectEnvelopeMode.FADE_BY_SIZE
     cascade: bool = False
+    speed_master: int | None = None
+    speed_multiplier: float = 1.0
+    rate_master: int | None = None
+    size_master: int | None = None
 
     def __post_init__(self) -> None:
         self.number = round(float(self.number), 3)
@@ -207,6 +211,16 @@ class EffectDefinition:
         self.axis_deg = float(self.axis_deg)
         self.phase_start_deg = float(self.phase_start_deg)
         self.phase_end_deg = float(self.phase_end_deg)
+        self.speed_master = (
+            int(self.speed_master) if self.speed_master is not None else None
+        )
+        self.speed_multiplier = max(0.0625, float(self.speed_multiplier))
+        self.rate_master = (
+            int(self.rate_master) if self.rate_master is not None else None
+        )
+        self.size_master = (
+            int(self.size_master) if self.size_master is not None else None
+        )
 
     def set_bpm(self, bpm: float | None) -> None:
         """Set musical tempo in BPM and synchronize cycle_time (60 / BPM)."""
@@ -247,6 +261,14 @@ class EffectDefinition:
             data["exit_mode"] = self.exit_mode.value
         if self.cascade:
             data["cascade"] = True
+        if self.speed_master is not None:
+            data["speed_master"] = self.speed_master
+        if self.speed_multiplier != 1.0:
+            data["speed_multiplier"] = self.speed_multiplier
+        if self.rate_master is not None:
+            data["rate_master"] = self.rate_master
+        if self.size_master is not None:
+            data["size_master"] = self.size_master
         return data
 
     @classmethod
@@ -282,6 +304,22 @@ class EffectDefinition:
             entry_mode=EffectEnvelopeMode(str(entry_raw).lower()),
             exit_mode=EffectEnvelopeMode(str(exit_raw).lower()),
             cascade=bool(data.get("cascade", False)),
+            speed_master=(
+                int(data["speed_master"])
+                if data.get("speed_master") is not None
+                else None
+            ),
+            speed_multiplier=float(data.get("speed_multiplier", 1.0)),
+            rate_master=(
+                int(data["rate_master"])
+                if data.get("rate_master") is not None
+                else None
+            ),
+            size_master=(
+                int(data["size_master"])
+                if data.get("size_master") is not None
+                else None
+            ),
         )
 
 
@@ -366,7 +404,39 @@ class ActiveEffectInstance:
         )
         return self.rate_scale
 
-    def advance_phase(self, now: float, cycle_time: float) -> float:
+    def _compute_freq(
+        self,
+        now: float,
+        cycle_time: float,
+        *,
+        master_rate: float = 1.0,
+        speed_bpm: float | None = None,
+        speed_multiplier: float = 1.0,
+    ) -> float:
+        """Compute instantaneous frequency in Hz combining instance and master rates."""
+        combined_rate = self.effective_rate_scale(now) * max(0.0, float(master_rate))
+        if combined_rate <= 0.0:
+            return 0.0
+        if speed_bpm is not None:
+            if speed_bpm <= 0.0:
+                return 0.0
+            return (
+                (float(speed_bpm) / 60.0)
+                * max(0.0625, float(speed_multiplier))
+                * combined_rate
+            )
+        period = max(0.05, float(cycle_time) / combined_rate)
+        return 1.0 / period
+
+    def advance_phase(
+        self,
+        now: float,
+        cycle_time: float,
+        *,
+        master_rate: float = 1.0,
+        speed_bpm: float | None = None,
+        speed_multiplier: float = 1.0,
+    ) -> float:
         """Integrate and return accumulated cycles up to timestamp *now*."""
         if self.last_phase_time is None:
             self.last_phase_time = (
@@ -374,14 +444,27 @@ class ActiveEffectInstance:
             )
         dt = now - self.last_phase_time
         if dt > 0.0:
-            rate_mult = self.effective_rate_scale(now)
-            if rate_mult > 0.0:
-                period = max(0.05, float(cycle_time) / rate_mult)
-                self.accumulated_cycles += dt / period
+            freq = self._compute_freq(
+                now,
+                cycle_time,
+                master_rate=master_rate,
+                speed_bpm=speed_bpm,
+                speed_multiplier=speed_multiplier,
+            )
+            if freq > 0.0:
+                self.accumulated_cycles += dt * freq
             self.last_phase_time = now
         return self.accumulated_cycles
 
-    def phase_cycles_at(self, now: float, cycle_time: float) -> float:
+    def phase_cycles_at(
+        self,
+        now: float,
+        cycle_time: float,
+        *,
+        master_rate: float = 1.0,
+        speed_bpm: float | None = None,
+        speed_multiplier: float = 1.0,
+    ) -> float:
         """Project accumulated cycles to timestamp *now* without mutating state."""
         ref_t = (
             self.start_timestamp
@@ -389,10 +472,17 @@ class ActiveEffectInstance:
             else self.last_phase_time
         )
         dt = max(0.0, now - ref_t)
-        rate_mult = self.effective_rate_scale(now)
-        if dt > 0.0 and rate_mult > 0.0:
-            period = max(0.05, float(cycle_time) / rate_mult)
-            return self.accumulated_cycles + dt / period
+        if dt <= 0.0:
+            return self.accumulated_cycles
+        freq = self._compute_freq(
+            now,
+            cycle_time,
+            master_rate=master_rate,
+            speed_bpm=speed_bpm,
+            speed_multiplier=speed_multiplier,
+        )
+        if freq > 0.0:
+            return self.accumulated_cycles + dt * freq
         return self.accumulated_cycles
 
     def effective_channel_size_scales(

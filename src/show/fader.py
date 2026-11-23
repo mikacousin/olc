@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import math
 import typing
 from collections.abc import Mapping
 from enum import IntEnum
@@ -43,6 +44,7 @@ class FaderType(IntEnum):
     CHANNELS = 2
     SEQUENCE = 3
     EFFECT = 4
+    FX_MASTER = 5
     MAIN = 99
 
 
@@ -699,3 +701,115 @@ class FaderEffect(Fader):
                 )
         if hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()
+
+
+VALID_FX_MASTER_KINDS: tuple[str, ...] = ("speed", "rate", "size")
+
+
+def fader_level_to_speed_bpm(level: float, max_bpm: float = 240.0) -> float:
+    """Map fader level [0.0..1.0] to Speed Master BPM (quadratic curve)."""
+    lvl = max(0.0, min(1.0, float(level)))
+    if lvl <= 0.0:
+        return 0.0
+    return float(max_bpm) * (lvl**2)
+
+
+def speed_bpm_to_fader_level(bpm: float, max_bpm: float = 240.0) -> float:
+    """Inverse of fader_level_to_speed_bpm for synchronizing fader position."""
+    val = max(0.0, float(bpm))
+    if val <= 0.0 or max_bpm <= 0.0:
+        return 0.0
+    return min(1.0, math.sqrt(val / float(max_bpm)))
+
+
+def rate_scale_to_fader_level(rate: float) -> float:
+    """Inverse of fader_level_to_rate_scale."""
+    val = float(rate)
+    if val <= 0.0:
+        return 0.0
+    return max(0.0, min(1.0, 0.5 + math.log2(val) / 4.0))
+
+
+class FaderEffectMaster(Fader):
+    """Fader controlling a decoupled Speed, Rate, or Size Master bus."""
+
+    master_kind: str
+    master_id: int
+
+    def __init__(
+        self,
+        index: int,
+        fader_bank: FaderBank,
+        master_kind: str = "speed",
+        master_id: int = 1,
+    ) -> None:
+        super().__init__(index, fader_bank)
+        self._assign_master(master_kind, master_id)
+        if self.master_kind == "speed":
+            self.level = speed_bpm_to_fader_level(120.0)
+        elif self.master_kind == "rate":
+            self.level = 0.5
+        else:
+            self.level = 1.0
+
+    def _assign_master(self, master_kind: str, master_id: int) -> None:
+        kind = str(master_kind).strip().lower()
+        self.master_kind = kind if kind in VALID_FX_MASTER_KINDS else "speed"
+        max_id = 8 if self.master_kind == "speed" else 4
+        self.master_id = max(1, min(max_id, int(master_id)))
+        self.text = f"{self.master_kind.capitalize()} {self.master_id}"
+
+    def set_contents(self, contents: typing.Any) -> None:  # noqa: ANN401
+        """Update target master kind and/or ID from tuple, dict, or int."""
+        if isinstance(contents, dict):
+            kind = str(contents.get("master_kind", self.master_kind))
+            mid = int(contents.get("master_id", self.master_id))
+            self._assign_master(kind, mid)
+        elif isinstance(contents, (tuple, list)) and len(contents) >= 2:
+            self._assign_master(str(contents[0]), int(contents[1]))
+        elif isinstance(contents, (int, float)):
+            self._assign_master(self.master_kind, int(contents))
+        self.level_changed()
+
+    def level_changed(self) -> None:
+        """Push fader level to the corresponding EffectsEngine master bus."""
+        if self.app is None:
+            return
+        engine = getattr(self.app, "effects_engine", None)
+        if engine is None:
+            return
+        if self.master_kind == "speed":
+            bpm = fader_level_to_speed_bpm(self.level)
+            engine.set_speed_master_bpm(self.master_id, bpm)
+        elif self.master_kind == "rate":
+            rate = fader_level_to_rate_scale(self.level)
+            engine.set_rate_master(self.master_id, rate)
+        else:
+            engine.set_size_master(
+                self.master_id, max(0.0, min(1.0, float(self.level)))
+            )
+        engine.tick()
+        if hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
+
+    def flash_on(self) -> None:
+        """Context action: Tap (Speed), Reset 1:1 (Rate), or Flash 100% (Size)."""
+        if self.master_kind == "speed":
+            if self.app is not None:
+                engine = getattr(self.app, "effects_engine", None)
+                if engine is not None:
+                    bpm = engine.tap_speed_master(self.master_id)
+                    if bpm is not None:
+                        self.level = speed_bpm_to_fader_level(bpm)
+                        engine.tick()
+            return
+        if self.master_kind == "rate":
+            self.set_level(0.5)
+            return
+        super().flash_on()
+
+    def flash_off(self) -> None:
+        """Release momentary flash for Size Master; no-op for Tap/Reset."""
+        if self.master_kind in ("speed", "rate"):
+            return
+        super().flash_off()

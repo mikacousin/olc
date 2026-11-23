@@ -261,6 +261,16 @@ class OlcWriter(WriteFile):
                     if base_chs:
                         fader_entry["base_channels"] = dict(base_chs)
                     self.data["faders"][number] = fader_entry
+                elif content_type == FaderType.FX_MASTER:
+                    self.data["faders"][number] = {
+                        "page": page,
+                        "number": index,
+                        "type": int(content_type),
+                        "text": fader.text,
+                        "master_kind": getattr(fader, "master_kind", "speed"),
+                        "master_id": int(getattr(fader, "master_id", 1)),
+                        "level": float(getattr(fader, "level", 0.5)),
+                    }
                 elif content_type == FaderType.MAIN:
                     self.data["faders"][number] = {
                         "page": page,

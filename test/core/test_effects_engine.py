@@ -721,3 +721,85 @@ def test_phase_accumulation_continuity_and_zero_rate_freeze() -> None:
         app.effects_engine.apply_intensity_modulation(base, now=20.0)[0]
     )
     assert val_resumed == pytest.approx(val_frozen_end, abs=1e-6)
+
+
+def test_speed_rate_size_masters_sync_freeze_and_phase_continuity() -> None:
+    """Verify Speed, Rate, and Size Masters synchronize and modulate active effects."""
+    import math
+
+    app, _sched = _make_headless_app()
+    eff1 = EffectDefinition(
+        number=15.0,
+        label="MasterSync1",
+        layers=[
+            EffectLayer(
+                parameter="intensity",
+                waveform=WaveformType.SINE,
+                mode=EffectMode.ABSOLUTE,
+                low_value=0.0,
+                high_value=100.0,
+            )
+        ],
+        entry_mode=EffectEnvelopeMode.IMMEDIATE,
+        speed_master=1,
+        speed_multiplier=1.0,
+        rate_master=1,
+        size_master=1,
+    )
+    eff2 = EffectDefinition(
+        number=16.0,
+        label="MasterSync2",
+        layers=[
+            EffectLayer(
+                parameter="intensity",
+                waveform=WaveformType.SINE,
+                mode=EffectMode.ABSOLUTE,
+                low_value=0.0,
+                high_value=100.0,
+            )
+        ],
+        entry_mode=EffectEnvelopeMode.IMMEDIATE,
+        speed_master=1,
+        speed_multiplier=0.5,
+        rate_master=1,
+        size_master=1,
+    )
+    app.lightshow.effects.add(eff1)
+    app.lightshow.effects.add(eff2)
+    base = np.zeros(4, dtype=np.float64)
+
+    # 120 BPM -> eff1 runs at 2 Hz (period 0.5s), eff2 at 1 Hz (period 1.0s)
+    app.effects_engine.set_speed_master_bpm(1, 120.0, now=0.0)
+    app.effects_engine.start_effect(15.0, [1], now=0.0)
+    app.effects_engine.start_effect(16.0, [2], now=0.0)
+    app.effects_engine.tick(now=0.125)
+    out = app.effects_engine.apply_intensity_modulation(base, now=0.125)
+    # At t=0.125s: eff1 phase = 0.25 (1.0), eff2 phase = 0.125 (~0.8535)
+    assert out[0] == pytest.approx(1.0, abs=1e-4)
+    assert out[1] == pytest.approx(0.5 + 0.5 * math.sin(math.pi / 4.0), abs=1e-4)
+
+    # Double Speed Master (240 BPM) -> no phase jump at t=0.125s
+    app.effects_engine.scale_speed_master(1, 2.0, now=0.125)
+    assert app.effects_engine.get_speed_master_bpm(1) == pytest.approx(240.0)
+    out_after = app.effects_engine.apply_intensity_modulation(base, now=0.125)
+    assert out_after[0] == pytest.approx(out[0], abs=1e-6)
+    assert out_after[1] == pytest.approx(out[1], abs=1e-6)
+
+    # Tap-tempo 0.5s intervals -> 120.0 BPM
+    assert app.effects_engine.tap_speed_master(1, now=1.0) is None
+    tapped = app.effects_engine.tap_speed_master(1, now=1.5)
+    assert tapped == pytest.approx(120.0)
+
+    # Freeze Speed Master 1 -> values stay frozen while instances remain active
+    assert app.effects_engine.toggle_master_freeze("speed", 1, now=1.5) is True
+    frozen_start = app.effects_engine.apply_intensity_modulation(base, now=1.5)
+    frozen_later = app.effects_engine.apply_intensity_modulation(base, now=5.5)
+    assert frozen_later[0] == pytest.approx(frozen_start[0], abs=1e-6)
+    assert len(app.effects_engine.get_active_instances()) == 2
+
+    # Unfreeze and test Size Master 0.0 -> returns to base without killing instances
+    assert app.effects_engine.toggle_master_freeze("speed", 1, now=5.5) is False
+    app.effects_engine.set_size_master(1, 0.0, now=5.5)
+    zero_size = app.effects_engine.apply_intensity_modulation(base, now=5.6)
+    assert zero_size[0] == pytest.approx(0.0, abs=1e-6)
+    assert len(app.effects_engine.get_active_instances()) == 2

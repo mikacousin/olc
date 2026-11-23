@@ -23,6 +23,7 @@ from olc.show.fader import (
     Fader,
     FaderChannels,
     FaderEffect,
+    FaderEffectMaster,
     FaderMain,
     FaderPreset,
     FaderSequence,
@@ -280,6 +281,8 @@ class FaderBank:
             return FaderType.SEQUENCE
         if isinstance(self.faders[page][index], FaderEffect):
             return FaderType.EFFECT
+        if isinstance(self.faders[page][index], FaderEffectMaster):
+            return FaderType.FX_MASTER
         if isinstance(self.faders[page][index], FaderMain):
             return FaderType.MAIN
         return FaderType.NONE
@@ -289,7 +292,11 @@ class FaderBank:
         page: int,
         index: int,
         fader_type: FaderType,
-        contents: dict[int, int] | float | None = None,
+        contents: dict[int, int]
+        | dict[str, typing.Any]
+        | tuple[str, int]
+        | float
+        | None = None,
     ) -> None:
         """Assign a fader
 
@@ -321,7 +328,12 @@ class FaderBank:
             self._set_fader_type(page, index, fader_type, contents)
 
     def _resolve_preset_contents(
-        self, contents: dict[int, int] | float | None
+        self,
+        contents: dict[int, int]
+        | dict[str, typing.Any]
+        | tuple[str, int]
+        | float
+        | None,
     ) -> Palette | None:
         """Resolve Preset palette from its number."""
         if (
@@ -333,7 +345,12 @@ class FaderBank:
         return None
 
     def _resolve_effect_contents(
-        self, contents: dict[int, int] | float | None
+        self,
+        contents: dict[int, int]
+        | dict[str, typing.Any]
+        | tuple[str, int]
+        | float
+        | None,
     ) -> EffectDefinition | None:
         """Resolve an EffectDefinition from its effect number."""
         if (
@@ -349,14 +366,22 @@ class FaderBank:
         page: int,
         index: int,
         fader_type: FaderType,
-        contents: dict[int, int] | float | None,
+        contents: dict[int, int]
+        | dict[str, typing.Any]
+        | tuple[str, int]
+        | float
+        | None,
     ) -> None:
         fader_bank_type = typing.cast("olc.show.fader_bank.FaderBank", self)
         if fader_type == FaderType.NONE:
             self.faders[page][index] = Fader(index, fader_bank_type)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.CHANNELS:
-            channels = contents if isinstance(contents, dict) else None
+            channels = (
+                {int(k): int(v) for k, v in contents.items()}
+                if isinstance(contents, dict)
+                else None
+            )
             self.faders[page][index] = FaderChannels(index, fader_bank_type, channels)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.MAIN:
@@ -388,6 +413,20 @@ class FaderBank:
                 index, fader_bank_type, eff_obj, effect_channels=sel_chs
             )
             self.faders[page][index].set_level(0)
+        elif fader_type == FaderType.FX_MASTER:
+            m_kind = "speed"
+            m_id = 1
+            if isinstance(contents, dict):
+                m_kind = str(contents.get("master_kind", "speed"))
+                m_id = int(contents.get("master_id", 1))
+            elif isinstance(contents, (tuple, list)) and len(contents) >= 2:
+                m_kind = str(contents[0])
+                m_id = int(contents[1])
+            elif isinstance(contents, (int, float)):
+                m_id = int(contents)
+            self.faders[page][index] = FaderEffectMaster(
+                index, fader_bank_type, master_kind=m_kind, master_id=m_id
+            )
         self.update_active_faders()
         self.update_levels()
 
@@ -396,7 +435,11 @@ class FaderBank:
         page: int,
         index: int,
         fader_type: FaderType,
-        contents: dict[int, int] | float | None,
+        contents: dict[int, int]
+        | dict[str, typing.Any]
+        | tuple[str, int]
+        | float
+        | None,
     ) -> None:
         if fader_type == FaderType.PRESET:
             preset_obj = self._resolve_preset_contents(contents)
@@ -409,6 +452,8 @@ class FaderBank:
         elif fader_type == FaderType.EFFECT:
             eff_obj = self._resolve_effect_contents(contents)
             self.faders[page][index].set_contents(eff_obj)
+        elif fader_type == FaderType.FX_MASTER:
+            self.faders[page][index].set_contents(contents)
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""
