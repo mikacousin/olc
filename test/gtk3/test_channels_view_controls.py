@@ -199,7 +199,6 @@ def test_flexi_devices_selected_manual_filters_and_reactivity(
     # Record Cue on active step releases manual overrides
     main_pb = app_gui.core.lightshow.main_playback
     cue1 = Cue(sequence=1, number=1.0, channels={})
-    app_gui.core.lightshow.cues.add(cue1)
     main_pb.insert_step(1, Step(sequence=1, cue=cue1))
     main_pb.position = 1
     app_gui.core.action_registry.execute("commandline.set", "RECORD CUE 1")
@@ -224,8 +223,6 @@ def test_flexi_subclasses_and_filtered_navigation(app_gui: Application) -> None:
     _add_rgb_par(app_gui, 2, 10)
     _add_moving_spot(app_gui, 3, 20)
 
-    cue1 = Cue(sequence=1, number=1.0, channels={1: 1.0})
-    app_gui.core.lightshow.cues.add(cue1)
     app_gui.core.lightshow.groups.append(Group(1.0, [1, 2], "Front"))
 
     # Live view filtered Next/Prev navigation in Devices and empty Manual
@@ -487,7 +484,6 @@ def test_workspace_persistence_all_channels_settings_and_legacy_backcompat(
 
     seq = Sequence(1, text="Main")
     cue1 = Cue(sequence=1, number=1.0, channels={1: 1.0})
-    app_gui.core.lightshow.cues.add(cue1)
     seq.add_step(Step(sequence=1, cue=cue1))
     app_gui.core.lightshow.main_playback = seq
 

@@ -61,9 +61,6 @@ def test_cue_set_temp_channels_action() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # Clean app cues and ensure editor exists
-    app.lightshow.cues.clear()
-
     # Trigger events tracing
     changed_events = []
     app.subscribe(
@@ -72,7 +69,7 @@ def test_cue_set_temp_channels_action() -> None:
 
     # Execute temp levels set action
     app.action_registry.execute("cue.set_temp_channels", 2.0, 0, {10: 200, 20: 100})
-    editor = app.lightshow.cues.cue_editor
+    editor = app.lightshow.cue_editor
     assert editor.has_overrides(2.0, 0)
     assert editor.get_levels(2.0, 0)[9] == 200
     assert editor.get_levels(2.0, 0)[19] == 100

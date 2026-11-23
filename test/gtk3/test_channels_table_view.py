@@ -643,7 +643,6 @@ def test_live_manual_palette_red_vs_cue_cyan_and_param_isolation(
             }
         },
     )
-    ls.cues.add(cue1)
     ls.main_playback.insert_step(1, Step(sequence=1, cue=cue1))
     ls.main_playback.load_step(1)
     app_gui.core.live_state.clear_channel(3)

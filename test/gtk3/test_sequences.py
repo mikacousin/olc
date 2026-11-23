@@ -42,9 +42,8 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     """Test SequenceTab and ChanneltimeTab GUI interactions, including editing and
     undo/redo.
     """
-    # 1. Clear sequences/chasers and cues
+    # 1. Clear sequences/chasers
     app_gui.core.lightshow.chasers.clear()
-    app_gui.core.lightshow.cues.clear()
 
     # 2. Open the Sequences Tab
     app_gui.activate_action("sequences", None)

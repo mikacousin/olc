@@ -283,7 +283,7 @@ class FaderEdit(Gtk.Box):
         self.effect_controls_box.add(self.effect_channels_button)
 
     def _fader_preset(self) -> None:
-        """Create edition of preset fader (Preset palettes and Cues)."""
+        """Create edition of preset fader."""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.get_style_context().remove_class("empty")
@@ -292,9 +292,7 @@ class FaderEdit(Gtk.Box):
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
         presets = self.lightshow.palettes.list_by_category(PaletteCategory.PRESET)
-        preset_numbers: set[float] = set()
         for preset in presets:
-            preset_numbers.add(float(preset.number))
             button = Gtk.ModelButton()
             lbl = f"{preset.number:g} : {preset.text}"
             button.set_label(lbl)
@@ -306,23 +304,6 @@ class FaderEdit(Gtk.Box):
             )
             vbox.add(button)
             if preset is fader.contents:
-                self.contents_button.set_label(lbl)
-        cues = [
-            cue
-            for cue in self.lightshow.cues
-            if float(cue.number) not in preset_numbers
-        ]
-        if presets and cues:
-            vbox.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
-        for cue in cues:
-            button = Gtk.ModelButton()
-            lbl = f"Cue {cue.number:g} : {cue.text}"
-            button.set_label(lbl)
-            button.connect(
-                "clicked", self._on_contents_changed, FaderType.PRESET, cue.number
-            )
-            vbox.add(button)
-            if cue is fader.contents:
                 self.contents_button.set_label(lbl)
         self._contents_popup(vbox)
 

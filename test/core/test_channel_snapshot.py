@@ -252,7 +252,7 @@ def test_live_palette_refs_partial_break_undo_redo_and_record_update() -> None:
     executor = CommandExecutor(app)
     assert executor.execute(parser.parse("RECORD CUE 1")).success is True
 
-    cue1 = app.lightshow.cues.get(1.0, 1)
+    cue1 = app.lightshow.get_cue(1.0, 1)
     assert cue1 is not None
     assert cue1.palette_refs[1]["color"] == ("color", 2.0)
     assert cue1.palette_refs[1]["pan"] == ("focus", 1.0)
@@ -264,7 +264,7 @@ def test_live_palette_refs_partial_break_undo_redo_and_record_update() -> None:
     app.live_state.clear_channel(1)
     app.action_registry.execute("device.set_color", 0.2, 0.9, 0.1, channels=[1])
     assert executor.execute(parser.parse("RECORD CUE 2")).success is True
-    cue2 = app.lightshow.cues.get(2.0, 1)
+    cue2 = app.lightshow.get_cue(2.0, 1)
     assert cue2 is not None
     assert "color" not in cue2.palette_refs.get(1, {})
     assert cue2.palette_refs.get(1, {}).get("pan") == ("focus", 1.0)
@@ -290,7 +290,6 @@ def test_sneak_device_color_timed_and_instant_restores_cue_and_ref() -> None:
         device_values={1: {"intensity": 1.0, "color": "#0000ff"}},
         palette_refs={1: {"color": ("color", 2.0)}},
     )
-    app.lightshow.cues.add(cue1)
     seq = app.lightshow.main_playback
     seq.insert_step(1, Step(sequence=1, cue=cue1))
     seq.load_step(1)
@@ -526,7 +525,6 @@ def test_channel_display_snapshots_and_readouts() -> None:
         },
         palette_refs={2: {"color": ("color", 2.5)}},
     )
-    app.lightshow.cues.add(cue1)
     seq = app.lightshow.main_playback
     seq.insert_step(1, Step(sequence=1, cue=cue1))
     seq.load_step(1)

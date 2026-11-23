@@ -307,9 +307,8 @@ def test_record_cue_releases_manual_override_for_current_cue() -> None:
     executor = CommandExecutor(app)
     seq = app.lightshow.main_playback
 
-    # Set up cue 1 in global cues and active step
+    # Set up cue 1 in active step
     cue1 = Cue(1, 1.0)
-    app.lightshow.cues.add(cue1)
     seq.insert_step(1, Step(sequence=1, cue=cue1))
     seq.load_step(1)
     assert seq.position == 1

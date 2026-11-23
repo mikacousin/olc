@@ -122,7 +122,6 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
     app.core.lightshow.effects.clear()
     app.core.lightshow.sequences.clear()
     app.core.lightshow.groups.clear()
-    app.core.lightshow.cues.clear()
     app.core.lightshow.palettes.clear()
     app.core.lightshow.park.clear()
     app.core.lightshow.patch.patch_empty()

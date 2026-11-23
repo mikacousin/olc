@@ -214,7 +214,6 @@ def test_palettes_tab_record_recall_update_rename_delete(
         device_values={2: {"color": "#FF0000"}},
         palette_refs={2: {"color": ("color", 2.0)}},
     )
-    ls.cues.add(cue1)
     ls.main_playback.add_step(Step(1, cue=cue1))
     pal_tab.refresh()
     process_events()

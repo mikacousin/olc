@@ -293,15 +293,13 @@ def test_playback_record_cue_auto_and_undo_redo() -> None:
     )
 
     initial_step_count = len(app.lightshow.main_playback.steps)
-    initial_cue_count = len(app.lightshow.cues)
     initial_pos = app.lightshow.main_playback.position
 
     # Execute record cue
     app.action_registry.execute("playback.record_cue")
 
-    assert len(app.lightshow.cues) == initial_cue_count + 1
     assert len(app.lightshow.main_playback.steps) == initial_step_count + 1
-    new_cue = app.lightshow.cues.get(1.0, 1)
+    new_cue = app.lightshow.get_cue(1.0, 1)
     assert new_cue is not None
     assert new_cue.channels == {
         1: pytest.approx(200.0 / 255.0),
@@ -312,17 +310,15 @@ def test_playback_record_cue_auto_and_undo_redo() -> None:
 
     # Undo
     app.history.undo()
-    assert len(app.lightshow.cues) == initial_cue_count
     assert len(app.lightshow.main_playback.steps) == initial_step_count
-    assert app.lightshow.cues.get(1.0, 1) is None
+    assert app.lightshow.get_cue(1.0, 1) is None
     assert app.lightshow.main_playback.position == initial_pos
     assert len(recorded_events) == 2
 
     # Redo
     app.history.redo()
-    assert len(app.lightshow.cues) == initial_cue_count + 1
     assert len(app.lightshow.main_playback.steps) == initial_step_count + 1
-    assert app.lightshow.cues.get(1.0, 1) is not None
+    assert app.lightshow.get_cue(1.0, 1) is not None
     assert app.lightshow.main_playback.position == initial_pos + 1
     assert len(recorded_events) == 3
 
@@ -341,13 +337,13 @@ def test_playback_record_cue_explicit_number_and_step() -> None:
     app.backend = mock_backend
 
     app.action_registry.execute("playback.record_cue", 5.5, 1)
-    cue = app.lightshow.cues.get(5.5, 1)
+    cue = app.lightshow.get_cue(5.5, 1)
     assert cue is not None
     assert cue.channels == {3: 1.0}
     assert app.lightshow.main_playback.position == 1
 
     app.history.undo()
-    assert app.lightshow.cues.get(5.5, 1) is None
+    assert app.lightshow.get_cue(5.5, 1) is None
 
 
 def test_playback_update_active_step_and_undo_redo() -> None:
@@ -361,7 +357,6 @@ def test_playback_update_active_step_and_undo_redo() -> None:
 
     # Create initial cue and step in main playback
     initial_cue = Cue(1, 2.0, {1: 0.4, 2: 0.3})
-    app.lightshow.cues.add(initial_cue)
     step = Step(1, cue=initial_cue)
     app.lightshow.main_playback.insert_step(1, step)
     app.lightshow.main_playback.position = 1
@@ -431,7 +426,7 @@ def test_playback_record_and_update_multi_parameter_devices_and_virtual_dimmer()
 
     # Record Cue 1.0 via playback.record_cue
     app.action_registry.execute("playback.record_cue")
-    cue1 = app.lightshow.cues.get(1.0, 1)
+    cue1 = app.lightshow.get_cue(1.0, 1)
     assert cue1 is not None
     assert cue1.channels[1] == pytest.approx(1.0)
     assert cue1.channels[2] == pytest.approx(0.8)

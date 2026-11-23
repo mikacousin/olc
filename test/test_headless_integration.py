@@ -25,7 +25,6 @@ import pytest
 from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS
 from olc.dmx_engine.universe_config import Protocol, UniverseMap
-from olc.show.cue import Cue
 from olc.show.fader import FaderType
 from olc.show.palette import Palette, PaletteCategory
 
@@ -119,7 +118,7 @@ def test_headless_cues_and_playback_workflow() -> None:
 
     # 1. Record Cue
     app.action_registry.execute("playback.record_cue", 1.0, 1)
-    assert len(app.lightshow.cues) >= 1
+    assert app.lightshow.get_cue(1.0, 1) is not None
 
     # 2. Insert step in main playback
     app.action_registry.execute("sequence.insert_step", 1.0, 2, 2.0)
@@ -256,8 +255,7 @@ def test_headless_show_lifecycle_workflow(tmp_path: pathlib.Path) -> None:
 
     # Populate show with data
     app.action_registry.execute("channel.set_level", 1, 1.0)
-    cue = Cue(1, 1.0, {1: 1.0})
-    app.lightshow.cues.add(cue)
+    app.action_registry.execute("sequence.insert_step", 1.0, 1, 1.0, {1: 1.0})
 
     save_path = str(tmp_path / "test_show.olc")
 
@@ -268,13 +266,13 @@ def test_headless_show_lifecycle_workflow(tmp_path: pathlib.Path) -> None:
 
     # 2. Create new show
     app.action_registry.execute("show.new")
-    assert len(app.lightshow.cues) == 0
+    assert app.lightshow.get_cue(1.0, 1) is None
     # Main fader must be 100% on new show
     backend.dmx.main_fader.set_level.assert_called_with(1.0)
 
     # 3. Open saved show
     app.action_registry.execute("show.open", save_path)
-    assert len(app.lightshow.cues) >= 1
+    assert app.lightshow.get_cue(1.0, 1) is not None
 
     # 4. Reset user levels
     app.action_registry.execute("show.reset_user_levels")

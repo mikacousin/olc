@@ -330,8 +330,6 @@ def test_cue_and_seq_channels_view_isolation_from_live(
         device_values={1: {"intensity": 0.8, "color": "#FF0000"}},
         palette_refs={1: {"color": ("color", 1.0)}},
     )
-    app_gui.core.lightshow.cues.append(cue)
-
     main_pb = app_gui.core.lightshow.main_playback
     main_pb.steps.clear()
     main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))

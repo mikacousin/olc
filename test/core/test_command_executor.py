@@ -118,7 +118,7 @@ def test_executor_record_and_goto_cue() -> None:
     res_rec = executor.execute(cmd_rec)
     assert res_rec.success
 
-    cue = app.lightshow.cues.get(1.0, 1)
+    cue = app.lightshow.get_cue(1.0, 1)
     assert cue is not None
     assert cue.is_block is True
     assert cue.channels[1] == 1.0
@@ -266,7 +266,7 @@ def test_executor_gobo_iris_and_update_cue() -> None:
     # Record Cue 1
     res_rec = executor.execute(parser.parse("RECORD CUE 1"))
     assert res_rec.success is True
-    cue1 = app.lightshow.cues.get(1.0, 1)
+    cue1 = app.lightshow.get_cue(1.0, 1)
     assert cue1 is not None
     dvals = cue1.device_values[1]
     assert dvals["pan"] == pytest.approx(45.0, abs=0.1)
@@ -319,10 +319,8 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
 
     seq = app.lightshow.main_playback
     seq.tracking_mode = True
-    cue1 = Cue(0, 1.0, channels={1: 0.8}, device_values={1: {"pan": 0.0, "tilt": 0.0}})
-    cue2 = Cue(0, 2.0, channels={}, device_values={1: {"pan": 100.0, "tilt": -50.0}})
-    app.lightshow.cues.add(cue1)
-    app.lightshow.cues.add(cue2)
+    cue1 = Cue(1, 1.0, channels={1: 0.8}, device_values={1: {"pan": 0.0, "tilt": 0.0}})
+    cue2 = Cue(1, 2.0, channels={}, device_values={1: {"pan": 100.0, "tilt": -50.0}})
     seq.insert_step(1, Step(1, cue=cue1))
     seq.insert_step(2, Step(1, cue=cue2))
 
@@ -1080,7 +1078,6 @@ def test_executor_palette_record_apply_update_cascade_and_undo_redo() -> None:
         device_values={2: {"color": "#FF0000"}},
         palette_refs={2: {"color": ("color", 2.0)}},
     )
-    app.lightshow.cues.add(cue1)
     app.lightshow.main_playback.add_step(Step(1, cue=cue1))
     fader = FaderPreset(1, app.lightshow.fader_bank, pr5)
     app.lightshow.fader_bank.faders[1][1] = fader

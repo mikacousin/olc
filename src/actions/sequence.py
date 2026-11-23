@@ -158,8 +158,8 @@ class SequenceInsertStepAction(Action):
             if not sequence:
                 raise ValueError(f"Sequence {self.sequence_index} does not exist.")
 
-        # Check if the Cue already exists globally
-        existing_cue = lightshow.cues.get(self.cue_number, int(self.sequence_index))
+        # Check if the Cue already exists in this sequence
+        existing_cue = lightshow.get_cue(self.cue_number, int(self.sequence_index))
         if existing_cue is not None:
             self.cue_already_existed = True
             cue = existing_cue
@@ -169,8 +169,6 @@ class SequenceInsertStepAction(Action):
                 int(self.sequence_index), self.cue_number, copy.deepcopy(self.channels)
             )
             self.created_cue = cue
-            if self.sequence_index == 1.0:
-                lightshow.cues.insert(self.step_index, cue)
 
         step_object = Step(int(self.sequence_index), cue=cue)
         self.created_step = step_object
@@ -195,8 +193,6 @@ class SequenceInsertStepAction(Action):
             sequence.update_channels()
 
         if not self.cue_already_existed and self.created_cue:
-            if self.sequence_index == 1.0:
-                lightshow.cues.remove(self.created_cue)
             lightshow.main_playback.update_channels()
             lightshow.set_modified()
             self.app.emit("cue.deleted", int(self.sequence_index), self.cue_number)
@@ -212,10 +208,6 @@ class SequenceInsertStepAction(Action):
             sequence = lightshow.get_sequence(self.sequence_index)
             if not sequence:
                 return
-
-        if not self.cue_already_existed and self.created_cue:
-            if self.sequence_index == 1.0:
-                lightshow.cues.insert(self.step_index, self.created_cue)
 
         if self.created_step:
             sequence.insert_step(self.step_index, self.created_step)

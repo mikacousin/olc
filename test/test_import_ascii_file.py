@@ -863,8 +863,8 @@ EndData
     assert pr100.palette_refs[1]["frost"] == ("beam", 2.0)
 
     # 3. Cues defined before palettes resolved all refs + cascade from PR100
-    cue1 = lightshow.cues.get(1.0, 0)
-    cue2 = lightshow.cues.get(2.0, 0)
+    cue1 = lightshow.get_cue(1.0, 1)
+    cue2 = lightshow.get_cue(2.0, 1)
     assert cue1 is not None
     assert cue1.channels[1] == pytest.approx(0.75)
     assert cue1.device_values[1]["intensity"] == pytest.approx(0.75)
@@ -938,18 +938,18 @@ def test_import_eos_show_palettes_and_refs(
     assert pr110.palette_refs[1]["frost"] == ("beam", 2.0)
 
     # Cues with CP106, PR100, BP2 references resolved cleanly
-    cue99 = lightshow.cues.get(99.0, 0)
+    cue99 = lightshow.get_cue(99.0, 1)
     assert cue99 is not None
     assert cue99.device_values[41]["color"] == "#ff0700"
     assert cue99.palette_refs[41]["color"] == ("color", 106.0)
 
-    cue100 = lightshow.cues.get(100.0, 0)
+    cue100 = lightshow.get_cue(100.0, 1)
     assert cue100 is not None
     assert cue100.device_values[1]["color"] == "#ff0000"
     assert cue100.palette_refs[1]["color"] == ("color", 106.0)
     assert cue100.palette_refs[1]["pan"] == ("preset", 100.0)
 
-    cue106 = lightshow.cues.get(106.0, 0)
+    cue106 = lightshow.get_cue(106.0, 1)
     assert cue106 is not None
     assert cue106.device_values[1]["frost"] == pytest.approx(1.0)
     assert cue106.palette_refs[1]["frost"] == ("beam", 2.0)
@@ -1629,13 +1629,13 @@ def test_import_eos_show_effects(
     assert rainbow is not None
     assert rainbow.layers[0].waveform.value == "rainbow"
 
-    cue106 = lightshow.cues.get(106.0, 0)
+    cue106 = lightshow.get_cue(106.0, 1)
     assert cue106 is not None
     assert cue106.effect_refs[21]["effect"] == 7.0
     assert cue106.effect_refs[21]["channels"] == [21, 22, 23, 24, 25, 26]
     assert cue106.effect_refs[21]["rate_scale"] == pytest.approx(0.79)
 
-    cue107 = lightshow.cues.get(107.0, 0)
+    cue107 = lightshow.get_cue(107.0, 1)
     assert cue107 is not None
     assert cue107.effect_refs[1] == {"stop": True}
 
@@ -1766,8 +1766,6 @@ def test_ascii_export_import_effects_round_trip(
         },
     )
     cue2 = Cue(1, 2.0, {}, text="FX Stop ch1", effect_refs={1: {"stop": True}})
-    show.cues.add(cue1)
-    show.cues.add(cue2)
     show.main_playback.insert_step(1, Step(1, cue=cue1, text="FX Start"))
     show.main_playback.insert_step(2, Step(1, cue=cue2, text="FX Stop ch1"))
 

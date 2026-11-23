@@ -121,7 +121,7 @@ def test_completer_show_cues_and_groups() -> None:
     cue2.id = 2.5
     cue3 = MagicMock()
     cue3.id = 5
-    mock_show.cues = [cue1, cue2, cue3]
+    mock_show.iter_all_cues.return_value = [cue1, cue2, cue3]
 
     # Mock groups
     mock_show.groups.groups = {2: MagicMock(), 4: MagicMock()}

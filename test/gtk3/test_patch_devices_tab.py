@@ -675,7 +675,6 @@ def test_patch_tab_refreshes_fixture_library_after_ascii_import(
         app_gui.core.lightshow.patch.patch_empty()
         app_gui.core.lightshow.palettes.clear()
         app_gui.core.lightshow.groups.clear()
-        app_gui.core.lightshow.cues.clear()
         app_gui.core.lightshow.chasers.clear()
         app_gui.core.lightshow.curves.reset()
         app_gui.core.lightshow.fader_bank.reset_faders()

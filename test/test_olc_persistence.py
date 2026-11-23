@@ -318,7 +318,6 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
             "gobo": "Stars",
         },
     }
-    show1.cues.add(cue1)
     step1 = Step(
         1,
         cue=cue1,
@@ -335,7 +334,6 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     cue2 = Cue(0, 2.0, channels={1: 100}, text="Blackout Barrier")
     cue2.is_block = True
     cue2.device_values = {101: {"intensity": 0.0}}
-    show1.cues.add(cue2)
     step2 = Step(1, cue=cue2, time_in=2.0, time_out=2.0, text="Block Step")
     show1.main_playback.insert_step(2, step2)
 
@@ -406,12 +404,12 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_step1.delay_color is None
     assert r_step1.time_beam == pytest.approx(4.0)
     assert r_step1.delay_beam is None
-    r_cue1 = show2.cues.get(1.0, 0)
+    r_cue1 = show2.get_cue(1.0, 1)
     assert r_cue1 is not None
     assert r_cue1.device_values[101]["pan"] == 120.0
     assert r_cue1.device_values[101]["gobo"] == "Stars"
 
-    r_cue2 = show2.cues.get(2.0, 0)
+    r_cue2 = show2.get_cue(2.0, 1)
     assert r_cue2 is not None
     assert r_cue2.is_block is True
     assert r_cue2.device_values[101]["intensity"] == 0.0
@@ -443,7 +441,6 @@ def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
     c1 = Cue(0, 1.0, channels={101: 255}, text="Imported Cue")
     c1.device_values = {101: {"pan": 45.0, "tilt": 15.0}}
     c1.is_block = True
-    src_app.lightshow.cues.add(c1)
     src_app.lightshow.main_playback.insert_step(
         1, Step(1, cue=c1, time_in=2.0, time_out=2.0)
     )
@@ -458,7 +455,6 @@ def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
     dst_app.lightshow.main_playback.tracking_mode = False
     init_cue = Cue(0, 10.0, channels={1: 128}, text="Initial Cue")
     init_cue.device_values = {1: {"intensity": 0.5}}
-    dst_app.lightshow.cues.add(init_cue)
     dst_app.lightshow.main_playback.insert_step(
         1, Step(1, cue=init_cue, time_in=1.0, time_out=1.0)
     )
@@ -474,7 +470,7 @@ def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
         is not None
     )
     assert dst_app.lightshow.main_playback.tracking_mode is True
-    imp_cue = dst_app.lightshow.cues.get(1.0, 0)
+    imp_cue = dst_app.lightshow.get_cue(1.0, 1)
     assert imp_cue is not None
     assert imp_cue.is_block is True
     assert imp_cue.device_values[101]["pan"] == 45.0
@@ -489,7 +485,7 @@ def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
         dst_app.lightshow.fixture_library.get_by_key("CustomCorp:HyperSpot 500") is None
     )
     assert dst_app.lightshow.main_playback.tracking_mode is False
-    restored_init_cue = dst_app.lightshow.cues.get(10.0, 0)
+    restored_init_cue = dst_app.lightshow.get_cue(10.0, 1)
     assert restored_init_cue is not None
     assert restored_init_cue.device_values == {1: {"intensity": 0.5}}
     assert dst_app.lightshow.modified is False
@@ -510,7 +506,6 @@ def test_merge_olc_updates_existing_step_timings() -> None:
     # Initial step with default timings (time_in=5.0, time_out=5.0, no IFCB overrides)
     c1 = Cue(0, 1.0, channels={1: 0.4}, text="Initial Label")
     step1 = Step(1, cue=c1, time_in=5.0, time_out=5.0, text="Old Step Label")
-    app.lightshow.cues.add(c1)
     app.lightshow.main_playback.insert_step(1, step1)
 
     # Parsed data payload simulating a merged .olc file with updated timings
@@ -655,7 +650,6 @@ def test_olc_palettes_and_cue_palette_refs_roundtrip(
         device_values={1: {"color": "#ff1100"}},
         palette_refs={1: {"color": ("color", 2.0)}},
     )
-    ls1.cues.add(cue1)
     ls1.main_playback.add_step(Step(1, cue=cue1, text="Look 1.5"))
 
     olc_file = str(tmp_path / "palettes_roundtrip.olc")
@@ -877,8 +871,6 @@ def test_olc_persistence_section_6_3_metadata_envelopes_and_faders(
         execute_preset=5.0,
     )
     cue2 = Cue(1, 2.0, channels={1: 0.0}, text="Cue IntBlock", is_int_block=True)
-    ls.cues.add(cue1)
-    ls.cues.add(cue2)
     ls.main_playback.add_step(Step(sequence=1, cue=cue1))
     ls.main_playback.add_step(Step(sequence=1, cue=cue2))
 

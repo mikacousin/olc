@@ -356,10 +356,8 @@ class CommandCompleter:
         """Extract existing cue identifiers from the active LightShow."""
         if not self.lightshow:
             return []
-        if callable(getattr(type(self.lightshow), "iter_all_cues", None)):
-            cues_iter = self.lightshow.iter_all_cues()
-        else:
-            cues_iter = getattr(self.lightshow, "cues", ())
+        iter_fn = getattr(self.lightshow, "iter_all_cues", None)
+        cues_iter = iter_fn() if callable(iter_fn) else ()
         res: list[str] = []
         for cue in cues_iter:
             num = getattr(cue, "number", None)

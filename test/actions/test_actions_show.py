@@ -22,7 +22,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from olc.core.app import CoreApplication
-from olc.show.cue import Cue
 from olc.show.fader import FaderType
 from olc.show.group import Group
 from test.conftest import DATA_DIR
@@ -34,7 +33,7 @@ def test_show_new_resets_show_state() -> None:
     app = CoreApplication(settings)
 
     # Setup non-default state
-    app.lightshow.cues.add(Cue(1, 3.0))
+    app.action_registry.execute("sequence.insert_step", 1.0, 1, 3.0)
     app.lightshow.groups.add(Group(index=1.0, channels=[1]))
     app.lightshow.file_path = "/tmp/test.olc"
     app.lightshow.basename = "test.olc"
@@ -57,7 +56,7 @@ def test_show_new_resets_show_state() -> None:
 
     # Assertions
     assert "show.new" in events
-    assert len(app.lightshow.cues) == 0
+    assert app.lightshow.get_cue(3.0, 1) is None
     assert len(app.lightshow.groups) == 0
     assert len(app.lightshow.chasers) == 0
     assert app.lightshow.file is None
@@ -173,7 +172,7 @@ def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.lightshow.cues.add(Cue(1, 2.5))
+    app.action_registry.execute("sequence.insert_step", 1.0, 1, 2.5)
     app.lightshow.groups.add(Group(index=1.0, channels=[3, 1, 2]))
     app.action_registry.execute("patch.add_outputs", [(5, 20, 1, 0)])
 
@@ -273,7 +272,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
 
     # Initial state
     app.lightshow.groups.add(Group(index=99.0, channels=[1], text="Initial Group"))
-    app.lightshow.cues.add(Cue(1, 99.0, channels={1: 50}, text="Initial Cue"))
+    app.action_registry.execute("sequence.insert_step", 1.0, 1, 99.0, {1: 50})
     app.lightshow.patch.add_output(1, 47, 1)
     app.lightshow.set_not_modified()
 
@@ -291,15 +290,20 @@ def test_show_import_ascii_and_undo_redo() -> None:
     # In sample file, output 47 is patched to channel 7
     assert app.lightshow.patch.get_output_info(1, 47) == (7, 0)
 
-    # Verify cue from sample file was imported
-    assert app.lightshow.cues.get(1.0, 0) is not None
+    # Verify cue from sample file was imported (as sequence cue or migrated preset)
+    from olc.show.palette import PaletteCategory
+
+    assert (
+        app.lightshow.get_cue(1.0, 1) is not None
+        or app.lightshow.palettes.get(PaletteCategory.PRESET, 1.0) is not None
+    )
 
     # Undo
     app.history.undo()
     assert len(imported_events) == 2
     assert app.lightshow.patch.get_output_info(1, 47) == (1, 0)
     assert app.lightshow.groups.get(99.0) is not None
-    assert app.lightshow.cues.get(99.0, 1) is not None
+    assert app.lightshow.get_cue(99.0, 1) is not None
     assert app.lightshow.modified is False
 
     # Redo
@@ -330,8 +334,13 @@ def test_show_import_partial_options() -> None:
 
     # Patch should NOT have changed because of IGNORE
     assert app.lightshow.patch.get_output_info(1, 47) == (42, 0)
-    # Cues should have been imported
-    assert app.lightshow.cues.get(1.0, 0) is not None
+    # Cues should have been imported (as sequence cues or migrated presets)
+    from olc.show.palette import PaletteCategory
+
+    assert (
+        app.lightshow.get_cue(1.0, 1) is not None
+        or app.lightshow.palettes.get(PaletteCategory.PRESET, 1.0) is not None
+    )
 
 
 def test_show_workspace_persistence_headless(tmp_path: pathlib.Path) -> None:

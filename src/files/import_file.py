@@ -277,7 +277,6 @@ class ImportFile:
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:
-            self.lightshow.cues.clear()
             del self.lightshow.main_playback.steps[1:]
         else:
             target_seq = None

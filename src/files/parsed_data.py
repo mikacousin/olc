@@ -34,7 +34,7 @@ from olc.show.effect import EffectDefinition, deserialize_effect_refs
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
 from olc.show.group import Group
 from olc.show.independent import IndependentType
-from olc.show.palette import PaletteCategory, deserialize_palette_refs
+from olc.show.palette import Palette, PaletteCategory, deserialize_palette_refs
 from olc.show.sequence import Sequence
 from olc.show.step import Step
 
@@ -528,19 +528,39 @@ class ParsedData:
             step.delay_beam = values["delay_beam"]
 
     def import_presets(self) -> None:
-        """Import presets data"""
-        for preset_number, values in self.data["cues"].items():
+        """Import legacy standalone cues (`sequence == 0`) as Presets."""
+        for preset_number, values in self.data.get("cues", {}).items():
+            num = float(preset_number)
             channels = self._normalize_channels_dict(values.get("channels"))
-            label = values.get("label")
-            cue = self.lightshow.cues.get(preset_number, 0)
-            if cue is not None:
-                cue.channels = channels
-                cue.text = label
+            label = values.get("label") or f"Preset {num:g}"
+            raw_devs = values.get("device_values")
+            device_values: dict[int, dict[str, typing.Any]] = (
+                {int(k): dict(v) for k, v in raw_devs.items()}
+                if isinstance(raw_devs, dict)
+                else {}
+            )
+            raw_refs = values.get("palette_refs")
+            palette_refs = (
+                deserialize_palette_refs(raw_refs) if isinstance(raw_refs, dict) else {}
+            )
+            preset = self.lightshow.palettes.get(PaletteCategory.PRESET, num)
+            if preset is not None:
+                preset.channels = channels
+                preset.text = label
+                if device_values:
+                    preset.device_values = device_values
+                if palette_refs:
+                    preset.palette_refs = palette_refs
             else:
-                cue = Cue(0, preset_number, channels, label)
-                self.lightshow.cues.add(cue)
-                self.lightshow.main_playback.update_channels()
-            self._apply_cue_metadata(cue, values)
+                preset = Palette(
+                    PaletteCategory.PRESET,
+                    num,
+                    text=label,
+                    channels=channels,
+                    device_values=device_values,
+                    palette_refs=palette_refs,
+                )
+                self.lightshow.palettes.add(preset)
 
     def import_main_playback(self, sequence: int, action: Action) -> None:
         """Import Main Playback
@@ -570,15 +590,7 @@ class ParsedData:
             cue_dict = seq_data["cues"][cue_number]
             cue_channels = self._normalize_channels_dict(cue_dict["channels"])
             cue_text = cue_dict["label"]
-            cue = self.lightshow.cues.get(cue_number, 0)
-            if cue is not None:
-                # If cue exist, update it
-                cue.channels = cue_channels
-                cue.text = cue_text
-            else:
-                # Else, create it
-                cue = Cue(0, cue_number, cue_channels, text=cue_text)
-                self.lightshow.cues.add(cue)
+            cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
             self._apply_cue_metadata(cue, cue_dict)
             step = self._build_step_from_dict(sequence, cue, values)
             self.lightshow.main_playback.add_step(step)
@@ -623,8 +635,7 @@ class ParsedData:
                 self._update_step_timings_from_dict(existing_step, values)
             else:
                 _found, step_nb = self.lightshow.main_playback.get_step(cue_number)
-                cue = Cue(0, cue_number, cue_channels, text=cue_text)
-                self.lightshow.cues.add(cue)
+                cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
                 self.lightshow.main_playback.update_channels()
                 self._apply_cue_metadata(cue, cue_dict)
                 step = self._build_step_from_dict(sequence, cue, values)

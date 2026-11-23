@@ -19,7 +19,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from olc.core.app import CoreApplication
-from olc.show.cue import Cue
 from olc.show.fader import (
     FaderEffect,
     FaderMain,
@@ -72,41 +71,25 @@ def test_fader_assign_preset_palette() -> None:
     assert app.lightshow.fader_bank.faders[1][1].contents is preset
 
 
-def test_fader_assign_preset_prefers_palette_over_cue() -> None:
-    """When Preset N and Cue N both exist, FaderType.PRESET prefers the Preset."""
-    settings = MagicMock()
-    app = CoreApplication(settings)
-
-    cue5 = Cue(0, 5.0, {1: 1.0}, "Cue 5")
-    app.lightshow.cues.append(cue5)
-    preset5 = Palette(
-        category=PaletteCategory.PRESET,
-        number=5.0,
-        text="Sub 5",
-        channels={2: 0.6},
-    )
-    app.lightshow.palettes.add(preset5)
-
-    app.action_registry.execute("fader.assign", 1, 1, FaderType.PRESET, 5.0)
-    fader = app.lightshow.fader_bank.faders[1][1]
-    assert isinstance(fader, FaderPreset)
-    assert fader.contents is preset5
-
-
 def test_fader_assign_preset() -> None:
-    """FaderAssignAction assigns a Cue (Preset) to a fader and is undoable."""
+    """FaderAssignAction assigns a Preset to a fader and is undoable."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    cue = Cue(0, 1.0, {1: 100}, "Cue 1")
-    app.lightshow.cues.append(cue)
+    preset = Palette(
+        category=PaletteCategory.PRESET,
+        number=1.0,
+        text="Preset 1",
+        channels={1: 100},
+    )
+    app.lightshow.palettes.add(preset)
 
     app.action_registry.execute("fader.assign", 1, 2, FaderType.PRESET, 1.0)
 
     assert app.lightshow.fader_bank.get_fader_type(1, 2) == FaderType.PRESET
     fader = app.lightshow.fader_bank.faders[1][2]
     assert isinstance(fader, FaderPreset)
-    assert fader.contents is cue
+    assert fader.contents is preset
 
     # Undo
     app.history.undo()

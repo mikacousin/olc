@@ -59,7 +59,6 @@ class OlcWriter(WriteFile):
         self._fixture_definitions()
         self._devices()
         self._sequences()
-        self._cues()
         self._groups()
         self._palettes()
         self._effects()
@@ -189,11 +188,6 @@ class OlcWriter(WriteFile):
         if (exec_preset := getattr(cue, "execute_preset", None)) is not None:
             cue_dict["execute_preset"] = float(exec_preset)
         return cue_dict
-
-    def _cues(self) -> None:
-        self.data["cues"] = {}
-        for cue in self.lightshow.cues:
-            self.data["cues"][cue.number] = self._build_cue_dict(cue)
 
     def _palettes(self) -> None:
         if not hasattr(self.lightshow, "palettes") or len(self.lightshow.palettes) == 0:

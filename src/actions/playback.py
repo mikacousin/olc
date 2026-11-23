@@ -503,7 +503,6 @@ class PlaybackRecordCueAction(Action):
             device_values=device_values,
         )
         self.created_cue = cue
-        lightshow.cues.insert(self.step - 1, cue)
 
         step_object = Step(self.sequence, cue=cue)
         self.created_step = step_object
@@ -537,9 +536,6 @@ class PlaybackRecordCueAction(Action):
             main_playback.steps.remove(self.created_step)
             main_playback.last = len(main_playback.steps)
 
-        if self.created_cue:
-            lightshow.cues.remove(self.created_cue)
-
         main_playback.position = self.old_position
         main_playback.update_channels()
         lightshow.set_modified()
@@ -570,7 +566,6 @@ class PlaybackRecordCueAction(Action):
         ):
             return
 
-        lightshow.cues.insert(self.step - 1, self.created_cue)
         main_playback.insert_step(self.step, self.created_step)
         main_playback.position = self.step
         main_playback.update_channels()
@@ -629,7 +624,7 @@ class PlaybackUpdateActiveStepAction(Action):
 
         target_cue: Cue | None = None
         if self.number is not None:
-            target_cue = lightshow.cues.get(self.number, self.sequence)
+            target_cue = lightshow.get_cue(self.number, self.sequence)
         elif 0 <= main_playback.position < len(main_playback.steps):
             target_cue = main_playback.steps[main_playback.position].cue
 

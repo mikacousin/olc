@@ -261,7 +261,7 @@ def test_record_cue_captures_unmodulated_base_and_tracks_effects() -> None:
     # Record Cue 1 -> must capture unmodulated base (30.0, -15.0) + effect_refs!
     res_c1 = executor.execute(parser.parse("RECORD CUE 1 TIME 2"))
     assert res_c1.success
-    cue1 = app.lightshow.cues.get(1.0, 1)
+    cue1 = app.lightshow.get_cue(1.0, 1)
     assert cue1 is not None
     assert cue1.device_values[1]["pan"] == pytest.approx(30.0, abs=2.5)
     assert cue1.device_values[1]["tilt"] == pytest.approx(-15.0, abs=2.5)
@@ -276,7 +276,7 @@ def test_record_cue_captures_unmodulated_base_and_tracks_effects() -> None:
     executor.execute(parser.parse("1 STOP EFFECT"))
     res_c3 = executor.execute(parser.parse("RECORD CUE 3 TIME 2"))
     assert res_c3.success
-    cue3 = app.lightshow.cues.get(3.0, 1)
+    cue3 = app.lightshow.get_cue(3.0, 1)
     assert cue3 is not None
     assert cue3.effect_refs[1] == {"stop": True}
 
@@ -379,7 +379,7 @@ def test_olc_persistence_roundtrip_effects_and_cue_effect_refs(
     assert loaded_fx.wings == 2
     assert len(loaded_fx.layers) == 2
 
-    loaded_cue = app2.lightshow.cues.get(1.0, 0) or app2.lightshow.cues.get(1.0, 1)
+    loaded_cue = app2.lightshow.get_cue(1.0, 1)
     assert loaded_cue is not None
     assert 1 in loaded_cue.effect_refs
     assert loaded_cue.effect_refs[1]["effect"] == pytest.approx(1.0)

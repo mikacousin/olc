@@ -1069,8 +1069,6 @@ class CommandExecutor:
                 palette_refs=palette_refs,
                 effect_refs=effect_refs,
             )
-            if seq_id == 1:
-                lightshow.cues.add(cue)
 
         # Create or update step in target sequence (preserving sentinel last step)
         step = None
@@ -1344,24 +1342,19 @@ class CommandExecutor:
             return CommandResult(False, f"{label} not found")
 
         registry = self._get_registry()
-        if (
-            seq_id == 1
-            and registry is not None
-            and "cue.delete" in getattr(registry, "_action_classes", {})
-            and lightshow.cues.get(node.cue_id, 1) is not None
+        if registry is not None and "cue.delete" in getattr(
+            registry, "_action_classes", {}
         ):
-            registry.execute("cue.delete", number=node.cue_id, sequence=1)
-        elif lightshow.cues.get(node.cue_id, seq_id) is not None:
-            lightshow.cues.remove(cue)
-
-        if target_seq:
-            for step in list(target_seq.steps):
-                if step.cue and step.cue.number == node.cue_id:
-                    target_seq.steps.remove(step)
-            target_seq.last = len(target_seq.steps)
-            target_seq.update_channels()
-        lightshow.set_modified()
-        self.app.emit("cue.deleted", seq_id, node.cue_id)
+            registry.execute("cue.delete", number=node.cue_id, sequence=seq_id)
+        else:
+            if target_seq:
+                for step in list(target_seq.steps):
+                    if step.cue and step.cue.number == node.cue_id:
+                        target_seq.steps.remove(step)
+                target_seq.last = len(target_seq.steps)
+                target_seq.update_channels()
+            lightshow.set_modified()
+            self.app.emit("cue.deleted", seq_id, node.cue_id)
 
         return CommandResult(True, f"Deleted {label}")
 

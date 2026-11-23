@@ -332,7 +332,6 @@ def test_fixture_exchange_clamping_warning() -> None:
     cue1.set_device_parameter(1, "tilt", 45.0)
     cue1.set_device_parameter(1, "zoom", 20.0)
     step1 = Step(1, cue=cue1)
-    app.lightshow.cues.add(cue1)
     app.lightshow.main_playback.insert_step(1, step1)
 
     # Compact moving head profile with Pan [-180°..180°] and Zoom [15°..25°]

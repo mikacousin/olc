@@ -68,8 +68,7 @@ class ShowNewAction(Action):
                 thread.join()
             del lightshow.sequences[:]
 
-        # Reset cues, groups, and palettes
-        lightshow.cues.clear()
+        # Reset groups and palettes
         lightshow.groups.clear()
         if hasattr(lightshow, "palettes"):
             lightshow.palettes.clear()
@@ -581,10 +580,7 @@ class ShowImportAction(Action):
         if hasattr(lightshow, "palettes"):
             snapshot["palettes"] = lightshow.palettes.to_dict()
 
-        # 4. Cues
-        snapshot["cues"] = [_copy_cue(c) for c in lightshow.cues if c is not None]
-
-        # 5. Main playback
+        # 4. Main playback
         mp = lightshow.main_playback
         snapshot["main_playback_steps"] = [_copy_step(s) for s in mp.steps]
         snapshot["main_playback_position"] = mp.position
@@ -661,10 +657,10 @@ class ShowImportAction(Action):
             if self.app.engine is not None:
                 self.app.engine.sync_universe_map(lightshow.universe_map)
 
-    def _restore_groups_and_cues(
+    def _restore_groups_and_palettes(
         self, snapshot: dict[str, typing.Any], lightshow: LightShow
-    ) -> dict[tuple[float, int], Cue]:
-        """Restore groups and cues from snapshot."""
+    ) -> None:
+        """Restore groups and palettes from snapshot."""
         lightshow.groups.clear()
         for g in snapshot["groups"]:
             lightshow.groups.add(Group(g.index, channels=list(g.channels), text=g.text))
@@ -672,32 +668,14 @@ class ShowImportAction(Action):
         if "palettes" in snapshot and hasattr(lightshow, "palettes"):
             lightshow.palettes.from_dict(snapshot["palettes"])
 
-        lightshow.cues.clear()
-        cues_map: dict[tuple[float, int], Cue] = {}
-        for c in snapshot["cues"]:
-            restored_cue = _copy_cue(c)
-            if restored_cue is not None:
-                lightshow.cues.add(restored_cue)
-                cues_map[(restored_cue.number, restored_cue.sequence)] = restored_cue
-        return cues_map
-
     def _restore_playbacks(
         self,
         snapshot: dict[str, typing.Any],
         lightshow: LightShow,
-        cues_map: dict[tuple[float, int], Cue],
     ) -> None:
         """Restore main playback and chasers from snapshot."""
         mp = lightshow.main_playback
-        restored_steps: list[Step] = []
-        for s in snapshot["main_playback_steps"]:
-            copied_s = _copy_step(s)
-            if copied_s.cue is not None:
-                key = (copied_s.cue.number, copied_s.cue.sequence)
-                if key in cues_map:
-                    copied_s.cue = cues_map[key]
-            restored_steps.append(copied_s)
-        mp.steps = restored_steps
+        mp.steps = [_copy_step(s) for s in snapshot["main_playback_steps"]]
         mp.position = snapshot["main_playback_position"]
         mp.last = snapshot["main_playback_last"]
         mp.tracking_mode = bool(snapshot.get("main_playback_tracking_mode", False))
@@ -756,8 +734,8 @@ class ShowImportAction(Action):
 
         lightshow = self.app.lightshow
         self._restore_curves_and_patch(self._snapshot, lightshow)
-        cues_map = self._restore_groups_and_cues(self._snapshot, lightshow)
-        self._restore_playbacks(self._snapshot, lightshow, cues_map)
+        self._restore_groups_and_palettes(self._snapshot, lightshow)
+        self._restore_playbacks(self._snapshot, lightshow)
         self._restore_independents_and_faders(self._snapshot, lightshow)
         lightshow.title = self._snapshot.get("title", "")
         lightshow.home_preset = self._snapshot.get("home_preset", None)

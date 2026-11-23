@@ -130,8 +130,6 @@ def test_palette_propagate_update_cascade_presets_cues_and_faders() -> None:
         device_values={1: {"color": "#0000ff"}},
         palette_refs={1: {"*": ("preset", 5.0)}},
     )
-    ls.cues.add(cue1)
-    ls.cues.add(cue2)
     ls.main_playback.add_step(Step(1, cue=cue1))
     ls.main_playback.add_step(Step(1, cue=cue2))
 

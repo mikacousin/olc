@@ -20,9 +20,43 @@ from collections.abc import Mapping
 
 from olc.core.action import Action
 from olc.show.cue import Cue
+from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.show.lightshow import LightShow
+    from olc.show.sequence import Sequence
+
+
+def _resolve_sequence(lightshow: LightShow, sequence: int) -> Sequence | None:
+    """Resolve sequence index (0/1 -> main_playback, >=2 -> secondary sequence)."""
+    if sequence in (0, 1):
+        return lightshow.main_playback
+    return lightshow.get_sequence(float(sequence))
+
+
+def _insert_cue_step(seq: Sequence, cue: Cue) -> tuple[Step, int]:
+    """Wrap *cue* in a Step and insert it in sorted order before trailing sentinel."""
+    step = Step(seq.index, cue=cue)
+    if (
+        len(seq.steps) >= 2
+        and seq.steps[-1].cue is not None
+        and seq.steps[-1].cue.number == 0.0
+    ):
+        insert_idx = len(seq.steps) - 1
+        for idx, s in enumerate(seq.steps[:-1]):
+            if s.cue is not None and s.cue.number > cue.number:
+                insert_idx = max(1, idx)
+                break
+    else:
+        insert_idx = len(seq.steps)
+        for idx, s in enumerate(seq.steps):
+            if s.cue is not None and s.cue.number > cue.number:
+                insert_idx = idx
+                break
+    seq.insert_step(insert_idx, step)
+    seq.update_channels()
+    return step, insert_idx
 
 
 class CueUpdateAction(Action):
@@ -154,6 +188,7 @@ class CueDeleteAction(Action):
         self.number: float = 0.0
         self.sequence: int = 0
         self.deleted_cue: Cue | None = None
+        self.deleted_step: Step | None = None
         self.deleted_index: int = -1
 
     def configure(self, number: float, sequence: int) -> None:
@@ -168,44 +203,51 @@ class CueDeleteAction(Action):
 
     def execute(self) -> None:
         """Execute the action, deleting the cue."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
-        if cue is None:
-            raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
-        self.deleted_cue = cue
-        try:
-            self.deleted_index = list(self.app.lightshow.cues).index(cue)
-        except ValueError:
-            self.deleted_index = -1
-        self.app.lightshow.cues.remove(cue)
-        self.app.lightshow.main_playback.update_channels()
-        self.app.lightshow.set_modified()
-        self.app.emit("cue.deleted", self.sequence, self.number)
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
+            raise ValueError(f"Sequence {self.sequence} does not exist.")
+        for idx, step in enumerate(seq.steps):
+            if step.cue is not None and step.cue.number == self.number:
+                self.deleted_cue = step.cue
+                self.deleted_step = step
+                self.deleted_index = idx
+                seq.steps.pop(idx)
+                seq.last = len(seq.steps)
+                seq.update_channels()
+                self.app.lightshow.set_modified()
+                self.app.emit("cue.deleted", self.sequence, self.number)
+                return
+        raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
 
     def undo(self) -> None:
-        """Undo the deletion, re-inserting the cue at its original position."""
-        if self.deleted_cue is None:
+        """Undo the deletion, re-inserting the cue step at its original position."""
+        if self.deleted_step is None or self.deleted_cue is None:
             return
-        if self.deleted_index != -1:
-            self.app.lightshow.cues.insert(self.deleted_index, self.deleted_cue)
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
+            return
+        if 0 <= self.deleted_index <= len(seq.steps):
+            seq.insert_step(self.deleted_index, self.deleted_step)
         else:
-            self.app.lightshow.cues.add(self.deleted_cue)
-        self.app.lightshow.main_playback.update_channels()
+            _insert_cue_step(seq, self.deleted_cue)
+        seq.update_channels()
         self.app.lightshow.set_modified()
         self.app.emit("cue.created", self.sequence, self.number)
 
     def redo(self) -> None:
         """Redo the deletion."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
-        if cue is None:
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
             return
-        try:
-            self.deleted_index = list(self.app.lightshow.cues).index(cue)
-        except ValueError:
-            self.deleted_index = -1
-        self.app.lightshow.cues.remove(cue)
-        self.app.lightshow.main_playback.update_channels()
-        self.app.lightshow.set_modified()
-        self.app.emit("cue.deleted", self.sequence, self.number)
+        for idx, step in enumerate(seq.steps):
+            if step.cue is not None and step.cue.number == self.number:
+                self.deleted_index = idx
+                seq.steps.pop(idx)
+                seq.last = len(seq.steps)
+                seq.update_channels()
+                self.app.lightshow.set_modified()
+                self.app.emit("cue.deleted", self.sequence, self.number)
+                return
 
 
 class CueRenameAction(Action):
@@ -300,33 +342,28 @@ class CueCopyAction(Action):
 
     def _do_copy(self) -> None:
         """Internal helper: perform the copy operation."""
-        src_cue = self.app.lightshow.cues.get(self.src_number, self.sequence)
+        src_cue = self.app.lightshow.get_cue(self.src_number, self.sequence)
         if src_cue is None:
             raise ValueError(
                 f"Source cue {self.src_number} (seq {self.sequence}) does not exist."
             )
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
+            raise ValueError(f"Sequence {self.sequence} does not exist.")
         new_channels = copy.deepcopy(dict(src_cue.channels))
 
-        dst_cue = self.app.lightshow.cues.get(self.dst_number, self.sequence)
+        dst_cue = self.app.lightshow.get_cue(self.dst_number, self.sequence)
         if dst_cue is not None:
             self._dst_was_new = False
             self._dst_old_channels = copy.deepcopy(dict(dst_cue.channels))
-            try:
-                self._dst_index = list(self.app.lightshow.cues).index(dst_cue)
-            except ValueError:
-                self._dst_index = -1
             dst_cue.channels = new_channels
+            seq.update_channels()
         else:
             self._dst_was_new = True
-            new_cue = Cue(self.sequence, self.dst_number, new_channels)
-            self.app.lightshow.cues.add(new_cue)
-            try:
-                self._dst_index = list(self.app.lightshow.cues).index(new_cue)
-            except ValueError:
-                self._dst_index = -1
+            new_cue = Cue(int(seq.index), self.dst_number, new_channels)
+            _step, self._dst_index = _insert_cue_step(seq, new_cue)
             self.app.emit("cue.created", self.sequence, self.dst_number)
 
-        self.app.lightshow.main_playback.update_channels()
         self.app.lightshow.set_modified()
         self.app.emit("cue.updated", self.sequence, self.dst_number)
 
@@ -336,17 +373,22 @@ class CueCopyAction(Action):
 
     def undo(self) -> None:
         """Undo the copy."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
+            return
         if self._dst_was_new:
-            dst_cue = self.app.lightshow.cues.get(self.dst_number, self.sequence)
-            if dst_cue is not None:
-                self.app.lightshow.cues.remove(dst_cue)
-                self.app.emit("cue.deleted", self.sequence, self.dst_number)
+            for idx, step in enumerate(seq.steps):
+                if step.cue is not None and step.cue.number == self.dst_number:
+                    seq.steps.pop(idx)
+                    seq.last = len(seq.steps)
+                    self.app.emit("cue.deleted", self.sequence, self.dst_number)
+                    break
         else:
-            dst_cue = self.app.lightshow.cues.get(self.dst_number, self.sequence)
+            dst_cue = self.app.lightshow.get_cue(self.dst_number, self.sequence)
             if dst_cue is not None:
                 dst_cue.channels = self._dst_old_channels
                 self.app.emit("cue.updated", self.sequence, self.dst_number)
-        self.app.lightshow.main_playback.update_channels()
+        seq.update_channels()
         self.app.lightshow.set_modified()
 
     def redo(self) -> None:
@@ -394,15 +436,13 @@ class CueInsertAction(Action):
 
     def _do_insert(self) -> None:
         """Internal helper: perform the insert operation."""
-        if self.app.lightshow.cues.get(self.number, self.sequence) is not None:
+        if self.app.lightshow.get_cue(self.number, self.sequence) is not None:
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) already exists.")
-        new_cue = Cue(self.sequence, self.number, copy.deepcopy(self.channels))
-        self.app.lightshow.cues.add(new_cue)
-        try:
-            self._inserted_index = list(self.app.lightshow.cues).index(new_cue)
-        except ValueError:
-            self._inserted_index = -1
-        self.app.lightshow.main_playback.update_channels()
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
+            raise ValueError(f"Sequence {self.sequence} does not exist.")
+        new_cue = Cue(int(seq.index), self.number, copy.deepcopy(self.channels))
+        _step, self._inserted_index = _insert_cue_step(seq, new_cue)
         self.app.lightshow.set_modified()
         self.app.emit("cue.created", self.sequence, self.number)
 
@@ -412,13 +452,17 @@ class CueInsertAction(Action):
 
     def undo(self) -> None:
         """Undo the insertion, removing the newly created cue."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
-        if cue is None:
+        seq = _resolve_sequence(self.app.lightshow, self.sequence)
+        if seq is None:
             return
-        self.app.lightshow.cues.remove(cue)
-        self.app.lightshow.main_playback.update_channels()
-        self.app.lightshow.set_modified()
-        self.app.emit("cue.deleted", self.sequence, self.number)
+        for idx, step in enumerate(seq.steps):
+            if step.cue is not None and step.cue.number == self.number:
+                seq.steps.pop(idx)
+                seq.last = len(seq.steps)
+                seq.update_channels()
+                self.app.lightshow.set_modified()
+                self.app.emit("cue.deleted", self.sequence, self.number)
+                return
 
     def redo(self) -> None:
         """Redo the insertion."""
@@ -465,7 +509,7 @@ class CueSetChannelLevelAction(Action):
 
     def execute(self) -> None:
         """Execute the action, setting the channel level in the cue."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
         self.old_level = cue.get_level(self.channel)
@@ -475,7 +519,7 @@ class CueSetChannelLevelAction(Action):
 
     def undo(self) -> None:
         """Undo the level change, restoring the previous level."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             return
         cue.set_level(self.channel, self.old_level)

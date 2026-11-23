@@ -33,7 +33,6 @@ from olc.show.palette import PaletteCategory
 if typing.TYPE_CHECKING:
     import olc.show.fader_bank
     from olc.core.app import CoreApplication
-    from olc.show.cue import Cue
     from olc.show.effect import EffectDefinition
     from olc.show.lightshow import LightShow
     from olc.show.palette import Palette
@@ -323,15 +322,14 @@ class FaderBank:
 
     def _resolve_preset_contents(
         self, contents: dict[int, int] | float | None
-    ) -> Palette | Cue | None:
-        """Resolve Preset palette first, falling back to Cue."""
-        if self.lightshow and isinstance(contents, (int, float)):
-            target_num = float(contents)
-            if hasattr(self.lightshow, "palettes"):
-                preset = self.lightshow.palettes.get(PaletteCategory.PRESET, target_num)
-                if preset is not None:
-                    return preset
-            return self.lightshow.get_cue(target_num)
+    ) -> Palette | None:
+        """Resolve Preset palette from its number."""
+        if (
+            self.lightshow
+            and isinstance(contents, (int, float))
+            and hasattr(self.lightshow, "palettes")
+        ):
+            return self.lightshow.palettes.get(PaletteCategory.PRESET, float(contents))
         return None
 
     def _resolve_effect_contents(
