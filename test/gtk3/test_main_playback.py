@@ -60,9 +60,16 @@ def test_main_playback_enriched_columns_and_live_updates(app_gui: Application) -
     scroll2 = playback.treeview2.get_parent()
     assert isinstance(scroll1, Gtk.ScrolledWindow)
     assert isinstance(scroll2, Gtk.ScrolledWindow)
-    assert scroll1.get_policy()[0] == Gtk.PolicyType.AUTOMATIC
+    assert scroll1.get_policy()[0] == Gtk.PolicyType.EXTERNAL
     assert scroll2.get_policy()[0] == Gtk.PolicyType.AUTOMATIC
     assert scroll1.get_hadjustment() is scroll2.get_hadjustment()
+    assert [c.get_fixed_width() for c in playback.treeview1.get_columns()] == [
+        c.get_fixed_width() for c in playback.treeview2.get_columns()
+    ]
+    assert all(
+        c.get_sizing() == Gtk.TreeViewColumnSizing.FIXED
+        for c in playback.treeview1.get_columns()
+    )
 
     app_gui.core.action_registry.execute("sequence.insert_step", 1.0, 1, 1.0, {1: 255})
     step = app_gui.core.lightshow.main_playback.steps[1]

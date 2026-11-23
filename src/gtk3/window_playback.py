@@ -179,42 +179,74 @@ class MainPlaybackView(Gtk.Notebook):
 
         self.treeview1 = self._create_treeview(self.step_filter1, is_main=True)
         self.treeview2 = self._create_treeview(self.step_filter2, is_main=False)
+        self._syncing_column_widths = False
+        self._connect_column_width_sync()
+
+    def _connect_column_width_sync(self) -> None:
+        """Keep column widths identical between treeview1 and treeview2."""
+        cols1 = self.treeview1.get_columns()
+        cols2 = self.treeview2.get_columns()
+        for col1, col2 in zip(cols1, cols2, strict=True):
+            col1.connect("notify::width", self._on_column_width_changed, col2)
+            col2.connect("notify::width", self._on_column_width_changed, col1)
+
+    def _on_column_width_changed(
+        self,
+        source_col: Gtk.TreeViewColumn,
+        _pspec: object,
+        target_col: Gtk.TreeViewColumn,
+    ) -> None:
+        if self._syncing_column_widths:
+            return
+        width = source_col.get_width()
+        if width <= 0 or target_col.get_fixed_width() == width:
+            return
+        self._syncing_column_widths = True
+        try:
+            target_col.set_fixed_width(width)
+        finally:
+            self._syncing_column_widths = False
 
     def _create_treeview(self, model: Gtk.TreeModel, is_main: bool) -> Gtk.TreeView:
         """Factory method for TreeViews to avoid repetition"""
         treeview = Gtk.TreeView(model=model)
         treeview.set_enable_search(False)
         treeview.get_selection().set_mode(Gtk.SelectionMode.NONE)
+        treeview.set_fixed_height_mode(True)
         treeview.set_has_tooltip(True)
         treeview.connect("query-tooltip", self._on_treeview_query_tooltip)
 
         columns = [
-            (0, "Step"),
-            (1, "Cue"),
-            (2, "Text"),
-            (3, "Wait"),
-            (4, "Delay Out"),
-            (5, "Out"),
-            (6, "Delay In"),
-            (7, "In"),
-            (8, "Channel Time"),
-            (12, "Pos"),
-            (13, "Color"),
-            (14, "Beam"),
-            (15, "FX"),
-            (16, "Flags"),
-            (17, "Total"),
-            (18, "Link"),
-            (19, "Notes"),
+            (0, "Step", 55),
+            (1, "Cue", 65),
+            (2, "Text", 220),
+            (3, "Wait", 65),
+            (4, "Delay Out", 80),
+            (5, "Out", 65),
+            (6, "Delay In", 80),
+            (7, "In", 65),
+            (8, "Channel Time", 105),
+            (12, "Pos", 75),
+            (13, "Color", 75),
+            (14, "Beam", 75),
+            (15, "FX", 95),
+            (16, "Flags", 65),
+            (17, "Total", 65),
+            (18, "Link", 65),
+            (19, "Notes", 160),
         ]
-        for display_idx, (store_idx, column_title) in enumerate(columns):
+        for display_idx, (store_idx, column_title, default_width) in enumerate(columns):
             renderer = Gtk.CellRendererText()
             if display_idx % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            if store_idx == 19:
+            if store_idx in (2, 15, 19):
                 renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
 
             column = Gtk.TreeViewColumn(title=column_title, cell_renderer=renderer)
+            column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
+            column.set_fixed_width(default_width)
+            column.set_min_width(min(default_width, 55))
+            column.set_resizable(True)
             column.add_attribute(renderer, "text", store_idx)
             if is_main:
                 column.add_attribute(renderer, "background", 9)
@@ -224,12 +256,7 @@ class MainPlaybackView(Gtk.Notebook):
                 column.add_attribute(renderer, "foreground-set", 21)
 
             if store_idx == 2:
-                column.set_min_width(200)
-                column.set_resizable(True)
                 column.set_expand(True)
-            elif store_idx == 19:
-                column.set_min_width(120)
-                column.set_resizable(True)
             treeview.append_column(column)
 
         return treeview
@@ -245,7 +272,7 @@ class MainPlaybackView(Gtk.Notebook):
         scrollable1 = Gtk.ScrolledWindow()
         scrollable1.set_hexpand(True)
         scrollable1.set_propagate_natural_height(True)
-        scrollable1.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        scrollable1.set_policy(Gtk.PolicyType.EXTERNAL, Gtk.PolicyType.NEVER)
         scrollable1.set_hadjustment(scrollable2.get_hadjustment())
         scrollable1.add(self.treeview1)
 
