@@ -516,3 +516,35 @@ def test_no_ml_badge_and_compact_ifcb_fallback(
     drawn_texts.clear()
     _draw_to_surface(standalone_macro)
     assert not ({"F", "C", "B", "ML"} & set(drawn_texts))
+
+
+def test_channel_tiles_keep_constant_size_when_few_visible(
+    app_gui: Application,
+) -> None:
+    """Verify ChannelWidget allocation stays fixed even with few visible channels."""
+    assert app_gui.window is not None
+    _add_dimmer(app_gui, 1, 1)
+    _add_dimmer(app_gui, 2, 2)
+
+    live_cv = app_gui.window.live_view.channels_view
+    w1 = live_cv.get_channel_widget(1)
+    w2 = live_cv.get_channel_widget(2)
+    assert w1 is not None and w2 is not None
+
+    for fmt in ("Compact", "Summary+"):
+        live_cv.set_display_format(fmt)
+        live_cv.set_view_mode_by_name("All")
+        process_events()
+        all_a1 = w1.get_allocation()
+        assert (all_a1.width, all_a1.height) == (w1.width, w1.height)
+
+        live_cv.set_view_mode_by_name("Patched")
+        process_events()
+        few_a1 = w1.get_allocation()
+        few_a2 = w2.get_allocation()
+        assert (few_a1.width, few_a1.height) == (w1.width, w1.height)
+        assert (few_a2.width, few_a2.height) == (w2.width, w2.height)
+
+    live_cv.set_view_mode_by_name("All")
+    live_cv.set_display_format("Compact")
+    process_events()

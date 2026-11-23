@@ -151,6 +151,8 @@ class ChannelWidget(Gtk.DrawingArea):
         self.add_events(Gdk.EventMask.TOUCH_MASK)
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.height)
+        self.set_halign(Gtk.Align.START)
+        self.set_valign(Gtk.Align.START)
         register_system_font_listener(self.queue_draw)
 
     def _get_context(
