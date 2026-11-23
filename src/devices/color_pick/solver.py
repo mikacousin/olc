@@ -63,9 +63,11 @@ def profile_signature(profile: FixtureColorProfile) -> tuple[Any, ...]:
                 round(f.cie.y, 5),
                 round(f.cie.Y, 3),
                 round(f.gamma, 3),
+                len(f.spectral_transmission),
             )
             for f in profile.filters
         ),
+        len(profile.source_spectrum),
     )
 
 

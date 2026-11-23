@@ -16,14 +16,20 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from olc.devices.channel import Channel, ChannelType
 from olc.devices.color import (
+    DEFAULT_D65_SPD,
+    SPECTRAL_WAVELENGTHS,
     CIExyY,
     ColorMatcher,
+    FilterProfile,
     FixtureColorProfile,
     default_cmy_profile,
+    extract_color_profile,
 )
 from olc.devices.color_pick.geometry import effective_color_profile, profile_gamut_xy
 from olc.devices.color_pick.solver import ColorSolver
@@ -151,3 +157,150 @@ def test_cmy_solver_cache_and_device_integration() -> None:
     assert eff is not None
     assert eff.mixing_mode == "subtractive"
     assert isinstance(CIExyY(0.3127, 0.3290, 100.0), CIExyY)
+
+
+def _synthetic_cmy_spectra() -> tuple[
+    list[tuple[float, float]],
+    list[tuple[float, float]],
+    list[tuple[float, float]],
+]:
+    """Build smooth dichroic transmission curves for Cyan, Magenta, Yellow."""
+    wls = SPECTRAL_WAVELENGTHS
+    c_curve = [(float(w), 0.95 if w < 580 else 0.05) for w in wls]
+    m_curve = [(float(w), 0.05 if 490 <= w <= 585 else 0.95) for w in wls]
+    y_curve = [(float(w), 0.05 if w < 495 else 0.95) for w in wls]
+    return c_curve, m_curve, y_curve
+
+
+def test_spectral_cmy_forward_and_solver() -> None:
+    """Verify spectral forward model, gamut polygon, and inverse solver."""
+    c_spec, m_spec, y_spec = _synthetic_cmy_spectra()
+    src_spec = [
+        (float(w), float(v))
+        for w, v in zip(SPECTRAL_WAVELENGTHS, DEFAULT_D65_SPD, strict=True)
+    ]
+    profile = FixtureColorProfile(
+        fixture_name="Spectral CMY",
+        mixing_mode="subtractive",
+        filters=[
+            FilterProfile("Cyan", CIExyY(0.15, 0.30, 60.0), "ColorSub_C", 1.0, c_spec),
+            FilterProfile(
+                "Magenta", CIExyY(0.38, 0.175, 28.0), "ColorSub_M", 1.0, m_spec
+            ),
+            FilterProfile(
+                "Yellow", CIExyY(0.455, 0.495, 88.0), "ColorSub_Y", 1.0, y_spec
+            ),
+        ],
+        source_spectrum=src_spec,
+    )
+    assert profile.has_spectral_filters is True
+    assert len(profile.gamut_polygon) == 6
+
+    matcher = ColorMatcher([profile])
+    for c_ref, m_ref, y_ref in [
+        (0.0, 0.7, 0.8),
+        (0.6, 0.0, 0.7),
+        (0.75, 0.6, 0.0),
+    ]:
+        target = profile.evaluate_subtractive(c_ref, m_ref, y_ref).to_xyY()
+        res = matcher.match_cie(target.x, target.y, target.Y)["Spectral CMY"]
+        assert res.delta_e < 1.5
+        assert min(res.normalized_weights) == pytest.approx(0.0, abs=1e-4)
+        assert res.normalized_weights == pytest.approx([c_ref, m_ref, y_ref], abs=0.03)
+
+    # Serialization round-trip preserves spectral curves
+    restored = FixtureColorProfile.from_dict(profile.to_dict())
+    assert restored.has_spectral_filters is True
+    assert len(restored.source_spectrum) == 81
+    assert len(restored.filters[0].spectral_transmission) == 81
+
+
+def test_gdtf_filter_measurement_extraction() -> None:
+    """Verify extract_color_profile reads GDTF <Filters> and <Measurement>."""
+    c_spec, m_spec, y_spec = _synthetic_cmy_spectra()
+
+    def _make_meas(pts: list[tuple[float, float]], scale: float = 1.0) -> object:
+        return SimpleNamespace(
+            physical=100.0,
+            measurement_points=[
+                SimpleNamespace(wave_length=w, energy=e * scale) for w, e in pts
+            ],
+        )
+
+    src_pts = [
+        (float(w), float(v))
+        for w, v in zip(SPECTRAL_WAVELENGTHS, DEFAULT_D65_SPD, strict=True)
+    ]
+    gdtf_mock = SimpleNamespace(
+        manufacturer="Robolight",
+        name="CMY Spot 1000",
+        emitters=[
+            SimpleNamespace(
+                name="White",
+                color=SimpleNamespace(x=0.3127, y=0.3290, Y=100.0),
+                dominant_wave_length=0.0,
+                diode_part="",
+                measurements=[_make_meas(src_pts)],
+            )
+        ],
+        filters=[
+            SimpleNamespace(
+                name="Cyan",
+                color=SimpleNamespace(x=0.15, y=0.30, Y=60.0),
+                measurements=[_make_meas(c_spec, scale=100.0)],
+            ),
+            SimpleNamespace(
+                name="Magenta",
+                color=SimpleNamespace(x=0.38, y=0.175, Y=28.0),
+                measurements=[_make_meas(m_spec, scale=100.0)],
+            ),
+            SimpleNamespace(
+                name="Yellow",
+                color=SimpleNamespace(x=0.455, y=0.495, Y=88.0),
+                measurements=[_make_meas(y_spec, scale=100.0)],
+            ),
+        ],
+        dmx_modes=[],
+        color_space=None,
+    )
+    prof = extract_color_profile(gdtf_mock)
+    assert prof.mixing_mode == "subtractive"
+    assert prof.has_spectral_filters is True
+    assert len(prof.source_spectrum) == 81
+
+
+def test_cmy_cto_solver_prefers_cto_for_warm_white() -> None:
+    """Verify CMY+CTO solver prefers CTO over M+Y for warm white (~3200K)."""
+    profile = default_cmy_profile("Spot CMY+CTO", include_cto=True)
+    assert profile.has_cto_filter is True
+    matcher = ColorMatcher([profile])
+
+    # ~3200K warm white inside CTO reach
+    warm_white = profile.evaluate_subtractive(0.0, 0.0, 0.0, cto=0.75).to_xyY()
+    res = matcher.match_cie(warm_white.x, warm_white.y, warm_white.Y)["Spot CMY+CTO"]
+    assert res.emitter_names == ["Cyan", "Magenta", "Yellow", "CTO"]
+    c_v, m_v, y_v, cto_v = res.normalized_weights
+    assert res.delta_e < 1.5
+    assert cto_v > 0.5
+    assert m_v < 0.15
+    assert y_v < 0.15
+    assert min(c_v, m_v, y_v) == pytest.approx(0.0, abs=1e-4)
+
+    # LightingDevice applies CTO weight to ChannelType.COLOR_TEMP
+    dev = LightingDevice(
+        fixture_id=3,
+        label="Spot CTO",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 20),
+            Channel(ChannelType.CYAN, 1, 21),
+            Channel(ChannelType.MAGENTA, 1, 22),
+            Channel(ChannelType.YELLOW, 1, 23),
+            Channel(ChannelType.COLOR_TEMP, 1, 24),
+        ],
+        color_profile=profile,
+    )
+    dev.set_color_cie(warm_white.x, warm_white.y, warm_white.Y)
+    cto_param = dev.get_parameter_normalized(ChannelType.COLOR_TEMP)
+    assert cto_param is not None and cto_param > 0.5
+    assert GDTF_ATTRIBUTE_MAP["CTO"] == ChannelType.COLOR_TEMP

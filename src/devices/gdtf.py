@@ -83,6 +83,8 @@ GDTF_ATTRIBUTE_MAP: dict[str, ChannelType] = {
     "ColorTemperature": ChannelType.COLOR_TEMP,
     "CTC": ChannelType.COLOR_TEMP,
     "CTC1": ChannelType.COLOR_TEMP,
+    "CTO": ChannelType.COLOR_TEMP,
+    "CTO1": ChannelType.COLOR_TEMP,
 }
 
 GDTF_PHYSICAL_DEFAULTS: dict[ChannelType, tuple[float, float, str]] = {

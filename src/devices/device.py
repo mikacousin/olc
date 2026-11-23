@@ -536,8 +536,13 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self.color_profile is not None
                 and self.color_profile.mixing_mode == "subtractive"
             ):
+                cto_val = (
+                    self.get_parameter_normalized(ChannelType.COLOR_TEMP) or 0.0
+                    if self.color_profile.has_cto_filter
+                    else 0.0
+                )
                 rgb = self.color_profile.evaluate_subtractive(
-                    c_val, m_val, y_val
+                    c_val, m_val, y_val, cto=cto_val
                 ).to_srgb()
                 return (rgb.r, rgb.g, rgb.b)
             return (
@@ -680,7 +685,14 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 self.color_profile is not None
                 and self.color_profile.mixing_mode == "subtractive"
             ):
-                xyz = self.color_profile.evaluate_subtractive(c_val, m_val, y_val)
+                cto_val = (
+                    self.get_parameter_normalized(ChannelType.COLOR_TEMP) or 0.0
+                    if self.color_profile.has_cto_filter
+                    else 0.0
+                )
+                xyz = self.color_profile.evaluate_subtractive(
+                    c_val, m_val, y_val, cto=cto_val
+                )
                 self._target_cie = xyz.to_xyY()
                 self._target_color = xyz.to_srgb()
             else:
@@ -800,7 +812,13 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "coloradd_ry": ChannelType.RED,
         }
         for emitter_name, ratio in result.as_normalized_dict().items():
-            ctype = name_map.get(emitter_name.lower())
+            key = emitter_name.lower()
+            if key in {"cto", "cto1", "ctc"}:
+                self._set_color_emitter_channels(
+                    ChannelType.COLOR_TEMP, max(0.0, min(1.0, float(ratio)))
+                )
+                continue
+            ctype = name_map.get(key)
             if ctype:
                 self._base_emitters[ctype] = max(0.0, min(1.0, float(ratio)))
 
