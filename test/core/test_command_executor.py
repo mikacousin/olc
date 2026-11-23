@@ -1183,3 +1183,50 @@ def test_executor_group_commands_float_order_and_undo_redo() -> None:
     assert app.lightshow.groups.get(2.5) is None
     app.action_registry.execute("edit.undo")
     assert app.lightshow.groups.get(2.5) is not None
+
+
+def test_multi_sequence_cue_commands_without_collision() -> None:
+    """Verify RECORD/UPDATE/BLOCK/DELETE SEQ <n> CUE <m> isolate same cue numbers."""
+    app = CoreApplication(MagicMock())
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [0.0] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    app.action_registry.execute("sequence.new", 2.0)
+
+    # Record Cue 1 in Main Playback (Seq 1) with Ch 1 @ 50%
+    executor.execute(parser.parse("1 @ 50"))
+    res1 = executor.execute(parser.parse("RECORD CUE 1"))
+    assert res1.success is True
+    assert "Cue 1.0" in res1.message
+
+    # Record Cue 1 in Seq 2 with Ch 2 @ 80% (same cue number, different sequence)
+    mock_dmx.levels["user"][0] = 0.0
+    executor.execute(parser.parse("2 @ 80"))
+    res2 = executor.execute(parser.parse("RECORD SEQ 2 CUE 1"))
+    assert res2.success is True
+    assert "Seq 2 Cue 1.0" in res2.message
+
+    cue_seq1 = app.lightshow.get_cue(1.0, 1)
+    cue_seq2 = app.lightshow.get_cue(1.0, 2)
+    assert cue_seq1 is not None and cue_seq2 is not None
+    assert cue_seq1 is not cue_seq2
+    assert 1 in cue_seq1.channels and 2 not in cue_seq1.channels
+    assert 2 in cue_seq2.channels and 1 not in cue_seq2.channels
+
+    # Block Seq 2 Cue 1 only (noun-first syntax)
+    res_blk = executor.execute(parser.parse("SEQ 2 CUE 1 BLOCK"))
+    assert res_blk.success is True
+    assert "Seq 2 Cue 1.0" in res_blk.message
+    assert cue_seq2.is_block is True
+    assert cue_seq1.is_block is False
+
+    # Delete Seq 2 Cue 1 leaves Seq 1 Cue 1 intact
+    res_del = executor.execute(parser.parse("DELETE SEQ 2 CUE 1"))
+    assert res_del.success is True
+    assert app.lightshow.get_cue(1.0, 2) is None
+    assert app.lightshow.get_cue(1.0, 1) is cue_seq1

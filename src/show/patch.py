@@ -784,31 +784,10 @@ class PatchManager:
         return param_limits
 
     def _collect_show_cues(self) -> list[Cue]:
-        """Collect unique cues across global cues, main playback, and chasers."""
-        all_cues: list[Cue] = []
-        seen_cues: set[tuple[int, float]] = set()
-
-        def add_cue(c: Optional[Cue]) -> None:
-            if c is not None:
-                k = (c.sequence, c.number)
-                if k not in seen_cues:
-                    seen_cues.add(k)
-                    all_cues.append(c)
-
-        if hasattr(self.lightshow, "cues") and self.lightshow.cues:
-            for cue in self.lightshow.cues:
-                add_cue(cue)
-
-        if hasattr(self.lightshow, "main_playback") and self.lightshow.main_playback:
-            for step in self.lightshow.main_playback.steps:
-                add_cue(step.cue)
-
-        if hasattr(self.lightshow, "sequences") and self.lightshow.sequences:
-            for seq in self.lightshow.sequences:
-                for step in seq.steps:
-                    add_cue(step.cue)
-
-        return all_cues
+        """Collect unique cues across all sequences in the show."""
+        if self.lightshow is None:
+            return []
+        return list(self.lightshow.iter_all_cues())
 
     @staticmethod
     def _check_single_cue_clamping(

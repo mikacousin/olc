@@ -20,7 +20,7 @@ import typing
 from olc.define import DEFAULT_UNIVERSES
 from olc.devices.builtin import populate_builtin_library
 from olc.dmx_engine.universe_config import UniverseMap, default_universe_map
-from olc.show.cue import Cues
+from olc.show.cue import CueEditor, Cues
 from olc.show.curve import Curves
 from olc.show.effect import EffectDefinition, EffectManager
 from olc.show.fader_bank import FaderBank
@@ -121,8 +121,11 @@ class LightShow(ShowFile):
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
         self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
-        # List of global cues
+        # Blind cue level editor (shared with legacy Cues container during migration)
+        self.cue_editor = CueEditor(lightshow_type)
+        # List of global cues (legacy; being phased out in favor of sequence-owned cues)
         self.cues = Cues(self)
+        self.cues.cue_editor = self.cue_editor
         # Secondary sequences (2..N) and parametric Effects Manager
         self.sequences = []
         self.effects = EffectManager(lightshow_type)
@@ -150,16 +153,45 @@ class LightShow(ShowFile):
     def chasers(self, value: list) -> None:
         self.sequences = value
 
-    def get_cue(self, number: float) -> None | Cue:
-        """Get Cue with his number
+    def get_cue(self, number: float, sequence: int = 1) -> None | Cue:
+        """Get Cue by number and sequence index.
+
+        Searches the owning sequence first, falling back to legacy global cues.
 
         Args:
             number: Cue number
+            sequence: Sequence index (default 1 for Main Playback)
 
         Returns:
             Cue or None
         """
-        return self.cues.get(number, 0)
+        seq = (
+            self.main_playback if sequence == 1 else self.get_sequence(float(sequence))
+        )
+        if seq is not None:
+            for step in seq.steps:
+                if step.cue is not None and step.cue.number == number:
+                    return step.cue
+        cue = self.cues.get(number, sequence)
+        if cue is not None:
+            return cue
+        if sequence == 1:
+            return self.cues.get(number, 0)
+        return None
+
+    def iter_all_cues(self) -> typing.Iterator[Cue]:
+        """Yield all unique Cue objects across Main Playback and secondary sequences."""
+        seen: set[int] = set()
+        for seq in (self.main_playback, *self.sequences):
+            for step in seq.steps:
+                cue = getattr(step, "cue", None)
+                if cue is not None and id(cue) not in seen:
+                    seen.add(id(cue))
+                    yield cue
+        for cue in self.cues:
+            if cue is not None and id(cue) not in seen:
+                seen.add(id(cue))
+                yield cue
 
     def get_group(self, number: float) -> None | Group:
         """Get Group with his number

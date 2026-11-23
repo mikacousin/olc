@@ -1017,24 +1017,40 @@ class CommandExecutor:
             step.delay_beam = node.delay_beam
         step.update_total_time()
 
-    def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches
+    @staticmethod
+    def _format_cue_label(sequence_id: int, cue_id: float) -> str:
+        """Format human-readable cue reference ('Cue 1.0' or 'Seq 2 Cue 1.0')."""
+        return (
+            f"Cue {cue_id}" if sequence_id == 1 else f"Seq {sequence_id} Cue {cue_id}"
+        )
+
+    @staticmethod
+    def _get_target_sequence(lightshow: typing.Any, sequence_id: int) -> typing.Any:  # noqa: ANN401
+        """Resolve Sequence object by index (1 = main_playback, >=2 = secondary)."""
+        if sequence_id == 1:
+            return lightshow.main_playback
+        return lightshow.get_sequence(float(sequence_id))
+
+    def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         self, node: RecordCueCommandNode
     ) -> CommandResult:
         lightshow = getattr(self.app, "lightshow", None)
-        if not lightshow or not lightshow.main_playback:
-            return CommandResult(False, "Main playback sequence not available")
+        if not lightshow:
+            return CommandResult(False, "LightShow not available")
 
-        main_playback = lightshow.main_playback
+        seq_id = node.sequence_id
+        target_seq = self._get_target_sequence(lightshow, seq_id)
+        if not target_seq:
+            return CommandResult(False, f"Sequence {seq_id} does not exist")
+
         channels_dict, device_values = self._capture_live_cue_state(lightshow)
         palette_refs = self._capture_live_palette_refs(
             lightshow, channels_dict, device_values
         )
         effect_refs = self._capture_live_effect_refs(lightshow)
 
-        # Check if cue already exists in sequence
-        existing_cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(
-            node.cue_id, 0
-        )
+        # Check if cue already exists in target sequence
+        existing_cue = lightshow.get_cue(node.cue_id, seq_id)
         if existing_cue is not None:
             existing_cue.channels = channels_dict
             existing_cue.device_values = device_values
@@ -1045,7 +1061,7 @@ class CommandExecutor:
             cue = existing_cue
         else:
             cue = Cue(
-                sequence=1,
+                sequence=seq_id,
                 number=node.cue_id,
                 channels=channels_dict,
                 device_values=device_values,
@@ -1053,71 +1069,77 @@ class CommandExecutor:
                 palette_refs=palette_refs,
                 effect_refs=effect_refs,
             )
-            lightshow.cues.add(cue)
+            if seq_id == 1:
+                lightshow.cues.add(cue)
 
-        # Create or update step in main_playback (preserving sentinel last step)
+        # Create or update step in target sequence (preserving sentinel last step)
         step = None
         existing_step_idx = -1
-        for idx, s in enumerate(main_playback.steps):
+        for idx, s in enumerate(target_seq.steps):
             if s.cue and s.cue.number == node.cue_id:
                 step = s
                 existing_step_idx = idx
                 break
         if step is None:
             step = Step(
-                sequence=main_playback.index,
+                sequence=target_seq.index,
                 cue=cue,
             )
             self._apply_record_node_timings(step, node)
             if (
-                len(main_playback.steps) >= 2
-                and main_playback.steps[-1].cue is not None
-                and main_playback.steps[-1].cue.number == 0.0
+                len(target_seq.steps) >= 2
+                and target_seq.steps[-1].cue is not None
+                and target_seq.steps[-1].cue.number == 0.0
             ):
-                _found, step_idx = main_playback.get_step(cue=node.cue_id)
-                step_idx = max(1, min(step_idx, len(main_playback.steps) - 1))
+                _found, step_idx = target_seq.get_step(cue=node.cue_id)
+                step_idx = max(1, min(step_idx, len(target_seq.steps) - 1))
             else:
-                step_idx = len(main_playback.steps)
-                for idx, s in enumerate(main_playback.steps):
+                step_idx = len(target_seq.steps)
+                for idx, s in enumerate(target_seq.steps):
                     if s.cue and s.cue.number > node.cue_id:
                         step_idx = idx
                         break
-            main_playback.insert_step(step_idx, step)
-            main_playback.update_channels()
+            target_seq.insert_step(step_idx, step)
+            target_seq.update_channels()
             lightshow.set_modified()
-            self.app.emit("cue.created", 1, node.cue_id)
-            self.app.emit("step.inserted", float(main_playback.index), step_idx)
+            self.app.emit("cue.created", seq_id, node.cue_id)
+            self.app.emit("step.inserted", float(target_seq.index), step_idx)
             self.app.emit(
                 "playback.cue_recorded",
-                float(main_playback.index),
+                float(target_seq.index),
                 step_idx,
                 node.cue_id,
             )
         else:
             self._apply_record_node_timings(step, node)
-            main_playback.update_channels()
+            target_seq.update_channels()
             lightshow.set_modified()
-            self.app.emit("cue.updated", 1, node.cue_id)
-            self.app.emit("step.updated", float(main_playback.index), existing_step_idx)
+            self.app.emit("cue.updated", seq_id, node.cue_id)
+            self.app.emit("step.updated", float(target_seq.index), existing_step_idx)
 
-        # If recording current active cue, release manual override on recorded channels
-        current_cue_num = None
-        if 0 <= main_playback.position < len(main_playback.steps):
-            s = main_playback.steps[main_playback.position]
-            if s and s.cue:
-                current_cue_num = s.cue.number
-        if current_cue_num is not None and current_cue_num == node.cue_id:
-            self._release_manual_overrides(cue.channels)
-            live_state = getattr(self.app, "live_state", None)
-            if live_state is not None:
-                for ch in (
-                    set(cue.channels) | set(cue.device_values) | set(cue.effect_refs)
-                ):
-                    live_state.clear_channel(ch)
-                if hasattr(live_state, "clear_effect_refs"):
-                    live_state.clear_effect_refs()
+        # If recording current active cue on main playback, release manual overrides
+        if seq_id == 1:
+            current_cue_num = None
+            if 0 <= target_seq.position < len(target_seq.steps):
+                s = target_seq.steps[target_seq.position]
+                if s and s.cue:
+                    current_cue_num = s.cue.number
+            if current_cue_num is not None and current_cue_num == node.cue_id:
+                self._release_manual_overrides(cue.channels)
+                live_state = getattr(self.app, "live_state", None)
+                if live_state is not None:
+                    for ch in (
+                        set(cue.channels)
+                        | set(cue.device_values)
+                        | set(cue.effect_refs)
+                    ):
+                        live_state.clear_channel(ch)
+                    if hasattr(live_state, "clear_effect_refs"):
+                        live_state.clear_effect_refs()
 
-        return CommandResult(True, f"Recorded Cue {node.cue_id}")
+        return CommandResult(
+            True, f"Recorded {self._format_cue_label(seq_id, node.cue_id)}"
+        )
 
     def _release_manual_overrides(self, channels: typing.Iterable[int]) -> None:
         """Release manual user overrides for *channels* via ActionRegistry."""
@@ -1145,25 +1167,31 @@ class CommandExecutor:
         self, node: UpdateCueCommandNode
     ) -> CommandResult:
         lightshow = getattr(self.app, "lightshow", None)
-        if not lightshow or not lightshow.main_playback:
-            return CommandResult(False, "Main playback sequence not available")
+        if not lightshow:
+            return CommandResult(False, "LightShow not available")
+
+        seq_id = node.sequence_id
+        target_seq = self._get_target_sequence(lightshow, seq_id)
+        if not target_seq:
+            return CommandResult(False, f"Sequence {seq_id} does not exist")
 
         cue_num = node.cue_id
         if cue_num is None:
-            main_pb = lightshow.main_playback
-            if hasattr(main_pb, "get_current_step"):
-                step = main_pb.get_current_step()
-            elif 0 <= main_pb.position < len(main_pb.steps):
-                step = main_pb.steps[main_pb.position]
+            if hasattr(target_seq, "get_current_step"):
+                step = target_seq.get_current_step()
+            elif 0 <= target_seq.position < len(target_seq.steps):
+                step = target_seq.steps[target_seq.position]
             else:
                 step = None
             if not step or not step.cue:
                 return CommandResult(False, "No active cue to update")
             cue_num = step.cue.number
 
-        cue = lightshow.cues.get(cue_num, 1) or lightshow.cues.get(cue_num, 0)
+        cue = lightshow.get_cue(cue_num, seq_id)
         if cue is None:
-            return CommandResult(False, f"Cue {cue_num} does not exist")
+            return CommandResult(
+                False, f"{self._format_cue_label(seq_id, cue_num)} does not exist"
+            )
 
         new_channels = dict(cue.channels)
         backend = getattr(self.app, "backend", None)
@@ -1225,47 +1253,59 @@ class CommandExecutor:
                 cue.device_values.setdefault(dev_id, {}).update(vals)
             cue.palette_refs = updated_refs
             cue.effect_refs = updated_effect_refs
-            lightshow.main_playback.update_channels()
+            target_seq.update_channels()
             lightshow.set_modified()
-            self.app.emit("cue.updated", 1, cue_num)
+            self.app.emit("cue.updated", seq_id, cue_num)
 
-        # If updating current active cue, release manual override on updated channels
-        main_pb = lightshow.main_playback
-        current_cue_num = None
-        if 0 <= main_pb.position < len(main_pb.steps):
-            s = main_pb.steps[main_pb.position]
-            if s and s.cue:
-                current_cue_num = s.cue.number
-        if current_cue_num is not None and current_cue_num == cue_num:
-            self._release_manual_overrides(cue.channels)
-            live_state = getattr(self.app, "live_state", None)
-            if live_state is not None:
-                for ch in (
-                    set(cue.channels)
-                    | set(cue.device_values)
-                    | set(new_device_values)
-                    | set(cue.effect_refs)
-                ):
-                    live_state.clear_channel(ch)
-                if hasattr(live_state, "clear_effect_refs"):
-                    live_state.clear_effect_refs()
+        # If updating current active cue on main playback, release manual overrides
+        if seq_id == 1:
+            current_cue_num = None
+            if 0 <= target_seq.position < len(target_seq.steps):
+                s = target_seq.steps[target_seq.position]
+                if s and s.cue:
+                    current_cue_num = s.cue.number
+            if current_cue_num is not None and current_cue_num == cue_num:
+                self._release_manual_overrides(cue.channels)
+                live_state = getattr(self.app, "live_state", None)
+                if live_state is not None:
+                    for ch in (
+                        set(cue.channels)
+                        | set(cue.device_values)
+                        | set(new_device_values)
+                        | set(cue.effect_refs)
+                    ):
+                        live_state.clear_channel(ch)
+                    if hasattr(live_state, "clear_effect_refs"):
+                        live_state.clear_effect_refs()
 
-        return CommandResult(True, f"Updated Cue {cue_num}")
+        return CommandResult(True, f"Updated {self._format_cue_label(seq_id, cue_num)}")
 
     def _execute_goto_cue(self, node: GotoCueCommandNode) -> CommandResult:
-        registry = self._get_registry()
-        if registry is not None and "playback.goto" in getattr(
-            registry, "_action_classes", {}
-        ):
-            registry.execute(
-                "playback.goto", target=str(node.cue_id), override_time=node.time
-            )
+        seq_id = node.sequence_id
+        if seq_id == 1:
+            registry = self._get_registry()
+            if registry is not None and "playback.goto" in getattr(
+                registry, "_action_classes", {}
+            ):
+                registry.execute(
+                    "playback.goto", target=str(node.cue_id), override_time=node.time
+                )
+            else:
+                lightshow = getattr(self.app, "lightshow", None)
+                if not lightshow or not lightshow.main_playback:
+                    return CommandResult(False, "Main playback sequence not available")
+                lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
         else:
             lightshow = getattr(self.app, "lightshow", None)
-            if not lightshow or not lightshow.main_playback:
-                return CommandResult(False, "Main playback sequence not available")
-            lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
-        return CommandResult(True, f"Jumped to Cue {node.cue_id}")
+            target_seq = (
+                self._get_target_sequence(lightshow, seq_id) if lightshow else None
+            )
+            if not target_seq:
+                return CommandResult(False, f"Sequence {seq_id} does not exist")
+            target_seq.goto(str(node.cue_id), override_time=node.time)
+        return CommandResult(
+            True, f"Jumped to {self._format_cue_label(seq_id, node.cue_id)}"
+        )
 
     def _execute_block_cue(
         self, node: BlockCueCommandNode | UnblockCueCommandNode, is_block: bool
@@ -1274,51 +1314,56 @@ class CommandExecutor:
         if not lightshow:
             return CommandResult(False, "LightShow not available")
 
-        cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(node.cue_id, 0)
+        seq_id = node.sequence_id
+        label = self._format_cue_label(seq_id, node.cue_id)
+        cue = lightshow.get_cue(node.cue_id, seq_id)
         if cue is None:
-            return CommandResult(False, f"Cue {node.cue_id} not found")
+            return CommandResult(False, f"{label} not found")
 
         registry = self._get_registry()
         if registry is not None and "cue.set_block" in getattr(
             registry, "_action_classes", {}
         ):
-            registry.execute("cue.set_block", node.cue_id, is_block)
+            registry.execute("cue.set_block", node.cue_id, is_block, seq_id)
         else:
             cue.is_block = is_block
             lightshow.set_modified()
         action_name = "Blocked" if is_block else "Unblocked"
-        return CommandResult(True, f"{action_name} Cue {node.cue_id}")
+        return CommandResult(True, f"{action_name} {label}")
 
     def _execute_delete_cue(self, node: DeleteCueCommandNode) -> CommandResult:
         lightshow = getattr(self.app, "lightshow", None)
         if not lightshow:
             return CommandResult(False, "LightShow not available")
 
-        cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(node.cue_id, 0)
+        seq_id = node.sequence_id
+        label = self._format_cue_label(seq_id, node.cue_id)
+        target_seq = self._get_target_sequence(lightshow, seq_id)
+        cue = lightshow.get_cue(node.cue_id, seq_id)
         if cue is None:
-            return CommandResult(False, f"Cue {node.cue_id} not found")
+            return CommandResult(False, f"{label} not found")
 
         registry = self._get_registry()
-        if registry is not None and "cue.delete" in getattr(
-            registry, "_action_classes", {}
+        if (
+            seq_id == 1
+            and registry is not None
+            and "cue.delete" in getattr(registry, "_action_classes", {})
+            and lightshow.cues.get(node.cue_id, 1) is not None
         ):
             registry.execute("cue.delete", number=node.cue_id, sequence=1)
-            if lightshow.main_playback:
-                for step in list(lightshow.main_playback.steps):
-                    if step.cue and step.cue.number == node.cue_id:
-                        lightshow.main_playback.steps.remove(step)
-                lightshow.main_playback.last = len(lightshow.main_playback.steps)
-        else:
+        elif lightshow.cues.get(node.cue_id, seq_id) is not None:
             lightshow.cues.remove(cue)
-            if lightshow.main_playback:
-                for step in list(lightshow.main_playback.steps):
-                    if step.cue and step.cue.number == node.cue_id:
-                        lightshow.main_playback.steps.remove(step)
-                lightshow.main_playback.last = len(lightshow.main_playback.steps)
-            lightshow.set_modified()
-            self.app.emit("cue.deleted", 1, node.cue_id)
 
-        return CommandResult(True, f"Deleted Cue {node.cue_id}")
+        if target_seq:
+            for step in list(target_seq.steps):
+                if step.cue and step.cue.number == node.cue_id:
+                    target_seq.steps.remove(step)
+            target_seq.last = len(target_seq.steps)
+            target_seq.update_channels()
+        lightshow.set_modified()
+        self.app.emit("cue.deleted", seq_id, node.cue_id)
+
+        return CommandResult(True, f"Deleted {label}")
 
     @staticmethod
     def _is_channel_modified(dev: typing.Any, ch_type_val: str) -> bool:  # noqa: ANN401

@@ -685,7 +685,7 @@ class SequenceTab(Gtk.Grid):
             dialog.destroy()
             return
 
-        cue_editor = self.lightshow.cues.cue_editor
+        cue_editor = self.lightshow.cue_editor
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
 
         new_channels = dict(cue.channels)
@@ -789,7 +789,7 @@ class SequenceTab(Gtk.Grid):
             dialog.destroy()
             return
 
-        cue_editor = self.lightshow.cues.cue_editor
+        cue_editor = self.lightshow.cue_editor
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
 
         new_channels = dict(cue.channels)

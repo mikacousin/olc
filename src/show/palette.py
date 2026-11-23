@@ -336,21 +336,8 @@ class PaletteManager:
 
     @staticmethod
     def _collect_unique_cues(lightshow: LightShow) -> list[Cue]:
-        """Collect all unique Cue instances across global cues and sequences."""
-        seen: set[int] = set()
-        cues: list[Cue] = []
-        for cue in lightshow.cues:
-            if cue is not None and id(cue) not in seen:
-                seen.add(id(cue))
-                cues.append(cue)
-        sequences = [lightshow.main_playback, *list(lightshow.sequences)]
-        for seq in sequences:
-            for step in seq.steps:
-                cue = getattr(step, "cue", None)
-                if cue is not None and id(cue) not in seen:
-                    seen.add(id(cue))
-                    cues.append(cue)
-        return cues
+        """Collect all unique Cue instances across all sequences."""
+        return list(lightshow.iter_all_cues())
 
     def _propagate_to_cues(
         self,

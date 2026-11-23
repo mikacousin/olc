@@ -129,7 +129,7 @@ class SeqChannelsView(ChannelsView):
         cue = sequence.steps[step].cue
         override_level: float | None = None
         if cue is not None:
-            raw_override = self.lightshow.cues.cue_editor.get_levels(
+            raw_override = self.lightshow.cue_editor.get_levels(
                 cue.number, cue.sequence
             )[channel - 1]
             if raw_override >= 0.0:
@@ -319,9 +319,7 @@ class SeqChannelsView(ChannelsView):
         if cue is None:
             return False
         return (
-            self.lightshow.cues.cue_editor.get_levels(cue.number, cue.sequence)[
-                channel - 1
-            ]
+            self.lightshow.cue_editor.get_levels(cue.number, cue.sequence)[channel - 1]
             >= 0.0
         )
 
@@ -391,7 +389,7 @@ class SeqChannelsView(ChannelsView):
         if seq and step_idx is not None:
             cue = seq.steps[step_idx].cue
             if cue:
-                user_channel = self.lightshow.cues.cue_editor.get_levels(
+                user_channel = self.lightshow.cue_editor.get_levels(
                     cue.number, cue.sequence
                 )[channel_index]
             else:
@@ -443,7 +441,7 @@ class SeqChannelsView(ChannelsView):
         if seq and step_idx is not None:
             cue = seq.steps[step_idx].cue
             if cue:
-                user_channel = self.lightshow.cues.cue_editor.get_levels(
+                user_channel = self.lightshow.cue_editor.get_levels(
                     cue.number, cue.sequence
                 )[channel_index]
             else:

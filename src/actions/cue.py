@@ -86,7 +86,7 @@ class CueUpdateAction(Action):
 
     def execute(self) -> None:
         """Execute the action, updating the cue's channel levels."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
         self.old_channels = copy.deepcopy(dict(cue.channels))
@@ -101,21 +101,33 @@ class CueUpdateAction(Action):
             cue.palette_refs = copy.deepcopy(self.new_palette_refs)
         if self.new_effect_refs is not None:
             cue.effect_refs = copy.deepcopy(self.new_effect_refs)
-        self.app.lightshow.main_playback.update_channels()
+        seq = (
+            self.app.lightshow.main_playback
+            if self.sequence in (0, 1)
+            else self.app.lightshow.get_sequence(float(self.sequence))
+        )
+        if seq is not None:
+            seq.update_channels()
         self.app.lightshow.set_modified()
-        self.app.lightshow.cues.cue_editor.clear(self.number, self.sequence)
+        self.app.lightshow.cue_editor.clear(self.number, self.sequence)
         self.app.emit("cue.updated", self.sequence, self.number)
 
     def undo(self) -> None:
         """Undo the update, restoring the previous channel levels."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             return
         cue.channels = copy.deepcopy(self.old_channels)
         cue.device_values = copy.deepcopy(self.old_device_values)
         cue.palette_refs = copy.deepcopy(self.old_palette_refs)
         cue.effect_refs = copy.deepcopy(self.old_effect_refs)
-        self.app.lightshow.main_playback.update_channels()
+        seq = (
+            self.app.lightshow.main_playback
+            if self.sequence in (0, 1)
+            else self.app.lightshow.get_sequence(float(self.sequence))
+        )
+        if seq is not None:
+            seq.update_channels()
         self.app.lightshow.set_modified()
         self.app.emit("cue.updated", self.sequence, self.number)
 
@@ -231,7 +243,7 @@ class CueRenameAction(Action):
 
     def execute(self) -> None:
         """Execute the action, applying the new label."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             raise ValueError(f"Cue {self.number} (seq {self.sequence}) does not exist.")
         self.old_text = cue.text
@@ -241,7 +253,7 @@ class CueRenameAction(Action):
 
     def undo(self) -> None:
         """Undo the rename, restoring the previous text."""
-        cue = self.app.lightshow.cues.get(self.number, self.sequence)
+        cue = self.app.lightshow.get_cue(self.number, self.sequence)
         if cue is None:
             return
         cue.text = self.old_text
@@ -505,7 +517,7 @@ class CueSetTempChannelsAction(Action):
 
     def execute(self) -> None:
         """Execute the action, storing temp levels and applying overrides."""
-        cue_editor = self.app.lightshow.cues.cue_editor
+        cue_editor = self.app.lightshow.cue_editor
         levels = cue_editor.get_levels(self.number, self.sequence)
         self.old_levels = {}
         for channel in self.new_levels:
@@ -516,13 +528,13 @@ class CueSetTempChannelsAction(Action):
 
     def undo(self) -> None:
         """Undo the temporary channel level changes."""
-        cue_editor = self.app.lightshow.cues.cue_editor
+        cue_editor = self.app.lightshow.cue_editor
         for channel, level in self.old_levels.items():
             cue_editor.set_level(self.number, self.sequence, channel, level)
 
     def redo(self) -> None:
         """Redo the temporary channel level changes."""
-        cue_editor = self.app.lightshow.cues.cue_editor
+        cue_editor = self.app.lightshow.cue_editor
         for channel, level in self.new_levels.items():
             cue_editor.set_level(self.number, self.sequence, channel, level)
 
@@ -580,27 +592,13 @@ class CueClearEditorAction(Action):
         self.sequence = int(sequence)
 
     def execute(self) -> None:
-        self.app.lightshow.cues.cue_editor.clear(self.number, self.sequence)
+        self.app.lightshow.cue_editor.clear(self.number, self.sequence)
         self.app.emit("cue.editor_cleared", self.number, self.sequence)
 
 
 def _find_cue(app: CoreApplication, number: float, sequence: int) -> Cue | None:
-    """Find a cue by number/sequence in the global cue list or sequence steps."""
-    cues = app.lightshow.cues
-    cue = cues.get(number, sequence) or cues.get(number, 0)
-    if cue is not None:
-        return cue
-    seq = (
-        app.lightshow.main_playback
-        if sequence == 1
-        else app.lightshow.get_sequence(float(sequence))
-    )
-    if seq is None:
-        return None
-    for step in seq.steps:
-        if step.cue is not None and step.cue.number == number:
-            return step.cue
-    return None
+    """Find a cue by number/sequence across sequences (with legacy fallback)."""
+    return app.lightshow.get_cue(number, sequence)
 
 
 class _CueBoolFlagAction(Action):

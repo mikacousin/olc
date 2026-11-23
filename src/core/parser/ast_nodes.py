@@ -164,6 +164,7 @@ class RecordCueCommandNode(CommandNode):  # pylint: disable=too-many-instance-at
     """Command to record a scene cue (e.g. RECORD CUE 5 TIME 3 / 2)."""
 
     cue_id: float
+    sequence_id: int = 1
     time_in: float | None = None
     time_out: float | None = None
     delay: float | None = None
@@ -181,6 +182,7 @@ class UpdateCueCommandNode(CommandNode):
     """Command to update current or specified cue (e.g. UPDATE CUE 4)."""
 
     cue_id: float | None = None
+    sequence_id: int = 1
 
 
 @dataclasses.dataclass
@@ -189,6 +191,7 @@ class GotoCueCommandNode(CommandNode):
 
     cue_id: float
     time: float | None = None
+    sequence_id: int = 1
 
 
 @dataclasses.dataclass
@@ -196,6 +199,7 @@ class BlockCueCommandNode(CommandNode):
     """Command to mark a cue as a blocking cue (e.g. BLOCK CUE 8)."""
 
     cue_id: float
+    sequence_id: int = 1
 
 
 @dataclasses.dataclass
@@ -203,6 +207,7 @@ class UnblockCueCommandNode(CommandNode):
     """Command to unblock a cue (e.g. UNBLOCK CUE 8)."""
 
     cue_id: float
+    sequence_id: int = 1
 
 
 @dataclasses.dataclass
@@ -210,6 +215,7 @@ class DeleteCueCommandNode(CommandNode):
     """Command to delete a cue (e.g. DELETE CUE 4)."""
 
     cue_id: float
+    sequence_id: int = 1
 
 
 @dataclasses.dataclass

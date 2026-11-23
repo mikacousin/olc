@@ -213,7 +213,7 @@ class CommandParser:
     # --- Top Level Commands ---
 
     def _parse_command(self) -> CommandNode:  # pylint: disable=too-many-return-statements
-        if self._peek_is(TokenType.CUE):
+        if self._peek_is(TokenType.CUE, TokenType.SEQUENCE):
             return self._parse_cue_first_command()
 
         if self._peek_is(TokenType.RECORD):
@@ -651,25 +651,35 @@ class CommandParser:
 
     # --- Cue Commands ---
 
+    def _parse_optional_sequence_prefix(self) -> int:
+        """Parse optional `SEQ <num>` prefix before a CUE command, defaulting to 1."""
+        if self.match(TokenType.SEQUENCE):
+            tok_seq = self.expect(
+                TokenType.NUMBER, "Expected Sequence number after SEQUENCE"
+            )
+            return int(float(tok_seq.value))
+        return 1
+
     def _parse_cue_first_command(  # pylint: disable=too-many-return-statements
         self,
     ) -> CommandNode:
-        """Parse noun-first cue commands (e.g. CUE 5 RECORD TIME 3, CUE 4 UPDATE)."""
-        self.advance()  # Consume CUE
+        """Parse noun-first cue commands (e.g. [SEQ 2] CUE 5 RECORD TIME 3)."""
+        seq_id = self._parse_optional_sequence_prefix()
+        self.expect(TokenType.CUE, "Expected CUE after SEQUENCE")
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after CUE")
         cue_id = float(tok_num.value)
 
         tok_action = self.peek()
         if self.match(TokenType.RECORD):
-            return self._parse_record_cue_options(cue_id)
+            return self._parse_record_cue_options(cue_id, sequence_id=seq_id)
         if self.match(TokenType.UPDATE):
-            return UpdateCueCommandNode(cue_id=cue_id)
+            return UpdateCueCommandNode(cue_id=cue_id, sequence_id=seq_id)
         if self.match(TokenType.DELETE):
-            return DeleteCueCommandNode(cue_id=cue_id)
+            return DeleteCueCommandNode(cue_id=cue_id, sequence_id=seq_id)
         if self.match(TokenType.BLOCK):
-            return BlockCueCommandNode(cue_id=cue_id)
+            return BlockCueCommandNode(cue_id=cue_id, sequence_id=seq_id)
         if self.match(TokenType.UNBLOCK):
-            return UnblockCueCommandNode(cue_id=cue_id)
+            return UnblockCueCommandNode(cue_id=cue_id, sequence_id=seq_id)
         if self.match(TokenType.GOTO):
             fade_time: float | None = None
             if self.match(TokenType.TIME):
@@ -677,7 +687,7 @@ class CommandParser:
                     TokenType.NUMBER, "Expected fade time after TIME"
                 )
                 fade_time = float(tok_time.value)
-            return GotoCueCommandNode(cue_id=cue_id, time=fade_time)
+            return GotoCueCommandNode(cue_id=cue_id, time=fade_time, sequence_id=seq_id)
 
         raise CommandSyntaxError(
             f"Expected cue action (RECORD, UPDATE, DELETE, BLOCK, UNBLOCK, GOTO) "
@@ -720,7 +730,7 @@ class CommandParser:
         return fam_time, fam_delay
 
     def _parse_record_cue_options(  # pylint: disable=too-many-locals,too-many-branches
-        self, cue_id: float
+        self, cue_id: float, sequence_id: int = 1
     ) -> RecordCueCommandNode:
         """Parse TIME, DELAY, BLOCK and IFCB family modifiers for RECORD CUE."""
         time_in: float | None = None
@@ -792,6 +802,7 @@ class CommandParser:
 
         return RecordCueCommandNode(
             cue_id=cue_id,
+            sequence_id=sequence_id,
             time_in=time_in,
             time_out=time_out,
             delay=delay,
@@ -854,11 +865,12 @@ class CommandParser:
         if spec is not None:
             return RecordPaletteCommandNode(category=spec[0], palette_id=spec[1])
 
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after RECORD")
         cue_id = float(tok_num.value)
-        return self._parse_record_cue_options(cue_id)
+        return self._parse_record_cue_options(cue_id, sequence_id=seq_id)
 
     def _parse_update_cue(
         self,
@@ -874,16 +886,18 @@ class CommandParser:
         if spec is not None:
             return UpdatePaletteCommandNode(category=spec[0], palette_id=spec[1])
 
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         cue_id: float | None = None
         if self._peek_is(TokenType.NUMBER):
             cue_id = float(self.advance().value)
 
-        return UpdateCueCommandNode(cue_id=cue_id)
+        return UpdateCueCommandNode(cue_id=cue_id, sequence_id=seq_id)
 
     def _parse_goto_cue(self) -> GotoCueCommandNode:
         self.advance()  # Consume GOTO
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after GOTO")
@@ -894,19 +908,21 @@ class CommandParser:
             tok_time = self.expect(TokenType.NUMBER, "Expected fade time after TIME")
             fade_time = float(tok_time.value)
 
-        return GotoCueCommandNode(cue_id=cue_id, time=fade_time)
+        return GotoCueCommandNode(cue_id=cue_id, time=fade_time, sequence_id=seq_id)
 
     def _parse_block_cue(self) -> BlockCueCommandNode:
         self.advance()  # Consume BLOCK
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after BLOCK")
-        return BlockCueCommandNode(cue_id=float(tok_num.value))
+        return BlockCueCommandNode(cue_id=float(tok_num.value), sequence_id=seq_id)
 
     def _parse_unblock_cue(self) -> UnblockCueCommandNode:
         self.advance()  # Consume UNBLOCK
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after UNBLOCK")
-        return UnblockCueCommandNode(cue_id=float(tok_num.value))
+        return UnblockCueCommandNode(cue_id=float(tok_num.value), sequence_id=seq_id)
 
     def _parse_delete_cue(
         self,
@@ -933,9 +949,10 @@ class CommandParser:
         if spec is not None:
             return DeletePaletteCommandNode(category=spec[0], palette_id=spec[1])
 
+        seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after DELETE")
-        return DeleteCueCommandNode(cue_id=float(tok_num.value))
+        return DeleteCueCommandNode(cue_id=float(tok_num.value), sequence_id=seq_id)
 
     # --- Effect Commands ---
 
