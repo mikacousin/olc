@@ -17,7 +17,7 @@ from __future__ import annotations
 import contextlib
 import typing
 
-from gi.repository import Gdk, Gio, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 from olc.core.commandline import toggle_patch_keyword
 from olc.define import string_to_time, time_to_string
@@ -81,23 +81,40 @@ class Window(Gtk.ApplicationWindow):
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
         self.header.set_subtitle("")
         self.header.props.show_close_button = True
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.header_controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         # Main Fader viewer
         self.main_fader = MainFaderWidget(self.app.core.backend)
-        box.add(self.main_fader)
+        self.header_controls.add(self.main_fader)
         # Menu button
-        button = Gtk.MenuButton()
+        self.menu_button = Gtk.MenuButton()
         icon = Gio.ThemedIcon(name="open-menu-symbolic")
         image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
-        button.add(image)
-        box.add(button)
-        popover = Gtk.Popover.new_from_model(button, self.app.setup_app_menu())
-        button.set_popover(popover)
-        self.header.pack_end(box)
+        self.menu_button.add(image)
+        self.header_controls.add(self.menu_button)
+        popover = Gtk.Popover.new_from_model(
+            self.menu_button, self.app.setup_app_menu()
+        )
+        self.menu_button.set_popover(popover)
+        self.header.pack_end(self.header_controls)
         self.set_titlebar(self.header)
+
+        # Fullscreen fallback HeaderBar (GTK3 hides the window titlebar in fullscreen)
+        self.fullscreen_header = Gtk.HeaderBar()
+        self.fullscreen_header.set_show_close_button(False)
+        self.fullscreen_header.set_no_show_all(True)
+        self.header.bind_property(
+            "title", self.fullscreen_header, "title", GObject.BindingFlags.SYNC_CREATE
+        )
+        self.header.bind_property(
+            "subtitle",
+            self.fullscreen_header,
+            "subtitle",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
 
         # Main vertical layout: Paned (LiveView | Playback) above full-width CommandLine
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.main_box.pack_start(self.fullscreen_header, False, False, 0)
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.paned.set_position(800)
@@ -187,6 +204,21 @@ class Window(Gtk.ApplicationWindow):
         else:
             self.live_view.grab_focus()
 
+    def _set_fullscreen_header_visible(self, visible: bool) -> None:
+        """Move header controls between the CSD titlebar and the fullscreen bar."""
+        if visible:
+            if self.header_controls.get_parent() is self.header:
+                self.header.remove(self.header_controls)
+                self.fullscreen_header.pack_end(self.header_controls)
+            self.fullscreen_header.set_no_show_all(False)
+            self.fullscreen_header.show_all()
+        else:
+            self.fullscreen_header.hide()
+            self.fullscreen_header.set_no_show_all(True)
+            if self.header_controls.get_parent() is self.fullscreen_header:
+                self.fullscreen_header.remove(self.header_controls)
+                self.header.pack_end(self.header_controls)
+
     def fullscreen_toggle(
         self,
         _action: Gio.SimpleAction | None = None,
@@ -195,9 +227,11 @@ class Window(Gtk.ApplicationWindow):
         """Toggle full screen"""
         if self.full:
             self.unfullscreen()
+            self._set_fullscreen_header_visible(False)
             self.full = False
         else:
             self.fullscreen()
+            self._set_fullscreen_header_visible(True)
             self.full = True
 
     def move_tab(self) -> None:

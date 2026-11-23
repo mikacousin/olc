@@ -339,3 +339,45 @@ def test_settings_tab_notifications_switch(app_gui: Application) -> None:
     finally:
         app.settings.set_boolean("notifications", orig_enabled)
         app.core.history.clear()
+
+
+def test_fullscreen_keeps_menu_button_and_main_fader(app_gui: Application) -> None:
+    """Verify fullscreen keeps burger menu, main fader, and title/subtitle visible."""
+    win = app_gui.window
+    assert win is not None
+    orig_title = win.header.get_title() or "Open Lighting Console"
+    orig_subtitle = win.header.get_subtitle() or ""
+
+    try:
+        assert win.full is False
+        assert win.fullscreen_header.get_visible() is False
+        assert win.header_controls.get_parent() is win.header
+        assert win.menu_button.get_parent() is win.header_controls
+
+        app_gui.core.action_registry.execute("gui.toggle_fullscreen")
+        process_events()
+
+        assert win.full is True
+        assert win.fullscreen_header.get_visible() is True
+        assert win.header_controls.get_parent() is win.fullscreen_header
+        assert win.menu_button.get_visible() is True
+        assert win.main_fader.get_visible() is True
+
+        win.header.set_title("Show FS")
+        win.header.set_subtitle("Cue 1")
+        assert win.fullscreen_header.get_title() == "Show FS"
+        assert win.fullscreen_header.get_subtitle() == "Cue 1"
+
+        app_gui.core.action_registry.execute("gui.toggle_fullscreen")
+        process_events()
+
+        assert win.full is False
+        assert win.fullscreen_header.get_visible() is False
+        assert win.header_controls.get_parent() is win.header
+        assert win.menu_button.get_visible() is True
+    finally:
+        if win.full:
+            app_gui.core.action_registry.execute("gui.toggle_fullscreen")
+            process_events()
+        win.header.set_title(orig_title)
+        win.header.set_subtitle(orig_subtitle)
