@@ -16,7 +16,6 @@
 
 # pylint: disable=missing-function-docstring, redefined-outer-name, protected-access
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -50,6 +49,7 @@ from olc.devices import (
     profile_from_emitters,
     sRGB,
 )
+from test.conftest import DATA_DIR
 
 # ---------------------------------------------------------------------------
 # DmxAddress
@@ -611,20 +611,16 @@ def test_gdtf_importer_sanity() -> None:
             importer.load_from_bytes(b"dummy")
 
 
-def test_gdtf_import_real_robe_arianne_6() -> None:
+def test_gdtf_import_sample_rgbl_moving_head() -> None:
     if not HAS_PYGDTF:
         pytest.skip("pygdtf not installed")
-    gdtf_path = Path(
-        "doc/Robe_Lighting@Robin_Arianne_6@2026-09-25_Control_channel_update.gdtf"
-    )
-    if not gdtf_path.exists():
-        pytest.skip(f"{gdtf_path} not present")
+    gdtf_path = DATA_DIR / "sample_rgbl_moving_head.gdtf"
 
     defn = GdtfImporter().load(gdtf_path)
-    assert defn.manufacturer == "Robe Lighting"
-    assert defn.model == "Robin Arianne 6"
+    assert defn.manufacturer == "OpenLighting"
+    assert defn.model == "Test RGBL Wash"
     assert defn.fixture_type == FixtureType.MOVING_HEAD
-    assert [m.footprint() for m in defn.dmx_modes] == [22, 27, 58]
+    assert [m.footprint() for m in defn.dmx_modes] == [16, 18, 8]
     assert defn.color_profile is not None
     assert [e.name for e in defn.color_profile.emitters] == [
         "Red",

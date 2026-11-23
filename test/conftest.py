@@ -39,6 +39,14 @@ except ImportError:
 
 import pytest  # noqa: E402
 
+DATA_DIR = pathlib.Path(__file__).parent / "data"
+
+
+@pytest.fixture
+def data_dir() -> pathlib.Path:
+    """Return the path to the shared test data directory."""
+    return DATA_DIR
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom command line option for GUI tests."""

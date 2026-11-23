@@ -48,6 +48,7 @@ from olc.gtk3.patch_channels import (  # noqa: E402
 )
 from olc.show.patch import PatchCollisionError  # noqa: E402
 
+from test.conftest import DATA_DIR  # noqa: E402 # isort: skip
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
 pytestmark = pytest.mark.gui
@@ -635,9 +636,7 @@ def test_patch_tab_refreshes_fixture_library_after_ascii_import(
     app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
     """Verify open PatchChannelsTab and its popover see imported Eos fixtures."""
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    asc_path = DATA_DIR / "eos_show.asc"
 
     monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
 

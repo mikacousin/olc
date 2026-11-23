@@ -49,6 +49,7 @@ from olc.gtk3.fixture_library import (  # noqa: E402
     FixtureLibraryTab,
 )
 
+from test.conftest import DATA_DIR  # noqa: E402 # isort: skip
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip
 
 
@@ -209,9 +210,7 @@ def test_fixture_library_tab_eos_import_display_and_apply(
     app_gui: Application, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
     """Verify FixtureLibraryTab shows Eos fixtures and Apply preserves patch."""
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    asc_path = DATA_DIR / "eos_show.asc"
 
     monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
 
@@ -417,11 +416,7 @@ def test_fixture_library_tab_import_gdtf_selects_profile(
     """Verify clicking GDTF imports, registers, and selects the imported profile."""
     if not HAS_PYGDTF:
         pytest.skip("pygdtf not installed")
-    gdtf_path = pathlib.Path(
-        "doc/Robe_Lighting@Robin_Arianne_6@2026-09-25_Control_channel_update.gdtf"
-    )
-    if not gdtf_path.exists():
-        pytest.skip(f"{gdtf_path} not present")
+    gdtf_path = DATA_DIR / "sample_rgbl_moving_head.gdtf"
 
     monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
     monkeypatch.setattr(
@@ -445,12 +440,12 @@ def test_fixture_library_tab_import_gdtf_selects_profile(
             (row[COL_CAT_MANUFACTURER], row[COL_CAT_MODEL])
             for row in fixtures_tab.cat_store
         }
-        assert ("Robe Lighting", "Robin Arianne 6") in cat_keys
+        assert ("OpenLighting", "Test RGBL Wash") in cat_keys
 
         active = fixtures_tab.active_definition
         assert active is not None
-        assert active.manufacturer == "Robe Lighting"
-        assert active.model == "Robin Arianne 6"
+        assert active.manufacturer == "OpenLighting"
+        assert active.model == "Test RGBL Wash"
         assert len(active.dmx_modes) == 3
 
         assert len(fixtures_tab.emitters_store) == 4

@@ -25,6 +25,7 @@ from olc.core.app import CoreApplication
 from olc.show.cue import Cue
 from olc.show.fader import FaderType
 from olc.show.group import Group
+from test.conftest import DATA_DIR
 
 
 def test_show_new_resets_show_state() -> None:
@@ -158,7 +159,7 @@ def test_show_open_ascii() -> None:
     loaded_events: list[str] = []
     app.subscribe("show.loaded", loaded_events.append)
 
-    app.action_registry.execute("show.open", "test/fixtures/sample.asc")
+    app.action_registry.execute("show.open", str(DATA_DIR / "sample.asc"))
 
     assert len(loaded_events) == 1
     assert app.lightshow.basename == "sample.asc"
@@ -283,7 +284,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     )
 
     # Import sample file
-    app.action_registry.execute("show.import", "test/fixtures/sample.asc")
+    app.action_registry.execute("show.import", str(DATA_DIR / "sample.asc"))
 
     assert len(imported_events) == 1
     assert app.lightshow.modified is True
@@ -325,7 +326,7 @@ def test_show_import_partial_options() -> None:
         "faders": "IGNORE",
         "midi": "IGNORE",
     }
-    app.action_registry.execute("show.import", "test/fixtures/sample.asc", options)
+    app.action_registry.execute("show.import", str(DATA_DIR / "sample.asc"), options)
 
     # Patch should NOT have changed because of IGNORE
     assert app.lightshow.patch.get_output_info(1, 47) == (42, 0)
@@ -461,7 +462,7 @@ def test_show_new_and_open_reset_home_preset_and_title(tmp_path: pathlib.Path) -
     # Opening an ASCII file without $$HOMEPRESET resets prior home_preset and title
     app.lightshow.title = "Previous Show"
     app.lightshow.home_preset = 888.0
-    app.action_registry.execute("show.open", "test/fixtures/sample.asc")
+    app.action_registry.execute("show.open", str(DATA_DIR / "sample.asc"))
     assert app.lightshow.title == ""
     assert app.lightshow.home_preset is None
 

@@ -12,19 +12,16 @@ from gi.repository import Gio  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.show.lightshow import LightShow  # noqa: E402
+from test.conftest import DATA_DIR  # noqa: E402
 
-FILE_PATH = "test/fixtures/sample.asc"
+FILE_PATH = str(DATA_DIR / "sample.asc")
 gfile = Gio.File.new_for_path(FILE_PATH)
 
 
-@pytest.fixture(scope="module", name="_base_nocturne_imported")
-def base_nocturne_imported_fixture() -> tuple[LightShow, ImportFile]:
-    """Import doc/00  Base  Nocturne.asc once for read-only verification tests."""
-    import pathlib
-
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+@pytest.fixture(scope="module", name="_eos_show_imported")
+def eos_show_imported_fixture() -> tuple[LightShow, ImportFile]:
+    """Import test/data/eos_show.asc once for read-only verification tests."""
+    asc_path = DATA_DIR / "eos_show.asc"
 
     lightshow = LightShow()
     imported = ImportFile(
@@ -145,11 +142,11 @@ EndData
     assert lightshow.chasers[0].type_seq == "Normal"
 
 
-def test_import_eos_base_nocturne_cuelists_and_labels(
-    _base_nocturne_imported: tuple[LightShow, ImportFile],
+def test_import_eos_show_cuelists_and_labels(
+    _eos_show_imported: tuple[LightShow, ImportFile],
 ) -> None:
-    """Verify doc/00  Base  Nocturne.asc splits 3 CueLists without cue collisions."""
-    _lightshow, imported = _base_nocturne_imported
+    """Verify eos_show.asc splits 3 CueLists without cue collisions."""
+    _lightshow, imported = _eos_show_imported
 
     seqs = imported.data.data["sequences"]
     assert set(seqs.keys()) == {1, 2, 3}
@@ -255,11 +252,11 @@ EndData
     assert cue1.device_values[2]["color"] == "#ff0080"
 
 
-def test_import_eos_base_nocturne_devices_and_params(
-    _base_nocturne_imported: tuple[LightShow, ImportFile],
+def test_import_eos_show_devices_and_params(
+    _eos_show_imported: tuple[LightShow, ImportFile],
 ) -> None:
-    """Verify doc/00  Base  Nocturne.asc imports all moving/LED devices and $$Param."""
-    lightshow, _imported = _base_nocturne_imported
+    """Verify eos_show.asc imports all moving/LED devices and $$Param."""
+    lightshow, _imported = _eos_show_imported
 
     # Moving heads 1..5 (Ghibli / Diablo), LEDs 41.., conventionals (21.., 31.., 60)
     for ch in (1, 2, 3, 4, 5, 21, 31, 41, 60):
@@ -410,18 +407,14 @@ def test_import_legacy_ascii_groups_and_faders_migration(
     assert lightshow.fader_bank.faders[2][10].contents is preset104
 
 
-def test_import_eos_base_nocturne_groups_curves_and_faders(
+def test_import_eos_show_groups_curves_and_faders(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Verify doc/00  Base  Nocturne.asc imports $Group, $Curve, and $FaderDef."""
-    import pathlib
-
+    """Verify eos_show.asc imports $Group, $Curve, and $FaderDef."""
     from olc.show.fader import FaderType
     from olc.show.palette import PaletteCategory
 
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    asc_path = DATA_DIR / "eos_show.asc"
 
     mock_app = MagicMock()
     monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
@@ -483,7 +476,7 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     # $Patch dimmer labels (Text) & $$Options P (flip Pan on Diablo ch 4)
     for ch in range(21, 27):
         dev = lightshow.patch.get_device(ch)
-        assert dev is not None and dev.label == "PAR Rosace"
+        assert dev is not None and dev.label == f"Patch {ch}"
     dev4 = lightshow.patch.get_device(4)
     assert dev4 is not None
     pan4 = dev4.get_channel(ChannelType.PAN)
@@ -529,16 +522,16 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     # Mixed effect Sub 20 mounted on fader (3, 4) keeps base_channels & text
     fader34 = lightshow.fader_bank.faders[3][4]
     assert isinstance(fader34, FaderEffect)
-    assert fader34.text == "chaser PAR horaire"
+    assert fader34.text == "Sub 20"
     assert fader34.base_channels == {ch: pytest.approx(1.0) for ch in range(21, 27)}
 
     # Unmounted static Subs promoted to Presets (Option A); pure-effect Sub 200 skipped
     for pnum, label in (
-        (1.0, "All Move"),
-        (2.0, "Flash photo"),
-        (3.0, "Led chaud"),
+        (1.0, "Sub 1"),
+        (2.0, "Sub 2"),
+        (3.0, "Sub 3"),
         (50.0, "Sub 50"),
-        (901.0, "services"),
+        (901.0, "Sub 901"),
     ):
         preset = lightshow.palettes.get(PaletteCategory.PRESET, pnum)
         assert preset is not None and preset.text == label
@@ -548,7 +541,7 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
     from olc.show.effect import EffectEnvelopeMode
     from olc.show.fader import FaderPreset
 
-    assert lightshow.title == "00  Base  Nocturne"
+    assert lightshow.title == "OLC Anonymized Eos Show"
     assert lightshow.home_preset == pytest.approx(999.0)
     assert lightshow.main_playback.mib_enabled is True
     all_seqs = [lightshow.main_playback, *lightshow.sequences]
@@ -583,7 +576,7 @@ def test_import_eos_base_nocturne_groups_curves_and_faders(
 
     fader_sub900 = lightshow.fader_bank.faders[1][6]
     assert isinstance(fader_sub900, FaderPreset)
-    assert fader_sub900.text == "Gradin"
+    assert fader_sub900.text == "Sub 900"
     assert fader_sub900.exempt_grand_master is True
     fader_sub6 = lightshow.fader_bank.faders[1][1]
     assert isinstance(fader_sub6, FaderPreset)
@@ -901,14 +894,14 @@ EndData
     assert cue2.device_values[1]["frost"] == pytest.approx(0.25)
 
 
-def test_import_eos_base_nocturne_palettes_and_refs(
-    _base_nocturne_imported: tuple[LightShow, ImportFile],
+def test_import_eos_show_palettes_and_refs(
+    _eos_show_imported: tuple[LightShow, ImportFile],
 ) -> None:
-    """Verify Base Nocturne imports palettes and resolves Cue/Preset refs."""
+    """Verify eos_show.asc imports palettes and resolves Cue/Preset refs."""
     from olc.show.fader import FaderType
     from olc.show.palette import PaletteCategory
 
-    lightshow, _imported = _base_nocturne_imported
+    lightshow, _imported = _eos_show_imported
 
     # Palette counts
     assert len(lightshow.palettes.list_by_category(PaletteCategory.COLOR)) == 26
@@ -920,7 +913,7 @@ def test_import_eos_base_nocturne_palettes_and_refs(
 
     # CP106 (L106)
     cp106 = lightshow.palettes.get(PaletteCategory.COLOR, 106.0)
-    assert cp106 is not None and cp106.text == "L106"
+    assert cp106 is not None and cp106.text == "ColorPalette 106"
     assert cp106.device_values[1]["color"] == "#ff0000"
     assert cp106.device_values[41]["color"] == "#ff0700"
 
@@ -1098,17 +1091,13 @@ EndData
     assert unpatched.default_mode().channel_defs[3].label == "param_48"
 
 
-def test_import_eos_base_nocturne_fixture_library(
+def test_import_eos_show_fixture_library(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Verify Base Nocturne populates fixture_library cleanly (Scenario B)."""
-    import pathlib
-
+    """Verify eos_show.asc populates fixture_library cleanly (Scenario B)."""
     from olc.devices.channel import ChannelType
 
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    asc_path = DATA_DIR / "eos_show.asc"
 
     mock_app = MagicMock()
     monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
@@ -1314,13 +1303,13 @@ EndData
     assert chans[6].ranges[1].physical_max == 10.0
 
 
-def test_import_eos_base_nocturne_slots_units_notes_and_inversions(
-    _base_nocturne_imported: tuple[LightShow, ImportFile],
+def test_import_eos_show_slots_units_notes_and_inversions(
+    _eos_show_imported: tuple[LightShow, ImportFile],
 ) -> None:
-    """Verify doc/00  Base  Nocturne.asc preserves case, slots, units, notes."""
+    """Verify eos_show.asc preserves case, slots, units, notes."""
     import itertools
 
-    lightshow, _imported = _base_nocturne_imported
+    lightshow, _imported = _eos_show_imported
 
     # Exact case preserved
     ghibli = lightshow.fixture_library.get("Ayrton", "Ghibli_Extended")
@@ -1626,11 +1615,11 @@ $CueList 1""",
     assert fader.effect_channels == [22, 21]
 
 
-def test_import_eos_base_nocturne_effects(
-    _base_nocturne_imported: tuple[LightShow, ImportFile],
+def test_import_eos_show_effects(
+    _eos_show_imported: tuple[LightShow, ImportFile],
 ) -> None:
-    """Verify doc/00  Base  Nocturne.asc imports its 34 effects and cue refs."""
-    lightshow, _imported = _base_nocturne_imported
+    """Verify eos_show.asc imports its 34 effects and cue refs."""
+    lightshow, _imported = _eos_show_imported
 
     assert len(lightshow.effects) == 34
     circle = lightshow.effects.get(901.0)
@@ -2477,11 +2466,11 @@ def test_ascii_writer_section_6_3_and_6_4_roundtrip(
     assert rfx6.layers[0].size == pytest.approx(-5.0)
 
 
-def test_eos_base_nocturne_dmx_fidelity_and_bkgrd_effects(
+def test_eos_show_dmx_fidelity_and_bkgrd_effects(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: object,
 ) -> None:
-    """Verify 0 DMX mismatch across Base Nocturne and Bkgrd ceiling on Abs effects."""
+    """Verify 0 DMX mismatch across eos_show.asc and Bkgrd ceiling on Abs effects."""
     import pathlib
     import typing
     from types import SimpleNamespace
@@ -2495,9 +2484,7 @@ def test_eos_base_nocturne_dmx_fidelity_and_bkgrd_effects(
     from olc.files.ascii.writer import AsciiWriter
     from olc.show.palette import PaletteCategory
 
-    asc_path = pathlib.Path("doc/00  Base  Nocturne.asc")
-    if not asc_path.exists():
-        pytest.skip("doc/00  Base  Nocturne.asc not present")
+    asc_path = DATA_DIR / "eos_show.asc"
     assert isinstance(tmp_path, pathlib.Path)
 
     mock_app = MagicMock()

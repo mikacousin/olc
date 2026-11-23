@@ -147,12 +147,39 @@ def test_legacy_show_open_in_gui_applies_default_workspace(
     assert app_gui.tabs.tabs.get("cues") is None
 
 
-def test_show_with_paned_positions_opens_cleanly(app_gui: Application) -> None:
+def test_show_with_paned_positions_opens_cleanly(
+    app_gui: Application,
+    tmp_path: pathlib.Path,
+) -> None:
     """Test that opening a show with saved paned_positions succeeds cleanly."""
     assert app_gui.window is not None
 
-    # Open doc/b.olc (which contains paned_positions in its workspace dictionary)
-    app_gui.core.action_registry.execute("show.open", "doc/b.olc")
+    paned_file = tmp_path / "paned_positions.olc"
+    data = {
+        "application": "olc",
+        "version": "0.12.beta",
+        "patch": {},
+        "sequences": {},
+        "cues": {},
+        "workspace": {
+            "version": 1,
+            "active_pane": "playback",
+            "panes": {
+                "live": {"tabs": ["channels"], "active_tab": "channels"},
+                "playback": {"tabs": ["playback"], "active_tab": "playback"},
+            },
+            "paned_positions": {"horizontal": 1048, "vertical_live": 901},
+            "tab_settings": {
+                "channels": {"view_mode": "Patched"},
+                "groups": {"view_mode": "Patched"},
+            },
+            "virtual_console": {"open": False},
+        },
+    }
+    with gzip.open(str(paned_file), "wb") as f:
+        f.write(json.dumps(data).encode("utf-8"))
+
+    app_gui.core.action_registry.execute("show.open", str(paned_file))
     process_events()
 
     # Verify that settings from workspace are loaded cleanly and without error
