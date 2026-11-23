@@ -155,7 +155,7 @@ class FaderBridgeHandler(BaseEventBridgeHandler):
                 vc.faders[index - 1].set_value(round(fader.level * 255))
             finally:
                 vc.updating_fader = False
-            vc.flashes[index - 1].label = fader.text
+            vc.flashes[index - 1].label = vc.format_fader_flash_label(fader)
             vc.flashes[index - 1].queue_draw()
         return False
 

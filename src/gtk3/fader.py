@@ -21,10 +21,12 @@ from gi.repository import Gtk
 
 from olc.show.fader import (
     FaderEffect,
+    FaderEffectMaster,
     FaderMain,
     FaderPreset,
     FaderSequence,
     FaderType,
+    speed_bpm_to_fader_level,
 )
 from olc.show.palette import PaletteCategory
 
@@ -99,6 +101,7 @@ class FaderEdit(Gtk.Box):
             (FaderType.PRESET, "Preset"),
             (FaderType.SEQUENCE, "Sequence"),
             (FaderType.EFFECT, "Effect"),
+            (FaderType.FX_MASTER, _("FX Master")),
             (FaderType.MAIN, "Main Fader"),
         ]
         self.type_button = Gtk.MenuButton()
@@ -121,6 +124,8 @@ class FaderEdit(Gtk.Box):
             self._fader_sequence()
         elif isinstance(fader, FaderEffect):
             self._fader_effect()
+        elif isinstance(fader, FaderEffectMaster):
+            self._fader_fx_master()
         elif isinstance(fader, FaderMain):
             self._fader_main()
         else:
@@ -282,6 +287,103 @@ class FaderEdit(Gtk.Box):
         self.effect_controls_box.add(self.effect_mode_button)
         self.effect_controls_box.add(self.effect_channels_button)
 
+    def _fader_fx_master(self) -> None:
+        """Create edition and live control UI for an FX Master fader."""
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
+        assert isinstance(fader, FaderEffectMaster)
+        self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
+        self.get_style_context().remove_class("empty")
+        self.type_button.set_label(_("FX Master"))
+
+        self.contents_button = Gtk.MenuButton()
+        vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
+        vbox.set_border_width(5)
+        master_choices: list[tuple[str, int, str]] = (
+            [("speed", i, f"Speed {i}") for i in range(1, 9)]
+            + [("rate", i, f"Rate {i}") for i in range(1, 5)]
+            + [("size", i, f"Size {i}") for i in range(1, 5)]
+        )
+        for m_kind, m_id, m_lbl in master_choices:
+            button = Gtk.ModelButton()
+            button.set_label(m_lbl)
+            button.connect(
+                "clicked",
+                self._on_contents_changed,
+                FaderType.FX_MASTER,
+                (m_kind, m_id),
+            )
+            vbox.add(button)
+        cur_lbl = fader.text or f"{fader.master_kind.capitalize()} {fader.master_id}"
+        self.contents_button.set_label(cur_lbl)
+        self._contents_popup(vbox)
+
+        self.effect_controls_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=4
+        )
+        app = self.lightshow.app
+        engine = getattr(app, "effects_engine", None) if app is not None else None
+        if fader.master_kind == "speed":
+            btn_tap = Gtk.Button(label=_("Tap"))
+            btn_half = Gtk.Button(label="/2")
+            btn_dbl = Gtk.Button(label="×2")
+            btn_freeze = Gtk.ToggleButton(label=_("Freeze"))
+            if engine is not None:
+                btn_freeze.set_active(engine.is_master_frozen("speed", fader.master_id))
+            btn_tap.connect("clicked", self._on_fx_master_tap, fader)
+            btn_half.connect("clicked", self._on_fx_master_scale, fader, 0.5)
+            btn_dbl.connect("clicked", self._on_fx_master_scale, fader, 2.0)
+            btn_freeze.connect("toggled", self._on_fx_master_freeze, fader)
+            for b in (btn_tap, btn_half, btn_dbl, btn_freeze):
+                self.effect_controls_box.pack_start(b, True, True, 0)
+        elif fader.master_kind == "rate":
+            btn_reset = Gtk.Button(label="1:1")
+            btn_freeze = Gtk.ToggleButton(label=_("Freeze"))
+            if engine is not None:
+                btn_freeze.set_active(engine.is_master_frozen("rate", fader.master_id))
+            btn_reset.connect("clicked", lambda _b: fader.set_level(0.5))
+            btn_freeze.connect("toggled", self._on_fx_master_freeze, fader)
+            self.effect_controls_box.pack_start(btn_reset, True, True, 0)
+            self.effect_controls_box.pack_start(btn_freeze, True, True, 0)
+        else:
+            btn_full = Gtk.Button(label="100%")
+            btn_zero = Gtk.Button(label="0%")
+            btn_full.connect("clicked", lambda _b: fader.set_level(1.0))
+            btn_zero.connect("clicked", lambda _b: fader.set_level(0.0))
+            self.effect_controls_box.pack_start(btn_full, True, True, 0)
+            self.effect_controls_box.pack_start(btn_zero, True, True, 0)
+
+    def _on_fx_master_tap(self, _widget: Gtk.Button, fader: FaderEffectMaster) -> None:
+        app = self.lightshow.app
+        engine = getattr(app, "effects_engine", None) if app is not None else None
+        if app is not None and engine is not None:
+            bpm = engine.tap_speed_master(fader.master_id)
+            if bpm is not None:
+                fader.level = speed_bpm_to_fader_level(bpm)
+                engine.tick()
+                app.emit("fader.changed", self.page, self.index)
+
+    def _on_fx_master_scale(
+        self, _widget: Gtk.Button, fader: FaderEffectMaster, factor: float
+    ) -> None:
+        app = self.lightshow.app
+        engine = getattr(app, "effects_engine", None) if app is not None else None
+        if app is not None and engine is not None:
+            bpm = engine.scale_speed_master(fader.master_id, factor)
+            fader.level = speed_bpm_to_fader_level(bpm)
+            engine.tick()
+            app.emit("fader.changed", self.page, self.index)
+
+    def _on_fx_master_freeze(
+        self, widget: Gtk.ToggleButton, fader: FaderEffectMaster
+    ) -> None:
+        app = self.lightshow.app
+        engine = getattr(app, "effects_engine", None) if app is not None else None
+        if engine is not None:
+            is_frozen = engine.is_master_frozen(fader.master_kind, fader.master_id)
+            if widget.get_active() != is_frozen:
+                engine.toggle_master_freeze(fader.master_kind, fader.master_id)
+                engine.tick()
+
     def _fader_preset(self) -> None:
         """Create edition of preset fader."""
         fader = self.lightshow.fader_bank.faders[self.page][self.index]
@@ -318,7 +420,7 @@ class FaderEdit(Gtk.Box):
         self,
         widget: Gtk.ModelButton,
         fader_type: FaderType,
-        contents: dict[int, int] | int | float | None,
+        contents: dict[int, int] | tuple[str, int] | int | float | None,
     ) -> None:
         """Fader contents has been changed
 
@@ -383,6 +485,8 @@ class FaderEdit(Gtk.Box):
             self._fader_sequence()
         elif fader_type == FaderType.EFFECT:
             self._fader_effect()
+        elif fader_type == FaderType.FX_MASTER:
+            self._fader_fx_master()
         self.add(self.contents_button)
         if self.effect_controls_box is not None:
             self.add(self.effect_controls_box)

@@ -750,6 +750,43 @@ class EffectsTab(Gtk.Box):
         spread_box.pack_start(self.phase_end_spin, False, False, 0)
         grid.attach(spread_box, 3, 4, 1, 1)
 
+        # Row 5: Speed Bus & Multiplier
+        grid.attach(Gtk.Label(label=_("Speed Bus:"), halign=Gtk.Align.END), 0, 5, 1, 1)
+        self.speed_master_combo = Gtk.ComboBoxText()
+        self.speed_master_combo.append("none", _("None"))
+        for idx in range(1, 9):
+            self.speed_master_combo.append(str(idx), f"Speed {idx}")
+        self.speed_master_combo.set_active_id("none")
+        self.speed_master_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.speed_master_combo, 1, 5, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("Mult:"), halign=Gtk.Align.END), 2, 5, 1, 1)
+        self.speed_mult_combo = Gtk.ComboBoxText()
+        for mult_str in ("0.25", "0.5", "1.0", "2.0", "4.0"):
+            self.speed_mult_combo.append(mult_str, f"×{mult_str}")
+        self.speed_mult_combo.set_active_id("1.0")
+        self.speed_mult_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.speed_mult_combo, 3, 5, 1, 1)
+
+        # Row 6: Rate Bus & Size Bus
+        grid.attach(Gtk.Label(label=_("Rate Bus:"), halign=Gtk.Align.END), 0, 6, 1, 1)
+        self.rate_master_combo = Gtk.ComboBoxText()
+        self.rate_master_combo.append("none", _("None"))
+        for idx in range(1, 5):
+            self.rate_master_combo.append(str(idx), f"Rate {idx}")
+        self.rate_master_combo.set_active_id("none")
+        self.rate_master_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.rate_master_combo, 1, 6, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("Size Bus:"), halign=Gtk.Align.END), 2, 6, 1, 1)
+        self.size_master_combo = Gtk.ComboBoxText()
+        self.size_master_combo.append("none", _("None"))
+        for idx in range(1, 5):
+            self.size_master_combo.append(str(idx), f"Size {idx}")
+        self.size_master_combo.set_active_id("none")
+        self.size_master_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.size_master_combo, 3, 6, 1, 1)
+
         top_hbox.pack_start(grid, False, False, 0)
 
         # Visualizer alongside properties
@@ -1000,6 +1037,10 @@ class EffectsTab(Gtk.Box):
             self.axis_spin,
             self.phase_start_spin,
             self.phase_end_spin,
+            self.speed_master_combo,
+            self.speed_mult_combo,
+            self.rate_master_combo,
+            self.size_master_combo,
             self.btn_add_layer,
             self.btn_remove_layer,
             self.layer_tree,
@@ -1029,6 +1070,25 @@ class EffectsTab(Gtk.Box):
             self.axis_spin.set_value(float(eff.axis_deg))
             self.phase_start_spin.set_value(float(eff.phase_start_deg))
             self.phase_end_spin.set_value(float(eff.phase_end_deg))
+            self.speed_master_combo.set_active_id(
+                str(eff.speed_master) if eff.speed_master is not None else "none"
+            )
+            mult_key = f"{float(eff.speed_multiplier):g}"
+            if mult_key == "1":
+                mult_key = "1.0"
+            elif mult_key == "2":
+                mult_key = "2.0"
+            elif mult_key == "4":
+                mult_key = "4.0"
+            self.speed_mult_combo.set_active_id(mult_key)
+            if self.speed_mult_combo.get_active_id() is None:
+                self.speed_mult_combo.set_active_id("1.0")
+            self.rate_master_combo.set_active_id(
+                str(eff.rate_master) if eff.rate_master is not None else "none"
+            )
+            self.size_master_combo.set_active_id(
+                str(eff.size_master) if eff.size_master is not None else "none"
+            )
 
             for idx, layer in enumerate(eff.layers):
                 self.layer_store.append(
@@ -1231,6 +1291,10 @@ class EffectsTab(Gtk.Box):
         dir_id = (
             self.direction_combo.get_active_id() or DistributeDirection.FORWARD.value
         )
+        sm_id = self.speed_master_combo.get_active_id() or "none"
+        rm_id = self.rate_master_combo.get_active_id() or "none"
+        sz_id = self.size_master_combo.get_active_id() or "none"
+        mult_str = self.speed_mult_combo.get_active_id() or "1.0"
         self.app.core.action_registry.execute(
             "effect.update",
             eff.number,
@@ -1241,6 +1305,10 @@ class EffectsTab(Gtk.Box):
             axis_deg=float(self.axis_spin.get_value()),
             phase_start_deg=float(self.phase_start_spin.get_value()),
             phase_end_deg=float(self.phase_end_spin.get_value()),
+            speed_master=int(sm_id) if sm_id != "none" else None,
+            speed_multiplier=float(mult_str),
+            rate_master=int(rm_id) if rm_id != "none" else None,
+            size_master=int(sz_id) if sz_id != "none" else None,
         )
         self.preview_area.queue_draw()
 

@@ -591,3 +591,55 @@ def test_fader_edit_fix_across_all_pages_and_virtual_console(
     finally:
         app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app_gui.core.history.clear()
+
+
+def test_fx_master_fader_tab_and_virtual_console_sync(app_gui: Application) -> None:
+    """Verify FX Master UI in FaderTab and live slider/label sync in VirtualConsole."""
+    from olc.gtk3.fader import FaderTab
+    from olc.show.fader import FaderEffectMaster, FaderType
+
+    app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app_gui.activate_action("faders", None)
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fader_tab = app_gui.tabs.tabs.get("faders")
+    assert isinstance(fader_tab, FaderTab)
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    try:
+        app_gui.core.action_registry.execute(
+            "fader.assign", 1, 1, FaderType.FX_MASTER, ("speed", 1)
+        )
+        process_events()
+
+        fader = app_gui.core.lightshow.fader_bank.faders[1][1]
+        assert isinstance(fader, FaderEffectMaster)
+        assert fader.master_kind == "speed"
+        assert fader.master_id == 1
+
+        fader_edit = fader_tab.fader_widgets.get((1, 1))
+        assert fader_edit is not None
+        assert fader_edit.effect_controls_box is not None
+        assert "120 BPM" in vc.flashes[0].label
+
+        # Scale x2 -> 240 BPM updates slider to 255 and flash label to 240 BPM
+        app_gui.core.effects_engine.scale_speed_master(1, 2.0)
+        process_events()
+        assert vc.faders[0].get_value() == pytest.approx(255.0, abs=1.0)
+        assert "240 BPM" in vc.flashes[0].label
+
+        # Freeze -> label shows FROZEN
+        app_gui.core.effects_engine.toggle_master_freeze("speed", 1)
+        process_events()
+        assert "FROZEN" in vc.flashes[0].label
+
+        # Unfreeze for clean teardown
+        app_gui.core.effects_engine.toggle_master_freeze("speed", 1)
+        vc.close()
+        process_events()
+    finally:
+        app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app_gui.core.history.clear()

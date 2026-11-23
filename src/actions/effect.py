@@ -290,9 +290,13 @@ class EffectUpdateAction(Action):
             "axis_deg",
             "phase_start_deg",
             "phase_end_deg",
+            "speed_multiplier",
         ):
             if key in self.changes and self.changes[key] is not None:
                 setattr(eff, key, self.changes[key])
+        for nullable_key in ("speed_master", "rate_master", "size_master"):
+            if nullable_key in self.changes:
+                setattr(eff, nullable_key, self.changes[nullable_key])
         if "layers" in self.changes and isinstance(self.changes["layers"], list):
             eff.layers = [
                 item if isinstance(item, EffectLayer) else EffectLayer.from_dict(item)

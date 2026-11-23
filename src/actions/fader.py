@@ -21,7 +21,7 @@ from gettext import gettext as _
 
 from olc.core.action import Action
 from olc.define import MAX_ALLOWED_FADER_PAGES, MAX_FADER_PAGE
-from olc.show.fader import FaderEffect, FaderType
+from olc.show.fader import FaderEffect, FaderEffectMaster, FaderType
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -29,8 +29,8 @@ if typing.TYPE_CHECKING:
 
 def _get_fader_contents_number(
     app: CoreApplication, page: int, index: int
-) -> float | None:
-    """Return the numeric identifier of the current fader contents, or None.
+) -> float | tuple[str, int] | None:
+    """Return the identifier of the current fader contents, or None.
 
     Args:
         app: Core application instance.
@@ -38,9 +38,11 @@ def _get_fader_contents_number(
         index: Fader index within the page.
 
     Returns:
-        Float identifier (preset.number, cue.number, chaser.index) or None.
+        Float identifier, ``(master_kind, master_id)`` tuple, or None.
     """
     fader = app.lightshow.fader_bank.faders[page][index]
+    if isinstance(fader, FaderEffectMaster):
+        return (fader.master_kind, fader.master_id)
     contents = getattr(fader, "contents", None)
     if contents is None:
         return None
@@ -75,9 +77,9 @@ class FaderAssignAction(Action):
         self.page: int = 1
         self.index: int = 1
         self.new_type: FaderType = FaderType.NONE
-        self.new_contents: float | None = None
+        self.new_contents: float | tuple[str, int] | None = None
         self.old_type: FaderType = FaderType.NONE
-        self.old_contents: float | None = None
+        self.old_contents: float | tuple[str, int] | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
         self.old_fixed_source: int | None = None
@@ -87,7 +89,7 @@ class FaderAssignAction(Action):
         page: int,
         index: int,
         fader_type: FaderType,
-        contents: float | None = None,
+        contents: float | tuple[str, int] | None = None,
     ) -> None:
         """Configure the fader assignment.
 
@@ -171,7 +173,7 @@ class FaderClearAction(Action):
         self.page: int = 1
         self.index: int = 1
         self.old_type: FaderType = FaderType.NONE
-        self.old_contents: float | None = None
+        self.old_contents: float | tuple[str, int] | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
         self.old_fixed_source: int | None = None

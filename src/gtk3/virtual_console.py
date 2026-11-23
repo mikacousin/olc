@@ -29,6 +29,14 @@ from olc.gtk3.widgets.go import GoWidget
 from olc.gtk3.widgets.knob import KnobWidget
 from olc.gtk3.widgets.pause import PauseWidget
 from olc.gtk3.widgets.toggle import ToggleWidget
+from olc.show.fader import (
+    Fader,
+    FaderEffectMaster,
+    fader_level_to_rate_scale,
+    fader_level_to_speed_bpm,
+    rate_scale_to_fader_level,
+    speed_bpm_to_fader_level,
+)
 from olc.show.independent import IndependentType
 
 if typing.TYPE_CHECKING:
@@ -510,8 +518,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.flashes[i].text = text
         fader_bank = self.app.core.lightshow.fader_bank
         for fader in fader_bank.iter_page_faders():
-            # Flash with fader name
-            self.flashes[fader.index - 1].label = fader.text
+            # Flash with fader name (or live FX Master telemetry)
+            self.flashes[fader.index - 1].label = self.format_fader_flash_label(fader)
             # Fader at fader level
             level = round(fader.level * 255)
             self.faders[fader.index - 1].set_value(level)
@@ -546,6 +554,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.app.core.subscribe("commandline.changed", self._on_commandline_changed)
         self.app.core.subscribe("park.changed", self._on_park_changed)
         self.app.core.subscribe("history.changed", self._on_history_changed)
+        self.app.core.subscribe("effect.master_changed", self._on_effect_master_changed)
         self.update_button_sensitivity()
         if (
             hasattr(self.app.core, "lightshow")
@@ -655,6 +664,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.app.core.unsubscribe("commandline.changed", self._on_commandline_changed)
         self.app.core.unsubscribe("park.changed", self._on_park_changed)
         self.app.core.unsubscribe("history.changed", self._on_history_changed)
+        self.app.core.unsubscribe(
+            "effect.master_changed", self._on_effect_master_changed
+        )
         self.app.virtual_console = None
         return False
 
@@ -858,8 +870,81 @@ class VirtualConsoleWindow(Gtk.Window):
             self.faders[fader.index - 1].text = text
             val = round(fader.level * 255)
             self.faders[fader.index - 1].set_value(val)
-            self.flashes[fader.index - 1].label = fader.text
+            self.flashes[fader.index - 1].label = self.format_fader_flash_label(fader)
             self.flashes[fader.index - 1].queue_draw()
+
+    def format_fader_flash_label(self, fader: Fader) -> str:
+        """Format flash label with live BPM/Rate/Size telemetry for FX Masters."""
+        if not isinstance(fader, FaderEffectMaster):
+            return fader.text
+        engine = getattr(self.app.core, "effects_engine", None)
+        if fader.master_kind == "speed":
+            bpm = (
+                engine.get_speed_master_bpm(fader.master_id)
+                if engine is not None
+                else fader_level_to_speed_bpm(fader.level)
+            )
+            frozen = (
+                engine.is_master_frozen("speed", fader.master_id)
+                if engine is not None
+                else False
+            )
+            if frozen or bpm <= 0.0:
+                return f"{fader.text}\nFROZEN"
+            return f"{fader.text}\n{bpm:.0f} BPM"
+        if fader.master_kind == "rate":
+            rate = (
+                engine.get_rate_master(fader.master_id)
+                if engine is not None
+                else fader_level_to_rate_scale(fader.level)
+            )
+            frozen = (
+                engine.is_master_frozen("rate", fader.master_id)
+                if engine is not None
+                else False
+            )
+            if frozen or rate <= 0.0:
+                return f"{fader.text}\nFROZEN"
+            return f"{fader.text}\n×{rate:.2f}"
+        sz = (
+            engine.get_size_master(fader.master_id)
+            if engine is not None
+            else fader.level
+        )
+        return f"{fader.text}\n{round(sz * 100)}%"
+
+    def _on_effect_master_changed(
+        self, kind: str, master_id: int, _value: float
+    ) -> None:
+        """Sync VirtualConsole fader sliders and labels when an FX Master changes."""
+        fader_bank = self.app.core.lightshow.fader_bank
+        engine = getattr(self.app.core, "effects_engine", None)
+        if engine is None:
+            return
+        for fader in fader_bank.iter_page_faders():
+            if (
+                isinstance(fader, FaderEffectMaster)
+                and fader.master_kind == kind
+                and fader.master_id == master_id
+            ):
+                if kind == "speed":
+                    lvl = speed_bpm_to_fader_level(
+                        engine.get_speed_master_bpm(master_id)
+                    )
+                elif kind == "rate":
+                    lvl = rate_scale_to_fader_level(engine.get_rate_master(master_id))
+                else:
+                    lvl = engine.get_size_master(master_id)
+                fader.level = lvl
+                self.updating_fader = True
+                try:
+                    self.faders[fader.index - 1].set_value(round(lvl * 255))
+                finally:
+                    self.updating_fader = False
+                self.flashes[fader.index - 1].label = self.format_fader_flash_label(
+                    fader
+                )
+                self.flashes[fader.index - 1].queue_draw()
 
     def _on_time(self, _widget: Gtk.Widget) -> None:
         """Time button"""
@@ -1463,19 +1548,69 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             self.app.core.action_registry.execute("commandline.append_char", ".")
 
-    def _flash_on(self, widget: Gtk.Widget, _event: Gdk.Event) -> None:
+    def _flash_on(self, widget: Gtk.Widget, event: Gdk.Event) -> None:
         """Flash button pressed
 
         Args:
             widget: Button clicked
+            event: GDK button event
         """
         if not self.is_learning_midi:
             for index, flash in enumerate(self.flashes):
                 if flash == widget:
                     fader_bank = self.app.core.lightshow.fader_bank
+                    fader = fader_bank.faders[fader_bank.active_page][index + 1]
+                    if getattr(event, "button", 1) == 3 and isinstance(
+                        fader, FaderEffectMaster
+                    ):
+                        self._show_fx_master_popover(widget, fader)
+                        return
                     self.app.core.action_registry.execute(
                         "fader.flash", fader_bank.active_page, index + 1, True
                     )
+
+    def _show_fx_master_popover(
+        self, widget: Gtk.Widget, fader: FaderEffectMaster
+    ) -> None:
+        """Open a quick context popover (/2, x2, Freeze, 1:1) on right-click."""
+        engine = getattr(self.app.core, "effects_engine", None)
+        if engine is None:
+            return
+        popover = Gtk.Popover.new(widget)
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        vbox.set_border_width(4)
+        if fader.master_kind == "speed":
+            for lbl, factor in (("/2", 0.5), ("×2", 2.0)):
+                btn = Gtk.ModelButton()
+                btn.set_label(lbl)
+                btn.connect(
+                    "clicked",
+                    lambda _b, f=factor: (
+                        engine.scale_speed_master(fader.master_id, f),
+                        engine.tick(),
+                    ),
+                )
+                vbox.add(btn)
+        if fader.master_kind in ("speed", "rate"):
+            frozen = engine.is_master_frozen(fader.master_kind, fader.master_id)
+            btn_frz = Gtk.ModelButton()
+            btn_frz.set_label("Unfreeze" if frozen else "Freeze")
+            btn_frz.connect(
+                "clicked",
+                lambda _b: (
+                    engine.toggle_master_freeze(fader.master_kind, fader.master_id),
+                    engine.tick(),
+                ),
+            )
+            vbox.add(btn_frz)
+        if fader.master_kind == "rate":
+            btn_rst = Gtk.ModelButton()
+            btn_rst.set_label("Reset 1:1")
+            btn_rst.connect("clicked", lambda _b: fader.set_level(0.5))
+            vbox.add(btn_rst)
+        vbox.show_all()
+        popover.add(vbox)
+        popover.popup()
 
     def _flash_off(self, widget: Gtk.Widget, _event: Gdk.Event) -> None:
         """Flash button released

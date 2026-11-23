@@ -272,3 +272,40 @@ def test_channels_view_displays_fx_badges_in_compact_summary_and_table(
     app_gui.core.action_registry.execute("effect.stop")
     channels_view.set_display_format("Compact")
     process_events()
+
+
+def test_effects_tab_master_bus_selectors(app_gui: Application) -> None:
+    """Verify Speed/Rate/Size Master bus selectors in EffectsTab."""
+    ls = app_gui.core.lightshow
+    ls.effects.clear()
+
+    app_gui.activate_action("effects", None)
+    process_events()
+    assert app_gui.tabs is not None
+    fx_tab = app_gui.tabs.tabs.get("effects")
+    assert isinstance(fx_tab, EffectsTab)
+
+    eff = fx_tab.create_effect(1.0, template_id="sine_dimmer")
+    fx_tab.select_effect(1.0)
+    process_events()
+
+    fx_tab.speed_master_combo.set_active_id("2")
+    fx_tab.speed_mult_combo.set_active_id("0.5")
+    fx_tab.rate_master_combo.set_active_id("1")
+    fx_tab.size_master_combo.set_active_id("3")
+    process_events()
+
+    assert eff.speed_master == 2
+    assert eff.speed_multiplier == pytest.approx(0.5)
+    assert eff.rate_master == 1
+    assert eff.size_master == 3
+
+    # Clearing back to "none" sets master fields to None
+    fx_tab.speed_master_combo.set_active_id("none")
+    fx_tab.rate_master_combo.set_active_id("none")
+    fx_tab.size_master_combo.set_active_id("none")
+    process_events()
+
+    assert eff.speed_master is None
+    assert eff.rate_master is None
+    assert eff.size_master is None
