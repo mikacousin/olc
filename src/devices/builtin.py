@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from .color import profile_from_emitters
+from .color import default_cmy_profile, profile_from_emitters
 from .device import ChannelType, FixtureType
 from .fixture import (
     ChannelDefinition,
@@ -334,6 +334,68 @@ def create_moving_head_definition() -> FixtureDefinition:
     )
 
 
+def create_cmy_definition() -> FixtureDefinition:
+    """Create a generic subtractive CMY(+CTO) moving head spot definition."""
+    base_channels = [
+        ChannelDefinition(
+            ChannelType.INTENSITY,
+            offset=0,
+            label="Dimmer",
+            default_value=0,
+            highlight_value=255,
+        ),
+        ChannelDefinition(
+            ChannelType.CYAN,
+            offset=1,
+            label="Cyan",
+            default_value=0,
+            highlight_value=0,
+        ),
+        ChannelDefinition(
+            ChannelType.MAGENTA,
+            offset=2,
+            label="Magenta",
+            default_value=0,
+            highlight_value=0,
+        ),
+        ChannelDefinition(
+            ChannelType.YELLOW,
+            offset=3,
+            label="Yellow",
+            default_value=0,
+            highlight_value=0,
+        ),
+    ]
+    mode_cmy = DmxModeDefinition(
+        name="CMY 4ch",
+        channel_defs=list(base_channels),
+        description="Standard 4-channel subtractive CMY spot (Dimmer + C/M/Y)",
+    )
+    mode_cmy_cto = DmxModeDefinition(
+        name="CMY+CTO 5ch",
+        channel_defs=list(base_channels)
+        + [
+            ChannelDefinition(
+                ChannelType.COLOR_TEMP,
+                offset=4,
+                label="CTO",
+                default_value=0,
+                highlight_value=0,
+            )
+        ],
+        description="5-channel subtractive CMY+CTO spot (Dimmer + C/M/Y + CTO)",
+    )
+    return FixtureDefinition(
+        manufacturer="Generic",
+        model="CMY Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        dmx_modes=[mode_cmy, mode_cmy_cto],
+        color_profile=default_cmy_profile("Generic CMY Spot", include_cto=True),
+        notes="Generic subtractive CMY(+CTO) moving head spot",
+        is_builtin=True,
+    )
+
+
 def populate_builtin_library(
     library: FixtureLibrary | None = None,
 ) -> FixtureLibrary:
@@ -345,5 +407,6 @@ def populate_builtin_library(
     lib.register(create_rgbw_definition())
     lib.register(create_rgba_definition())
     lib.register(create_moving_head_definition())
+    lib.register(create_cmy_definition())
     load_user_fixtures(lib)
     return lib

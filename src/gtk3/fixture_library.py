@@ -24,7 +24,13 @@ from typing import Optional
 from gi.repository import GdkPixbuf, Gtk, Pango
 
 from olc.devices.channel import ChannelRange, ChannelType, MergeMode
-from olc.devices.color import EmitterProfile, FixtureColorProfile
+from olc.devices.color import (
+    CIExyY,
+    EmitterProfile,
+    FilterProfile,
+    FixtureColorProfile,
+    default_cmy_profile,
+)
 from olc.devices.device import FixtureType
 from olc.devices.fixture import (
     ChannelDefinition,
@@ -67,13 +73,14 @@ COL_RNG_MIN = 1
 COL_RNG_MAX = 2
 COL_RNG_SNAP = 3
 
-# Columns in Color Emitters TreeView
+# Columns in Color Emitters / Filters TreeView
 COL_EM_NAME = 0
 COL_EM_ATTR = 1
 COL_EM_X = 2
 COL_EM_Y = 3
 COL_EM_LUM = 4
 COL_EM_NM = 5
+COL_EM_GAMMA = 6
 
 
 class FixtureLibraryTab(Gtk.Box):
@@ -614,10 +621,30 @@ class FixtureLibraryTab(Gtk.Box):
         page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.lbl_color_info = Gtk.Label(
-            label=_("CIE 1931 xyY Color Calibration & Emitters"), xalign=0
+            label=_("CIE 1931 xyY Color Calibration"), xalign=0
         )
         self.lbl_color_info.set_ellipsize(Pango.EllipsizeMode.END)
         top_bar.pack_start(self.lbl_color_info, True, True, 0)
+
+        top_bar.pack_start(Gtk.Label(label=_("Mixing:")), False, False, 0)
+        self.combo_mixing_mode = Gtk.ComboBoxText()
+        self.combo_mixing_mode.append("additive", _("Additive (LED)"))
+        self.combo_mixing_mode.append("subtractive", _("Subtractive (CMY)"))
+        self.combo_mixing_mode.set_active_id("additive")
+        self.combo_mixing_mode.connect("changed", self._on_mixing_mode_changed)
+        top_bar.pack_start(self.combo_mixing_mode, False, False, 0)
+
+        self.btn_preset_cmy_cto = Gtk.Button(label=_("Preset CMY+CTO"))
+        self.btn_preset_cmy_cto.connect(
+            "clicked", lambda _b: self._apply_color_preset("cmy_cto")
+        )
+        top_bar.pack_end(self.btn_preset_cmy_cto, False, False, 0)
+
+        self.btn_preset_cmy = Gtk.Button(label=_("Preset CMY"))
+        self.btn_preset_cmy.connect(
+            "clicked", lambda _b: self._apply_color_preset("cmy")
+        )
+        top_bar.pack_end(self.btn_preset_cmy, False, False, 0)
 
         self.btn_preset_rgb = Gtk.Button(label=_("Preset sRGB"))
         self.btn_preset_rgb.connect(
@@ -636,7 +663,7 @@ class FixtureLibraryTab(Gtk.Box):
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(360)
 
-        # Left: Emitters Table
+        # Left: Emitters / Filters Table
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.emitters_store = Gtk.ListStore(
             str,  # COL_EM_NAME
@@ -645,18 +672,22 @@ class FixtureLibraryTab(Gtk.Box):
             float,  # COL_EM_Y
             float,  # COL_EM_LUM
             float,  # COL_EM_NM
+            float,  # COL_EM_GAMMA
         )
         self.emitters_tree = Gtk.TreeView(model=self.emitters_store)
         sel = self.emitters_tree.get_selection()
         sel.set_mode(Gtk.SelectionMode.SINGLE)
         sel.connect("changed", self._on_emitter_selection_changed)
 
+        self.col_em_name: Optional[Gtk.TreeViewColumn] = None
+        self.col_em_gamma: Optional[Gtk.TreeViewColumn] = None
         em_cols = [
             ("Emitter", COL_EM_NAME, 80),
             ("GDTF Attr", COL_EM_ATTR, 90),
             ("x", COL_EM_X, 45),
             ("y", COL_EM_Y, 45),
             ("Y", COL_EM_LUM, 45),
+            ("Gamma", COL_EM_GAMMA, 50),
         ]
         for title, idx, w in em_cols:
             renderer = Gtk.CellRendererText()
@@ -664,6 +695,11 @@ class FixtureLibraryTab(Gtk.Box):
             col.add_attribute(renderer, "text", idx)
             col.set_min_width(w)
             self.emitters_tree.append_column(col)
+            if idx == COL_EM_NAME:
+                self.col_em_name = col
+            elif idx == COL_EM_GAMMA:
+                col.set_visible(False)
+                self.col_em_gamma = col
 
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -682,7 +718,7 @@ class FixtureLibraryTab(Gtk.Box):
         left_box.pack_start(em_actions, False, False, 2)
         paned.pack1(left_box, True, True)
 
-        # Right: Emitter Inspector
+        # Right: Emitter / Filter Inspector
         insp_scroll = Gtk.ScrolledWindow()
         insp_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         insp_scroll.set_min_content_width(200)
@@ -693,9 +729,11 @@ class FixtureLibraryTab(Gtk.Box):
         insp_box.set_margin_top(4)
         insp_box.set_margin_bottom(4)
 
-        lbl_title = Gtk.Label(xalign=0)
-        lbl_title.set_markup("<b>" + _("Emitter Calibration") + "</b>")
-        insp_box.pack_start(lbl_title, False, False, 2)
+        self.lbl_em_inspector_title = Gtk.Label(xalign=0)
+        self.lbl_em_inspector_title.set_markup(
+            "<b>" + _("Emitter Calibration") + "</b>"
+        )
+        insp_box.pack_start(self.lbl_em_inspector_title, False, False, 2)
 
         grid = Gtk.Grid(column_spacing=6, row_spacing=4)
         grid.attach(Gtk.Label(label=_("Name:"), xalign=0), 0, 0, 1, 1)
@@ -704,22 +742,42 @@ class FixtureLibraryTab(Gtk.Box):
         self.entry_em_name.set_hexpand(True)
         grid.attach(self.entry_em_name, 1, 0, 1, 1)
 
-        grid.attach(Gtk.Label(label=_("CIE x:"), xalign=0), 0, 1, 1, 1)
+        grid.attach(Gtk.Label(label=_("GDTF Attr:"), xalign=0), 0, 1, 1, 1)
+        self.entry_em_attr = Gtk.Entry()
+        self.entry_em_attr.set_width_chars(10)
+        self.entry_em_attr.set_placeholder_text("ColorAdd_R / ColorSub_C / CTO")
+        grid.attach(self.entry_em_attr, 1, 1, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("CIE x:"), xalign=0), 0, 2, 1, 1)
         self.spin_em_x = Gtk.SpinButton.new_with_range(0.0, 1.0, 0.01)
         self.spin_em_x.set_digits(4)
-        grid.attach(self.spin_em_x, 1, 1, 1, 1)
+        grid.attach(self.spin_em_x, 1, 2, 1, 1)
 
-        grid.attach(Gtk.Label(label=_("CIE y:"), xalign=0), 0, 2, 1, 1)
+        grid.attach(Gtk.Label(label=_("CIE y:"), xalign=0), 0, 3, 1, 1)
         self.spin_em_y = Gtk.SpinButton.new_with_range(0.0, 1.0, 0.01)
         self.spin_em_y.set_digits(4)
-        grid.attach(self.spin_em_y, 1, 2, 1, 1)
+        grid.attach(self.spin_em_y, 1, 3, 1, 1)
 
-        grid.attach(Gtk.Label(label=_("Luminance (Y):"), xalign=0), 0, 3, 1, 1)
+        grid.attach(Gtk.Label(label=_("Luminance (Y):"), xalign=0), 0, 4, 1, 1)
         self.spin_em_lum = Gtk.SpinButton.new_with_range(0.0, 1000.0, 1.0)
         self.spin_em_lum.set_digits(1)
-        grid.attach(self.spin_em_lum, 1, 3, 1, 1)
+        grid.attach(self.spin_em_lum, 1, 4, 1, 1)
+
+        self.lbl_em_gamma = Gtk.Label(label=_("Gamma:"), xalign=0)
+        self.lbl_em_gamma.set_no_show_all(True)
+        grid.attach(self.lbl_em_gamma, 0, 5, 1, 1)
+        self.spin_em_gamma = Gtk.SpinButton.new_with_range(0.1, 5.0, 0.05)
+        self.spin_em_gamma.set_digits(2)
+        self.spin_em_gamma.set_value(1.0)
+        self.spin_em_gamma.set_no_show_all(True)
+        grid.attach(self.spin_em_gamma, 1, 5, 1, 1)
 
         insp_box.pack_start(grid, False, False, 4)
+
+        self.lbl_em_spectral = Gtk.Label(label="", xalign=0)
+        self.lbl_em_spectral.set_no_show_all(True)
+        self.lbl_em_spectral.set_ellipsize(Pango.EllipsizeMode.END)
+        insp_box.pack_start(self.lbl_em_spectral, False, False, 2)
 
         self.btn_update_em = Gtk.Button(label=_("Update Emitter"))
         self.btn_update_em.connect("clicked", self._on_update_emitter_clicked)
@@ -1038,23 +1096,81 @@ class FixtureLibraryTab(Gtk.Box):
         if len(self.ranges_store) > 0:
             self.ranges_tree.get_selection().select_path(Gtk.TreePath.new_first())
 
+    def _is_subtractive_profile(self) -> bool:
+        return (
+            self.active_definition is not None
+            and self.active_definition.color_profile is not None
+            and self.active_definition.color_profile.mixing_mode == "subtractive"
+        )
+
     def _refresh_color_emitters(self) -> None:
         self.emitters_store.clear()
-        if not self.active_definition or not self.active_definition.color_profile:
-            return
-        for em in self.active_definition.color_profile.emitters:
-            self.emitters_store.append(
-                [
-                    em.name,
-                    em.gdtf_attribute,
-                    float(em.cie.x),
-                    float(em.cie.y),
-                    float(em.cie.Y),
-                    float(em.dominant_wavelength),
-                ]
+        is_sub = self._is_subtractive_profile()
+
+        prev_updating = self._updating_ui
+        self._updating_ui = True
+        try:
+            self.combo_mixing_mode.set_active_id(
+                "subtractive" if is_sub else "additive"
             )
+        finally:
+            self._updating_ui = prev_updating
+
+        if self.col_em_name is not None:
+            self.col_em_name.set_title(_("Filter") if is_sub else _("Emitter"))
+        if self.col_em_gamma is not None:
+            self.col_em_gamma.set_visible(is_sub)
+        self.lbl_em_gamma.set_visible(is_sub)
+        self.spin_em_gamma.set_visible(is_sub)
+        self.lbl_em_spectral.set_visible(is_sub)
+        self.lbl_em_inspector_title.set_markup(
+            "<b>"
+            + (_("Filter Calibration") if is_sub else _("Emitter Calibration"))
+            + "</b>"
+        )
+        self.btn_add_em.set_label(_("+ Add Filter") if is_sub else _("+ Add Emitter"))
+        self.btn_del_em.set_label(
+            _("- Remove Filter") if is_sub else _("- Remove Emitter")
+        )
+        self.btn_update_em.set_label(
+            _("Update Filter") if is_sub else _("Update Emitter")
+        )
+
+        if not self.active_definition or not self.active_definition.color_profile:
+            self.lbl_em_spectral.set_text("")
+            return
+
+        prof = self.active_definition.color_profile
+        if is_sub:
+            for flt in prof.filters:
+                self.emitters_store.append(
+                    [
+                        flt.name,
+                        flt.gdtf_attribute,
+                        float(flt.cie.x),
+                        float(flt.cie.y),
+                        float(flt.cie.Y),
+                        0.0,
+                        float(flt.gamma),
+                    ]
+                )
+        else:
+            for em in prof.emitters:
+                self.emitters_store.append(
+                    [
+                        em.name,
+                        em.gdtf_attribute,
+                        float(em.cie.x),
+                        float(em.cie.y),
+                        float(em.cie.Y),
+                        float(em.dominant_wavelength),
+                        1.0,
+                    ]
+                )
         if len(self.emitters_store) > 0:
             self.emitters_tree.get_selection().select_path(Gtk.TreePath.new_first())
+        else:
+            self.lbl_em_spectral.set_text("")
 
     # -------------------------------------------------------------------------
     # Channel and Mode Manipulation Handlers
@@ -1249,8 +1365,37 @@ class FixtureLibraryTab(Gtk.Box):
                 rng.snap_value = int(self.spin_rng_snap.get_value())
                 self._load_channel_ranges(ch_def)
 
+    def _on_mixing_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
+        if self._updating_ui or not self.active_definition:
+            return
+        mode = combo.get_active_id() or "additive"
+        prof = self.active_definition.color_profile
+        if prof is None:
+            if mode == "subtractive":
+                self.active_definition.color_profile = default_cmy_profile(
+                    self.active_definition.full_name
+                )
+            else:
+                self.active_definition.color_profile = FixtureColorProfile(
+                    fixture_name=self.active_definition.full_name
+                )
+        else:
+            prof.mixing_mode = mode
+            if mode == "subtractive" and not prof.filters:
+                prof.filters = default_cmy_profile(
+                    self.active_definition.full_name
+                ).filters
+        self._refresh_color_emitters()
+
     def _apply_color_preset(self, preset: str) -> None:
         if not self.active_definition:
+            return
+        if preset in ("cmy", "cmy_cto"):
+            self.active_definition.color_profile = default_cmy_profile(
+                self.active_definition.full_name,
+                include_cto=(preset == "cmy_cto"),
+            )
+            self._refresh_color_emitters()
             return
         from olc.devices.builtin import (
             create_rgb_definition,
@@ -1260,26 +1405,47 @@ class FixtureLibraryTab(Gtk.Box):
         template = (
             create_rgbw_definition() if preset == "rgbw" else create_rgb_definition()
         )
-        self.active_definition.color_profile = template.color_profile
+        if template.color_profile is not None:
+            self.active_definition.color_profile = FixtureColorProfile.from_dict(
+                template.color_profile.to_dict()
+            )
+        else:
+            self.active_definition.color_profile = None
         self._refresh_color_emitters()
 
     def _on_add_emitter_clicked(self, _button: Gtk.Button) -> None:
         if not self.active_definition:
             return
-        name = self.entry_em_name.get_text().strip() or "Emitter"
+        is_sub = self._is_subtractive_profile()
+        name = self.entry_em_name.get_text().strip() or (
+            "Filter" if is_sub else "Emitter"
+        )
+        gdtf_attr = self.entry_em_attr.get_text().strip()
         x = float(self.spin_em_x.get_value())
         y = float(self.spin_em_y.get_value())
         lum = float(self.spin_em_lum.get_value())
-        from olc.devices.color import CIExyY
 
-        new_em = EmitterProfile(name=name, cie=CIExyY(x, y, lum))
-        if self.active_definition.color_profile is None:
-            self.active_definition.color_profile = FixtureColorProfile(
-                fixture_name=self.active_definition.full_name,
-                emitters=[new_em],
+        if is_sub:
+            gamma = float(self.spin_em_gamma.get_value())
+            new_flt = FilterProfile(
+                name=name,
+                cie=CIExyY(x, y, lum),
+                gdtf_attribute=gdtf_attr,
+                gamma=gamma,
             )
+            assert self.active_definition.color_profile is not None
+            self.active_definition.color_profile.filters.append(new_flt)
         else:
-            self.active_definition.color_profile.emitters.append(new_em)
+            new_em = EmitterProfile(
+                name=name, cie=CIExyY(x, y, lum), gdtf_attribute=gdtf_attr
+            )
+            if self.active_definition.color_profile is None:
+                self.active_definition.color_profile = FixtureColorProfile(
+                    fixture_name=self.active_definition.full_name,
+                    emitters=[new_em],
+                )
+            else:
+                self.active_definition.color_profile.emitters.append(new_em)
         self._refresh_color_emitters()
 
     def _on_delete_emitter_clicked(self, _button: Gtk.Button) -> None:
@@ -1292,9 +1458,14 @@ class FixtureLibraryTab(Gtk.Box):
             return
         path = model.get_path(tree_iter)
         if path:
-            em_idx = path.get_indices()[0]
-            if em_idx < len(self.active_definition.color_profile.emitters):
-                self.active_definition.color_profile.emitters.pop(em_idx)
+            idx = path.get_indices()[0]
+            prof = self.active_definition.color_profile
+            if self._is_subtractive_profile():
+                if idx < len(prof.filters):
+                    prof.filters.pop(idx)
+                    self._refresh_color_emitters()
+            elif idx < len(prof.emitters):
+                prof.emitters.pop(idx)
                 self._refresh_color_emitters()
 
     def _on_emitter_selection_changed(self, selection: Gtk.TreeSelection) -> None:
@@ -1302,13 +1473,32 @@ class FixtureLibraryTab(Gtk.Box):
         if tree_iter is None:
             return
         name = str(model.get_value(tree_iter, COL_EM_NAME))
+        attr = str(model.get_value(tree_iter, COL_EM_ATTR) or "")
         x = float(model.get_value(tree_iter, COL_EM_X))
         y = float(model.get_value(tree_iter, COL_EM_Y))
         lum = float(model.get_value(tree_iter, COL_EM_LUM))
+        gamma = float(model.get_value(tree_iter, COL_EM_GAMMA))
         self.entry_em_name.set_text(name)
+        self.entry_em_attr.set_text(attr)
         self.spin_em_x.set_value(x)
         self.spin_em_y.set_value(y)
         self.spin_em_lum.set_value(lum)
+        self.spin_em_gamma.set_value(gamma)
+
+        if self._is_subtractive_profile() and self.active_definition is not None:
+            prof = self.active_definition.color_profile
+            path = model.get_path(tree_iter)
+            if prof is not None and path is not None:
+                idx = path.get_indices()[0]
+                if idx < len(prof.filters):
+                    n_pts = len(prof.filters[idx].spectral_transmission)
+                    self.lbl_em_spectral.set_text(
+                        _("Spectral curve: %d pts") % n_pts
+                        if n_pts > 0
+                        else _("No spectral curve (CIE xyY fallback)")
+                    )
+        else:
+            self.lbl_em_spectral.set_text("")
 
     def _on_update_emitter_clicked(self, _button: Gtk.Button) -> None:
         model, tree_iter = self.emitters_tree.get_selection().get_selected()
@@ -1320,10 +1510,22 @@ class FixtureLibraryTab(Gtk.Box):
             return
         path = model.get_path(tree_iter)
         if path:
-            em_idx = path.get_indices()[0]
-            if em_idx < len(self.active_definition.color_profile.emitters):
-                em = self.active_definition.color_profile.emitters[em_idx]
+            idx = path.get_indices()[0]
+            prof = self.active_definition.color_profile
+            if self._is_subtractive_profile():
+                if idx < len(prof.filters):
+                    flt = prof.filters[idx]
+                    flt.name = self.entry_em_name.get_text().strip() or flt.name
+                    flt.gdtf_attribute = self.entry_em_attr.get_text().strip()
+                    flt.cie.x = float(self.spin_em_x.get_value())
+                    flt.cie.y = float(self.spin_em_y.get_value())
+                    flt.cie.Y = float(self.spin_em_lum.get_value())
+                    flt.gamma = float(self.spin_em_gamma.get_value())
+                    self._refresh_color_emitters()
+            elif idx < len(prof.emitters):
+                em = prof.emitters[idx]
                 em.name = self.entry_em_name.get_text().strip() or em.name
+                em.gdtf_attribute = self.entry_em_attr.get_text().strip()
                 em.cie.x = float(self.spin_em_x.get_value())
                 em.cie.y = float(self.spin_em_y.get_value())
                 em.cie.Y = float(self.spin_em_lum.get_value())

@@ -330,8 +330,9 @@ def build_default_color_profile(
 ) -> FixtureColorProfile | None:
     """Build a generic CIE 1931 color profile for additive RGB+ LED fixtures.
 
-    Returns ``None`` for non-additive or subtractive (CMY) fixtures so they are
-    not wrongly solved via additive NNLS matching.
+    Returns ``None`` for non-additive or subtractive (CMY) fixtures so Eos
+    ASCII DMX fidelity is preserved (``effective_color_profile()`` supplies a
+    default CMY gamut on-the-fly in the Color Picker).
     """
     if not _REQUIRED_RGB_TYPES.issubset(set(channel_types)):
         return None

@@ -489,3 +489,81 @@ def test_fixture_library_tab_import_gdtf_shows_error_on_failure(
     assert len(errors) == 1
     assert errors[0][0]
     assert errors[0][1]
+
+
+def test_fixture_library_tab_cmy_presets_filter_gamma_and_color_picker(
+    app_gui: Application,
+) -> None:
+    """Verify CMY/CMY+CTO presets, filter/gamma editing, and Color Picker CMY+CTO UX."""
+    from olc.devices.builtin import create_cmy_definition
+    from olc.devices.channel import Channel, ChannelType
+    from olc.devices.device import FixtureType, LightingDevice
+    from olc.gtk3.widgets.color_picker import ConsoleColorPicker
+
+    app_gui.activate_action("fixtures", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fixtures_tab = app_gui.tabs.tabs.get("fixtures")
+    assert isinstance(fixtures_tab, FixtureLibraryTab)
+
+    # Select Generic CMY Spot from builtin catalog
+    cmy_def = create_cmy_definition()
+    fixtures_tab.active_definition = cmy_def
+    fixtures_tab._refresh_color_emitters()
+    process_events()
+
+    assert fixtures_tab.combo_mixing_mode.get_active_id() == "subtractive"
+    assert len(fixtures_tab.emitters_store) == 4
+
+    # Apply Preset CMY (3 filters) then Preset CMY+CTO (4 filters)
+    fixtures_tab._apply_color_preset("cmy")
+    assert cmy_def.color_profile is not None
+    assert len(cmy_def.color_profile.filters) == 3
+    assert len(fixtures_tab.emitters_store) == 3
+
+    fixtures_tab._apply_color_preset("cmy_cto")
+    assert len(cmy_def.color_profile.filters) == 4
+
+    # Preserve spectral_transmission while editing filter CIE x/y/Y and gamma
+    cmy_def.color_profile.filters[0].spectral_transmission = [
+        (400.0, 0.8),
+        (700.0, 0.1),
+    ]
+    fixtures_tab._refresh_color_emitters()
+    fixtures_tab.emitters_tree.get_selection().select_path(Gtk.TreePath.new_first())
+    process_events()
+
+    fixtures_tab.spin_em_x.set_value(0.145)
+    fixtures_tab.spin_em_gamma.set_value(1.35)
+    fixtures_tab._on_update_emitter_clicked(fixtures_tab.btn_update_em)
+    process_events()
+
+    edited_cyan = cmy_def.color_profile.filters[0]
+    assert edited_cyan.cie.x == pytest.approx(0.145, abs=1e-4)
+    assert edited_cyan.gamma == pytest.approx(1.35, abs=1e-3)
+    assert edited_cyan.spectral_transmission == [(400.0, 0.8), (700.0, 0.1)]
+
+    # Verify ConsoleColorPicker displays C/M/Y/CTO faders, hexagonal gamut & white point
+    picker = ConsoleColorPicker(on_color=lambda *_args: None)
+    dev = LightingDevice(
+        fixture_id=99,
+        label="CMY+CTO Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.CYAN, 1, 2),
+            Channel(ChannelType.MAGENTA, 1, 3),
+            Channel(ChannelType.YELLOW, 1, 4),
+            Channel(ChannelType.COLOR_TEMP, 1, 5),
+        ],
+        color_profile=cmy_def.color_profile,
+    )
+    picker.set_devices_context(dev, [dev])
+    for key in ("cyan", "magenta", "yellow", "color_temp"):
+        assert picker.emitter_rows[key].get_visible() is True
+    assert picker.emitter_rows["red"].get_visible() is False
+    assert picker.strategy_combo.get_sensitive() is False
+    assert len(picker.gamut_xy) == 6
+    assert picker.cie_xy.white_point_xy is not None
+    picker.cleanup()

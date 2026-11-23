@@ -304,3 +304,67 @@ def test_cmy_cto_solver_prefers_cto_for_warm_white() -> None:
     cto_param = dev.get_parameter_normalized(ChannelType.COLOR_TEMP)
     assert cto_param is not None and cto_param > 0.5
     assert GDTF_ATTRIBUTE_MAP["CTO"] == ChannelType.COLOR_TEMP
+
+
+def test_builtin_cmy_definition_eos_and_geometry_defaults() -> None:
+    """Verify builtin CMY Spot, Eos ASCII CMY(+CTO), and effective_color_profile."""
+    from olc.devices.builtin import create_cmy_definition, populate_builtin_library
+    from olc.devices.color_pick.geometry import effective_color_profile
+    from olc.files.ascii.eos_devices import build_default_color_profile
+
+    cmy_def = create_cmy_definition()
+    assert cmy_def.manufacturer == "Generic"
+    assert cmy_def.model == "CMY Spot"
+    assert cmy_def.color_profile is not None
+    assert cmy_def.color_profile.mixing_mode == "subtractive"
+    assert cmy_def.color_profile.has_cto_filter is True
+    assert len(cmy_def.color_profile.gamut_polygon) == 6
+
+    lib = populate_builtin_library()
+    assert lib.get("Generic", "CMY Spot") is not None
+
+    eos_cmy = build_default_color_profile(
+        "VL2500 Spot",
+        [
+            ChannelType.INTENSITY,
+            ChannelType.CYAN,
+            ChannelType.MAGENTA,
+            ChannelType.YELLOW,
+        ],
+    )
+    assert eos_cmy is None
+
+    eos_cmy_cto = build_default_color_profile(
+        "VL3500 Spot",
+        [
+            ChannelType.INTENSITY,
+            ChannelType.CYAN,
+            ChannelType.MAGENTA,
+            ChannelType.YELLOW,
+            ChannelType.COLOR_TEMP,
+        ],
+    )
+    assert eos_cmy_cto is None
+
+    dev_no_prof = LightingDevice(
+        fixture_id=4,
+        label="CMY+CTO NoProf",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 30),
+            Channel(ChannelType.CYAN, 1, 31),
+            Channel(ChannelType.MAGENTA, 1, 32),
+            Channel(ChannelType.YELLOW, 1, 33),
+            Channel(ChannelType.COLOR_TEMP, 1, 34),
+        ],
+        color_profile=None,
+    )
+    eff = effective_color_profile(dev_no_prof)
+    assert eff is not None
+    assert eff.mixing_mode == "subtractive"
+    assert eff.has_cto_filter is True
+
+    dev_no_prof.set_emitter_level(ChannelType.COLOR_TEMP, 0.6)
+    assert dev_no_prof.get_emitter_level(ChannelType.COLOR_TEMP) == pytest.approx(
+        0.6, abs=0.01
+    )

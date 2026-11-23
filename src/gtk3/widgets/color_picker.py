@@ -59,6 +59,10 @@ _EMITTER_SPECS: tuple[tuple[str, str], ...] = (
     ("white", "W"),
     ("amber", "A"),
     ("lime", "L"),
+    ("cyan", "C"),
+    ("magenta", "M"),
+    ("yellow", "Y"),
+    ("color_temp", "CTO"),
 )
 
 
@@ -203,7 +207,7 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
         for etype, short_lbl in _EMITTER_SPECS:
             erow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
             lbl = Gtk.Label(label=short_lbl, xalign=0.0)
-            lbl.set_width_chars(2)
+            lbl.set_width_chars(3)
             scale = Gtk.Scale.new_with_range(
                 Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
             )
@@ -353,8 +357,23 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
                 )
             )
         self.fixture_points = points
+        is_subtractive = (
+            self._lead_profile is not None
+            and self._lead_profile.mixing_mode == "subtractive"
+        )
+        self.strategy_combo.set_sensitive(not is_subtractive)
+        self.strategy_combo.set_tooltip_text(
+            "Subtractive CMY solver active" if is_subtractive else None
+        )
+        white_pt_xy = (
+            (self._lead_profile.white_point.x, self._lead_profile.white_point.y)
+            if is_subtractive and self._lead_profile is not None
+            else None
+        )
         self.disc.set_overlay(self.gamut_hs, points)
-        self.cie_xy.set_overlay(self.gamut_xy, points, emitters_xy)
+        self.cie_xy.set_overlay(
+            self.gamut_xy, points, emitters_xy, white_point_xy=white_pt_xy
+        )
 
         self._update_emitter_faders(lead, present_emitters)
         self._update_wheel_slots(lead, dev_list)
@@ -371,12 +390,21 @@ class ConsoleColorPicker(Gtk.Box):  # pylint: disable=too-many-instance-attribut
                 is_present = etype in present_emitters
                 erow.set_visible(is_present)
                 if is_present and lead is not None and not self._emitter_dragging:
-                    base_map = getattr(lead, "_base_emitters", {})
                     lvl = 0.0
-                    for k, v in base_map.items():
-                        if getattr(k, "value", k) == etype:
-                            lvl = float(v)
-                            break
+                    if etype == "color_temp":
+                        get_norm = getattr(lead, "get_parameter_normalized", None)
+                        if callable(get_norm):
+                            from olc.devices.channel import ChannelType
+
+                            val = get_norm(ChannelType.COLOR_TEMP)
+                            if val is not None:
+                                lvl = float(val)
+                    else:
+                        base_map = getattr(lead, "_base_emitters", {})
+                        for k, v in base_map.items():
+                            if getattr(k, "value", k) == etype:
+                                lvl = float(v)
+                                break
                     self.emitter_scales[etype].set_value(round(lvl * 100.0))
         finally:
             self._silent = False

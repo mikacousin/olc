@@ -113,7 +113,14 @@ def effective_color_profile(device: object) -> Optional[FixtureColorProfile]:
         return profile
     if profile is None:
         if getattr(device, "is_subtractive_cmy", False):
-            return default_cmy_profile(getattr(device, "label", "") or "CMY Fixture")
+            has_cto = any(
+                getattr(getattr(ch, "channel_type", None), "value", "") == "color_temp"
+                for ch in getattr(device, "channels", []) or []
+            )
+            return default_cmy_profile(
+                getattr(device, "label", "") or "CMY Fixture",
+                include_cto=has_cto,
+            )
         return None
     existing = {e.name.lower() for e in profile.emitters}
     if {"red", "green", "blue"}.issubset(existing):

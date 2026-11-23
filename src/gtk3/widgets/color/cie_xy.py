@@ -45,6 +45,7 @@ class CIExyWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attribu
         self.dragging = False
         self.gamut_xy: list[cp.XY] = []
         self.emitters_xy: list[cp.XY] = []
+        self.white_point_xy: Optional[cp.XY] = None
         self.points: list[FixtureColorPoint] = []
         self._planck_xy = cp.planckian_locus_xy(32)
         self._surface: Optional[cairo.ImageSurface] = None
@@ -71,12 +72,14 @@ class CIExyWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attribu
         gamut_xy: list[cp.XY],
         points: list[FixtureColorPoint],
         emitters_xy: Optional[list[cp.XY]] = None,
+        white_point_xy: Optional[cp.XY] = None,
     ) -> None:
-        """Update emitter gamut polygon and multi-fixture reticle positions."""
+        """Update emitter gamut polygon, white point, and fixture reticles."""
         self.gamut_xy = list(gamut_xy)
         self.emitters_xy = (
             list(emitters_xy) if emitters_xy is not None else list(gamut_xy)
         )
+        self.white_point_xy = white_point_xy
         self.points = list(points)
         self.queue_draw()
 
@@ -201,6 +204,25 @@ class CIExyWidget(Gtk.DrawingArea):  # pylint: disable=too-many-instance-attribu
                 cr.set_source_rgba(0.0, 0.0, 0.0, 0.8)
                 cr.set_line_width(1.0)
                 cr.stroke()
+
+        # Source white-point crosshair (shown for subtractive CMY fixtures)
+        if self.white_point_xy is not None:
+            wx, wy = self._xy_to_px(
+                self.white_point_xy[0], self.white_point_xy[1], ox, oy, side
+            )
+            cr.save()
+            for rgba, width in (
+                ((0.0, 0.0, 0.0, 0.8), 2.4),
+                ((1.0, 1.0, 1.0, 0.95), 1.2),
+            ):
+                cr.move_to(wx - 4.0, wy)
+                cr.line_to(wx + 4.0, wy)
+                cr.move_to(wx, wy - 4.0)
+                cr.line_to(wx, wy + 4.0)
+                cr.set_source_rgba(*rgba)
+                cr.set_line_width(width)
+                cr.stroke()
+            cr.restore()
 
         # Satellite fixture reticles
         for pt in self.points:

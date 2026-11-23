@@ -665,10 +665,19 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
     def get_emitter_level(self, channel_type: ChannelType) -> float:
         """Return normalized [0.0, 1.0] emitter level for a color ChannelType."""
+        if channel_type == ChannelType.COLOR_TEMP:
+            return float(self.get_parameter_normalized(ChannelType.COLOR_TEMP) or 0.0)
         return float(self._base_emitters.get(channel_type, 0.0))
 
     def set_emitter_level(self, channel_type: ChannelType, level: float) -> None:
         """Set a single color emitter level [0.0, 1.0] and update CIE/sRGB state."""
+        if channel_type == ChannelType.COLOR_TEMP:
+            if self.get_channel(ChannelType.COLOR_TEMP) is None:
+                return
+            clamped = max(0.0, min(1.0, float(level)))
+            self._set_color_emitter_channels(ChannelType.COLOR_TEMP, clamped)
+            self._update_target_from_emitters()
+            return
         if channel_type not in COLOR_CHANNEL_TYPES:
             return
         self._base_emitters[channel_type] = max(0.0, min(1.0, float(level)))
