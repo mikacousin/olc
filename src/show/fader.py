@@ -212,12 +212,16 @@ class FaderPreset(Fader):
                 touched_color = False
                 norm_params = base.get("norm_params", {})
                 touched_raw = list(base.get("_touched_params", ()))
-                has_explicit_rgb = {"red", "green", "blue"}.issubset(set(touched_raw))
+                touched_set = set(touched_raw)
+                has_explicit_rgb = {"red", "green", "blue"}.issubset(touched_set)
+                has_explicit_cmy = {"cyan", "magenta", "yellow"}.issubset(touched_set)
                 ordered_touched = [
                     p for p in touched_raw if p in ("color", "colour")
                 ] + [p for p in touched_raw if p not in ("color", "colour")]
                 for p_lower in ordered_touched:
-                    if p_lower in ("color", "colour") and has_explicit_rgb:
+                    if p_lower in ("color", "colour") and (
+                        has_explicit_rgb or has_explicit_cmy
+                    ):
                         continue
                     if p_lower in _COLOR_PARAM_NAMES:
                         touched_color = True

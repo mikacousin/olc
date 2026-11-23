@@ -1442,11 +1442,12 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Apply a batch of parameter values to this device."""
         lower_keys = {str(k).lower() for k in values}
         has_explicit_rgb = {"red", "green", "blue"}.issubset(lower_keys)
+        has_explicit_cmy = {"cyan", "magenta", "yellow"}.issubset(lower_keys)
         color_items: list[tuple[str, Any]] = []
         other_items: list[tuple[str, Any]] = []
         for name, val in values.items():
             if str(name).lower() in ("color", "colour"):
-                if not has_explicit_rgb:
+                if not (has_explicit_rgb or has_explicit_cmy):
                     color_items.append((name, val))
             else:
                 other_items.append((name, val))

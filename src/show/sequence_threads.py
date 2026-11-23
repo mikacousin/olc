@@ -507,6 +507,7 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
         start_norm = start.get("norm_params", {})
         lower_keys = {str(k).lower() for k in params}
         has_explicit_rgb = {"red", "green", "blue"}.issubset(lower_keys)
+        has_explicit_cmy = {"cyan", "magenta", "yellow"}.issubset(lower_keys)
         ordered_params = [
             (k, v) for k, v in params.items() if str(k).lower() in ("color", "colour")
         ] + [
@@ -516,7 +517,9 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
         ]
         for param_name, target_val in ordered_params:
             p_lower = param_name.lower()
-            if p_lower in ("color", "colour") and has_explicit_rgb:
+            if p_lower in ("color", "colour") and (
+                has_explicit_rgb or has_explicit_cmy
+            ):
                 continue
             if p_lower == "intensity":
                 s_val = float(start.get("intensity", getattr(dev, "intensity", 0.0)))

@@ -88,6 +88,7 @@ from olc.core.parser.ast_nodes import (
 )
 from olc.core.tracking import TrackingEngine
 from olc.define import MAX_CHANNELS
+from olc.devices.channel import ChannelType
 from olc.devices.device import FixtureType
 from olc.show.cue import Cue
 from olc.show.palette import PaletteRef
@@ -1424,6 +1425,14 @@ class CommandExecutor:
                 base_emitters = getattr(dev, "_base_emitters", {})
                 if any(v > 0.0 for v in base_emitters.values()):
                     vals["color"] = dev.color_srgb.to_hex()
+                    if getattr(dev, "is_subtractive_cmy", False):
+                        vals["cyan"] = float(base_emitters.get(ChannelType.CYAN, 0.0))
+                        vals["magenta"] = float(
+                            base_emitters.get(ChannelType.MAGENTA, 0.0)
+                        )
+                        vals["yellow"] = float(
+                            base_emitters.get(ChannelType.YELLOW, 0.0)
+                        )
         else:
             if hasattr(dev, "pan_degrees") and getattr(dev, "pan_degrees", 0.0) != 0.0:
                 vals["pan"] = float(_base_or("pan", dev.pan_degrees))

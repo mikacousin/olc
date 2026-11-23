@@ -21,7 +21,12 @@ import typing
 
 from olc.define import NB_UNIVERSES, UNIVERSES
 from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
-from olc.devices.color import CIExyY, EmitterProfile, FixtureColorProfile
+from olc.devices.color import (
+    CIExyY,
+    EmitterProfile,
+    FixtureColorProfile,
+    default_cmy_profile,
+)
 from olc.devices.fixture import FixtureDefinition
 
 _PALETTE_REF_RE = re.compile(r"^(ip|fp|cp|bp|pr)(\d+(?:\.\d+)?)$")
@@ -328,13 +333,21 @@ def _build_channel_ranges(
 def build_default_color_profile(
     fixture_name: str, channel_types: list[ChannelType]
 ) -> FixtureColorProfile | None:
-    """Build a generic CIE 1931 color profile for additive RGB+ LED fixtures.
+    """Build a generic CIE 1931 color profile for RGB+ LED or CMY(+CTO) fixtures.
 
-    Returns ``None`` for non-additive or subtractive (CMY) fixtures so Eos
-    ASCII DMX fidelity is preserved (``effective_color_profile()`` supplies a
-    default CMY gamut on-the-fly in the Color Picker).
+    Returns ``None`` for fixtures without a full RGB or CMY mixing set.
     """
-    if not _REQUIRED_RGB_TYPES.issubset(set(channel_types)):
+    ctype_set = set(channel_types)
+    if not _REQUIRED_RGB_TYPES.issubset(ctype_set):
+        if {
+            ChannelType.CYAN,
+            ChannelType.MAGENTA,
+            ChannelType.YELLOW,
+        }.issubset(ctype_set):
+            return default_cmy_profile(
+                fixture_name,
+                include_cto=ChannelType.COLOR_TEMP in ctype_set,
+            )
         return None
 
     emitters: list[EmitterProfile] = []
@@ -550,5 +563,7 @@ def decode_eos_cue_params(
         g = round((1.0 - cmy.get("magenta", 0.0)) * 255)
         b = round((1.0 - cmy.get("yellow", 0.0)) * 255)
         dev_vals["color"] = f"#{r:02x}{g:02x}{b:02x}"
+        for comp in ("cyan", "magenta", "yellow"):
+            dev_vals[comp] = cmy.get(comp, 0.0)
 
     return dev_vals, intensity_val

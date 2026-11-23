@@ -1038,10 +1038,11 @@ EndData
     non_builtin = [f for f in lightshow.fixture_library.all() if not f.is_builtin]
     assert len(non_builtin) == 3
 
-    # Mode collision merged under BrandA:DuoSpot, CMY keeps color_profile=None
+    # Mode collision merged under BrandA:DuoSpot, CMY gets subtractive color_profile
     duospot = lightshow.fixture_library.get("BrandA", "DuoSpot")
     assert duospot.mode_names() == ["7ch", "4ch"]
-    assert duospot.color_profile is None
+    assert duospot.color_profile is not None
+    assert duospot.color_profile.mixing_mode == "subtractive"
     mode7 = duospot.get_mode("7ch")
     assert mode7.footprint() == 7
     assert len(mode7.channel_defs) == 6
@@ -1112,7 +1113,7 @@ def test_import_eos_show_fixture_library(
     non_builtin = [f for f in lightshow.fixture_library.all() if not f.is_builtin]
     assert len(non_builtin) == 9
 
-    # Moving heads (CMY -> no additive color_profile)
+    # Moving heads (CMY -> subtractive color_profile)
     ghibli = lightshow.fixture_library.get("Ayrton", "Ghibli_Extended")
     ghibli_mode = ghibli.default_mode()
     assert len(ghibli_mode.channel_defs) == 35
@@ -1123,7 +1124,8 @@ def test_import_eos_show_fixture_library(
     beam_fx = next(cd for cd in ghibli_mode.channel_defs if cd.offset == 35)
     assert beam_fx.fine_offset == 36
     assert beam_fx.default_value == 16383
-    assert ghibli.color_profile is None
+    assert ghibli.color_profile is not None
+    assert ghibli.color_profile.mixing_mode == "subtractive"
     assert (
         lightshow.patch.count_devices_using_definition("Ayrton", "Ghibli_Extended") == 3
     )
@@ -1132,7 +1134,8 @@ def test_import_eos_show_fixture_library(
     diablo_mode = diablo.default_mode()
     assert len(diablo_mode.channel_defs) == 33
     assert diablo_mode.footprint() == 56
-    assert diablo.color_profile is None
+    assert diablo.color_profile is not None
+    assert diablo.color_profile.mixing_mode == "subtractive"
     assert (
         lightshow.patch.count_devices_using_definition(
             "Ayrton", "Diablo_S_Extended_Pan_540"

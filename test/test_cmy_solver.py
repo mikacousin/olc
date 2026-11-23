@@ -332,7 +332,9 @@ def test_builtin_cmy_definition_eos_and_geometry_defaults() -> None:
             ChannelType.YELLOW,
         ],
     )
-    assert eos_cmy is None
+    assert eos_cmy is not None
+    assert eos_cmy.mixing_mode == "subtractive"
+    assert eos_cmy.has_cto_filter is False
 
     eos_cmy_cto = build_default_color_profile(
         "VL3500 Spot",
@@ -344,7 +346,9 @@ def test_builtin_cmy_definition_eos_and_geometry_defaults() -> None:
             ChannelType.COLOR_TEMP,
         ],
     )
-    assert eos_cmy_cto is None
+    assert eos_cmy_cto is not None
+    assert eos_cmy_cto.mixing_mode == "subtractive"
+    assert eos_cmy_cto.has_cto_filter is True
 
     dev_no_prof = LightingDevice(
         fixture_id=4,
@@ -368,3 +372,79 @@ def test_builtin_cmy_definition_eos_and_geometry_defaults() -> None:
     assert dev_no_prof.get_emitter_level(ChannelType.COLOR_TEMP) == pytest.approx(
         0.6, abs=0.01
     )
+
+
+def test_cmy_explicit_device_values_round_trip_preserves_16bit_dmx() -> None:
+    """Verify explicit CMY device_values preserve 16-bit DMX on record and recall."""
+    from olc.core.parser.executor import CommandExecutor
+
+    profile = default_cmy_profile("16-bit CMY Spot", include_cto=True)
+
+    def _make_dev() -> LightingDevice:
+        return LightingDevice(
+            fixture_id=5,
+            label="CMY 16-bit",
+            fixture_type=FixtureType.MOVING_HEAD,
+            channels=[
+                Channel(ChannelType.INTENSITY, 1, 1, label="Dimmer"),
+                Channel(ChannelType.CYAN, 1, 2, label="Cyan"),
+                Channel(ChannelType.CYAN, 1, 3, label="Cyan_fine", fine=True),
+                Channel(ChannelType.MAGENTA, 1, 4, label="Magenta"),
+                Channel(ChannelType.MAGENTA, 1, 5, label="Magenta_fine", fine=True),
+                Channel(ChannelType.YELLOW, 1, 6, label="Yellow"),
+                Channel(ChannelType.YELLOW, 1, 7, label="Yellow_fine", fine=True),
+                Channel(ChannelType.COLOR_TEMP, 1, 8, label="CTO"),
+            ],
+            color_profile=profile,
+        )
+
+    dev = _make_dev()
+    # Set manual CMY levels with min(C, M, Y) > 0 (must not be wiped by CIE solver)
+    dev.set_emitter_level(ChannelType.CYAN, 0.2512)
+    dev.set_emitter_level(ChannelType.MAGENTA, 0.7345)
+    dev.set_emitter_level(ChannelType.YELLOW, 0.4189)
+    dev.set_emitter_level(ChannelType.COLOR_TEMP, 0.33)
+
+    def _u16(d: LightingDevice, ctype: ChannelType) -> int:
+        c = next(ch for ch in d.channels if ch.channel_type == ctype and not ch.fine)
+        f = next(ch for ch in d.channels if ch.channel_type == ctype and ch.fine)
+        return (c.value << 8) | f.value
+
+    exp_c = _u16(dev, ChannelType.CYAN)
+    exp_m = _u16(dev, ChannelType.MAGENTA)
+    exp_y = _u16(dev, ChannelType.YELLOW)
+
+    from typing import cast
+
+    executor_stub = cast(
+        "CommandExecutor",
+        SimpleNamespace(
+            app=None,
+            _is_channel_modified=lambda _d, _p: False,
+        ),
+    )
+    captured = CommandExecutor._get_device_active_values(executor_stub, dev)
+    assert "color" in captured
+    assert captured["cyan"] == pytest.approx(0.2512, abs=1e-4)
+    assert captured["magenta"] == pytest.approx(0.7345, abs=1e-4)
+    assert captured["yellow"] == pytest.approx(0.4189, abs=1e-4)
+
+    recalled = _make_dev()
+    recalled.apply_device_values(captured)
+    assert abs(_u16(recalled, ChannelType.CYAN) - exp_c) <= 2
+    assert abs(_u16(recalled, ChannelType.MAGENTA) - exp_m) <= 2
+    assert abs(_u16(recalled, ChannelType.YELLOW) - exp_y) <= 2
+
+    # Even a conflicting hex color must be ignored when explicit CMY keys are present
+    recalled2 = _make_dev()
+    recalled2.apply_device_values(
+        {
+            "color": "#000000",
+            "cyan": 0.2512,
+            "magenta": 0.7345,
+            "yellow": 0.4189,
+        }
+    )
+    assert abs(_u16(recalled2, ChannelType.CYAN) - exp_c) <= 2
+    assert abs(_u16(recalled2, ChannelType.MAGENTA) - exp_m) <= 2
+    assert abs(_u16(recalled2, ChannelType.YELLOW) - exp_y) <= 2
