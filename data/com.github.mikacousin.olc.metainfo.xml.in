@@ -27,6 +27,11 @@
     </ul>
   </description>
   <releases>
+    <release version="0.12.1.beta" date="2026-11-23">
+      <description>
+        <p>Fix GDTF import bug.</p>
+      </description>
+    </release>
     <release version="0.12.0.beta" date="2026-11-22">
       <description>
         <p>Major feature release transforming Open Lighting Console into a multi-parameter fixture and theater console with ETC Eos-inspired workflow, scientific N-LED colorimetry, and a real-time parametric effects engine.</p>
