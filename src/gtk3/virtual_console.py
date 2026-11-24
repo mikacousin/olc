@@ -540,7 +540,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.fader_strip_boxes: list[Gtk.Box] = []
         self.fader_buttons: list[tuple[Gtk.Button, Gtk.Button, Gtk.Button]] = []
         for i in range(10):
-            strip_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+            strip_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             strip_box.set_homogeneous(True)
             btns: list[Gtk.Button] = []
             for slot in range(3):
@@ -550,7 +550,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     "clicked",
                     lambda _w, idx=i, s=slot: self._on_fader_strip_button(idx, s),
                 )
-                strip_box.pack_start(btn, True, True, 0)
+                strip_box.pack_start(btn, False, False, 0)
                 btns.append(btn)
             self.fader_strip_boxes.append(strip_box)
             self.fader_buttons.append((btns[0], btns[1], btns[2]))

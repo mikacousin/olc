@@ -64,6 +64,10 @@
       <attribute name="action">app.sequences</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Playbacks</attribute>
+      <attribute name="action">app.playbacks</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">Faders</attribute>
       <attribute name="action">app.faders</attribute>
     </item>
