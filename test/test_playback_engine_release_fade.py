@@ -25,11 +25,11 @@ from olc.core.app import CoreApplication
 from olc.core.playback_engine import RunnerState
 
 
-def _make_app_with_chaser(
+def _make_app_with_sequence(
     seq_index: float = 2.0,
     channels: dict[int, int] | None = None,
 ) -> CoreApplication:
-    """Create a CoreApplication with an active chaser loaded at step 1."""
+    """Create a CoreApplication with an active sequence loaded at step 1."""
     settings = MagicMock()
     app = CoreApplication(settings)
     app.backend = MagicMock()
@@ -49,7 +49,7 @@ def _make_app_with_chaser(
 
 def test_deterministic_release_fade_progression() -> None:
     """Test deterministic tick(now=...) progression for a release fade."""
-    app = _make_app_with_chaser(2.0, {1: 255})
+    app = _make_app_with_sequence(2.0, {1: 255})
     engine = app.playback_engine
     arb = app.playback_arbitrator
 
@@ -101,7 +101,7 @@ def test_deterministic_release_fade_progression() -> None:
 
 def test_refiring_sequence_cancels_active_release_fade() -> None:
     """Test that load_step/do_go/assert_playback cancel an active release fade."""
-    app = _make_app_with_chaser(2.0, {1: 255})
+    app = _make_app_with_sequence(2.0, {1: 255})
     engine = app.playback_engine
     arb = app.playback_arbitrator
     seq = app.lightshow.get_sequence(2.0)
@@ -172,7 +172,7 @@ def test_concurrent_release_fades_real_40hz_worker() -> None:
 
 def test_playback_stop_stops_secondary_sequences_and_engine_worker() -> None:
     """PlaybackStopAction stops secondary sequences and PlaybackEngine worker."""
-    app = _make_app_with_chaser(2.0, {1: 255})
+    app = _make_app_with_sequence(2.0, {1: 255})
     app.backend = None
     seq2 = app.lightshow.get_sequence(2.0)
     assert seq2 is not None
@@ -190,7 +190,7 @@ def test_sequence_rename_syncs_fader_label_and_osc_uses_main_sequence() -> None:
     from olc.controllers.osc.delegate import OSCDelegate
     from olc.show.fader import FaderType
 
-    app = _make_app_with_chaser(2.0, {1: 255})
+    app = _make_app_with_sequence(2.0, {1: 255})
     app.backend = None
     seq2 = app.lightshow.get_sequence(2.0)
     assert seq2 is not None

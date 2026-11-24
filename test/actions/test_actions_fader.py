@@ -101,19 +101,19 @@ def test_fader_assign_preset() -> None:
 
 
 def test_fader_assign_sequence() -> None:
-    """FaderAssignAction assigns a Sequence (chaser) to a fader and is undoable."""
+    """FaderAssignAction assigns a Sequence to a fader and is undoable."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    chaser = Sequence(2.0, text="Seq 2")
-    app.lightshow.sequences.append(chaser)
+    seq = Sequence(2.0, text="Seq 2")
+    app.lightshow.sequences.append(seq)
 
     app.action_registry.execute("fader.assign", 1, 3, FaderType.SEQUENCE, 2.0)
 
     assert app.lightshow.fader_bank.get_fader_type(1, 3) == FaderType.SEQUENCE
     fader = app.lightshow.fader_bank.faders[1][3]
     assert isinstance(fader, FaderSequence)
-    assert fader.contents is chaser
+    assert fader.contents is seq
 
     # Undo
     app.history.undo()

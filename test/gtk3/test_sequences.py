@@ -42,7 +42,7 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     """Test SequenceTab and ChanneltimeTab GUI interactions, including editing and
     undo/redo.
     """
-    # 1. Clear sequences/chasers
+    # 1. Clear sequences
     app_gui.core.lightshow.sequences.clear()
 
     # 2. Open the Sequences Tab
@@ -65,19 +65,19 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     assert len(app_gui.core.lightshow.sequences) == 1
     assert app_gui.core.lightshow.sequences[0].index == 2.0
 
-    # 4. Programmatically select row index 1 (Chaser 2.0)
+    # 4. Programmatically select row index 1 (Sequence 2.0)
     model1 = seq_tab.treeview1.get_model()
     assert model1 is not None
-    assert len(model1) == 2  # Main Playback (index 1) and Chaser 2.0
+    assert len(model1) == 2  # Main Playback (index 1) and Sequence 2.0
 
     path1 = Gtk.TreePath.new_from_indices([1])
     seq_tab.treeview1.set_cursor(path1, None, False)
     seq_tab.on_sequence_changed()
     process_events()
 
-    chaser = seq_tab.get_selected_sequence()
-    assert chaser is not None
-    assert chaser.index == 2.0
+    seq = seq_tab.get_selected_sequence()
+    assert seq is not None
+    assert seq.index == 2.0
 
     # Set channel 5 level to create step with channels
     widget_ch = seq_tab.channels_view.get_channel_widget(5)
@@ -89,8 +89,8 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     seq_tab._keypress_r()
     process_events()
 
-    assert len(chaser.steps) == 2
-    cue = chaser.steps[1].cue
+    assert len(seq.steps) == 2
+    cue = seq.steps[1].cue
     assert cue is not None
     assert cue.number == 1.0
     assert cue.channels == {5: 255}
@@ -103,17 +103,17 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     # Test Undo step insertion
     app_gui.activate_action("undo", None)
     process_events()
-    assert len(chaser.steps) == 1
+    assert len(seq.steps) == 1
     assert len(model2) == 0
 
     # Test Redo step insertion
     app_gui.activate_action("redo", None)
     process_events()
-    assert len(chaser.steps) == 2
+    assert len(seq.steps) == 2
     assert len(model2) == 1
 
     # 6. Open Channel Time Tab for step 1
-    app_gui.channeltime(chaser, 1)
+    app_gui.channeltime(seq, 1)
     process_events()
 
     ct_tab = app_gui.tabs.tabs.get("channel_time")
@@ -144,14 +144,12 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     print("CT_TAB POSITION:", ct_tab.position, "TYPE:", type(ct_tab.position))
     print("CT_TAB SEQUENCE:", ct_tab.sequence)
     print("CT_TAB STEP:", ct_tab.step)
-    print("CHASER STEPS[1]:", chaser.steps[1])
-    print("CHASER STEPS:", chaser.steps)
 
     # Insert channel time
     ct_tab._keypress_insert()
     process_events()
 
-    step_obj = chaser.steps[1]
+    step_obj = seq.steps[1]
     print("STEP_OBJ CHANNEL_TIME:", step_obj.channel_time)
     print("CT_TAB.STEP CHANNEL_TIME:", ct_tab.step.channel_time)
     assert 5 in step_obj.channel_time

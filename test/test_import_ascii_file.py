@@ -137,7 +137,7 @@ EndData
     assert s1["wait"] == 0.0
     assert s2["wait"] == 3.0
 
-    # Secondary sequence imported as Normal (not forced to Chaser)
+    # Secondary sequence imported cleanly
     assert len(lightshow.sequences) == 1
     assert lightshow.sequences[0].index == 2
 

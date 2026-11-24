@@ -76,7 +76,7 @@ def test_show_new_resets_show_state() -> None:
     assert len(app.history.redo_stack) == 0
 
 
-def test_show_new_stops_running_chasers() -> None:
+def test_show_new_stops_running_sequences() -> None:
     """Test that show.new stops all secondary sequences and clears them."""
     settings = MagicMock()
     app = CoreApplication(settings)

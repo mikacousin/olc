@@ -337,17 +337,17 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     step2 = Step(1, cue=cue2, time_in=2.0, time_out=2.0, text="Block Step")
     show1.main_playback.insert_step(2, step2)
 
-    # 4. Add a Chaser sequence with tracking_mode=True
-    chaser = Sequence(2, text="Effect Chase", lightshow=show1)
-    chaser.tracking_mode = True
-    chaser.mib_enabled = False
-    chaser.mib_fade_time = 1.5
-    del chaser.steps[1:]
+    # 4. Add a secondary sequence with tracking_mode=True
+    seq = Sequence(2, text="Effect Chase", lightshow=show1)
+    seq.tracking_mode = True
+    seq.mib_enabled = False
+    seq.mib_fade_time = 1.5
+    del seq.steps[1:]
     ch_cue = Cue(2, 1.0, channels={1: 255}, text="Flash 1")
     ch_cue.device_values = {50: {"color": "#FF0000"}}
-    chaser.cues.add(ch_cue)
-    chaser.add_step(Step(2, cue=ch_cue, time_in=1.0, time_out=1.0))
-    show1.sequences.append(chaser)
+    seq.cues.add(ch_cue)
+    seq.add_step(Step(2, cue=ch_cue, time_in=1.0, time_out=1.0))
+    show1.sequences.append(seq)
 
     # 5. Save to .olc
     olc_path = str(tmp_path / "autonomous_show.olc")
@@ -414,12 +414,12 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_cue2.is_block is True
     assert r_cue2.device_values[101]["intensity"] == 0.0
 
-    # Verify Chaser sequence tracking_mode, mib settings, and cue metadata
-    r_chaser = show2.get_sequence(2)
-    assert r_chaser is not None
-    assert r_chaser.tracking_mode is True
-    assert r_chaser.mib_enabled is False
-    assert r_chaser.mib_fade_time == pytest.approx(1.5)
+    # Verify secondary sequence tracking_mode, mib settings, and cue metadata
+    r_seq = show2.get_sequence(2)
+    assert r_seq is not None
+    assert r_seq.tracking_mode is True
+    assert r_seq.mib_enabled is False
+    assert r_seq.mib_fade_time == pytest.approx(1.5)
 
 
 def test_show_import_olc_devices_and_undo_redo(tmp_path: pathlib.Path) -> None:
@@ -817,7 +817,7 @@ def test_olc_persistence_stepped_curve_and_fader_effect_base_channels(
     app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
     fader = app.lightshow.fader_bank.faders[1][1]
     assert isinstance(fader, FaderEffect)
-    fader.text = "Chaser Mixte"
+    fader.text = "Sequence Mixte"
     fader.set_base_channels({21: 1.0, 22: 0.5})
 
     save_path = tmp_path / "stepped_and_base_channels.olc"
@@ -838,7 +838,7 @@ def test_olc_persistence_stepped_curve_and_fader_effect_base_channels(
 
     re_fader = ls2.fader_bank.faders[1][1]
     assert isinstance(re_fader, FaderEffect)
-    assert re_fader.text == "Chaser Mixte"
+    assert re_fader.text == "Sequence Mixte"
     assert re_fader.base_channels == {21: pytest.approx(1.0), 22: pytest.approx(0.5)}
     re_fader.set_level(0.5)
     assert re_fader.dmx[20] == pytest.approx(0.5)

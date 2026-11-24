@@ -24,11 +24,11 @@ from olc.core.app import CoreApplication
 
 
 def test_sequence_new_delete_actions_and_undo_redo() -> None:
-    """Test sequence (chaser) creation, deletion, undo, and redo."""
+    """Test sequence creation, deletion, undo, and redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # Clear chasers list
+    # Clear sequences list
     app.lightshow.sequences.clear()
 
     created_events = []
@@ -88,13 +88,13 @@ def test_sequence_insert_delete_step_actions_and_undo_redo() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # Set up a chaser sequence (index 2.0)
+    # Set up a secondary sequence (index 2.0)
     app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.sequences[0]
-    # A new chaser has exactly 1 step initially (step 0 at index 0)
-    assert len(chaser.steps) == 1
-    assert chaser.steps[0].cue.number == 0.0
+    seq = app.lightshow.sequences[0]
+    # A new sequence has exactly 1 step initially (step 0 at index 0)
+    assert len(seq.steps) == 1
+    assert seq.steps[0].cue.number == 0.0
 
     inserted_steps = []
     deleted_steps = []
@@ -108,17 +108,17 @@ def test_sequence_insert_delete_step_actions_and_undo_redo() -> None:
 
     # 1. Insert step 1 with cue number 10.0 and some channels
     app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0, {1: 255, 2: 128})
-    assert len(chaser.steps) == 2
-    assert chaser.steps[0].cue.number == 0.0
-    assert chaser.steps[1].cue.number == 10.0
-    assert chaser.steps[1].cue.channels == {1: 255, 2: 128}
+    assert len(seq.steps) == 2
+    assert seq.steps[0].cue.number == 0.0
+    assert seq.steps[1].cue.number == 10.0
+    assert seq.steps[1].cue.channels == {1: 255, 2: 128}
     assert inserted_steps == [(2.0, 1)]
     assert created_cues == [(2, 10.0)]
 
     # 2. Undo insert step
     app.history.undo()
-    assert len(chaser.steps) == 1
-    assert chaser.steps[0].cue.number == 0.0
+    assert len(seq.steps) == 1
+    assert seq.steps[0].cue.number == 0.0
     assert deleted_steps == [(2.0, 1)]
     assert deleted_cues == [(2, 10.0)]
 
@@ -128,32 +128,32 @@ def test_sequence_insert_delete_step_actions_and_undo_redo() -> None:
     created_cues.clear()
     deleted_cues.clear()
     app.history.redo()
-    assert len(chaser.steps) == 2
-    assert chaser.steps[0].cue.number == 0.0
-    assert chaser.steps[1].cue.number == 10.0
+    assert len(seq.steps) == 2
+    assert seq.steps[0].cue.number == 0.0
+    assert seq.steps[1].cue.number == 10.0
     assert inserted_steps == [(2.0, 1)]
     assert created_cues == [(2, 10.0)]
 
     # 4. Insert step 2 with cue number 20.0
     app.action_registry.execute("sequence.insert_step", 2.0, 2, 20.0, {3: 200})
-    assert len(chaser.steps) == 3
-    assert chaser.steps[2].cue.number == 20.0
+    assert len(seq.steps) == 3
+    assert seq.steps[2].cue.number == 20.0
 
     # 5. Delete step 1
     inserted_steps.clear()
     deleted_steps.clear()
     app.action_registry.execute("sequence.delete_step", 2.0, 1)
-    assert len(chaser.steps) == 2
-    assert chaser.steps[0].cue.number == 0.0
-    assert chaser.steps[1].cue.number == 20.0
+    assert len(seq.steps) == 2
+    assert seq.steps[0].cue.number == 0.0
+    assert seq.steps[1].cue.number == 20.0
     assert deleted_steps == [(2.0, 1)]
 
     # 6. Undo delete step
     app.history.undo()
-    assert len(chaser.steps) == 3
-    assert chaser.steps[0].cue.number == 0.0
-    assert chaser.steps[1].cue.number == 10.0
-    assert chaser.steps[2].cue.number == 20.0
+    assert len(seq.steps) == 3
+    assert seq.steps[0].cue.number == 0.0
+    assert seq.steps[1].cue.number == 10.0
+    assert seq.steps[2].cue.number == 20.0
     assert inserted_steps == [(2.0, 1)]
 
 
@@ -164,10 +164,10 @@ def test_step_update_times_and_text_actions_and_undo_redo() -> None:
 
     app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.sequences[0]
+    seq = app.lightshow.sequences[0]
 
     app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0)
-    step = chaser.steps[1]
+    step = seq.steps[1]
 
     # Verify initial default times and text
     assert step.wait == 0.0
@@ -217,10 +217,10 @@ def test_step_update_channel_time_action_and_undo_redo() -> None:
 
     app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.sequences[0]
+    seq = app.lightshow.sequences[0]
 
     app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0)
-    step = chaser.steps[1]
+    step = seq.steps[1]
     assert step.channel_time == {}
 
     # 1. Set channel 5 time to delay=1.0, time=3.0
