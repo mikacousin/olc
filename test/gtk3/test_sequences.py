@@ -55,10 +55,11 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     assert seq_tab.treeview1 is not None
     assert seq_tab.treeview2 is not None
     assert not hasattr(seq_tab, "type_seq_btn")
+    assert not hasattr(seq_tab, "_keypress_n")
     assert seq_tab.liststore1.get_n_columns() == 2
 
-    # 3. Create a new Sequence (Chaser 2.0)
-    seq_tab._keypress_n()
+    # 3. Create a new Sequence (Seq 2.0) via toolbar button
+    seq_tab.new_seq_btn.clicked()
     process_events()
 
     assert len(app_gui.core.lightshow.chasers) == 1

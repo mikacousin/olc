@@ -58,10 +58,12 @@ from olc.core.parser.ast_nodes import (
     ChannelRangeNode,
     ChannelUnparkCommandNode,
     CommandNode,
+    CreateSequenceCommandNode,
     DeleteCueCommandNode,
     DeleteEffectCommandNode,
     DeleteGroupCommandNode,
     DeletePaletteCommandNode,
+    DeleteSequenceCommandNode,
     EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
@@ -152,6 +154,12 @@ class CommandExecutor:
 
         if isinstance(node, AttributeCommandNode):
             return self._execute_attribute(node)
+
+        if isinstance(node, CreateSequenceCommandNode):
+            return self._execute_create_sequence(node)
+
+        if isinstance(node, DeleteSequenceCommandNode):
+            return self._execute_delete_sequence(node)
 
         if isinstance(node, RecordCueCommandNode):
             return self._execute_record_cue(node)
@@ -1067,6 +1075,65 @@ class CommandExecutor:
             return lightshow.main_playback
         return lightshow.get_sequence(float(sequence_id))
 
+    def _create_secondary_sequence(
+        self,
+        lightshow: typing.Any,  # noqa: ANN401
+        seq_id: int,
+    ) -> typing.Any:  # noqa: ANN401
+        """Create secondary sequence *seq_id* via ActionRegistry or Sequence model."""
+        registry = self._get_registry()
+        if registry is not None and "sequence.new" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("sequence.new", float(seq_id))
+        else:
+            from olc.show.sequence import Sequence
+
+            chaser = Sequence(float(seq_id), type_seq="Normal", lightshow=lightshow)
+            del chaser.steps[1:]
+            chaser.last = len(chaser.steps)
+            lightshow.sequences.append(chaser)
+            lightshow.set_modified()
+            self.app.emit("sequence.created", chaser)
+        return self._get_target_sequence(lightshow, seq_id)
+
+    def _execute_create_sequence(
+        self, node: CreateSequenceCommandNode
+    ) -> CommandResult:
+        """Create a new secondary sequence via RECORD SEQ <n>."""
+        lightshow = getattr(self.app, "lightshow", None)
+        if not lightshow:
+            return CommandResult(False, "LightShow not available")
+        if node.sequence_id <= 1:
+            return CommandResult(False, f"Sequence {node.sequence_id} already exists")
+        if self._get_target_sequence(lightshow, node.sequence_id) is not None:
+            return CommandResult(False, f"Sequence {node.sequence_id} already exists")
+        self._create_secondary_sequence(lightshow, node.sequence_id)
+        return CommandResult(True, f"Created Sequence {node.sequence_id}")
+
+    def _execute_delete_sequence(
+        self, node: DeleteSequenceCommandNode
+    ) -> CommandResult:
+        """Delete a secondary sequence via DELETE SEQ <n>."""
+        lightshow = getattr(self.app, "lightshow", None)
+        if not lightshow:
+            return CommandResult(False, "LightShow not available")
+        if node.sequence_id <= 1:
+            return CommandResult(False, "Cannot delete Sequence 1")
+        target_seq = self._get_target_sequence(lightshow, node.sequence_id)
+        if target_seq is None:
+            return CommandResult(False, f"Sequence {node.sequence_id} does not exist")
+        registry = self._get_registry()
+        if registry is not None and "sequence.delete" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("sequence.delete", float(node.sequence_id))
+        else:
+            lightshow.sequences.remove(target_seq)
+            lightshow.set_modified()
+            self.app.emit("sequence.deleted", target_seq)
+        return CommandResult(True, f"Deleted Sequence {node.sequence_id}")
+
     def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         self, node: RecordCueCommandNode
     ) -> CommandResult:
@@ -1077,7 +1144,10 @@ class CommandExecutor:
         seq_id = node.sequence_id
         target_seq = self._get_target_sequence(lightshow, seq_id)
         if not target_seq:
-            return CommandResult(False, f"Sequence {seq_id} does not exist")
+            if seq_id >= 2:
+                target_seq = self._create_secondary_sequence(lightshow, seq_id)
+            if not target_seq:
+                return CommandResult(False, f"Sequence {seq_id} does not exist")
 
         channels_dict, device_values = self._capture_live_cue_state(lightshow)
         palette_refs = self._capture_live_palette_refs(

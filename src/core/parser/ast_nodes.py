@@ -219,6 +219,20 @@ class DeleteCueCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
+class CreateSequenceCommandNode(CommandNode):
+    """Command to create a new secondary sequence (e.g. RECORD SEQ 2)."""
+
+    sequence_id: int
+
+
+@dataclasses.dataclass
+class DeleteSequenceCommandNode(CommandNode):
+    """Command to delete a secondary sequence (e.g. DELETE SEQ 2)."""
+
+    sequence_id: int
+
+
+@dataclasses.dataclass
 class SneakCommandNode(CommandNode):
     """Command to sneak channels or independents over a duration."""
 

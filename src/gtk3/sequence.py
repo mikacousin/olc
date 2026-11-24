@@ -134,6 +134,22 @@ class SequenceTab(Gtk.Grid):
         self.header_box.set_margin_top(4)
         self.header_box.set_margin_bottom(2)
 
+        self.new_seq_btn = Gtk.Button(label="+ New Sequence")
+        self.new_seq_btn.set_tooltip_text("Create a new secondary sequence")
+        self.new_seq_btn.connect("clicked", lambda *_: self.create_new_sequence())
+        self.header_box.pack_start(self.new_seq_btn, False, False, 0)
+
+        self.delete_seq_btn = Gtk.Button(label="Delete Sequence")
+        self.delete_seq_btn.set_tooltip_text("Delete the selected secondary sequence")
+        self.delete_seq_btn.connect(
+            "clicked", lambda *_: self.delete_selected_sequence()
+        )
+        self.header_box.pack_start(self.delete_seq_btn, False, False, 0)
+
+        self.header_box.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
+        )
+
         initial_tracking = getattr(self.lightshow.main_playback, "tracking_mode", False)
         self.tracking_mode_btn = Gtk.ToggleButton(
             label="Mode: Tracking" if initial_tracking else "Mode: Cue-Only"
@@ -820,14 +836,17 @@ class SequenceTab(Gtk.Grid):
         """Rename selected Step."""
         self.rename_selected()
 
-    def _keypress_n(self) -> None:
-        """New secondary Sequence."""
-        index_seq = (
-            self.lightshow.sequences[-1].index + 1
-            if len(self.lightshow.sequences) > 0
-            else 2
-        )
-        self.window.app.core.action_registry.execute("sequence.new", index_seq)
+    def create_new_sequence(self) -> None:
+        """Create a new secondary sequence using the next available index."""
+        next_idx = max((int(s.index) for s in self.lightshow.sequences), default=1) + 1
+        self.window.app.core.action_registry.execute("sequence.new", float(next_idx))
+
+    def delete_selected_sequence(self) -> None:
+        """Delete the currently selected secondary sequence."""
+        seq_idx = self.get_selected_sequence_index()
+        if seq_idx <= 1.0:
+            return
+        self.window.app.core.action_registry.execute("sequence.delete", seq_idx)
 
     def _keypress_r(self) -> None:
         """New Step and new Cue"""

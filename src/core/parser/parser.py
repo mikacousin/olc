@@ -37,10 +37,12 @@ from olc.core.parser.ast_nodes import (
     ChannelRangeNode,
     ChannelUnparkCommandNode,
     CommandNode,
+    CreateSequenceCommandNode,
     DeleteCueCommandNode,
     DeleteEffectCommandNode,
     DeleteGroupCommandNode,
     DeletePaletteCommandNode,
+    DeleteSequenceCommandNode,
     EditEffectCommandNode,
     GotoCueCommandNode,
     GroupSelectionNode,
@@ -688,8 +690,20 @@ class CommandParser:
     def _parse_cue_first_command(  # pylint: disable=too-many-return-statements
         self,
     ) -> CommandNode:
-        """Parse noun-first cue commands (e.g. [SEQ 2] CUE 5 RECORD TIME 3)."""
+        """Parse noun-first cue/sequence commands."""
+        has_seq = self._peek_is(TokenType.SEQUENCE)
         seq_id = self._parse_optional_sequence_prefix()
+        if has_seq and not self._peek_is(TokenType.CUE):
+            tok_seq_action = self.peek()
+            if self.match(TokenType.RECORD):
+                return CreateSequenceCommandNode(sequence_id=seq_id)
+            if self.match(TokenType.DELETE):
+                return DeleteSequenceCommandNode(sequence_id=seq_id)
+            raise CommandSyntaxError(
+                f"Expected CUE, RECORD, or DELETE after SEQUENCE {seq_id}, "
+                f"got {tok_seq_action.raw_text!r}",
+                tok_seq_action.position,
+            )
         self.expect(TokenType.CUE, "Expected CUE after SEQUENCE")
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after CUE")
         cue_id = float(tok_num.value)
@@ -881,7 +895,12 @@ class CommandParser:
 
     def _parse_record_cue(
         self,
-    ) -> RecordCueCommandNode | RecordPaletteCommandNode | RecordGroupCommandNode:
+    ) -> (
+        RecordCueCommandNode
+        | RecordPaletteCommandNode
+        | RecordGroupCommandNode
+        | CreateSequenceCommandNode
+    ):
         self.advance()  # Consume RECORD
         if self.match(TokenType.GROUP):
             return self._parse_record_group(selection=None)
@@ -893,7 +912,10 @@ class CommandParser:
                 category=spec[0], palette_id=spec[1], mode=mode
             )
 
+        has_seq = self._peek_is(TokenType.SEQUENCE)
         seq_id = self._parse_optional_sequence_prefix()
+        if has_seq and not self._peek_is(TokenType.CUE, TokenType.NUMBER):
+            return CreateSequenceCommandNode(sequence_id=seq_id)
         self.match(TokenType.CUE)  # Optional CUE keyword
 
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after RECORD")
@@ -983,6 +1005,7 @@ class CommandParser:
         | DeletePaletteCommandNode
         | DeleteEffectCommandNode
         | DeleteGroupCommandNode
+        | DeleteSequenceCommandNode
     ):
         self.advance()  # Consume DELETE
         if self.match(TokenType.GROUP):
@@ -1001,7 +1024,10 @@ class CommandParser:
         if spec is not None:
             return DeletePaletteCommandNode(category=spec[0], palette_id=spec[1])
 
+        has_seq = self._peek_is(TokenType.SEQUENCE)
         seq_id = self._parse_optional_sequence_prefix()
+        if has_seq and not self._peek_is(TokenType.CUE, TokenType.NUMBER):
+            return DeleteSequenceCommandNode(sequence_id=seq_id)
         self.match(TokenType.CUE)  # Optional CUE keyword
         tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after DELETE")
         return DeleteCueCommandNode(cue_id=float(tok_num.value), sequence_id=seq_id)

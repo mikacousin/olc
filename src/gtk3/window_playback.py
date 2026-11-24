@@ -378,7 +378,7 @@ class MainPlaybackView(Gtk.Notebook):
                 background = "#232729"
             # Actual and Next Cue in Bold
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
-            if i in (0, main_seq.last - 1):
+            if i == 0 or step_obj.cue is None or step_obj.cue.number == 0:
                 self.cues_liststore1.append(
                     _empty_playback_row(
                         step_str=str(i),

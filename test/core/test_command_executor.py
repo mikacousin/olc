@@ -1227,3 +1227,47 @@ def test_multi_sequence_cue_commands_without_collision() -> None:
     assert res_del.success is True
     assert app.lightshow.get_cue(1.0, 2) is None
     assert app.lightshow.get_cue(1.0, 1) is cue_seq1
+
+
+def test_command_create_delete_and_autocreate_sequence() -> None:
+    """Verify RECORD/DELETE SEQ n and auto-create on RECORD SEQ n CUE m."""
+    app = CoreApplication(MagicMock())
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [0.0] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # 1. Explicit RECORD SEQ 2 and SEQ 3 RECORD
+    res2 = executor.execute(parser.parse("RECORD SEQ 2"))
+    assert res2.success is True
+    assert app.lightshow.get_sequence(2.0) is not None
+
+    res3 = executor.execute(parser.parse("SEQ 3 RECORD"))
+    assert res3.success is True
+    assert app.lightshow.get_sequence(3.0) is not None
+
+    # Duplicate fails cleanly
+    res_dup = executor.execute(parser.parse("RECORD SEQ 2"))
+    assert res_dup.success is False
+
+    # 2. RECORD SEQ 4 CUE 1 auto-creates Sequence 4 and records Cue 1.0
+    res4 = executor.execute(parser.parse("RECORD SEQ 4 CUE 1"))
+    assert res4.success is True
+    seq4 = app.lightshow.get_sequence(4.0)
+    assert seq4 is not None
+    assert app.lightshow.get_cue(1.0, 4) is not None
+
+    # 3. DELETE SEQ 2 and SEQ 3 DELETE; DELETE SEQ 1 fails
+    del2 = executor.execute(parser.parse("DELETE SEQ 2"))
+    assert del2.success is True
+    assert app.lightshow.get_sequence(2.0) is None
+
+    del3 = executor.execute(parser.parse("SEQ 3 DELETE"))
+    assert del3.success is True
+    assert app.lightshow.get_sequence(3.0) is None
+
+    del1 = executor.execute(parser.parse("DELETE SEQ 1"))
+    assert del1.success is False

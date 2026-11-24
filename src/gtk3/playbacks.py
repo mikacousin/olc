@@ -84,6 +84,14 @@ class PlaybacksTab(Gtk.Box):
                 self.app.core.unsubscribe(evt, cb)
         self._subscriptions.clear()
 
+    def _create_new_sequence(self) -> None:
+        """Create a new secondary sequence using the next available index."""
+        next_idx = (
+            max((int(s.index) for s in self.app.core.lightshow.sequences), default=1)
+            + 1
+        )
+        self.app.core.action_registry.execute("sequence.new", float(next_idx))
+
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Playbacks tab when its close icon is clicked."""
         if self.app.tabs is not None:
@@ -104,6 +112,11 @@ class PlaybacksTab(Gtk.Box):
 
         spacer = Gtk.Box()
         toolbar.pack_start(spacer, True, True, 0)
+
+        self.btn_new_sequence = Gtk.Button(label=_("+ New Sequence"))
+        self.btn_new_sequence.set_tooltip_text(_("Create a new secondary sequence"))
+        self.btn_new_sequence.connect("clicked", lambda *_: self._create_new_sequence())
+        toolbar.pack_start(self.btn_new_sequence, False, False, 0)
 
         self.btn_set_main = Gtk.Button(label=_("Set as Main"))
         self.btn_set_main.set_tooltip_text(
