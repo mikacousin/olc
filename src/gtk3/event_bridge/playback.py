@@ -217,8 +217,6 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             self.app.window.playback.sequential.sync_from_sequence(main_seq)
         self._update_header_subtitle(main_seq)
         self.sync_virtual_console()
-        if main_seq is not None and hasattr(main_seq, "update_channels"):
-            main_seq.update_channels()
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.refresh_all_channels()
         if self.app.tabs:

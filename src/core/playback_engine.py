@@ -134,13 +134,16 @@ class PlaybackEngine:
     def set_main_sequence(self, seq_index: float) -> bool:
         """Set which sequence drives CrossFade and the main window playback UI."""
         idx = float(seq_index)
-        if self._resolve_sequence(idx) is None:
+        target_seq = self._resolve_sequence(idx)
+        if target_seq is None:
             return False
         with self._lock:
             self._main_sequence_index = idx
             ls = getattr(self.app, "lightshow", None)
             if ls is not None and isinstance(getattr(ls, "workspace", None), dict):
                 ls.workspace["main_sequence_index"] = idx
+        if hasattr(target_seq, "update_channels"):
+            target_seq.update_channels()
         if hasattr(self.app, "emit"):
             self.app.emit("playback.main_sequence_changed", idx)
         return True

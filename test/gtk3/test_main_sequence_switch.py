@@ -30,6 +30,8 @@ def test_switch_main_sequence_updates_ui_and_controls(app_gui: Application) -> N
     """Switching Seq 2 to MAIN updates MainPlaybackView, Header, Sequential, & nav."""
     ls = app_gui.core.lightshow
     seq1 = ls.main_playback
+    orig_seq1_text = seq1.text
+    seq1.text = ""
 
     # Populate Seq 1 with Cue 1.0 and 2.0
     for num in (1.0, 2.0):
@@ -96,4 +98,7 @@ def test_switch_main_sequence_updates_ui_and_controls(app_gui: Application) -> N
         cue_nums_back = [row[1] for row in pb_view.cues_liststore1 if row[1]]
         assert cue_nums_back == ["1.0", "2.0"]
     finally:
+        seq1.text = orig_seq1_text
+        if seq2 in ls.sequences:
+            ls.sequences.remove(seq2)
         app_gui.core.playback_engine.set_main_sequence(1.0)
