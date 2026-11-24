@@ -57,6 +57,7 @@ class PlaybacksTab(Gtk.Box):
             "playback.sequence_asserted",
             "sequence.created",
             "sequence.deleted",
+            "sequence.renamed",
             "sequence.options_changed",
         ):
             cb = self._make_refresh_callback()
@@ -83,6 +84,13 @@ class PlaybacksTab(Gtk.Box):
             if hasattr(self.app.core, "unsubscribe"):
                 self.app.core.unsubscribe(evt, cb)
         self._subscriptions.clear()
+
+    def _on_sequence_name_edited(
+        self, _widget: Gtk.CellRendererText, path: str, new_text: str
+    ) -> None:
+        """Rename the edited sequence via sequence.rename action."""
+        seq_idx = float(self.liststore[path][0])
+        self.app.core.action_registry.execute("sequence.rename", seq_idx, new_text)
 
     def _create_new_sequence(self) -> None:
         """Create a new secondary sequence using the next available index."""
@@ -159,6 +167,9 @@ class PlaybacksTab(Gtk.Box):
         )
         for title, col_idx in text_cols:
             rend = Gtk.CellRendererText()
+            if col_idx == 3:
+                rend.set_property("editable", True)
+                rend.connect("edited", self._on_sequence_name_edited)
             col = Gtk.TreeViewColumn(title, rend)
             col.add_attribute(rend, "text", col_idx)
             col.set_resizable(True)

@@ -91,7 +91,12 @@ def test_switch_main_sequence_updates_ui_and_controls(app_gui: Application) -> N
         assert seq2.position == 1
         assert seq1.position == 0
 
-        # 6. Switch back to Seq 1
+        # 6. Rename Seq 2 via sequence.rename -> MainPlaybackView tab title updates
+        app_gui.core.action_registry.execute("sequence.rename", 2.0, "Renamed Overlay")
+        process_events()
+        assert pb_view._tab_label.get_text() == "Main · Seq 2 — Renamed Overlay"
+
+        # 7. Switch back to Seq 1
         assert app_gui.core.action_registry.execute("playback.set_main_sequence", 1.0)
         process_events()
         assert pb_view._tab_label.get_text() == "Main · Seq 1"

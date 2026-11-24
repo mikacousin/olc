@@ -77,6 +77,58 @@ class SequenceNewAction(Action):
             self.app.emit("sequence.created", self.created_chaser)
 
 
+class SequenceRenameAction(Action):
+    """Action to rename any sequence (Sequence 1 or secondary)."""
+
+    name = "sequence.rename"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.text: str = ""
+        self.old_text: str = ""
+
+    def configure(self, sequence_index: float, text: str) -> None:
+        """Configure target sequence index and new label."""
+        self.sequence_index = float(sequence_index)
+        self.text = str(text)
+
+    def execute(self) -> None:
+        """Apply the new sequence label."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            raise ValueError(f"Sequence {self.sequence_index} does not exist.")
+        self.old_text = str(seq.text)
+        seq.text = self.text
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.renamed", float(self.sequence_index))
+
+    def undo(self) -> None:
+        """Restore the previous sequence label."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return
+        seq.text = self.old_text
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.renamed", float(self.sequence_index))
+
+    def redo(self) -> None:
+        """Reapply the new sequence label."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return
+        seq.text = self.text
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.renamed", float(self.sequence_index))
+
+    def get_description(self) -> str:
+        """Return human-readable undo/redo description."""
+        idx = self.sequence_index
+        idx_str = str(int(idx)) if float(idx).is_integer() else str(idx)
+        return f"Rename Seq {idx_str}"
+
+
 class SequenceDeleteAction(Action):
     """Action to delete a secondary sequence."""
 

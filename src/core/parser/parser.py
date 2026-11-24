@@ -49,6 +49,7 @@ from olc.core.parser.ast_nodes import (
     HomeCommandNode,
     IntensityCommandNode,
     LabelGroupCommandNode,
+    LabelSequenceCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
     PatchCommandNode,
@@ -699,8 +700,13 @@ class CommandParser:
                 return CreateSequenceCommandNode(sequence_id=seq_id)
             if self.match(TokenType.DELETE):
                 return DeleteSequenceCommandNode(sequence_id=seq_id)
+            if self.match(TokenType.LABEL):
+                lbl_tok = self._expect_label_token()
+                return LabelSequenceCommandNode(
+                    sequence_id=seq_id, label=str(lbl_tok.value)
+                )
             raise CommandSyntaxError(
-                f"Expected CUE, RECORD, or DELETE after SEQUENCE {seq_id}, "
+                f"Expected CUE, RECORD, DELETE, or LABEL after SEQUENCE {seq_id}, "
                 f"got {tok_seq_action.raw_text!r}",
                 tok_seq_action.position,
             )
@@ -881,9 +887,20 @@ class CommandParser:
             group_id=group_id, selection=selection, label=label
         )
 
-    def _parse_label_command(self) -> LabelGroupCommandNode:
+    def _parse_label_command(
+        self,
+    ) -> LabelGroupCommandNode | LabelSequenceCommandNode:
         self.advance()  # Consume LABEL
-        self.expect(TokenType.GROUP, "Expected GROUP after LABEL")
+        if self.match(TokenType.SEQUENCE):
+            tok_num = self.expect(
+                TokenType.NUMBER, "Expected Sequence number after LABEL SEQ"
+            )
+            lbl_tok = self._expect_label_token()
+            return LabelSequenceCommandNode(
+                sequence_id=int(float(tok_num.value)),
+                label=str(lbl_tok.value),
+            )
+        self.expect(TokenType.GROUP, "Expected GROUP or SEQUENCE after LABEL")
         tok_num = self.expect(
             TokenType.NUMBER, "Expected Group number after LABEL GROUP"
         )

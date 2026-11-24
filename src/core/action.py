@@ -115,6 +115,7 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "sequence.pause": _("Pause sequence"),
     "sequence.release": _("Release sequence"),
     "sequence.release_all": _("Release all sequences"),
+    "sequence.rename": _("Rename sequence"),
     "sequence.set_mib_enabled": _("Toggle MIB"),
     "sequence.set_playback_options": _("Edit sequence playback options"),
     "sequence.set_tracking_mode": _("Change tracking mode"),

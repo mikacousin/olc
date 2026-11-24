@@ -1271,3 +1271,33 @@ def test_command_create_delete_and_autocreate_sequence() -> None:
 
     del1 = executor.execute(parser.parse("DELETE SEQ 1"))
     assert del1.success is False
+
+
+def test_command_label_sequence_and_undo_redo() -> None:
+    """Verify LABEL SEQ n, SEQ n LABEL, and sequence.rename Undo/Redo."""
+    app = CoreApplication(MagicMock())
+    parser = CommandParser()
+    executor = CommandExecutor(app)
+
+    # Rename Sequence 1 via verb-first syntax
+    res1 = executor.execute(parser.parse('LABEL SEQ 1 "Act 1"'))
+    assert res1.success is True
+    assert app.lightshow.main_playback.text == "Act 1"
+
+    # Undo/Redo restores and reapplies
+    app.history.undo()
+    assert app.lightshow.main_playback.text == ""
+    app.history.redo()
+    assert app.lightshow.main_playback.text == "Act 1"
+
+    # Create Seq 2 and rename via noun-first syntax
+    executor.execute(parser.parse("RECORD SEQ 2"))
+    res2 = executor.execute(parser.parse('SEQ 2 LABEL "Overlay"'))
+    assert res2.success is True
+    seq2 = app.lightshow.get_sequence(2.0)
+    assert seq2 is not None
+    assert seq2.text == "Overlay"
+
+    # Missing sequence fails cleanly
+    res_missing = executor.execute(parser.parse('LABEL SEQ 99 "Ghost"'))
+    assert res_missing.success is False

@@ -435,3 +435,11 @@ class LabelGroupCommandNode(CommandNode):
 
     group_id: float
     label: str
+
+
+@dataclasses.dataclass
+class LabelSequenceCommandNode(CommandNode):
+    """Command to rename a Sequence (e.g. LABEL SEQ 2 "Overlay")."""
+
+    sequence_id: int
+    label: str

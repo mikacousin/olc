@@ -387,9 +387,21 @@ class SequenceTab(Gtk.Grid):
 
         for i, column_title in enumerate(["Seq", "Name"]):
             renderer = Gtk.CellRendererText()
+            if i == 1:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self._on_sequence_name_edited)
             column = Gtk.TreeViewColumn(column_title, renderer)
             column.add_attribute(renderer, "text", i)
             self.treeview1.append_column(column)
+
+    def _on_sequence_name_edited(
+        self, _widget: Gtk.CellRendererText, path: str, new_text: str
+    ) -> None:
+        """Rename the edited sequence via sequence.rename action."""
+        seq_idx = float(self.liststore1[path][0])
+        self.window.app.core.action_registry.execute(
+            "sequence.rename", seq_idx, new_text
+        )
 
     def _setup_cues_list(self) -> None:
         """Setup the cues layout"""

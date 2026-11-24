@@ -70,6 +70,7 @@ from olc.core.parser.ast_nodes import (
     HomeCommandNode,
     IntensityCommandNode,
     LabelGroupCommandNode,
+    LabelSequenceCommandNode,
     LocateCommandNode,
     ParkUnparkAllCommandNode,
     PatchCommandNode,
@@ -253,6 +254,9 @@ class CommandExecutor:
 
         if isinstance(node, LabelGroupCommandNode):
             return self._execute_label_group(node)
+
+        if isinstance(node, LabelSequenceCommandNode):
+            return self._execute_label_sequence(node)
 
         return CommandResult(False, f"Unsupported command node: {type(node).__name__}")
 
@@ -2443,3 +2447,26 @@ class CommandExecutor:
             action.execute()
 
         return CommandResult(True, f'Labeled Group {num_str} "{node.label}"')
+
+    def _execute_label_sequence(self, node: LabelSequenceCommandNode) -> CommandResult:
+        """Rename Sequence 1 or a secondary Sequence via LABEL SEQ <n>."""
+        lightshow = getattr(self.app, "lightshow", None)
+        if lightshow is None:
+            return CommandResult(False, "LightShow not available")
+        target_seq = self._get_target_sequence(lightshow, node.sequence_id)
+        if target_seq is None:
+            return CommandResult(False, f"Sequence {node.sequence_id} does not exist")
+
+        registry = self._get_registry()
+        if registry is not None and "sequence.rename" in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute("sequence.rename", float(node.sequence_id), node.label)
+        else:
+            target_seq.text = node.label
+            lightshow.set_modified()
+            self.app.emit("sequence.renamed", float(node.sequence_id))
+
+        return CommandResult(
+            True, f'Labeled Sequence {node.sequence_id} "{node.label}"'
+        )

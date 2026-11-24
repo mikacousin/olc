@@ -152,6 +152,10 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             lambda seq: self._run_idle(self._on_sequence_deleted, seq),
         )
         self.app.core.subscribe(
+            "sequence.renamed",
+            lambda seq_idx: self._run_idle(self._on_sequence_renamed, seq_idx),
+        )
+        self.app.core.subscribe(
             "step.inserted",
             lambda seq_idx, step_idx: self._run_idle(
                 self._on_step_changed, seq_idx, step_idx
@@ -251,6 +255,23 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
         if self.app.tabs and self.app.tabs.tabs.get("sequences") is not None:
             sequences_tab = typing.cast("SequenceTab", self.app.tabs.tabs["sequences"])
             sequences_tab.refresh()
+        return False
+
+    def _on_sequence_renamed(self, seq_idx: float) -> bool:
+        """Handle sequence rename event to refresh open views."""
+        if self.app.tabs and self.app.tabs.tabs.get("sequences") is not None:
+            sequences_tab = typing.cast("SequenceTab", self.app.tabs.tabs["sequences"])
+            sequences_tab.refresh()
+        engine = getattr(self.app.core, "playback_engine", None)
+        is_main = (
+            engine.is_main_sequence(float(seq_idx))
+            if engine is not None
+            else float(seq_idx) == 1.0
+        )
+        if is_main and self.app.window and self.app.window.playback:
+            self.app.window.playback.update_tab_title()
+        if self.app.virtual_console is not None:
+            self.app.virtual_console.queue_draw()
         return False
 
     def _on_step_changed(self, sequence_idx: float, step_idx: int) -> bool:
