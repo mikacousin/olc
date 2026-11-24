@@ -42,11 +42,13 @@ def step_filter_func1(
     """
     if not view.app:
         return True
-    lightshow = view.app.core.lightshow
-    if lightshow.main_playback.position <= 0:
+    main_seq = view._get_main_sequence()  # pylint: disable=protected-access
+    if main_seq is None:
+        return True
+    if main_seq.position <= 0:
         if int(model[treeiter][11]) in {0, 1} or int(model[treeiter][0]) in {0, 1}:
             return True
-    if lightshow.main_playback.position == 1:
+    if main_seq.position == 1:
         if int(model[treeiter][11]) == 1:
             return True
         if int(model[treeiter][11]) == 0:
@@ -56,10 +58,10 @@ def step_filter_func1(
         return False
 
     return int(model[treeiter][0]) in [
-        lightshow.main_playback.position,
-        lightshow.main_playback.position + 1,
-        lightshow.main_playback.position - 1,
-        lightshow.main_playback.position - 2,
+        main_seq.position,
+        main_seq.position + 1,
+        main_seq.position - 1,
+        main_seq.position - 2,
     ]
 
 
@@ -78,10 +80,12 @@ def step_filter_func2(
     """
     if not view.app:
         return True
-    lightshow = view.app.core.lightshow
+    main_seq = view._get_main_sequence()  # pylint: disable=protected-access
+    if main_seq is None:
+        return False
     if not model[treeiter][0]:
         return False
-    return int(model[treeiter][0]) > lightshow.main_playback.position + 1
+    return int(model[treeiter][0]) > main_seq.position + 1
 
 
 def _empty_playback_row(
@@ -130,20 +134,41 @@ class MainPlaybackView(Gtk.Notebook):
         self._setup_treeviews()
         self._setup_layout()
 
-        self.populate_sequence()
-
-        if self.app and self.app.core.lightshow.main_playback.last == 1:
-            self.cues_liststore1.append(_empty_playback_row(sentinel=1))
-
-        self.append_page(self.grid, Gtk.Label(label="Main Playback"))
+        self._tab_label = Gtk.Label(label="Main Playback")
+        self.append_page(self.grid, self._tab_label)
         self.set_tab_reorderable(self.grid, True)
         self.set_tab_detachable(self.grid, True)
+
+        self.populate_sequence()
+        self.update_tab_title()
+
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        if not self.app:
+            return None
+        engine = getattr(self.app.core, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.app.core.lightshow, "main_playback", None)
+
+    def update_tab_title(self) -> None:
+        """Update notebook tab label to reflect the active Main Sequence."""
+        seq = self._get_main_sequence()
+        if seq is None:
+            self._tab_label.set_text("Main Playback")
+            return
+        idx = int(seq.index) if float(seq.index).is_integer() else seq.index
+        title = f"Main · Seq {idx} — {seq.text}" if seq.text else f"Main · Seq {idx}"
+        self._tab_label.set_text(title)
 
     def _setup_sequential(self) -> None:
         """Setup the Sequential Widget parameters"""
         # Crossfade widget
         self.sequential = SequentialWidget(
-            self.app.core.lightshow if self.app else None
+            self.app.core.lightshow if self.app else None,
+            main_sequence_getter=self._get_main_sequence,
         )
 
     def _setup_treeviews(self) -> None:
@@ -286,9 +311,10 @@ class MainPlaybackView(Gtk.Notebook):
         )
 
     def update_sequence_display(self) -> None:
-        """Update Sequence display"""
+        """Clear and repopulate the playback cue list."""
         self.cues_liststore1.clear()
         self.populate_sequence()
+        self.update_tab_title()
 
     def _on_treeview_query_tooltip(
         self,
@@ -313,7 +339,10 @@ class MainPlaybackView(Gtk.Notebook):
         if not step_text:
             return False
         step_idx = int(step_text)
-        steps = self.app.core.lightshow.main_playback.steps
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return False
+        steps = main_seq.steps
         if step_idx < 0 or step_idx >= len(steps):
             return False
         text = format_step_tooltip(steps[step_idx], col.get_title() or "")
@@ -326,11 +355,13 @@ class MainPlaybackView(Gtk.Notebook):
         """Display main playback"""
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
         self.cues_liststore1.append(_empty_playback_row(sentinel=0))
         self.cues_liststore1.append(_empty_playback_row(sentinel=1))
-        for i in range(lightshow.main_playback.last):
-            step_obj = lightshow.main_playback.steps[i]
+        for i in range(main_seq.last):
+            step_obj = main_seq.steps[i]
             wait = time_to_string(step_obj.wait)
             t_out = time_to_string(step_obj.time_out)
             d_out = time_to_string(step_obj.delay_out)
@@ -347,7 +378,7 @@ class MainPlaybackView(Gtk.Notebook):
                 background = "#232729"
             # Actual and Next Cue in Bold
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
-            if i in (0, lightshow.main_playback.last - 1):
+            if i in (0, main_seq.last - 1):
                 self.cues_liststore1.append(
                     _empty_playback_row(
                         step_str=str(i),
@@ -369,7 +400,7 @@ class MainPlaybackView(Gtk.Notebook):
                     step_obj.delay_beam, step_obj.time_beam
                 )
                 fx_text, fx_color = SequenceTab._format_step_fx_status(  # pylint: disable=protected-access
-                    lightshow.main_playback, i
+                    main_seq, i
                 )
                 flags_text = SequenceTab._format_cue_flags(cue)  # pylint: disable=protected-access
                 total_text = SequenceTab._format_family_time(step_obj.total_time)  # pylint: disable=protected-access
@@ -405,6 +436,8 @@ class MainPlaybackView(Gtk.Notebook):
                         fx_color is not None,
                     ]
                 )
+        if main_seq.last == 1:
+            self.cues_liststore1.append(_empty_playback_row(sentinel=1))
         self.update_active_cues_display()
         self.grid.queue_draw()
 
@@ -412,39 +445,46 @@ class MainPlaybackView(Gtk.Notebook):
         """Update First part of sequential"""
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        self.cues_liststore1[lightshow.main_playback.position][9] = "#232729"
-        self.cues_liststore1[lightshow.main_playback.position][10] = Pango.Weight.NORMAL
-        if lightshow.main_playback.position + 1 <= lightshow.main_playback.last:
-            self.cues_liststore1[lightshow.main_playback.position + 1][9] = "#232729"
-            self.cues_liststore1[lightshow.main_playback.position + 1][10] = (
-                Pango.Weight.NORMAL
-            )
-        if lightshow.main_playback.position + 2 <= lightshow.main_playback.last:
-            self.cues_liststore1[lightshow.main_playback.position + 2][9] = "#997004"
-            self.cues_liststore1[lightshow.main_playback.position + 2][10] = (
-                Pango.Weight.HEAVY
-            )
-        if lightshow.main_playback.position + 3 <= lightshow.main_playback.last:
-            self.cues_liststore1[lightshow.main_playback.position + 3][9] = "#555555"
-            self.cues_liststore1[lightshow.main_playback.position + 3][10] = (
-                Pango.Weight.HEAVY
-            )
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        n_rows = len(self.cues_liststore1)
+        pos = main_seq.position
+        if 0 <= pos < n_rows:
+            self.cues_liststore1[pos][9] = "#232729"
+            self.cues_liststore1[pos][10] = Pango.Weight.NORMAL
+        if pos + 1 <= main_seq.last and pos + 1 < n_rows:
+            self.cues_liststore1[pos + 1][9] = "#232729"
+            self.cues_liststore1[pos + 1][10] = Pango.Weight.NORMAL
+        if pos + 2 <= main_seq.last and pos + 2 < n_rows:
+            self.cues_liststore1[pos + 2][9] = "#997004"
+            self.cues_liststore1[pos + 2][10] = Pango.Weight.HEAVY
+        if pos + 3 <= main_seq.last and pos + 3 < n_rows:
+            self.cues_liststore1[pos + 3][9] = "#555555"
+            self.cues_liststore1[pos + 3][10] = Pango.Weight.HEAVY
         self.step_filter1.refilter()
         self.step_filter2.refilter()
-        path1 = Gtk.TreePath.new_from_indices([lightshow.main_playback.position + 2])
+        if 0 <= pos + 2 < n_rows:
+            path1 = Gtk.TreePath.new_from_indices([pos + 2])
+            self.treeview1.set_cursor(path1, None, False)
         path2 = Gtk.TreePath.new_from_indices([0])
-        self.treeview1.set_cursor(path1, None, False)
         self.treeview2.set_cursor(path2, None, False)
 
     def display_times(self) -> None:
         """Display Cues times after countdown"""
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        step = lightshow.main_playback.position
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        step = main_seq.position
         for offset in (0, 1):
-            step_obj = lightshow.main_playback.steps[step + offset]
+            if not (
+                0 <= step + offset < len(main_seq.steps)
+                and 0 <= step + 2 + offset < len(self.cues_liststore1)
+            ):
+                continue
+            step_obj = main_seq.steps[step + offset]
             row = self.cues_liststore1[step + 2 + offset]
             row[3] = time_to_string(step_obj.wait)
             row[4] = time_to_string(step_obj.delay_out)
@@ -473,9 +513,15 @@ class MainPlaybackView(Gtk.Notebook):
         # Color crossfade
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        step = lightshow.main_playback.position + 1
-        total_time = lightshow.main_playback.steps[step].total_time * 1000
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        step = main_seq.position + 1
+        if step >= len(main_seq.steps):
+            return
+        total_time = main_seq.steps[step].total_time * 1000
+        if total_time <= 0:
+            return
         progress = min(max(i / total_time, 0.0), 1.0)
         self.update_cue_crossfade_color(step, progress)
 
@@ -487,13 +533,17 @@ class MainPlaybackView(Gtk.Notebook):
         """
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        step = lightshow.main_playback.position + 1
-        wait = lightshow.main_playback.steps[step].wait * 1000
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        step = main_seq.position + 1
+        if step >= len(main_seq.steps):
+            return
+        wait = main_seq.steps[step].wait * 1000
         if i > wait:
-            d_out = lightshow.main_playback.steps[step].delay_out * 1000
+            d_out = main_seq.steps[step].delay_out * 1000
             if i > wait + d_out:
-                t_out = lightshow.main_playback.steps[step].time_out * 1000
+                t_out = main_seq.steps[step].time_out * 1000
                 time = (t_out + wait + d_out - i) / 1000
                 if time >= 0:
                     self.cues_liststore1[step + 2][5] = time_to_string(time)
@@ -513,13 +563,17 @@ class MainPlaybackView(Gtk.Notebook):
         """
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        step = lightshow.main_playback.position + 1
-        wait = lightshow.main_playback.steps[step].wait * 1000
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        step = main_seq.position + 1
+        if step >= len(main_seq.steps):
+            return
+        wait = main_seq.steps[step].wait * 1000
         if i > wait:
-            d_in = lightshow.main_playback.steps[step].delay_in * 1000
+            d_in = main_seq.steps[step].delay_in * 1000
             if i > wait + d_in:
-                t_in = lightshow.main_playback.steps[step].time_in * 1000
+                t_in = main_seq.steps[step].time_in * 1000
                 time = (t_in + wait + d_in - i) / 1000
                 if time >= 0:
                     self.cues_liststore1[step + 2][7] = time_to_string(time)
@@ -536,7 +590,10 @@ class MainPlaybackView(Gtk.Notebook):
         """Update Total, Pos, Color, and Beam countdowns during an active crossfade."""
         if not self.app:
             return
-        step_obj = self.app.core.lightshow.main_playback.steps[step]
+        main_seq = self._get_main_sequence()
+        if main_seq is None or step >= len(main_seq.steps):
+            return
+        step_obj = main_seq.steps[step]
         row = self.cues_liststore1[step + 2]
         rem_total = max(0.0, step_obj.total_time - elapsed_ms / 1000.0)
         row[17] = SequenceTab._format_family_time(rem_total)  # pylint: disable=protected-access
@@ -607,7 +664,9 @@ class MainPlaybackView(Gtk.Notebook):
         """
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
         count = (goback_time - i) / 1000
         if count >= 0:
             self.cues_liststore1[step + 1][5] = time_to_string(count)
@@ -619,7 +678,7 @@ class MainPlaybackView(Gtk.Notebook):
         blended = self._blend_color("#997004", "#555555", progress)
         hex_color = self._rgb_to_hex(blended)
         self.cues_liststore1[step + 2][9] = hex_color
-        if step < lightshow.main_playback.last - 2:
+        if step < main_seq.last - 2:
             blended = self._blend_color("#555555", "#232729", progress)
             hex_color = self._rgb_to_hex(blended)
             self.cues_liststore1[step + 3][9] = hex_color
@@ -633,14 +692,19 @@ class MainPlaybackView(Gtk.Notebook):
         """
         if not self.app:
             return
-        lightshow = self.app.core.lightshow
-        self.sequential.total_time = lightshow.main_playback.steps[step + 1].total_time
-        self.sequential.time_in = lightshow.main_playback.steps[step + 1].time_in
-        self.sequential.time_out = lightshow.main_playback.steps[step + 1].time_out
-        self.sequential.delay_in = lightshow.main_playback.steps[step + 1].delay_in
-        self.sequential.delay_out = lightshow.main_playback.steps[step + 1].delay_out
-        self.sequential.wait = lightshow.main_playback.steps[step + 1].wait
-        self.sequential.channel_time = lightshow.main_playback.steps[
-            step + 1
-        ].channel_time
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            self.sequential.sync_from_sequence(None)
+            return
+        if not (0 <= step + 1 < len(main_seq.steps)):
+            self.sequential.sync_from_sequence(main_seq)
+            return
+        next_step = main_seq.steps[step + 1]
+        self.sequential.total_time = next_step.total_time
+        self.sequential.time_in = next_step.time_in
+        self.sequential.time_out = next_step.time_out
+        self.sequential.delay_in = next_step.delay_in
+        self.sequential.delay_out = next_step.delay_out
+        self.sequential.wait = next_step.wait
+        self.sequential.channel_time = next_step.channel_time
         self.sequential.queue_draw()

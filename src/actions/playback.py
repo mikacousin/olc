@@ -105,7 +105,7 @@ class PlaybackStepNavigateAction(Action):
 
     def execute(self) -> None:
         """Execute the sequence step navigation."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback:
             return
 
@@ -119,7 +119,7 @@ class PlaybackStepNavigateAction(Action):
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the sequence step selection."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback:
             return {}
 
@@ -282,7 +282,7 @@ class PlaybackGotoAction(Action):
 
     def execute(self) -> None:
         """Execute the goto transition."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback or not self.target:
             return
 
@@ -765,7 +765,7 @@ class PlaybackStopAction(Action):
 
     def execute(self) -> None:
         """Stop the main playback and any running chasers."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if main_playback:
             main_playback.stop()
         for seq in self.app.lightshow.sequences:

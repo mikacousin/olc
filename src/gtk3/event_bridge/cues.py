@@ -138,7 +138,12 @@ class CueBridgeHandler(BaseEventBridgeHandler):
         """
         if not (self.app.window and self.app.window.live_view):
             return
-        playback = self.app.core.lightshow.main_playback
+        engine = getattr(self.app.core, "playback_engine", None)
+        playback = (
+            engine.main_sequence
+            if engine is not None and engine.main_sequence is not None
+            else self.app.core.lightshow.main_playback
+        )
         if not (playback.steps and playback.position + 1 < len(playback.steps)):
             return
         active_cue = playback.steps[playback.position + 1].cue

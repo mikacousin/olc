@@ -170,10 +170,61 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             ),
         )
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app.core, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.app.core.lightshow, "main_playback", None)
+
+    def _update_header_subtitle(self, sequence: typing.Any = None) -> None:  # noqa: ANN401
+        """Update Window HeaderBar subtitle from *sequence* active & next cues."""
+        if not (self.app.window and self.app.window.header):
+            return
+        seq = sequence if sequence is not None else self._get_main_sequence()
+        if seq is None or not getattr(seq, "steps", None):
+            self.app.window.header.set_subtitle("")
+            return
+        pos = int(getattr(seq, "position", 0))
+        if not (0 <= pos < len(seq.steps)):
+            self.app.window.header.set_subtitle("")
+            return
+        cue_step = seq.steps[pos].cue
+        number_step = cue_step.number if cue_step is not None else 0.0
+        text_step = seq.steps[pos].text
+        if pos + 1 < len(seq.steps):
+            cue_next = seq.steps[pos + 1].cue
+            number_next = cue_next.number if cue_next is not None else 0.0
+            text_next = seq.steps[pos + 1].text
+            subtitle = (
+                f"Cue : {number_step} {text_step} - "
+                f"Next Cue : {number_next} {text_next}"
+            )
+        else:
+            subtitle = f"Cue : {number_step} {text_step}"
+        seq_idx = float(getattr(seq, "index", 1.0))
+        if seq_idx != 1.0:
+            idx_label = int(seq_idx) if seq_idx.is_integer() else seq_idx
+            subtitle = f"Seq {idx_label} — {subtitle}"
+        self.app.window.header.set_subtitle(subtitle)
+
     def _on_main_sequence_changed(self) -> bool:
+        main_seq = self._get_main_sequence()
         if self.app.window and self.app.window.playback:
             self.app.window.playback.update_sequence_display()
-            self.app.window.playback.update_active_cues_display()
+            self.app.window.playback.sequential.sync_from_sequence(main_seq)
+        self._update_header_subtitle(main_seq)
+        self.sync_virtual_console()
+        if main_seq is not None and hasattr(main_seq, "update_channels"):
+            main_seq.update_channels()
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.refresh_all_channels()
+        if self.app.tabs:
+            track_tab = self.app.tabs.tabs.get("track_channels")
+            if track_tab is not None and hasattr(track_tab, "refresh"):
+                track_tab.refresh()
         return False
 
     def _on_sequence_created(self, _sequence: Sequence) -> bool:
@@ -230,13 +281,19 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                 ):
                     ct_tab.repopulate_liststore()
                     ct_tab.channels_view.update()
-        if sequence_idx == 1.0 and self.app.window:
+        engine = getattr(self.app.core, "playback_engine", None)
+        is_main = (
+            engine.is_main_sequence(sequence_idx)
+            if engine is not None
+            else sequence_idx == 1.0
+        )
+        if is_main and self.app.window:
+            main_seq = self._get_main_sequence()
             if self.app.window.playback:
                 self.app.window.playback.update_sequence_display()
-                lightshow = self.app.core.lightshow
-                if 0 <= step_idx < len(lightshow.main_playback.steps):
-                    if lightshow.main_playback.position + 1 == step_idx:
-                        step_obj = lightshow.main_playback.steps[step_idx]
+                if main_seq is not None and 0 <= step_idx < len(main_seq.steps):
+                    if main_seq.position + 1 == step_idx:
+                        step_obj = main_seq.steps[step_idx]
                         self.app.window.playback.sequential.wait = step_obj.wait
                         self.app.window.playback.sequential.time_in = step_obj.time_in
                         self.app.window.playback.sequential.time_out = step_obj.time_out
@@ -250,23 +307,11 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                         self.app.window.playback.sequential.queue_draw()
 
             # Update header subtitle if needed
-            lightshow = self.app.core.lightshow
-            sequence = lightshow.main_playback
-            if step_idx in (sequence.position, sequence.position + 1):
-                if 0 <= sequence.position < len(
-                    sequence.steps
-                ) and 0 <= sequence.position + 1 < len(sequence.steps):
-                    cue_step = sequence.steps[sequence.position].cue
-                    cue_next = sequence.steps[sequence.position + 1].cue
-                    number_step = cue_step.number if cue_step is not None else 0.0
-                    number_next = cue_next.number if cue_next is not None else 0.0
-                    subtitle = (
-                        f"Cue : {number_step} "
-                        f"{sequence.steps[sequence.position].text} - Next Cue : "
-                        f"{number_next} "
-                        f"{sequence.steps[sequence.position + 1].text}"
-                    )
-                    self.app.window.header.set_subtitle(subtitle)
+            if main_seq is not None and step_idx in (
+                main_seq.position,
+                main_seq.position + 1,
+            ):
+                self._update_header_subtitle(main_seq)
         return False
 
     def _on_go_triggered(self, feedback: dict[str, typing.Any]) -> bool:
@@ -469,7 +514,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
         if not vc:
             return
 
-        main_playback = self.app.core.lightshow.main_playback
+        main_playback = self._get_main_sequence()
         if not main_playback:
             return
 
@@ -504,27 +549,16 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             Always False.
         """
         if self.app.window and self.app.window.playback:
-            self.app.window.playback.sequential.total_time = (
-                self.app.core.lightshow.main_playback.steps[next_step].total_time
-            )
-            self.app.window.playback.sequential.time_in = (
-                self.app.core.lightshow.main_playback.steps[next_step].time_in
-            )
-            self.app.window.playback.sequential.time_out = (
-                self.app.core.lightshow.main_playback.steps[next_step].time_out
-            )
-            self.app.window.playback.sequential.delay_in = (
-                self.app.core.lightshow.main_playback.steps[next_step].delay_in
-            )
-            self.app.window.playback.sequential.delay_out = (
-                self.app.core.lightshow.main_playback.steps[next_step].delay_out
-            )
-            self.app.window.playback.sequential.wait = (
-                self.app.core.lightshow.main_playback.steps[next_step].wait
-            )
-            self.app.window.playback.sequential.channel_time = (
-                self.app.core.lightshow.main_playback.steps[next_step].channel_time
-            )
+            main_seq = self._get_main_sequence()
+            if main_seq is not None and 0 <= next_step < len(main_seq.steps):
+                step_obj = main_seq.steps[next_step]
+                self.app.window.playback.sequential.total_time = step_obj.total_time
+                self.app.window.playback.sequential.time_in = step_obj.time_in
+                self.app.window.playback.sequential.time_out = step_obj.time_out
+                self.app.window.playback.sequential.delay_in = step_obj.delay_in
+                self.app.window.playback.sequential.delay_out = step_obj.delay_out
+                self.app.window.playback.sequential.wait = step_obj.wait
+                self.app.window.playback.sequential.channel_time = step_obj.channel_time
             self.app.window.playback.sequential.position_a = 0
             self.app.window.playback.sequential.position_b = 0
         update_ui(subtitle, typing.cast(typing.Any, self.app))

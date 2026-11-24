@@ -221,14 +221,17 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
             if self.app.window.live_view is not None:
                 self.app.window.live_view.channels_view.flowbox.unselect_all()
                 self.app.window.live_view.channels_view.last_selected_channel = ""
+            engine = getattr(self.app.core, "playback_engine", None)
+            main_seq = (
+                engine.main_sequence
+                if engine is not None and engine.main_sequence is not None
+                else self.app.core.lightshow.main_playback
+            )
+            pos = main_seq.position if main_seq is not None else 0
             if self.app.window.playback is not None:
                 self.app.window.playback.update_sequence_display()
-                self.app.window.playback.update_xfade_display(
-                    self.app.core.lightshow.main_playback.position
-                )
-            self.app.window.update_channels_display(
-                self.app.core.lightshow.main_playback.position
-            )
+                self.app.window.playback.update_xfade_display(pos)
+            self.app.window.update_channels_display(pos)
             if self.app.window.header is not None:
                 self.app.window.header.set_subtitle("")
             if (
@@ -259,7 +262,13 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 self.app.window.playback.update_xfade_display(0)
                 self.app.window.playback.update_sequence_display()
             if self.app.window.header is not None:
-                steps = self.app.core.lightshow.main_playback.steps
+                engine = getattr(self.app.core, "playback_engine", None)
+                main_seq = (
+                    engine.main_sequence
+                    if engine is not None and engine.main_sequence is not None
+                    else self.app.core.lightshow.main_playback
+                )
+                steps = main_seq.steps if main_seq is not None else []
                 if len(steps) > 1 and steps[1].cue is not None:
                     cue = steps[1].cue
                     number = cue.number

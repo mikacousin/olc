@@ -95,6 +95,15 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.attach(scrollable, 0, 0, 1, 1)
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(getattr(self.app, "core", None), "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.lightshow, "main_playback", None)
+
     def _resolve_step_channels(
         self, step: int
     ) -> tuple[list[float], list[dict[str, float]], list[str]]:
@@ -102,7 +111,7 @@ class TrackChannelsTab(Gtk.Grid):
         step_levels: list[float] = []
         step_colors: list[dict[str, float]] = []
         step_states: list[str] = []
-        main_pb = self.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         for channel in self.channels:
             state, level = classify_channel_tracking_state(main_pb, step, channel + 1)
             step_levels.append(level)
@@ -118,10 +127,13 @@ class TrackChannelsTab(Gtk.Grid):
         self.steps = []
         self.steps.append(TrackChannelsHeader(self.channels))
         self.flowbox.add(self.steps[0])
-        for step in range(1, self.lightshow.main_playback.last):
-            cue = self.lightshow.main_playback.steps[step].cue
+        main_pb = self._get_main_sequence()
+        if main_pb is None:
+            return
+        for step in range(1, main_pb.last):
+            cue = main_pb.steps[step].cue
             number = cue.number if cue is not None else 0.0
-            text = self.lightshow.main_playback.steps[step].text
+            text = main_pb.steps[step].text
             step_levels, step_colors, step_states = self._resolve_step_channels(step)
             self.steps.append(
                 TrackChannelsWidget(
@@ -148,9 +160,10 @@ class TrackChannelsTab(Gtk.Grid):
         """
         if child == self.steps[0].get_parent():
             return True
-        if len(self.steps) <= self.lightshow.main_playback.last - 1:
+        main_pb = self._get_main_sequence()
+        if main_pb is None or len(self.steps) <= main_pb.last - 1:
             return False
-        if child == self.steps[self.lightshow.main_playback.last - 1].get_parent():
+        if child == self.steps[main_pb.last - 1].get_parent():
             return False
         return True
 
@@ -169,12 +182,16 @@ class TrackChannelsTab(Gtk.Grid):
         self.channel_selected = 0
         # Update Track Channels Tab
         typing.cast(TrackChannelsHeader, self.steps[0]).channels = self.channels
-        for step in range(1, min(len(self.steps), self.lightshow.main_playback.last)):
-            step_levels, step_colors, step_states = self._resolve_step_channels(step)
-            widget = typing.cast(TrackChannelsWidget, self.steps[step])
-            widget.levels = step_levels
-            widget.colors = step_colors
-            widget.states = step_states
+        main_pb = self._get_main_sequence()
+        if main_pb is not None:
+            for step in range(1, min(len(self.steps), main_pb.last)):
+                step_levels, step_colors, step_states = self._resolve_step_channels(
+                    step
+                )
+                widget = typing.cast(TrackChannelsWidget, self.steps[step])
+                widget.levels = step_levels
+                widget.colors = step_colors
+                widget.states = step_states
         self.flowbox.queue_draw()
 
     def refresh(self) -> None:
@@ -231,12 +248,13 @@ class TrackChannelsTab(Gtk.Grid):
     def _keypress_down(self) -> None:
         """Next Step"""
 
+        main_pb = self._get_main_sequence()
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
             if child is not None:
                 self.flowbox.select_child(child)
                 self.last_step_selected = "1"
-        elif int(self.last_step_selected) < self.lightshow.main_playback.last - 2:
+        elif main_pb is not None and int(self.last_step_selected) < main_pb.last - 2:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
             if child is not None:
@@ -276,7 +294,8 @@ class TrackChannelsTab(Gtk.Grid):
                 if self.settings.get_boolean("percent"):
                     level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
                 if 0 <= level <= 255:
-                    cue = self.lightshow.main_playback.steps[step].cue
+                    main_pb = self._get_main_sequence()
+                    cue = main_pb.steps[step].cue if main_pb is not None else None
                     if cue is not None:
                         self.app.core.action_registry.execute(
                             "cue.set_channel_level",

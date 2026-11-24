@@ -510,8 +510,9 @@ class CommandExecutor:
                 self.app.emit("channel.level_changed", ch, target_level)
 
             if backend and getattr(backend, "dmx", None):
-                if hasattr(self.app, "lightshow") and self.app.lightshow.main_playback:
-                    self.app.lightshow.main_playback.update_channels()
+                main_seq = self._get_main_sequence()
+                if main_seq is not None:
+                    main_seq.update_channels()
                 backend.dmx.set_levels()
 
         return CommandResult(
@@ -861,6 +862,18 @@ class CommandExecutor:
 
         return channels_dict, device_values
 
+    def _get_main_sequence(self, lightshow: typing.Any = None) -> typing.Any:  # noqa: ANN401
+        """Return active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        ls = (
+            lightshow if lightshow is not None else getattr(self.app, "lightshow", None)
+        )
+        return getattr(ls, "main_playback", None) if ls is not None else None
+
     def _capture_live_palette_refs(  # pylint: disable=too-many-locals,too-many-branches
         self,
         lightshow: LightShow,
@@ -874,7 +887,7 @@ class CommandExecutor:
             source_base = base_refs
         else:
             source_base = {}
-            main_pb = getattr(lightshow, "main_playback", None)
+            main_pb = self._get_main_sequence(lightshow)
             steps = getattr(main_pb, "steps", None) if main_pb is not None else None
             pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
             if isinstance(steps, list) and 0 <= pos < len(steps):
@@ -951,7 +964,7 @@ class CommandExecutor:
             source_base = {int(ch): dict(spec) for ch, spec in base_refs.items()}
         else:
             source_base = {}
-            main_pb = getattr(lightshow, "main_playback", None)
+            main_pb = self._get_main_sequence(lightshow)
             steps = getattr(main_pb, "steps", None) if main_pb is not None else None
             pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
             if isinstance(steps, list) and 0 <= pos < len(steps):
@@ -992,7 +1005,7 @@ class CommandExecutor:
                         source_base[ch_int] = entry
 
         tracking_mode = bool(
-            getattr(getattr(lightshow, "main_playback", None), "tracking_mode", False)
+            getattr(self._get_main_sequence(lightshow), "tracking_mode", False)
         )
         live_state = getattr(self.app, "live_state", None)
         live_fx = (
@@ -1313,9 +1326,10 @@ class CommandExecutor:
                 )
             else:
                 lightshow = getattr(self.app, "lightshow", None)
-                if not lightshow or not lightshow.main_playback:
+                main_pb = self._get_main_sequence(lightshow)
+                if not main_pb:
                     return CommandResult(False, "Main playback sequence not available")
-                lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
+                main_pb.goto(str(node.cue_id), override_time=node.time)
         else:
             lightshow = getattr(self.app, "lightshow", None)
             target_seq = (

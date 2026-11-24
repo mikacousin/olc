@@ -98,7 +98,7 @@ class LiveView(Gtk.Notebook):
         )
         level = max(level * main_fader_val, gm_lvl)
         if next_level is None:
-            main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+            main_pb = self._get_main_sequence()
             if main_pb is not None and hasattr(main_pb, "get_next_channel_level"):
                 _, seq_lvl = classify_channel_tracking_state(
                     main_pb,
@@ -121,13 +121,22 @@ class LiveView(Gtk.Notebook):
         else:
             widget.queue_draw()
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app.core, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.app.core.lightshow, "main_playback", None)
+
     def refresh_all_channels(self, step: int | None = None) -> None:
         """Synchronize all channel widgets using one shared step resolution."""
         from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
             get_tracking_color,
         )
 
-        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+        main_pb = self._get_main_sequence()
         if main_pb is None:
             return
         patch = getattr(self.app.core.lightshow, "patch", None)
@@ -215,11 +224,20 @@ class LiveChannelsView(ChannelsView):
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
         self._batch_next_levels = None
-        self._frame_step_key: tuple[int, bool, bool, int] | None = None
+        self._frame_step_key: tuple[float, int, bool, bool, int] | None = None
         self._frame_resolved_step: ResolvedState | None = None
         self._frame_prev_resolved: ResolvedState | None = None
         self._frame_next_levels: list[float] | None = None
         super().__init__(app=window.app, window=window, tabs=tabs)
+
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app.core, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.app.core.lightshow, "main_playback", None)
 
     def _invalidate_step_cache(self) -> None:
         self._frame_step_key = None
@@ -232,7 +250,7 @@ class LiveChannelsView(ChannelsView):
         self,
     ) -> tuple[ResolvedState | None, ResolvedState | None, list[float] | None]:
         """Resolve and cache step states once per frame across all visible channels."""
-        main_pb = getattr(self.app.core.lightshow, "main_playback", None)
+        main_pb = self._get_main_sequence()
         if main_pb is None:
             return None, None, None
         steps = getattr(main_pb, "steps", None)
@@ -241,7 +259,8 @@ class LiveChannelsView(ChannelsView):
         pos = int(getattr(main_pb, "position", 0))
         tracking_mode = bool(getattr(main_pb, "tracking_mode", False))
         mib_enabled = bool(getattr(main_pb, "mib_enabled", True))
-        key = (pos, tracking_mode, mib_enabled, len(steps))
+        seq_idx = float(getattr(main_pb, "index", 1.0))
+        key = (seq_idx, pos, tracking_mode, mib_enabled, len(steps))
         if self._frame_step_key != key:
             patch = getattr(self.app.core.lightshow, "patch", None)
             if 0 <= pos < len(steps):
@@ -362,9 +381,10 @@ class LiveChannelsView(ChannelsView):
         ):
             return float(self._batch_next_levels[channel - 1])
         current_level = float(typing.cast(typing.Any, channel_widget).level)
-        return self.app.core.lightshow.main_playback.get_next_channel_level(
-            channel, current_level
-        )
+        main_pb = self._get_main_sequence()
+        if main_pb is None:
+            return 0.0
+        return main_pb.get_next_channel_level(channel, current_level)
 
     def set_channel_level(self, channel: int, level: int | float) -> None:
         """Set channel level using the unified core ActionRegistry."""

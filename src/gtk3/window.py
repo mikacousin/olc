@@ -954,34 +954,53 @@ class Window(Gtk.ApplicationWindow):
         )
         self.app.core.action_registry.execute("commandline.clear")
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return the active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app.core, "playback_engine", None)
+        if engine is not None:
+            seq = engine.main_sequence
+            if seq is not None:
+                return seq
+        return getattr(self.app.core.lightshow, "main_playback", None)
+
     def _keypress_r(self) -> None:
         """Record new Step and new Preset"""
         keystring = self.app.core.commandline.get_string()
+        main_seq = self._get_main_sequence()
+        seq_idx = int(main_seq.index) if main_seq is not None else 1
         if keystring == "":
-            self.app.core.action_registry.execute("playback.record_cue")
+            self.app.core.action_registry.execute(
+                "playback.record_cue", sequence=seq_idx
+            )
         else:
             cue_num = float(keystring)
-            found, step = self.app.core.lightshow.main_playback.get_step(cue=cue_num)
+            found, step = (
+                main_seq.get_step(cue=cue_num) if main_seq is not None else (False, 0)
+            )
             if not found:
                 self.app.core.action_registry.execute(
-                    "playback.record_cue", number=cue_num, step=step
+                    "playback.record_cue", number=cue_num, step=step, sequence=seq_idx
                 )
             else:
                 self.app.core.action_registry.execute(
-                    "playback.update_active_step", number=cue_num
+                    "playback.update_active_step", number=cue_num, sequence=seq_idx
                 )
 
         self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_u(self) -> None:
         """Update Cue"""
-        position = self.app.core.lightshow.main_playback.position
-        step_obj = self.app.core.lightshow.main_playback.steps[position]
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        position = main_seq.position
+        step_obj = main_seq.steps[position]
         cue = step_obj.cue
         if cue is None:
             return
 
         number = cue.number
+        seq_idx = int(main_seq.index)
 
         # Confirmation Dialog
         dialog = Dialog(self, number)
@@ -989,7 +1008,7 @@ class Window(Gtk.ApplicationWindow):
 
         if response == Gtk.ResponseType.OK:
             self.app.core.action_registry.execute(
-                "playback.update_active_step", number=number
+                "playback.update_active_step", number=number, sequence=seq_idx
             )
 
         dialog.destroy()
@@ -1000,13 +1019,16 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = self.app.core.lightshow.main_playback.position
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        position = main_seq.position
         time = string_to_time(keystring)
         string = time_to_string(time)
 
         kwargs: dict[str, float] = {field: time for field in fields}
         self.app.core.action_registry.execute(
-            "step.update_times", 1.0, position + 1, **kwargs
+            "step.update_times", float(main_seq.index), position + 1, **kwargs
         )
 
         col_map = {
@@ -1016,7 +1038,7 @@ class Window(Gtk.ApplicationWindow):
             "delay_in": 6,
             "time_in": 7,
         }
-        next_step = self.app.core.lightshow.main_playback.steps[position + 1]
+        next_step = main_seq.steps[position + 1]
         for field in fields:
             self.playback.cues_liststore1[position + 3][col_map[field]] = string
             setattr(self.playback.sequential, field, getattr(next_step, field))

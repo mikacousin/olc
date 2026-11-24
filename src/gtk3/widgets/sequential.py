@@ -28,7 +28,10 @@ from olc.gtk3.widgets.common import (
 )
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
+
     from olc.show.lightshow import LightShow
+    from olc.show.sequence import Sequence
 
 
 # pylint: disable=too-many-instance-attributes
@@ -41,21 +44,54 @@ class SequentialWidget(Gtk.Widget):
     def __init__(
         self,
         lightshow: LightShow | None,
+        main_sequence_getter: Callable[[], Sequence | None] | None = None,
     ) -> None:
         if lightshow is None:
             return
         self.lightshow = lightshow
-        if self.lightshow.main_playback.last > 1:
-            position = self.lightshow.main_playback.position
-            self.total_time = self.lightshow.main_playback.steps[position].total_time
-            self.time_in = self.lightshow.main_playback.steps[position].time_in
-            self.time_out = self.lightshow.main_playback.steps[position].time_out
-            self.delay_in = self.lightshow.main_playback.steps[position].delay_in
-            self.delay_out = self.lightshow.main_playback.steps[position].delay_out
-            self.wait = self.lightshow.main_playback.steps[position].wait
-            self.channel_time = self.lightshow.main_playback.steps[
-                position
-            ].channel_time
+        self._main_sequence_getter = main_sequence_getter
+        self.position_a = 0
+        self.position_b = 0
+        self.total_time = 5.0
+        self.time_in = 5.0
+        self.time_out = 5.0
+        self.delay_in = 0.0
+        self.delay_out = 0.0
+        self.wait = 0.0
+        self.channel_time: dict[typing.Any, typing.Any] = {}
+        self.sync_from_sequence(self._get_main_sequence(), redraw=False)
+
+        Gtk.Widget.__init__(self)
+        self.set_size_request(800, 300)
+        register_system_font_listener(self.queue_draw)
+
+    def _get_main_sequence(self) -> Sequence | None:
+        """Return the active Main Sequence."""
+        if self._main_sequence_getter is not None:
+            seq = self._main_sequence_getter()
+            if seq is not None:
+                return seq
+        return getattr(self.lightshow, "main_playback", None)
+
+    def sync_from_sequence(
+        self,
+        seq: Sequence | None = None,
+        *,
+        redraw: bool = True,
+    ) -> None:
+        """Reload crossfade timing display from *seq*."""
+        target = seq if seq is not None else self._get_main_sequence()
+        if target is not None and target.last > 1:
+            position = target.position
+            next_idx = position + 1 if position + 1 < len(target.steps) else position
+            step = target.steps[next_idx]
+            self.total_time = step.total_time
+            self.time_in = step.time_in
+            self.time_out = step.time_out
+            self.delay_in = step.delay_in
+            self.delay_out = step.delay_out
+            self.wait = step.wait
+            self.channel_time = step.channel_time
         else:
             self.total_time = 5.0
             self.time_in = 5.0
@@ -64,13 +100,10 @@ class SequentialWidget(Gtk.Widget):
             self.delay_out = 0.0
             self.wait = 0.0
             self.channel_time = {}
-
         self.position_a = 0
         self.position_b = 0
-
-        Gtk.Widget.__init__(self)
-        self.set_size_request(800, 300)
-        register_system_font_listener(self.queue_draw)
+        if redraw:
+            self.queue_draw()
 
     def _calculate_times(self) -> tuple[float, float]:
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
@@ -350,10 +383,15 @@ class SequentialWidget(Gtk.Widget):
         delay: float,
         time: float,
     ) -> None:
-        position = self.lightshow.main_playback.position
-        step_a = self.lightshow.main_playback.steps[position]
+        main_seq = self._get_main_sequence()
+        if main_seq is None:
+            return
+        position = main_seq.position
+        if position < 0 or position + 1 >= len(main_seq.steps):
+            return
+        step_a = main_seq.steps[position]
         old_level = step_a.cue.channels.get(channel, 0) if step_a.cue is not None else 0
-        step_b = self.lightshow.main_playback.steps[position + 1]
+        step_b = main_seq.steps[position + 1]
         next_level = (
             step_b.cue.channels.get(channel, 0) if step_b.cue is not None else 0
         )

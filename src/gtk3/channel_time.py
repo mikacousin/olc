@@ -153,13 +153,19 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _update_main_playback(self) -> None:
         """Redraw Main Playback metrics if necessary"""
-        if self.sequence == self.lightshow.main_playback:
+        engine = getattr(self.window.app.core, "playback_engine", None)
+        main_seq = (
+            engine.main_sequence
+            if engine is not None and engine.main_sequence is not None
+            else self.lightshow.main_playback
+        )
+        if self.sequence == main_seq:
             path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
             ct_nb = len(self.step.channel_time)
             self.window.playback.cues_liststore1[path1][8] = (
                 "" if ct_nb == 0 else str(ct_nb)
             )
-            if self.lightshow.main_playback.position + 1 == int(self.position):
+            if main_seq.position + 1 == int(self.position):
                 self.window.playback.sequential.total_time = self.step.total_time
                 self.window.playback.sequential.queue_draw()
 
