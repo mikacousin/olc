@@ -19,6 +19,7 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 
+from olc.core.playback_arbitrator import PlaybackPriority
 from olc.show.fader import (
     FaderEffect,
     FaderEffectMaster,
@@ -157,6 +158,42 @@ class FaderEdit(Gtk.Box):
         opt_vbox.show_all()
         if "intensity_master" in self.option_checks:
             self.option_checks["intensity_master"].set_no_show_all(True)
+
+        self.seq_options_box = Gtk.Box(spacing=2, orientation=Gtk.Orientation.VERTICAL)
+        self.seq_options_box.set_no_show_all(True)
+        self.seq_options_box.set_visible(False)
+        self.seq_options_box.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 3
+        )
+        prio_row = Gtk.Box(spacing=4, orientation=Gtk.Orientation.HORIZONTAL)
+        prio_row.pack_start(Gtk.Label(label=_("Priority:")), False, False, 0)
+        self.seq_priority_combo = Gtk.ComboBoxText()
+        for prio_val, prio_lbl in (
+            (PlaybackPriority.LOW, _("Low")),
+            (PlaybackPriority.NORMAL, _("Normal")),
+            (PlaybackPriority.HIGH, _("High")),
+            (PlaybackPriority.SUPER, _("Super")),
+        ):
+            self.seq_priority_combo.append(str(int(prio_val)), prio_lbl)
+        self.seq_priority_combo.connect("changed", self._on_seq_priority_changed)
+        prio_row.pack_start(self.seq_priority_combo, True, True, 0)
+        self.seq_options_box.pack_start(prio_row, False, False, 0)
+
+        self.seq_option_checks: dict[str, Gtk.CheckButton] = {}
+        for seq_key, seq_lbl in (
+            ("auto_start", _("Auto Start")),
+            ("auto_stop", _("Auto Stop (Release 0)")),
+            ("wrap_around", _("Wrap Around")),
+            ("release_on_end", _("Release on End")),
+            ("off_on_overwritten", _("Off on Overwritten")),
+        ):
+            schk = Gtk.CheckButton(label=seq_lbl)
+            schk.connect("toggled", self._on_seq_option_toggled, seq_key)
+            self.seq_option_checks[seq_key] = schk
+            self.seq_options_box.pack_start(schk, False, False, 0)
+        self.seq_options_box.foreach(lambda w: w.show_all())
+        opt_vbox.add(self.seq_options_box)
+
         opt_popover.add(opt_vbox)
         opt_popover.set_position(Gtk.PositionType.BOTTOM)
         self.options_button.set_popover(opt_popover)
@@ -210,6 +247,14 @@ class FaderEdit(Gtk.Box):
                 if flag == "intensity_master":
                     chk.set_visible(isinstance(fader, FaderPreset))
                 chk.set_active(bool(getattr(fader, flag, False)))
+            if isinstance(fader, FaderSequence) and fader.contents is not None:
+                seq = fader.contents
+                self.seq_priority_combo.set_active_id(str(int(seq.priority)))
+                for seq_key, schk in self.seq_option_checks.items():
+                    schk.set_active(bool(getattr(seq, seq_key, False)))
+                self.seq_options_box.set_visible(True)
+            else:
+                self.seq_options_box.set_visible(False)
         finally:
             self._updating_options = False
 
@@ -246,6 +291,37 @@ class FaderEdit(Gtk.Box):
                 self.page,
                 self.index,
                 **{flag: widget.get_active()},
+            )
+
+    def _on_seq_priority_changed(self, combo: Gtk.ComboBoxText) -> None:
+        if self._updating_options:
+            return
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
+        if not isinstance(fader, FaderSequence) or fader.contents is None:
+            return
+        active_id = combo.get_active_id()
+        if active_id is None:
+            return
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "sequence.set_playback_options",
+                fader.contents.index,
+                priority=int(active_id),
+            )
+
+    def _on_seq_option_toggled(self, widget: Gtk.CheckButton, key: str) -> None:
+        if self._updating_options:
+            return
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
+        if not isinstance(fader, FaderSequence) or fader.contents is None:
+            return
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "sequence.set_playback_options",
+                fader.contents.index,
+                **{key: widget.get_active()},
             )
 
     def _on_fix_toggled(self, widget: Gtk.ToggleButton) -> None:

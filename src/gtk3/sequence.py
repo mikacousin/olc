@@ -19,6 +19,7 @@ from typing import Optional
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.playback_arbitrator import PlaybackPriority
 from olc.core.tracking import (
     TRACKING_COLORS,
     TrackingDisplayState,
@@ -169,6 +170,102 @@ class SequenceTab(Gtk.Grid):
         self.assert_btn.set_tooltip_text("Toggle Assert flag (A) on selected cue")
         self.assert_btn.connect("toggled", self._on_flag_toggled, "cue.set_assert")
         self.header_box.pack_start(self.assert_btn, False, False, 0)
+
+        self.header_box.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
+        )
+
+        self.seq_go_btn = Gtk.Button(label="Go")
+        self.seq_go_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.go", self.get_selected_sequence_index()
+            ),
+        )
+        self.header_box.pack_start(self.seq_go_btn, False, False, 0)
+
+        self.seq_pause_btn = Gtk.Button(label="Pause")
+        self.seq_pause_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.pause", self.get_selected_sequence_index()
+            ),
+        )
+        self.header_box.pack_start(self.seq_pause_btn, False, False, 0)
+
+        self.seq_assert_btn = Gtk.Button(label="Assert Seq")
+        self.seq_assert_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.assert", self.get_selected_sequence_index()
+            ),
+        )
+        self.header_box.pack_start(self.seq_assert_btn, False, False, 0)
+
+        self.seq_release_btn = Gtk.Button(label="Release")
+        self.seq_release_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.release", self.get_selected_sequence_index()
+            ),
+        )
+        self.header_box.pack_start(self.seq_release_btn, False, False, 0)
+
+        self.seq_release_all_btn = Gtk.Button(label="Release All")
+        self.seq_release_all_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute("sequence.release_all"),
+        )
+        self.header_box.pack_start(self.seq_release_all_btn, False, False, 0)
+
+        self.seq_priority_combo = Gtk.ComboBoxText()
+        self.seq_priority_combo.set_tooltip_text("Selected sequence playback priority")
+        for prio_val, prio_lbl in (
+            (PlaybackPriority.LOW, "Low"),
+            (PlaybackPriority.NORMAL, "Normal"),
+            (PlaybackPriority.HIGH, "High"),
+            (PlaybackPriority.SUPER, "Super"),
+        ):
+            self.seq_priority_combo.append(str(int(prio_val)), prio_lbl)
+        self.seq_priority_combo.set_active_id(str(int(PlaybackPriority.NORMAL)))
+        self.seq_priority_combo.connect("changed", self._on_seq_priority_changed)
+        self.header_box.pack_start(self.seq_priority_combo, False, False, 0)
+
+    def get_selected_sequence_index(self) -> float:
+        """Return currently selected sequence index in treeview1 (default 1.0)."""
+        if not hasattr(self, "treeview1"):
+            return 1.0
+        model, tree_iter = self.treeview1.get_selection().get_selected()
+        if tree_iter is not None:
+            return float(model.get_value(tree_iter, 0))
+        return 1.0
+
+    def _sync_seq_priority_combo(self) -> None:
+        seq_idx = self.get_selected_sequence_index()
+        seq = (
+            self.lightshow.main_playback
+            if seq_idx == 1.0
+            else self.lightshow.get_sequence(seq_idx)
+        )
+        if seq is None:
+            return
+        self._updating_flag_btns = True
+        try:
+            self.seq_priority_combo.set_active_id(str(int(seq.priority)))
+        finally:
+            self._updating_flag_btns = False
+
+    def _on_seq_priority_changed(self, combo: Gtk.ComboBoxText) -> None:
+        if self._updating_flag_btns:
+            return
+        active_id = combo.get_active_id()
+        if active_id is None:
+            return
+        self.app.core.action_registry.execute(
+            "sequence.set_playback_options",
+            self.get_selected_sequence_index(),
+            priority=int(active_id),
+        )
 
     def _on_flag_toggled(self, button: Gtk.ToggleButton, action_name: str) -> None:
         if self._updating_flag_btns:
@@ -614,6 +711,7 @@ class SequenceTab(Gtk.Grid):
             step_idx = 1
         # Display Sequence
         self.populate_liststore(step_idx)
+        self._sync_seq_priority_combo()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""

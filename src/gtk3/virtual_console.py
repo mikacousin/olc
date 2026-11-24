@@ -33,6 +33,7 @@ from olc.show.fader import (
     Fader,
     FaderEffect,
     FaderEffectMaster,
+    FaderSequence,
     fader_level_to_centered_scale,
     fader_level_to_rate_scale,
     fader_level_to_speed_bpm,
@@ -902,6 +903,14 @@ class VirtualConsoleWindow(Gtk.Window):
                     return f"{fader.text}\nFROZEN"
                 return f"{fader.text}\n×{scale:.2f}"
             return f"{fader.text}\n{round(scale * 100)}%"
+        if isinstance(fader, FaderSequence) and fader.contents is not None:
+            seq = fader.contents
+            base = fader.text or f"Seq {int(seq.index)}"
+            arb = getattr(self.app.core, "playback_arbitrator", None)
+            state = arb.get_state(seq.index) if arb is not None else None
+            if state is not None and state.active and state.cue_number is not None:
+                return f"{base}\nQ{state.cue_number:g}"
+            return base
         if not isinstance(fader, FaderEffectMaster):
             return fader.text
         engine = getattr(self.app.core, "effects_engine", None)
@@ -1592,9 +1601,53 @@ class VirtualConsoleWindow(Gtk.Window):
                     ):
                         self._show_fx_master_popover(widget, fader)
                         return
+                    if isinstance(fader, FaderSequence) and fader.contents is not None:
+                        if getattr(event, "button", 1) == 3:
+                            self._show_sequence_fader_popover(widget, fader)
+                            return
+                        if getattr(event, "button", 1) == 1:
+                            self.app.core.action_registry.execute(
+                                "sequence.go", fader.contents.index
+                            )
+                            self.flashes[index].label = self.format_fader_flash_label(
+                                fader
+                            )
+                            self.flashes[index].queue_draw()
+                            return
                     self.app.core.action_registry.execute(
                         "fader.flash", fader_bank.active_page, index + 1, True
                     )
+
+    def _show_sequence_fader_popover(
+        self, widget: Gtk.Widget, fader: FaderSequence
+    ) -> None:
+        """Open quick transport popover (Go, Back, Pause, Assert, Release)."""
+        seq = fader.contents
+        if seq is None:
+            return
+        popover = Gtk.Popover.new(widget)
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        vbox.set_border_width(4)
+        for lbl, act_name in (
+            ("Go", "sequence.go"),
+            ("Go Back", "sequence.go_back"),
+            ("Pause", "sequence.pause"),
+            ("Assert", "sequence.assert"),
+            ("Release", "sequence.release"),
+        ):
+            btn = Gtk.ModelButton()
+            btn.set_label(lbl)
+            btn.connect(
+                "clicked",
+                lambda _b, a=act_name: (
+                    self.app.core.action_registry.execute(a, seq.index),
+                    popover.popdown(),
+                ),
+            )
+            vbox.pack_start(btn, False, False, 0)
+        vbox.show_all()
+        popover.add(vbox)
+        popover.popup()
 
     def _show_fx_master_popover(
         self, widget: Gtk.Widget, fader: FaderEffectMaster
