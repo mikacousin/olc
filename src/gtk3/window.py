@@ -117,7 +117,9 @@ class Window(Gtk.ApplicationWindow):
         self.main_box.pack_start(self.fullscreen_header, False, False, 0)
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self.paned.set_position(800)
+        self.paned.set_position(560)
+        self._initial_paned_centered = False
+        self.paned.connect("size-allocate", self._on_paned_initial_allocate)
 
         # Channels
         self.live_view = LiveView(
@@ -153,6 +155,14 @@ class Window(Gtk.ApplicationWindow):
         self.app.core.subscribe(
             "commandline.confirm_required", self._on_commandline_confirm_required
         )
+
+    def _on_paned_initial_allocate(
+        self, paned: Gtk.Paned, allocation: Gdk.Rectangle
+    ) -> None:
+        """Split the main Paned 40/60 (left/right) on its first real size allocation."""
+        if not self._initial_paned_centered and allocation.width > 1:
+            self._initial_paned_centered = True
+            paned.set_position(int(allocation.width * 0.40))
 
     def _on_commandline_confirm_required(
         self, message: str, on_confirm: typing.Callable[[], None]
