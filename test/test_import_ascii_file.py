@@ -2674,3 +2674,85 @@ def test_eos_show_dmx_fidelity_and_bkgrd_effects(
     assert rt_fx4 is not None
     assert rt_fx4.layers[0].low_value == pytest.approx(0.0)
     assert rt_fx4.layers[0].high_value == "bkgrd"
+
+
+def test_import_eos_nocturne_page3_and_page4_three_fader_effect_controllers() -> None:
+    """Verify Eos $$Control 3-fader effect wings (Master, Rate, Size) import & run."""
+    from pathlib import Path
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.show.fader import FaderEffect
+
+    asc_path = str(
+        Path(__file__).resolve().parent.parent
+        / "doc"
+        / "Conduites Eos"
+        / "00  Base  Nocturne.asc"
+    )
+    app = CoreApplication(MagicMock())
+    ImportFile(
+        app.lightshow, Gio.File.new_for_path(asc_path), FileType.ASCII
+    ).parse_sync(auto_import=True)
+
+    fb = app.lightshow.fader_bank
+    # Page 3: faders 1..3 -> Sub 21 (ch 15,16,11,12,13,14)
+    f_master = fb.faders[3][1]
+    f_rate = fb.faders[3][2]
+    f_size = fb.faders[3][3]
+    assert isinstance(f_master, FaderEffect)
+    assert isinstance(f_rate, FaderEffect)
+    assert isinstance(f_size, FaderEffect)
+
+    assert f_master.modifier_only is False
+    assert f_master.level == pytest.approx(0.0)
+    assert f_master.effect_channels == [15, 16, 11, 12, 13, 14]
+
+    assert f_rate.modifier_only is True
+    assert f_rate.control_mode == "rate"
+    assert f_rate.level == pytest.approx(0.5)
+    assert f_rate.max_scale == pytest.approx(10.0)
+
+    assert f_size.modifier_only is True
+    assert f_size.control_mode == "size"
+    assert f_size.level == pytest.approx(0.5)
+    assert f_size.max_scale == pytest.approx(10.0)
+
+    # Page 3 also has Sub 20 (4..6) and Sub 22 (7..9); Page 4 has Sub 24/25/23
+    assert isinstance(fb.faders[3][4], FaderEffect)
+    assert isinstance(fb.faders[3][5], FaderEffect) and fb.faders[3][5].modifier_only
+    assert isinstance(fb.faders[3][7], FaderEffect)
+    assert isinstance(fb.faders[4][1], FaderEffect)
+    assert isinstance(fb.faders[4][2], FaderEffect) and fb.faders[4][2].modifier_only
+
+    # Moving Rate modifier alone must NOT start Effect 7
+    f_rate.set_level(0.75)
+    assert app.effects_engine.get_active_instances() == []
+    f_rate.flash_on()
+    assert f_rate.level == pytest.approx(0.5)
+
+    # Raising Master starts Effect 7 on [15..14] at nominal 1.0x rate and 0.8 size
+    f_master.set_level(0.8)
+    active = app.effects_engine.get_active_instances()
+    assert len(active) == 1
+    assert active[0].channels == [15, 16, 11, 12, 13, 14]
+    assert active[0].rate_scale == pytest.approx(1.0)
+    assert active[0].size_scale == pytest.approx(0.8)
+
+    # Rate modifier varies bidirectionally (< 0.5 slows, > 0.5 speeds up)
+    f_rate.set_level(0.25)
+    assert active[0].rate_scale == pytest.approx(0.5)
+    f_rate.set_level(0.75)
+    assert active[0].rate_scale == pytest.approx(5.5)
+    f_rate.flash_on()
+    assert active[0].rate_scale == pytest.approx(1.0)
+
+    # Starting Sub 20 (fader 4) runs independently; stopping Sub 21 leaves Sub 20 active
+    f_master_2 = fb.faders[3][4]
+    assert isinstance(f_master_2, FaderEffect)
+    f_master_2.set_level(1.0)
+    assert len(app.effects_engine.get_active_instances()) == 2
+    f_master.set_level(0.0)
+    remaining = app.effects_engine.get_active_instances()
+    assert len(remaining) == 1
+    assert remaining[0].channels == [21, 22, 23, 24, 25, 26]

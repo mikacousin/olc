@@ -993,3 +993,37 @@ def test_olc_persistence_fx_masters_and_effect_bus_fields(
     rate_fader.flash_on()
     assert rate_fader.level == pytest.approx(0.5)
     assert app2.effects_engine.get_rate_master(2) == pytest.approx(1.0)
+
+
+def test_olc_persistence_fader_effect_modifier_only(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for modifier_only FaderEffect with centered level."""
+    from olc.show.fader import FaderEffect, FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.lightshow.fader_bank.set_fader(1, 4, FaderType.EFFECT, 1.0)
+    fader = app.lightshow.fader_bank.faders[1][4]
+    assert isinstance(fader, FaderEffect)
+    fader.control_mode = "rate"
+    fader.modifier_only = True
+    fader.min_scale = 0.0
+    fader.max_scale = 5.0
+    fader.level = 0.5
+
+    save_path = tmp_path / "modifier_fader.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    re_fader = app2.lightshow.fader_bank.faders[1][4]
+    assert isinstance(re_fader, FaderEffect)
+    assert re_fader.modifier_only is True
+    assert re_fader.control_mode == "rate"
+    assert re_fader.min_scale == pytest.approx(0.0)
+    assert re_fader.max_scale == pytest.approx(5.0)
+    assert re_fader.level == pytest.approx(0.5)

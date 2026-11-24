@@ -31,7 +31,9 @@ from olc.gtk3.widgets.pause import PauseWidget
 from olc.gtk3.widgets.toggle import ToggleWidget
 from olc.show.fader import (
     Fader,
+    FaderEffect,
     FaderEffectMaster,
+    fader_level_to_centered_scale,
     fader_level_to_rate_scale,
     fader_level_to_speed_bpm,
     rate_scale_to_fader_level,
@@ -875,6 +877,15 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def format_fader_flash_label(self, fader: Fader) -> str:
         """Format flash label with live BPM/Rate/Size telemetry for FX Masters."""
+        if isinstance(fader, FaderEffect) and getattr(fader, "modifier_only", False):
+            scale = fader_level_to_centered_scale(
+                fader.level, fader.min_scale, fader.max_scale
+            )
+            if fader.control_mode == "rate":
+                if scale <= 0.0:
+                    return f"{fader.text}\nFROZEN"
+                return f"{fader.text}\n×{scale:.2f}"
+            return f"{fader.text}\n{round(scale * 100)}%"
         if not isinstance(fader, FaderEffectMaster):
             return fader.text
         engine = getattr(self.app.core, "effects_engine", None)

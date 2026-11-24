@@ -489,6 +489,18 @@ def fader_level_to_rate_scale(level: float) -> float:
     return float(2.0 ** (4.0 * (lvl - 0.5)))
 
 
+def fader_level_to_centered_scale(
+    level: float, min_scale: float = 0.0, max_scale: float = 4.0
+) -> float:
+    """Map fader level [0.0..1.0] with 0.5 as nominal 1.0x scale."""
+    lvl = max(0.0, min(1.0, float(level)))
+    lo = max(0.0, float(min_scale))
+    hi = max(1.0, float(max_scale))
+    if lvl <= 0.5:
+        return lo + (1.0 - lo) * (lvl / 0.5)
+    return 1.0 + (hi - 1.0) * ((lvl - 0.5) / 0.5)
+
+
 class FaderEffect(Fader):
     """Fader controlling a procedural EffectDefinition (Size, Rate, or Both)."""
 
@@ -498,6 +510,9 @@ class FaderEffect(Fader):
     effect_channels: list[int]
     base_channels: dict[int, float]
     control_mode: str
+    modifier_only: bool
+    min_scale: float
+    max_scale: float
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -507,6 +522,10 @@ class FaderEffect(Fader):
         effect_channels: list[int] | None = None,
         control_mode: str = "size",
         base_channels: Mapping[int, float] | None = None,
+        *,
+        modifier_only: bool = False,
+        min_scale: float = 0.0,
+        max_scale: float = 4.0,
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = effect
@@ -525,6 +544,11 @@ class FaderEffect(Fader):
         self.control_mode = (
             control_mode if control_mode in VALID_EFFECT_CONTROL_MODES else "size"
         )
+        self.modifier_only = bool(modifier_only)
+        self.min_scale = max(0.0, float(min_scale))
+        self.max_scale = max(1.0, float(max_scale))
+        if self.modifier_only:
+            self.level = 0.5
         if effect is not None:
             self.text = effect.label or f"Effect {effect.number:g}"
         if effect is not None or self.base_channels:
@@ -633,9 +657,73 @@ class FaderEffect(Fader):
             self.dmx.fill(0.0)
             self.fader_bank.update_active_faders()
 
+    def _linked_faders(self) -> list[FaderEffect]:
+        """Return FaderEffect instances sharing this effect number and channel list."""
+        if self.contents is None:
+            return []
+        eff_num = round(float(self.contents.number), 3)
+        target_chs = self.get_target_channels()
+        linked: list[FaderEffect] = []
+        for page_faders in self.fader_bank.faders.values():
+            for fader in page_faders.values():
+                if (
+                    isinstance(fader, FaderEffect)
+                    and fader.contents is not None
+                    and round(float(fader.contents.number), 3) == eff_num
+                    and fader.get_target_channels() == target_chs
+                ):
+                    linked.append(fader)
+        return linked
+
+    def _resolve_linked_scales(self) -> tuple[float, float]:
+        """Compose (rate_scale, size_scale) from primary and linked modifier faders."""
+        linked = self._linked_faders()
+        master = next(
+            (f for f in linked if not f.modifier_only),
+            None if self.modifier_only else self,
+        )
+        if master is not None:
+            size_scale = 1.0 if master.control_mode == "rate" else float(master.level)
+            rate_scale = (
+                fader_level_to_rate_scale(master.level)
+                if master.control_mode in ("rate", "both")
+                else 1.0
+            )
+        else:
+            size_scale = 1.0
+            rate_scale = 1.0
+
+        for mod in linked:
+            if not mod.modifier_only:
+                continue
+            factor = fader_level_to_centered_scale(
+                mod.level, mod.min_scale, mod.max_scale
+            )
+            if mod.control_mode == "rate":
+                rate_scale *= factor
+            elif mod.control_mode == "size":
+                size_scale *= factor
+            else:
+                rate_scale *= factor
+                size_scale *= factor
+        return rate_scale, size_scale
+
+    def flash_on(self) -> None:
+        """Reset modifier faders to nominal 50% (1.0x), or flash primary fader."""
+        if self.modifier_only:
+            self.set_level(0.5)
+            return
+        super().flash_on()
+
+    def flash_off(self) -> None:
+        """Release primary flash; no-op for modifier faders."""
+        if self.modifier_only:
+            return
+        super().flash_off()
+
     def level_changed(self) -> None:
         """Start, modulate, or stop the assigned effect when the fader moves."""
-        if self.base_channels or self.dmx.any():
+        if not self.modifier_only and (self.base_channels or self.dmx.any()):
             self.dmx.fill(0.0)
             if self.level > 0.0:
                 for ch, base_lvl in self.base_channels.items():
@@ -646,20 +734,41 @@ class FaderEffect(Fader):
         engine = getattr(self.app, "effects_engine", None)
         if engine is None:
             return
+
+        target_channels = self.get_target_channels()
+        if not self.effect_channels and target_channels:
+            self.effect_channels = list(target_channels)
+        self.channels = set(target_channels)
+
+        if self.modifier_only:
+            eff_num = round(float(self.contents.number), 3)
+            active_inst = next(
+                (
+                    inst
+                    for inst in engine.get_active_instances()
+                    if inst.effect_number == eff_num
+                    and inst.channels == target_channels
+                ),
+                None,
+            )
+            if active_inst is not None:
+                rate_scale, size_scale = self._resolve_linked_scales()
+                engine.start_effect(
+                    self.contents.number,
+                    target_channels,
+                    rate_scale=rate_scale,
+                    size_scale=size_scale,
+                )
+                engine.tick()
+                self.app.emit(
+                    "effect.applied", self.contents.number, list(target_channels)
+                )
+                if hasattr(self.app, "backend") and self.app.backend:
+                    self.app.backend.dmx.set_levels()
+            return
+
         if self.level > 0.0:
-            target_channels = self.get_target_channels()
-            if not self.effect_channels and target_channels:
-                self.effect_channels = list(target_channels)
-            self.channels = set(target_channels)
-            if self.control_mode == "rate":
-                size_scale = 1.0
-                rate_scale = fader_level_to_rate_scale(self.level)
-            elif self.control_mode == "both":
-                size_scale = float(self.level)
-                rate_scale = fader_level_to_rate_scale(self.level)
-            else:
-                size_scale = float(self.level)
-                rate_scale = 1.0
+            rate_scale, size_scale = self._resolve_linked_scales()
             engine.start_effect(
                 self.contents.number,
                 target_channels,
@@ -679,7 +788,6 @@ class FaderEffect(Fader):
                 None,
             )
             if active_inst is not None:
-                target_channels = self.get_target_channels()
                 engine.start_effect(
                     self.contents.number,
                     target_channels,
@@ -691,13 +799,15 @@ class FaderEffect(Fader):
                     "effect.applied", self.contents.number, list(target_channels)
                 )
         else:
-            stopped = engine.stop_effect(effect_number=self.contents.number)
+            stopped = engine.stop_effect(
+                effect_number=self.contents.number, channels=target_channels
+            )
             engine.tick()
             if stopped:
                 self.app.emit(
                     "effect.stopped",
                     self.contents.number,
-                    list(self.get_target_channels()),
+                    list(target_channels),
                 )
         if hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()

@@ -260,6 +260,15 @@ class OlcWriter(WriteFile):
                     base_chs = getattr(fader, "base_channels", None)
                     if base_chs:
                         fader_entry["base_channels"] = dict(base_chs)
+                    if getattr(fader, "modifier_only", False):
+                        fader_entry["modifier_only"] = True
+                        fader_entry["min_scale"] = float(
+                            getattr(fader, "min_scale", 0.0)
+                        )
+                        fader_entry["max_scale"] = float(
+                            getattr(fader, "max_scale", 4.0)
+                        )
+                        fader_entry["level"] = float(getattr(fader, "level", 0.5))
                     self.data["faders"][number] = fader_entry
                 elif content_type == FaderType.FX_MASTER:
                     self.data["faders"][number] = {

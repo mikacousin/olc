@@ -1219,6 +1219,7 @@ class AsciiParser(ReadFile):
             "channels": {},
             "exempt_gm": False,
             "intensity_master": False,
+            "controls": [],
         }
         self._sub_raw_params[sub_id] = {}
         self._sub_raw_refs[sub_id] = {}
@@ -1243,6 +1244,18 @@ class AsciiParser(ReadFile):
             self.keyword == "$$master" and self.args and self.args[0] == "8"
         ):
             sub["intensity_master"] = True
+        elif self.keyword == "$$control" and len(self.args) >= 4:
+            try:
+                sub.setdefault("controls", []).append(
+                    {
+                        "num": int(self.args[0]),
+                        "mode": int(self.args[1]),
+                        "min_pct": float(self.args[2]),
+                        "max_pct": float(self.args[3]),
+                    }
+                )
+            except ValueError:
+                pass
         elif self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
@@ -1531,6 +1544,43 @@ class AsciiParser(ReadFile):
                     if sub.get("exempt_gm"):
                         fader_entry["exempt_grand_master"] = True
                 self.data["faders"][index] = fader_entry
+
+                max_total_faders = MAX_ALLOWED_FADER_PAGES * MAX_FADER_PER_PAGE
+                sub_controls = sub.get("controls", []) if sub is not None else []
+                for ctrl in sub_controls:
+                    ctrl_num = int(ctrl.get("num", 1))
+                    ctrl_mode_id = int(ctrl.get("mode", 0))
+                    if ctrl_num < 2 or ctrl_mode_id not in (1, 2):
+                        continue
+                    slot_fader_num = (index + 1) + (ctrl_num - 1)
+                    if slot_fader_num > max_total_faders:
+                        continue
+                    slot_page = ((slot_fader_num - 1) // MAX_FADER_PER_PAGE) + 1
+                    slot_number = ((slot_fader_num - 1) % MAX_FADER_PER_PAGE) + 1
+                    slot_index = slot_fader_num - 1
+                    ctrl_mode = "rate" if ctrl_mode_id == 1 else "size"
+                    suffix = "Rate" if ctrl_mode_id == 1 else "Size"
+                    min_sc = max(0.0, float(ctrl.get("min_pct", 0.0)) / 100.0)
+                    max_sc = max(1.0, float(ctrl.get("max_pct", 400.0)) / 100.0)
+                    base_lbl = sub.get("label", "").strip() if sub else ""
+                    lbl = (
+                        f"{base_lbl} {suffix}".strip()
+                        if base_lbl
+                        else f"FX {eff_num:g} {suffix}"
+                    )
+                    self.data["faders"][slot_index] = {
+                        "page": slot_page,
+                        "number": slot_number,
+                        "type": FaderType.EFFECT,
+                        "contents": eff_num,
+                        "effect_channels": list(eff_chans),
+                        "control_mode": ctrl_mode,
+                        "modifier_only": True,
+                        "min_scale": min_sc,
+                        "max_scale": max_sc,
+                        "level": 0.5,
+                        "text": lbl,
+                    }
                 return
             if sub and (
                 sub["channels"]
