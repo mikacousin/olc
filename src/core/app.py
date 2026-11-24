@@ -26,6 +26,7 @@ from olc.core.effects_engine import EffectsEngine
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
 from olc.core.live_state import LiveParameterState
+from olc.core.playback_arbitrator import PlaybackArbitrator
 from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
 from olc.core.sneak import SneakController
@@ -59,6 +60,7 @@ class CoreApplication(EventDispatcher):
     history: HistoryManager
     live_state: LiveParameterState
     effects_engine: EffectsEngine
+    playback_arbitrator: PlaybackArbitrator
     selected_cue: typing.Optional[tuple[float, int]]
     selected_group: typing.Optional[float]
     tabs: CoreTabs
@@ -106,6 +108,7 @@ class CoreApplication(EventDispatcher):
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))
         self.history = HistoryManager(typing.cast(typing.Any, self))
         self.live_state = LiveParameterState()
+        self.playback_arbitrator = PlaybackArbitrator()
         self.effects_engine = EffectsEngine(
             app=typing.cast(typing.Any, self), lightshow=self.lightshow
         )
@@ -435,6 +438,7 @@ class CoreApplication(EventDispatcher):
     def stop(self) -> None:
         """Gracefully stop DMX, OSC, and MIDI services."""
         self.effects_engine.stop_all()
+        self.playback_arbitrator.clear()
         if self.backend:
             self.backend.stop()
         if self.osc:

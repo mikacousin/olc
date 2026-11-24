@@ -475,8 +475,31 @@ class AsciiParser(ReadFile):
             self.state = State.IN_INDEPENDENT
 
     def _do_sequence(self) -> None:
+        seq_id = self.current["sequence"]
+        seq = self.data["sequences"][seq_id]
         if self.keyword in ("text", "$$text", "$$utext"):
-            self._apply_label(self.data["sequences"][self.current["sequence"]])
+            self._apply_label(seq)
+        elif self.keyword == "$$exclude" and self.args:
+            try:
+                if int(self.args[0]) & 1:
+                    seq["exclude_record"] = True
+            except ValueError:
+                pass
+        elif self.keyword == "$$htp":
+            seq["htp_intensity"] = True
+        elif self.keyword == "$$priority" and self.args:
+            try:
+                eos_prio = int(self.args[0])
+            except ValueError:
+                eos_prio = 4
+            if eos_prio <= 2:
+                seq["priority"] = 10
+            elif eos_prio <= 5:
+                seq["priority"] = 20
+            elif eos_prio <= 8:
+                seq["priority"] = 30
+            else:
+                seq["priority"] = 40
 
     def _do_independent(self) -> None:
         if self.keyword in ("text", "$$text"):
@@ -1557,7 +1580,16 @@ class AsciiParser(ReadFile):
         self.current["faderdef_page"] = page
         self.current["faderdef_number"] = number
         self.current["faderdef_locked"] = False
+        self.current["faderdef_cl_seq"] = None
+        self.current["faderdef_gofromlast"] = None
         self.state = State.IN_FADERDEF
+
+    @staticmethod
+    def _apply_eos_gofromlast(seq: dict[str, typing.Any], mode_val: int) -> None:
+        if mode_val == 1:
+            seq["wrap_around"] = True
+        elif mode_val == 3:
+            seq["release_on_end"] = True
 
     def _do_faderdef(self) -> None:
         index = self.current.get("faderdef", -1)
@@ -1567,6 +1599,16 @@ class AsciiParser(ReadFile):
             self.current["faderdef_locked"] = True
             if index in self.data["faders"]:
                 self.data["faders"][index]["locked"] = True
+            return
+        if self.keyword == "$$gofromlast" and self.args:
+            try:
+                mode_val = int(self.args[0])
+            except ValueError:
+                return
+            self.current["faderdef_gofromlast"] = mode_val
+            cl_seq = self.current.get("faderdef_cl_seq")
+            if cl_seq is not None and cl_seq in self.data.get("sequences", {}):
+                self._apply_eos_gofromlast(self.data["sequences"][cl_seq], mode_val)
             return
         if self.keyword != "$$target" or not self.args:
             return
@@ -1693,12 +1735,19 @@ class AsciiParser(ReadFile):
                 self.data["faders"][index] = preset_fader_entry
         elif target_type == "cl" and len(self.args) >= 2:
             seq_id = int(self.args[1])
+            self.current["faderdef_cl_seq"] = seq_id
             cl_entry: dict[str, typing.Any] = {
                 "page": page,
                 "number": number,
                 "type": FaderType.SEQUENCE,
                 "contents": seq_id,
             }
+            seq_dict = self.data.get("sequences", {}).get(seq_id)
+            if isinstance(seq_dict, dict):
+                if seq_dict.get("exclude_record"):
+                    cl_entry["exclude_record"] = True
+                if (gfl := self.current.get("faderdef_gofromlast")) is not None:
+                    self._apply_eos_gofromlast(seq_dict, int(gfl))
             if self.current.get("faderdef_locked"):
                 cl_entry["locked"] = True
             self.data["faders"][index] = cl_entry

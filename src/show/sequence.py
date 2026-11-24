@@ -31,6 +31,7 @@ from olc.show.sequence_threads import (
     _next_step,
     _parse_rgb_norm,
     _sync_resolved_effects,
+    apply_arbitrated_output,
     get_cue,
 )
 from olc.show.step import Step
@@ -149,7 +150,7 @@ class Sequence:
             return getattr(self.lightshow, "patch", None)
         return None
 
-    def load_step(self, step_index: int) -> None:
+    def load_step(self, step_index: int, *, fader_level: float | None = None) -> None:
         """Directly load and apply a sequence step state to DMX outputs."""
         if not self.steps or step_index < 0 or step_index >= len(self.steps):
             return
@@ -158,7 +159,39 @@ class Sequence:
         resolved = TrackingEngine.resolve_step_state(
             self, step_index, tracking_mode=self.tracking_mode, patch=self.patch
         )
-        if self.backend is not None and hasattr(self.backend, "dmx"):
+        cue = self.steps[step_index].cue
+        cue_num = getattr(cue, "number", None)
+        is_assert = bool(getattr(cue, "is_assert", False))
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            existing_state = arb.get_state(self.index)
+            eff_fader = (
+                fader_level
+                if fader_level is not None
+                else (existing_state.fader_level if existing_state is not None else 1.0)
+            )
+            composed = arb.set_sequence_output(
+                self.index,
+                resolved.channels,
+                resolved.device_values,
+                priority=self.priority,
+                htp_intensity=self.htp_intensity,
+                fader_level=eff_fader,
+                cue_number=cue_num,
+                off_on_overwritten=self.off_on_overwritten,
+                assert_all=is_assert,
+            )
+            apply_arbitrated_output(
+                self.app,
+                self.backend,
+                self.patch,
+                composed,
+                force_assert=is_assert,
+            )
+            _sync_resolved_effects(
+                self.app, resolved, fade_time=0.0, clear_live_state=True
+            )
+        elif self.backend is not None and hasattr(self.backend, "dmx"):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
             if self.patch is not None:
@@ -172,6 +205,39 @@ class Sequence:
                 self.app, resolved, fade_time=0.0, clear_live_state=True
             )
         self.update_channels()
+
+    def release(self) -> None:
+        """Stop this sequence and release its ownership back to lower layers."""
+        self.stop()
+        self.on_go = False
+        self.position = 0
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            composed, released_to_home = arb.release_sequence(self.index)
+            apply_arbitrated_output(
+                self.app,
+                self.backend,
+                self.patch,
+                composed,
+                released_to_home=released_to_home,
+            )
+        if self.app is not None and hasattr(self.app, "emit"):
+            self.app.emit("playback.sequence_released", self.index)
+
+    def assert_playback(self) -> None:
+        """Reclaim ownership of all channels and parameters held by this sequence."""
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            composed = arb.assert_sequence(self.index)
+            apply_arbitrated_output(
+                self.app,
+                self.backend,
+                self.patch,
+                composed,
+                force_assert=True,
+            )
+        if self.app is not None and hasattr(self.app, "emit"):
+            self.app.emit("playback.sequence_asserted", self.index)
 
     @property
     def on_go(self) -> bool:
@@ -583,6 +649,12 @@ class Sequence:
             self.do_go(None, override_time=override_time)
 
         else:
+            if not goto and self.last > 2 and self.position >= self.last - 2:
+                if self.release_on_end:
+                    self.release()
+                    return
+                if self.wrap_around:
+                    self.position = 0
             # Indicates that a Go is in progress
             self.on_go = True
             if self.app is not None and hasattr(self.app, "emit"):

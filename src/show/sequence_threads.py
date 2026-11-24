@@ -213,6 +213,65 @@ def _apply_resolved_device_values(
     return changed_devices, color_changed
 
 
+def apply_arbitrated_output(
+    app: Optional[CoreApplication],
+    backend: typing.Any,  # noqa: ANN401
+    patch: Optional[PatchManager],
+    composed: typing.Any,  # noqa: ANN401
+    *,
+    force_assert: bool = False,
+    clear_live_state: bool = True,
+    released_to_home: dict[int, set[str]] | None = None,
+) -> None:
+    """Push composed PlaybackArbitrator output to DMX, devices, and Live state."""
+    if (
+        backend is not None
+        and hasattr(backend, "dmx")
+        and hasattr(backend.dmx, "levels")
+        and "sequence" in backend.dmx.levels
+    ):
+        n_ch = min(len(backend.dmx.levels["sequence"]), len(composed.intensities))
+        backend.dmx.levels["sequence"][:n_ch] = composed.intensities[:n_ch]
+
+    if patch is not None:
+        if getattr(composed, "device_values", None):
+            _apply_resolved_device_values(
+                patch,
+                composed,
+                app,
+                clear_live_state=clear_live_state,
+                force_assert=force_assert,
+            )
+        if released_to_home:
+            changed_home: set[int] = set()
+            color_home: set[int] = set()
+            for dev_id, params in released_to_home.items():
+                dev = patch.get_device(dev_id)
+                if dev is None:
+                    continue
+                home_vals: dict[str, typing.Any] = {}
+                for p in params:
+                    p_low = str(p).lower()
+                    if p_low in ("color", "colour"):
+                        home_vals["color"] = "#ffffff"
+                    elif p_low in ("pan", "tilt"):
+                        home_vals[p_low] = 0.5
+                    elif p_low == "intensity":
+                        home_vals["intensity"] = 0.0
+                    else:
+                        home_vals[p_low] = 0.0
+                if home_vals and hasattr(dev, "apply_device_values"):
+                    dev.apply_device_values(home_vals)
+                    changed_home.add(dev_id)
+                    if "color" in home_vals:
+                        color_home.add(dev_id)
+            if changed_home:
+                _emit_device_changes(app, changed_home, color_home)
+
+    if backend is not None and hasattr(backend, "dmx") and backend.dmx is not None:
+        backend.dmx.set_levels()
+
+
 def _sync_resolved_effects(  # pylint: disable=too-many-locals,too-many-branches
     app: Optional[CoreApplication],
     resolved: typing.Any,  # noqa: ANN401
@@ -740,7 +799,11 @@ class ThreadGo(threading.Thread):
 
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go is sent"""
-        if (
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        arb_state = arb.get_state(self.sequence.index) if arb is not None else None
+        if arb_state is not None and arb_state.active:
+            self.old_channels_levels = arb_state.intensities.copy()
+        elif (
             self.backend is not None
             and hasattr(self.backend, "dmx")
             and hasattr(self.backend.dmx, "levels")
@@ -814,31 +877,55 @@ class ThreadGo(threading.Thread):
             patch=self.sequence.patch,
         )
 
-        # Block-copy levels to sequential dmx levels
-        if (
-            self.backend
-            and hasattr(self.backend, "dmx")
-            and hasattr(self.backend.dmx, "levels")
-            and "sequence" in self.backend.dmx.levels
-        ):
-            n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
-            self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
-
         target_cue = (
             self.sequence.steps[target_step_idx].cue
             if 0 <= target_step_idx < len(self.sequence.steps)
             else None
         )
         is_assert = bool(getattr(target_cue, "is_assert", False))
+        cue_num = getattr(target_cue, "number", None)
 
-        # Apply multi-parameter device values and emit differential events
-        if self.sequence.patch is not None:
-            _apply_resolved_device_values(
-                self.sequence.patch,
-                resolved,
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            composed = arb.set_sequence_output(
+                self.sequence.index,
+                resolved.channels,
+                resolved.device_values,
+                priority=getattr(self.sequence, "priority", 20),
+                htp_intensity=getattr(self.sequence, "htp_intensity", True),
+                cue_number=cue_num,
+                off_on_overwritten=getattr(self.sequence, "off_on_overwritten", False),
+                assert_all=is_assert,
+            )
+            apply_arbitrated_output(
                 self.app,
+                self.backend,
+                self.sequence.patch,
+                composed,
                 force_assert=is_assert,
             )
+        else:
+            # Block-copy levels to sequential dmx levels
+            if (
+                self.backend
+                and hasattr(self.backend, "dmx")
+                and hasattr(self.backend.dmx, "levels")
+                and "sequence" in self.backend.dmx.levels
+            ):
+                n_ch = min(
+                    len(self.backend.dmx.levels["sequence"]), len(resolved.channels)
+                )
+                self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+
+            # Apply multi-parameter device values and emit differential events
+            if self.sequence.patch is not None:
+                _apply_resolved_device_values(
+                    self.sequence.patch,
+                    resolved,
+                    self.app,
+                    force_assert=is_assert,
+                )
+
         _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
         _apply_execute_preset(self.sequence, self.backend, self.app, target_cue)
 
@@ -847,7 +934,8 @@ class ThreadGo(threading.Thread):
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
 
-        self._sync_dmx_levels()
+        if arb is None:
+            self._sync_dmx_levels()
 
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
@@ -942,13 +1030,30 @@ class ThreadGo(threading.Thread):
         lvls = self._calculate_transitions_go(i, step)
         self._apply_channel_times_go(lvls, i, step)
 
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
         if (
             self.backend is not None
             and hasattr(self.backend, "dmx")
             and hasattr(self.backend.dmx, "levels")
             and "sequence" in self.backend.dmx.levels
         ):
-            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
+            if arb is not None:
+                composed = arb.set_sequence_output(
+                    self.sequence.index,
+                    np.clip(lvls, 0.0, 1.0),
+                    priority=getattr(self.sequence, "priority", 20),
+                    htp_intensity=getattr(self.sequence, "htp_intensity", True),
+                    off_on_overwritten=getattr(
+                        self.sequence, "off_on_overwritten", False
+                    ),
+                )
+                n_ch = min(
+                    len(self.backend.dmx.levels["sequence"]),
+                    len(composed.intensities),
+                )
+                self.backend.dmx.levels["sequence"][:n_ch] = composed.intensities[:n_ch]
+            else:
+                self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
             self.backend.dmx.set_levels()
 
     def _compute_device_factors_go(  # pylint: disable=too-many-locals, too-many-branches
@@ -1183,7 +1288,11 @@ class ThreadGoBack(threading.Thread):
 
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go Back starts"""
-        if (
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        arb_state = arb.get_state(self.sequence.index) if arb is not None else None
+        if arb_state is not None and arb_state.active:
+            self.old_channels_levels = arb_state.intensities.copy()
+        elif (
             self.backend is not None
             and hasattr(self.backend, "dmx")
             and hasattr(self.backend.dmx, "levels")
@@ -1216,31 +1325,54 @@ class ThreadGoBack(threading.Thread):
             patch=self.sequence.patch,
         )
 
-        # Block-copy levels to sequential dmx levels
-        if (
-            self.backend
-            and hasattr(self.backend, "dmx")
-            and hasattr(self.backend.dmx, "levels")
-            and "sequence" in self.backend.dmx.levels
-        ):
-            n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
-            self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
-
         prev_cue = (
             self.sequence.steps[prev_step].cue
             if 0 <= prev_step < len(self.sequence.steps)
             else None
         )
         is_assert = bool(getattr(prev_cue, "is_assert", False))
+        cue_num = getattr(prev_cue, "number", None)
 
-        # Apply multi-parameter device values and emit differential events
-        if self.sequence.patch is not None:
-            _apply_resolved_device_values(
-                self.sequence.patch,
-                resolved,
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            composed = arb.set_sequence_output(
+                self.sequence.index,
+                resolved.channels,
+                resolved.device_values,
+                priority=getattr(self.sequence, "priority", 20),
+                htp_intensity=getattr(self.sequence, "htp_intensity", True),
+                cue_number=cue_num,
+                off_on_overwritten=getattr(self.sequence, "off_on_overwritten", False),
+                assert_all=is_assert,
+            )
+            apply_arbitrated_output(
                 self.app,
+                self.backend,
+                self.sequence.patch,
+                composed,
                 force_assert=is_assert,
             )
+        else:
+            # Block-copy levels to sequential dmx levels
+            if (
+                self.backend
+                and hasattr(self.backend, "dmx")
+                and hasattr(self.backend.dmx, "levels")
+                and "sequence" in self.backend.dmx.levels
+            ):
+                n_ch = min(
+                    len(self.backend.dmx.levels["sequence"]), len(resolved.channels)
+                )
+                self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+
+            # Apply multi-parameter device values and emit differential events
+            if self.sequence.patch is not None:
+                _apply_resolved_device_values(
+                    self.sequence.patch,
+                    resolved,
+                    self.app,
+                    force_assert=is_assert,
+                )
         _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
 
         self.sequence.on_go = False
@@ -1377,5 +1509,19 @@ class ThreadGoBack(threading.Thread):
             )
             _emit_device_changes(self.app, changed, color_changed)
 
-        self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            composed = arb.set_sequence_output(
+                self.sequence.index,
+                np.clip(lvls, 0.0, 1.0),
+                priority=getattr(self.sequence, "priority", 20),
+                htp_intensity=getattr(self.sequence, "htp_intensity", True),
+                off_on_overwritten=getattr(self.sequence, "off_on_overwritten", False),
+            )
+            n_ch = min(
+                len(self.backend.dmx.levels["sequence"]), len(composed.intensities)
+            )
+            self.backend.dmx.levels["sequence"][:n_ch] = composed.intensities[:n_ch]
+        else:
+            self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0.0, 1.0)
         self.backend.dmx.set_levels()

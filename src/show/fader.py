@@ -449,6 +449,7 @@ class FaderSequence(Fader):
         super().__init__(index, fader_bank)
         self.contents = chaser
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
+        self._prev_level: float = 0.0
         # Channels used by fader
         self.channels = set()
         if chaser:
@@ -478,11 +479,46 @@ class FaderSequence(Fader):
             self.fader_bank.update_active_faders()
 
     def level_changed(self) -> None:
-        """Fader level has changed"""
+        """Fader level has changed."""
         self.dmx.fill(0.0)
         if self.contents is None:
+            self.fader_bank.update_levels()
             return
         sequence = self.contents
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            from olc.show.sequence_threads import apply_arbitrated_output
+
+            state = arb.get_state(sequence.index)
+            is_active = state is not None and state.active
+            valid_steps = max(0, len(sequence.steps) - 2)
+            if (
+                self._prev_level <= 0.0 < self.level
+                and getattr(sequence, "auto_start", False)
+                and not is_active
+                and valid_steps > 0
+            ):
+                pos = max(1, min(sequence.position or 1, len(sequence.steps) - 2))
+                sequence.load_step(pos, fader_level=self.level)
+            elif self._prev_level > 0.0 >= self.level and getattr(
+                sequence, "auto_stop", False
+            ):
+                sequence.release()
+            elif is_active:
+                composed = arb.set_fader_level(sequence.index, self.level)
+                apply_arbitrated_output(
+                    self.app,
+                    getattr(self.app, "backend", None),
+                    sequence.patch,
+                    composed,
+                )
+            elif self.level > 0.0 and valid_steps > 0:
+                pos = max(1, min(sequence.position or 1, len(sequence.steps) - 2))
+                sequence.load_step(pos, fader_level=self.level)
+            self._prev_level = self.level
+            self.fader_bank.update_levels()
+            return
+
         if self.level > 0.0:
             pos = max(1, min(sequence.position or 1, len(sequence.steps) - 1))
             if 0 <= pos < len(sequence.steps):
@@ -491,9 +527,38 @@ class FaderSequence(Fader):
                     for channel, lvl in cue.channels.items():
                         if 1 <= channel <= MAX_CHANNELS:
                             self.dmx[channel - 1] = float(lvl) * self.level
+        self._prev_level = self.level
         self.fader_bank.update_levels()
         if self.app and hasattr(self.app, "backend") and self.app.backend:
             self.app.backend.dmx.set_levels()
+
+    def go(self) -> None:
+        """Advance the linked sequence by one step, keeping fader level in sync."""
+        if self.contents is None:
+            return
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            arb.set_fader_level(self.contents.index, self.level)
+        self.contents.do_go(None)
+
+    def go_back(self) -> bool:
+        """Step the linked sequence backward by one step."""
+        if self.contents is None:
+            return False
+        arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
+        if arb is not None:
+            arb.set_fader_level(self.contents.index, self.level)
+        return self.contents.go_back(None, None)
+
+    def pause(self) -> None:
+        """Pause any active transition on the linked sequence."""
+        if self.contents is not None:
+            self.contents.pause(None, None)
+
+    def release(self) -> None:
+        """Release the linked sequence and restore lower layers."""
+        if self.contents is not None:
+            self.contents.release()
 
 
 VALID_EFFECT_CONTROL_MODES: tuple[str, ...] = ("size", "rate", "both")
