@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import re
 import typing
 
 from olc.core.parser.completer import CommandCompleter, CompletionResult
@@ -25,6 +26,48 @@ from olc.core.parser.parser import CommandParser, CommandSyntaxError
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+
+
+_VERB_LABEL_PREFIX_RE = re.compile(
+    r"^(\s*LABEL\s+(?:SEQ|SEQUENCE|GROUP)\s+\d+(?:\.\d+)?\s+)(.*)$",
+    re.IGNORECASE,
+)
+_NOUN_LABEL_PREFIX_RE = re.compile(r"^(.+?\s+LABEL\s+)(.*)$", re.IGNORECASE)
+_TEXT_MODE_EMPTY_TAIL_RE = re.compile(
+    r"(?:^\s*LABEL\s+(?:SEQ|SEQUENCE|GROUP)\s+\d+(?:\.\d+)?|\S\s+LABEL)\s+$",
+    re.IGNORECASE,
+)
+
+
+def is_commandline_text_mode(text: str) -> bool:
+    """Return True when *text* expects free-form label characters."""
+    if not isinstance(text, str) or not text:
+        return False
+    if text.count('"') % 2 == 1:
+        return True
+    if _VERB_LABEL_PREFIX_RE.match(text):
+        return True
+    return bool(_NOUN_LABEL_PREFIX_RE.match(text))
+
+
+def normalize_label_command(raw_cmd: str) -> str:
+    """Auto-close unclosed quotes and quote unquoted multi-word LABEL arguments."""
+    if not isinstance(raw_cmd, str):
+        return ""
+    cmd = raw_cmd.strip()
+    if not cmd:
+        return cmd
+    if cmd.count('"') % 2 == 1:
+        cmd += '"'
+    for pattern in (_VERB_LABEL_PREFIX_RE, _NOUN_LABEL_PREFIX_RE):
+        match = pattern.match(cmd)
+        if match:
+            prefix, tail = match.group(1), match.group(2).strip()
+            if tail and not (tail.startswith('"') and tail.endswith('"')):
+                escaped = tail.replace('"', '\\"')
+                return f'{prefix}"{escaped}"'
+            return cmd
+    return cmd
 
 
 def trailing_patch_keyword(text: str) -> str | None:
@@ -128,6 +171,12 @@ class CoreCommandLine:
         if not self._keystring:
             return
 
+        if is_commandline_text_mode(self._keystring) and not (
+            _TEXT_MODE_EMPTY_TAIL_RE.search(self._keystring)
+        ):
+            self.set_string(self._keystring[:-1])
+            return
+
         matches = list(CommandLexer._TOKEN_RE.finditer(self._keystring))
         non_ws = [m for m in matches if m.lastgroup != "WHITESPACE"]
         if not non_ws:
@@ -185,7 +234,8 @@ class CoreCommandLine:
         self.history_index = -1
 
         try:
-            node = self.parser.parse(raw_cmd)
+            normalized_cmd = normalize_label_command(raw_cmd)
+            node = self.parser.parse(normalized_cmd)
             with self.app.action_registry.command_context(raw_cmd):
                 result = self.executor.execute(node)
 

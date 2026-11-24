@@ -126,9 +126,12 @@ def test_commandline_execute_backspace_and_history() -> None:
 
 def test_window_key_controller_handling() -> None:
     """Test Window._on_key_controller_pressed routes keys and handles shortcuts."""
-    from gi.repository import Gdk
+    import gi
 
-    from olc.gtk3.window import Window
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk  # noqa: E402
+
+    from olc.gtk3.window import Window  # noqa: E402
 
     win = Window.__new__(Window)
     win.get_focus = MagicMock(return_value=None)

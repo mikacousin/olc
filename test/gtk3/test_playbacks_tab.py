@@ -137,6 +137,27 @@ def test_playbacks_tab_and_vc_three_strip_buttons(app_gui: Application) -> None:
             app_gui.core.action_registry.execute("commandline.clear")
             assert app_gui.window._handle_modifier_shortcuts(keyval, mods) is True
             assert app_gui.core.commandline.get_string() == expected_cmd
+
+        # 6. Typing letters after SEQ 2 LABEL types literal text (bypasses hotkeys)
+        app_gui.core.action_registry.execute("commandline.clear")
+        app_gui.core.action_registry.execute("commandline.append_char", "SEQ 2 LABEL ")
+        key_ctrl = Gtk.EventControllerKey.new(app_gui.window)
+        for kv in (
+            Gdk.KEY_O,
+            Gdk.KEY_v,
+            Gdk.KEY_e,
+            Gdk.KEY_r,
+            Gdk.KEY_l,
+            Gdk.KEY_a,
+            Gdk.KEY_y,
+        ):
+            assert (
+                app_gui.window._on_key_controller_pressed(
+                    key_ctrl, kv, 0, Gdk.ModifierType(0)
+                )
+                is True
+            )
+        assert app_gui.core.commandline.get_string() == "SEQ 2 LABEL Overlay"
         app_gui.core.action_registry.execute("commandline.clear")
     finally:
         if app_gui.tabs is not None:

@@ -21,6 +21,7 @@ import typing
 
 from gi.repository import GLib, Gtk
 
+from olc.core.commandline import is_commandline_text_mode
 from olc.core.parser.highlighter import highlight_commandline_markup
 from olc.gtk3.widgets.common import (
     get_system_font_family,
@@ -176,6 +177,14 @@ class CommandLineWidget:
 
     def _render_text(self, text: str) -> None:
         """Render command line text with syntax highlighting and trailing cursor."""
+        if is_commandline_text_mode(text):
+            self.prompt_label.set_markup(
+                '<span foreground="#81D4FA" weight="bold">Live [ABC] &gt; </span>'
+            )
+        else:
+            self.prompt_label.set_markup(
+                '<span foreground="#FFD54F" weight="bold">Live &gt; </span>'
+            )
         cursor = '<span foreground="#888888">_</span>'
         family = get_system_font_family()
         font_family = f"{family}, monospace"

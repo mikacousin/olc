@@ -1301,3 +1301,35 @@ def test_command_label_sequence_and_undo_redo() -> None:
     # Missing sequence fails cleanly
     res_missing = executor.execute(parser.parse('LABEL SEQ 99 "Ghost"'))
     assert res_missing.success is False
+
+
+def test_commandline_text_mode_and_unquoted_label_execution() -> None:
+    """Verify LABEL text-mode detection, quote normalization, and accented labels."""
+    from olc.core.commandline import is_commandline_text_mode, normalize_label_command
+
+    assert is_commandline_text_mode("LABEL ") is False
+    assert is_commandline_text_mode("LABEL SEQ ") is False
+    assert is_commandline_text_mode("LABEL SEQ 2") is False
+    assert is_commandline_text_mode("LABEL SEQ 2 ") is True
+    assert is_commandline_text_mode("SEQ 2 LABEL ") is True
+    assert is_commandline_text_mode('SEQ 2 LABEL "Entrée') is True
+
+    assert normalize_label_command("SEQ 2 LABEL Entrée public") == (
+        'SEQ 2 LABEL "Entrée public"'
+    )
+    assert normalize_label_command('SEQ 2 LABEL "Test') == 'SEQ 2 LABEL "Test"'
+
+    app = CoreApplication(MagicMock())
+    app.action_registry.execute("sequence.new", 2.0)
+    cmd = app.commandline
+    cmd.set_string("SEQ 2 LABEL Entrée public")
+    res = cmd.execute()
+    assert res.success is True
+    seq2 = app.lightshow.get_sequence(2.0)
+    assert seq2 is not None
+    assert seq2.text == "Entrée public"
+
+    cmd.set_string("LABEL SEQ 1 Acte 1")
+    res1 = cmd.execute()
+    assert res1.success is True
+    assert app.lightshow.main_playback.text == "Acte 1"

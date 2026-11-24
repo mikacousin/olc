@@ -19,7 +19,7 @@ import typing
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from olc.core.commandline import toggle_patch_keyword
+from olc.core.commandline import is_commandline_text_mode, toggle_patch_keyword
 from olc.define import string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.commandline import CommandLineWidget
@@ -830,6 +830,17 @@ class Window(Gtk.ApplicationWindow):
         nav_handled = self._handle_navigation_keys(keyval, modifiers)
         if nav_handled is not None:
             return nav_handled
+
+        # Free-text mode (e.g. after LABEL or inside quotes): bypass console hotkeys
+        if is_commandline_text_mode(self.app.core.commandline.get_string()):
+            unichar = Gdk.keyval_to_unicode(keyval)
+            if unichar > 0:
+                char = chr(unichar)
+                if char.isprintable():
+                    self.app.core.action_registry.execute(
+                        "commandline.append_char", char
+                    )
+                    return True
 
         # Shift secondary layer
         if modifiers == int(Gdk.ModifierType.SHIFT_MASK):
