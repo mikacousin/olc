@@ -129,6 +129,7 @@ class MainPlaybackView(Gtk.Notebook):
         Gtk.Notebook.__init__(self)
         self.app = app
         self.set_group_name("olc")
+        self.set_scrollable(True)
 
         self._setup_sequential()
         self._setup_treeviews()

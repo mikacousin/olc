@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 from typing import Optional
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, Pango
 
 from olc.core.playback_arbitrator import PlaybackPriority
 from olc.core.tracking import (
@@ -120,11 +120,19 @@ class SequenceTab(Gtk.Grid):
         self._setup_header_bar()
         self._setup_sequences_list()
         self._setup_cues_list()
-        self.attach(self.header_box, 0, 0, 1, 1)
-        self.attach_next_to(
-            self.treeview1, self.header_box, Gtk.PositionType.BOTTOM, 1, 1
-        )
-        self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
+        header_scroll = Gtk.ScrolledWindow()
+        header_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        header_scroll.set_shadow_type(Gtk.ShadowType.NONE)
+        header_scroll.add(self.header_box)
+
+        seq_scroll = Gtk.ScrolledWindow()
+        seq_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        seq_scroll.set_min_content_height(90)
+        seq_scroll.add(self.treeview1)
+
+        self.attach(header_scroll, 0, 0, 1, 1)
+        self.attach_next_to(seq_scroll, header_scroll, Gtk.PositionType.BOTTOM, 1, 1)
+        self.attach_next_to(self.paned, seq_scroll, Gtk.PositionType.BOTTOM, 1, 1)
 
     def _setup_header_bar(self) -> None:
         """Create top control bar with Tracking vs Cue-Only and MIB switches."""
@@ -389,6 +397,7 @@ class SequenceTab(Gtk.Grid):
             renderer = Gtk.CellRendererText()
             if i == 1:
                 renderer.set_property("editable", True)
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
                 renderer.connect("edited", self._on_sequence_name_edited)
             column = Gtk.TreeViewColumn(column_title, renderer)
             column.add_attribute(renderer, "text", i)

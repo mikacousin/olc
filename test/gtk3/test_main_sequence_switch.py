@@ -107,3 +107,25 @@ def test_switch_main_sequence_updates_ui_and_controls(app_gui: Application) -> N
         if seq2 in ls.sequences:
             ls.sequences.remove(seq2)
         app_gui.core.playback_engine.set_main_sequence(1.0)
+
+
+@pytest.mark.gui
+def test_main_window_minimum_width_stays_bounded(app_gui: Application) -> None:
+    """Verify Main Window minimum width stays bounded with tabs and long CLI text."""
+    assert app_gui.window is not None
+    app_gui.activate_action("sequences", None)
+    app_gui.activate_action("playbacks", None)
+    app_gui.core.action_registry.execute(
+        "commandline.set",
+        "LABEL SEQ 2 " + ("VeryLongSequenceName " * 10),
+    )
+    process_events()
+
+    min_width, _nat_width = app_gui.window.get_preferred_width()
+    assert min_width <= 1200
+
+    app_gui.core.action_registry.execute("commandline.clear")
+    if app_gui.tabs is not None:
+        app_gui.tabs.close("sequences")
+        app_gui.tabs.close("playbacks")
+    process_events()

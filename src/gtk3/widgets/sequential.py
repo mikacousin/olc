@@ -62,7 +62,7 @@ class SequentialWidget(Gtk.Widget):
         self.sync_from_sequence(self._get_main_sequence(), redraw=False)
 
         Gtk.Widget.__init__(self)
-        self.set_size_request(800, 300)
+        self.set_size_request(240, 260)
         register_system_font_listener(self.queue_draw)
 
     def _get_main_sequence(self) -> Sequence | None:
@@ -128,8 +128,10 @@ class SequentialWidget(Gtk.Widget):
         time_max, time_min = self._calculate_times()
         allocation = self.get_allocation()
 
-        # Change height to draw channel time
-        self.set_size_request(800, 300 + (len(self.channel_time) * 8))
+        # Change height to draw channel time without forcing excessive width
+        target_h = 260 + (len(self.channel_time) * 8)
+        if self.get_size_request() != (240, target_h):
+            self.set_size_request(240, target_h)
 
         if self.total_time != 0:
             inter = (allocation.width - 32) / self.total_time

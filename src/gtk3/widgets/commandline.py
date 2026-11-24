@@ -19,7 +19,7 @@ from __future__ import annotations
 import html
 import typing
 
-from gi.repository import GLib, Gtk
+from gi.repository import GLib, Gtk, Pango
 
 from olc.core.commandline import is_commandline_text_mode
 from olc.core.parser.highlighter import highlight_commandline_markup
@@ -65,12 +65,17 @@ class CommandLineWidget:
         self.command_label = Gtk.Label()
         self.command_label.set_xalign(0.0)
         self.command_label.set_use_markup(True)
+        self.command_label.set_ellipsize(Pango.EllipsizeMode.START)
+        self.command_label.set_width_chars(10)
         self.widget.pack_start(self.command_label, True, True, 0)
 
         # Status / Feedback label on the right
         self.feedback_label = Gtk.Label()
         self.feedback_label.set_xalign(1.0)
         self.feedback_label.set_use_markup(True)
+        self.feedback_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.feedback_label.set_max_width_chars(60)
+        self.feedback_label.set_width_chars(0)
         self.widget.pack_end(self.feedback_label, False, False, 0)
 
         # Park alert indicator badge in status bar

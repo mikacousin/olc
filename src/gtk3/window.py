@@ -123,11 +123,11 @@ class Window(Gtk.ApplicationWindow):
         self.live_view = LiveView(
             typing.cast("olc.gtk3.window.Window", self), self.tabs_manager
         )
-        self.paned.pack1(self.live_view, resize=True, shrink=False)
+        self.paned.pack1(self.live_view, resize=True, shrink=True)
 
         # Main Playback
         self.playback = MainPlaybackView(self.app)
-        self.paned.pack2(self.playback, resize=True, shrink=False)
+        self.paned.pack2(self.playback, resize=True, shrink=True)
 
         self.main_box.pack_start(self.paned, True, True, 0)
 

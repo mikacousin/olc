@@ -41,6 +41,7 @@ class LiveView(Gtk.Notebook):
         self.tabs = tabs
         super().__init__()
         self.set_group_name("olc")
+        self.set_scrollable(True)
 
         self.channels_view = LiveChannelsView(window, tabs)
 
