@@ -51,7 +51,7 @@ def _get_fader_contents_number(
     contents = getattr(fader, "contents", None)
     if contents is None:
         return None
-    # Sequence / Chaser has .index and .steps
+    # Sequence has .index and .steps
     if hasattr(contents, "index") and hasattr(contents, "steps"):
         return float(contents.index)
     # Preset Palette or Cue has .number

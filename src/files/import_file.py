@@ -273,7 +273,9 @@ class ImportFile:
                 # Main playback at start
                 self.lightshow.main_playback.position = 0
             else:
-                self.data.import_chaser(sequence, self.actions["sequences"][sequence])
+                self.data.import_secondary_sequence(
+                    sequence, self.actions["sequences"][sequence]
+                )
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:

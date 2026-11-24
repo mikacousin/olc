@@ -53,7 +53,7 @@ class SequenceNewAction(Action):
                 "Secondary sequence cannot use index 1.0 (reserved for sequence 1)."
             )
 
-        seq = Sequence(self.index_seq, type_seq="Normal", lightshow=lightshow)
+        seq = Sequence(self.index_seq, lightshow=lightshow)
         # Clear step 1+ as in the original GUI flow
         del seq.steps[1:]
         seq.last = len(seq.steps)

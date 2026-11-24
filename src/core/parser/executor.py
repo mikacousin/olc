@@ -1093,12 +1093,12 @@ class CommandExecutor:
         else:
             from olc.show.sequence import Sequence
 
-            chaser = Sequence(float(seq_id), type_seq="Normal", lightshow=lightshow)
-            del chaser.steps[1:]
-            chaser.last = len(chaser.steps)
-            lightshow.sequences.append(chaser)
+            seq = Sequence(float(seq_id), lightshow=lightshow)
+            del seq.steps[1:]
+            seq.last = len(seq.steps)
+            lightshow.sequences.append(seq)
             lightshow.set_modified()
-            self.app.emit("sequence.created", chaser)
+            self.app.emit("sequence.created", seq)
         return self._get_target_sequence(lightshow, seq_id)
 
     def _execute_create_sequence(

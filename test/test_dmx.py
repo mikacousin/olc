@@ -188,7 +188,7 @@ def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
     lightshow.patch.universes = [1]
     lightshow.independents.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
-    seq = Sequence(index=1, type_seq="Main")
+    seq = Sequence(index=1)
     seq.tracking_mode = True
     seq.steps.clear()
     seq.steps.append(Step(sequence=1))

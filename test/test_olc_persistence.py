@@ -338,7 +338,7 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     show1.main_playback.insert_step(2, step2)
 
     # 4. Add a Chaser sequence with tracking_mode=True
-    chaser = Sequence(2, type_seq="Chaser", text="Effect Chase", lightshow=show1)
+    chaser = Sequence(2, text="Effect Chase", lightshow=show1)
     chaser.tracking_mode = True
     chaser.mib_enabled = False
     chaser.mib_fade_time = 1.5
@@ -347,7 +347,7 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     ch_cue.device_values = {50: {"color": "#FF0000"}}
     chaser.cues.add(ch_cue)
     chaser.add_step(Step(2, cue=ch_cue, time_in=1.0, time_out=1.0))
-    show1.chasers.append(chaser)
+    show1.sequences.append(chaser)
 
     # 5. Save to .olc
     olc_path = str(tmp_path / "autonomous_show.olc")
@@ -415,7 +415,7 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_cue2.device_values[101]["intensity"] == 0.0
 
     # Verify Chaser sequence tracking_mode, mib settings, and cue metadata
-    r_chaser = show2.get_chaser(2)
+    r_chaser = show2.get_sequence(2)
     assert r_chaser is not None
     assert r_chaser.tracking_mode is True
     assert r_chaser.mib_enabled is False

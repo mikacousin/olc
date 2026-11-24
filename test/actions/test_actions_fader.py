@@ -105,8 +105,8 @@ def test_fader_assign_sequence() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    chaser = Sequence(2.0, "Chaser 2")
-    app.lightshow.chasers.append(chaser)
+    chaser = Sequence(2.0, text="Seq 2")
+    app.lightshow.sequences.append(chaser)
 
     app.action_registry.execute("fader.assign", 1, 3, FaderType.SEQUENCE, 2.0)
 

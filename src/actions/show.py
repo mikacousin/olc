@@ -416,7 +416,6 @@ def _copy_sequence(seq: Sequence, lightshow: LightShow) -> Sequence:
     """
     copied = Sequence(
         seq.index,
-        type_seq=seq.type_seq,
         text=seq.text,
         lightshow=lightshow,
     )
@@ -684,7 +683,7 @@ class ShowImportAction(Action):
         snapshot: dict[str, typing.Any],
         lightshow: LightShow,
     ) -> None:
-        """Restore main playback and chasers from snapshot."""
+        """Restore main playback and secondary sequences from snapshot."""
         mp = lightshow.main_playback
         mp.steps = [_copy_step(s) for s in snapshot["main_playback_steps"]]
         mp.position = snapshot["main_playback_position"]

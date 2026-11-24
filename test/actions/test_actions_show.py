@@ -58,7 +58,7 @@ def test_show_new_resets_show_state() -> None:
     assert "show.new" in events
     assert app.lightshow.get_cue(3.0, 1) is None
     assert len(app.lightshow.groups) == 0
-    assert len(app.lightshow.chasers) == 0
+    assert len(app.lightshow.sequences) == 0
     assert app.lightshow.file is None
     assert app.lightshow.file_path is None
     assert app.lightshow.basename == ""

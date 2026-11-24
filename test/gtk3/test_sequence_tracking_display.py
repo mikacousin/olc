@@ -44,7 +44,7 @@ from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pyli
 
 def test_tracking_color_classification_states() -> None:
     """Test HARD_VALUE, TRACKED_VALUE, INTENSITY_UP, INTENSITY_DOWN, and BLOCK."""
-    seq = Sequence(index=1, type_seq="Main")
+    seq = Sequence(index=1)
     seq.tracking_mode = True
     seq.steps.clear()
 
@@ -115,7 +115,7 @@ def test_tracking_color_classification_states() -> None:
 
 def test_tracking_color_classification_mib_state() -> None:
     """Test TrackingDisplayState.MIB when a dark fixture pre-positions for next cue."""
-    seq = Sequence(index=1, type_seq="Main")
+    seq = Sequence(index=1)
     seq.tracking_mode = True
     seq.mib_enabled = True
     seq.steps.clear()

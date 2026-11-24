@@ -138,9 +138,8 @@ EndData
     assert s2["wait"] == 3.0
 
     # Secondary sequence imported as Normal (not forced to Chaser)
-    assert len(lightshow.chasers) == 1
-    assert lightshow.chasers[0].index == 2
-    assert lightshow.chasers[0].type_seq == "Normal"
+    assert len(lightshow.sequences) == 1
+    assert lightshow.sequences[0].index == 2
 
 
 def test_import_eos_show_cuelists_and_labels(
@@ -1774,7 +1773,7 @@ def test_ascii_export_import_effects_round_trip(
     show.main_playback.insert_step(2, Step(1, cue=cue2, text="FX Stop ch1"))
 
     # Secondary Sequence 2 Cue 1 starts Effect 2 on [10, 11]
-    seq2 = Sequence(2, type_seq="Normal", text="FX Seq", lightshow=show)
+    seq2 = Sequence(2, text="FX Seq", lightshow=show)
     seq2_cue1 = Cue(
         2,
         1.0,

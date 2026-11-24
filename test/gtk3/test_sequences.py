@@ -43,7 +43,7 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     undo/redo.
     """
     # 1. Clear sequences/chasers
-    app_gui.core.lightshow.chasers.clear()
+    app_gui.core.lightshow.sequences.clear()
 
     # 2. Open the Sequences Tab
     app_gui.activate_action("sequences", None)
@@ -62,8 +62,8 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     seq_tab.new_seq_btn.clicked()
     process_events()
 
-    assert len(app_gui.core.lightshow.chasers) == 1
-    assert app_gui.core.lightshow.chasers[0].index == 2.0
+    assert len(app_gui.core.lightshow.sequences) == 1
+    assert app_gui.core.lightshow.sequences[0].index == 2.0
 
     # 4. Programmatically select row index 1 (Chaser 2.0)
     model1 = seq_tab.treeview1.get_model()

@@ -452,12 +452,6 @@ class AsciiParser(ReadFile):
             if self._is_console("nicobats", "dlight") and seq_number == 0:
                 # DLight MainPlayback is number 0, need to be number 1
                 seq_number = 1
-            if (
-                self._is_console("avab", "congo")
-                and len(self.args) > 1
-                and int(self.args[1]) == 1
-            ):
-                mode = "chaser"
             self._ensure_sequence(seq_number, mode=mode)
             self.data["sequences"][seq_number]["mode"] = mode
             self.current["sequence"] = seq_number

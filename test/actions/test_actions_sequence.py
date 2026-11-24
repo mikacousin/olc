@@ -29,7 +29,7 @@ def test_sequence_new_delete_actions_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     # Clear chasers list
-    app.lightshow.chasers.clear()
+    app.lightshow.sequences.clear()
 
     created_events = []
     deleted_events = []
@@ -38,8 +38,8 @@ def test_sequence_new_delete_actions_and_undo_redo() -> None:
 
     # 1. Create a new sequence 2.0
     app.action_registry.execute("sequence.new", 2.0)
-    assert len(app.lightshow.chasers) == 1
-    assert app.lightshow.chasers[0].index == 2.0
+    assert len(app.lightshow.sequences) == 1
+    assert app.lightshow.sequences[0].index == 2.0
     assert len(created_events) == 1
     assert created_events[0].index == 2.0
 
@@ -53,33 +53,33 @@ def test_sequence_new_delete_actions_and_undo_redo() -> None:
 
     # 4. Undo creation
     app.history.undo()
-    assert len(app.lightshow.chasers) == 0
+    assert len(app.lightshow.sequences) == 0
     assert len(deleted_events) == 1
     assert deleted_events[0].index == 2.0
 
     # 5. Redo creation
     app.history.redo()
-    assert len(app.lightshow.chasers) == 1
-    assert app.lightshow.chasers[0].index == 2.0
+    assert len(app.lightshow.sequences) == 1
+    assert app.lightshow.sequences[0].index == 2.0
 
     # 6. Delete sequence
     created_events.clear()
     deleted_events.clear()
     app.action_registry.execute("sequence.delete", 2.0)
-    assert len(app.lightshow.chasers) == 0
+    assert len(app.lightshow.sequences) == 0
     assert len(deleted_events) == 1
     assert deleted_events[0].index == 2.0
 
     # 7. Undo delete
     app.history.undo()
-    assert len(app.lightshow.chasers) == 1
-    assert app.lightshow.chasers[0].index == 2.0
+    assert len(app.lightshow.sequences) == 1
+    assert app.lightshow.sequences[0].index == 2.0
     assert len(created_events) == 1
     assert created_events[0].index == 2.0
 
     # 8. Redo delete
     app.history.redo()
-    assert len(app.lightshow.chasers) == 0
+    assert len(app.lightshow.sequences) == 0
 
 
 # pylint: disable=too-many-statements
@@ -89,9 +89,9 @@ def test_sequence_insert_delete_step_actions_and_undo_redo() -> None:
     app = CoreApplication(settings)
 
     # Set up a chaser sequence (index 2.0)
-    app.lightshow.chasers.clear()
+    app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.chasers[0]
+    chaser = app.lightshow.sequences[0]
     # A new chaser has exactly 1 step initially (step 0 at index 0)
     assert len(chaser.steps) == 1
     assert chaser.steps[0].cue.number == 0.0
@@ -162,9 +162,9 @@ def test_step_update_times_and_text_actions_and_undo_redo() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.lightshow.chasers.clear()
+    app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.chasers[0]
+    chaser = app.lightshow.sequences[0]
 
     app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0)
     step = chaser.steps[1]
@@ -215,9 +215,9 @@ def test_step_update_channel_time_action_and_undo_redo() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.lightshow.chasers.clear()
+    app.lightshow.sequences.clear()
     app.action_registry.execute("sequence.new", 2.0)
-    chaser = app.lightshow.chasers[0]
+    chaser = app.lightshow.sequences[0]
 
     app.action_registry.execute("sequence.insert_step", 2.0, 1, 10.0)
     step = chaser.steps[1]

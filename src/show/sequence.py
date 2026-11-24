@@ -51,7 +51,6 @@ class Sequence:
     """
 
     index: float
-    type_seq: str
     text: str
     thread: Optional[ThreadGo | ThreadGoBack]
     lightshow: typing.Optional[LightShow]
@@ -61,12 +60,10 @@ class Sequence:
     def __init__(
         self,
         index: float,
-        type_seq: str = "Normal",
         text: str = "",
         lightshow: typing.Optional[LightShow] = None,
     ) -> None:
         self.index = index
-        self.type_seq = type_seq
         self.text = text
         self.lightshow = lightshow
         self.cues = set()

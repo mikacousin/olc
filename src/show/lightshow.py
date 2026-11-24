@@ -141,15 +141,6 @@ class LightShow(ShowFile):
         # Universe configurations
         self.universe_map = default_universe_map()
 
-    @property
-    def chasers(self) -> list:
-        """Compatibility alias for secondary sequences list."""
-        return self.sequences
-
-    @chasers.setter
-    def chasers(self, value: list) -> None:
-        self.sequences = value
-
     def get_cue(self, number: float, sequence: int = 1) -> None | Cue:
         """Get Cue by number and sequence index.
 
@@ -208,10 +199,6 @@ class LightShow(ShowFile):
             if seq.index == number:
                 return seq
         return None
-
-    def get_chaser(self, number: float) -> None | Sequence:
-        """Compatibility alias for get_sequence."""
-        return self.get_sequence(number)
 
     def reset(self) -> None:
         """Reset all"""

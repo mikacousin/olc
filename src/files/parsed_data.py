@@ -689,7 +689,7 @@ class ParsedData:
             self.lightshow.main_playback.steps.append(sentinel_step)
             self.lightshow.main_playback.last = len(self.lightshow.main_playback.steps)
 
-    def import_chaser(self, sequence: int, action: Action) -> None:
+    def import_secondary_sequence(self, sequence: int, action: Action) -> None:
         """Import Secondary Sequence.
 
         Args:
@@ -698,17 +698,14 @@ class ParsedData:
         """
         seq_data = self.data["sequences"][sequence]
         label = seq_data["label"]
-        type_seq = "Chaser" if seq_data.get("mode") == "chaser" else "Normal"
         for index, seq_obj in enumerate(self.lightshow.sequences):
             if seq_obj.index == sequence:
                 self.lightshow.sequences[index].text = label
-                self.lightshow.sequences[index].type_seq = type_seq
                 break
         else:
             self.lightshow.sequences.append(
                 Sequence(
                     sequence,
-                    type_seq=type_seq,
                     text=label,
                     lightshow=self.lightshow,
                 )
@@ -729,11 +726,11 @@ class ParsedData:
             )
         self.lightshow.sequences[index].apply_playback_options(seq_data)
         if action is Action.REPLACE:
-            self._replace_chaser(sequence, index)
+            self._replace_secondary_sequence(sequence, index)
         elif action is Action.MERGE:
-            self._merge_chaser(sequence, index)
+            self._merge_secondary_sequence(sequence, index)
 
-    def _merge_chaser(self, sequence: int, index: int) -> None:
+    def _merge_secondary_sequence(self, sequence: int, index: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
@@ -765,7 +762,7 @@ class ParsedData:
                 step = self._build_step_from_dict(sequence, cue, values)
                 sec_seq.insert_step(step_nb, step)
 
-    def _replace_chaser(self, sequence: int, index: int) -> None:
+    def _replace_secondary_sequence(self, sequence: int, index: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_dict = self.data["sequences"][sequence]["cues"][cue_number]

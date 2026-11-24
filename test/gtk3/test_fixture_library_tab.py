@@ -313,7 +313,7 @@ def test_fixture_library_tab_eos_import_display_and_apply(
         app_gui.core.lightshow.patch.patch_empty()
         app_gui.core.lightshow.palettes.clear()
         app_gui.core.lightshow.groups.clear()
-        app_gui.core.lightshow.chasers.clear()
+        app_gui.core.lightshow.sequences.clear()
         app_gui.core.lightshow.curves.reset()
         app_gui.core.lightshow.fader_bank.reset_faders()
         app_gui.core.emit("fixture_library.changed")
