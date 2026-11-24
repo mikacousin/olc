@@ -125,6 +125,20 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             return self.model
         return self.fixture_type.value.replace("_", " ").title()
 
+    @property
+    def type_key(self) -> str:
+        """Canonical fixture model + DMX mode key for By-Type palettes."""
+        mode = self.mode_name.strip().lower()
+        gdtf = self.gdtf_id.strip().lower()
+        if gdtf:
+            return f"gdtf:{gdtf}::{mode}" if mode else f"gdtf:{gdtf}"
+        model = self.model.strip().lower()
+        if model:
+            mfr = self.manufacturer.strip().lower()
+            base = f"{mfr}:{model}" if mfr else model
+            return f"{base}::{mode}" if mode else base
+        return f"type:{self.fixture_type.value.lower()}"
+
     def _addresses_by_universe(self) -> dict[int, list[int]]:
         by_univ: dict[int, set[int]] = {}
         for ch in self.channels:

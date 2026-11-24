@@ -38,6 +38,40 @@ class PaletteCategory(str, Enum):
     PRESET = "preset"
 
 
+class PaletteMode(str, Enum):
+    """Scope/resolution mode for a Palette or Preset."""
+
+    SELECTIVE = "selective"
+    BY_TYPE = "by_type"
+    UNIVERSAL = "universal"
+
+
+def default_mode_for_category(category: PaletteCategory | str) -> PaletteMode:
+    """Return the default recording mode for a given palette category."""
+    cat = (
+        category
+        if isinstance(category, PaletteCategory)
+        else PaletteCategory(str(category).lower())
+    )
+    if cat in (PaletteCategory.FOCUS, PaletteCategory.PRESET):
+        return PaletteMode.SELECTIVE
+    return PaletteMode.BY_TYPE
+
+
+def get_channel_type_key(lightshow: LightShow | None, channel: int) -> str | None:
+    """Return the fixture ``type_key`` for *channel* in *lightshow*, if patched."""
+    if lightshow is None:
+        return None
+    patch = getattr(lightshow, "patch", None)
+    devices = getattr(patch, "devices", None) if patch is not None else None
+    if not isinstance(devices, dict):
+        return None
+    dev = devices.get(int(channel))
+    if dev is None:
+        return None
+    return getattr(dev, "type_key", None)
+
+
 def serialize_palette_refs(
     refs: dict[int, dict[str, PaletteRef]],
 ) -> dict[int, dict[str, list[typing.Any]]]:
@@ -91,6 +125,62 @@ class Palette:
     channels: dict[int, float] = field(default_factory=dict)
     device_values: dict[int, dict[str, typing.Any]] = field(default_factory=dict)
     palette_refs: dict[int, dict[str, PaletteRef]] = field(default_factory=dict)
+    mode: PaletteMode = PaletteMode.SELECTIVE
+    locked: bool = False
+    by_type_channels: dict[str, float] = field(default_factory=dict)
+    by_type_values: dict[str, dict[str, typing.Any]] = field(default_factory=dict)
+    universal_intensity: float | None = None
+    universal_values: dict[str, typing.Any] = field(default_factory=dict)
+
+    def resolve_intensity(
+        self, channel: int, type_key: str | None = None
+    ) -> float | None:
+        """Resolve intensity for *channel* (Selective > By-Type > Universal)."""
+        ch = int(channel)
+        if ch in self.channels:
+            return float(self.channels[ch])
+        if type_key and type_key in self.by_type_channels:
+            return float(self.by_type_channels[type_key])
+        if self.universal_intensity is not None:
+            return float(self.universal_intensity)
+        return None
+
+    def resolve_device_values(
+        self, channel: int, type_key: str | None = None
+    ) -> dict[str, typing.Any]:
+        """Resolve device attributes for *channel* (Selective > By-Type > Universal)."""
+        resolved: dict[str, typing.Any] = {}
+        if self.universal_values:
+            for pk, pv in self.universal_values.items():
+                resolved[pk] = copy.deepcopy(pv)
+        if type_key and type_key in self.by_type_values:
+            for pk, pv in self.by_type_values[type_key].items():
+                resolved[pk] = copy.deepcopy(pv)
+        ch = int(channel)
+        if ch in self.device_values:
+            for pk, pv in self.device_values[ch].items():
+                resolved[pk] = copy.deepcopy(pv)
+        return resolved
+
+    def resolve_channel(
+        self, channel: int, type_key: str | None = None
+    ) -> tuple[float | None, dict[str, typing.Any]]:
+        """Return ``(intensity, device_values)`` resolved for *channel*."""
+        return (
+            self.resolve_intensity(channel, type_key),
+            self.resolve_device_values(channel, type_key),
+        )
+
+    def has_data_for_channel(self, channel: int, type_key: str | None = None) -> bool:
+        """Return True if any layer (Selective, By-Type, or Universal) applies."""
+        ch = int(channel)
+        if ch in self.channels or ch in self.device_values:
+            return True
+        if type_key and (
+            type_key in self.by_type_channels or type_key in self.by_type_values
+        ):
+            return True
+        return self.universal_intensity is not None or bool(self.universal_values)
 
     def to_dict(self) -> dict[str, typing.Any]:
         """Serialize palette or preset into a JSON-compatible dictionary."""
@@ -99,12 +189,28 @@ class Palette:
             "number": float(self.number),
             "label": self.text,
         }
+        if self.mode is not PaletteMode.SELECTIVE:
+            data["mode"] = self.mode.value
+        if self.locked:
+            data["locked"] = True
         if self.channels:
             data["channels"] = {int(k): float(v) for k, v in self.channels.items()}
         if self.device_values:
             data["device_values"] = {
                 int(k): copy.deepcopy(v) for k, v in self.device_values.items()
             }
+        if self.by_type_channels:
+            data["by_type_channels"] = {
+                str(k): float(v) for k, v in self.by_type_channels.items()
+            }
+        if self.by_type_values:
+            data["by_type_values"] = {
+                str(k): copy.deepcopy(v) for k, v in self.by_type_values.items()
+            }
+        if self.universal_intensity is not None:
+            data["universal_intensity"] = float(self.universal_intensity)
+        if self.universal_values:
+            data["universal_values"] = copy.deepcopy(self.universal_values)
         if self.palette_refs:
             data["palette_refs"] = serialize_palette_refs(self.palette_refs)
         return data
@@ -118,6 +224,16 @@ class Palette:
             if isinstance(raw_cat, PaletteCategory)
             else PaletteCategory(str(raw_cat))
         )
+        raw_mode = data.get("mode", PaletteMode.SELECTIVE.value)
+        try:
+            mode = (
+                raw_mode
+                if isinstance(raw_mode, PaletteMode)
+                else PaletteMode(str(raw_mode).lower())
+            )
+        except ValueError:
+            mode = PaletteMode.SELECTIVE
+        locked = bool(data.get("locked", False))
         number = float(data["number"])
         label = str(data.get("label", data.get("text", "")))
         raw_channels = data.get("channels") or {}
@@ -128,6 +244,24 @@ class Palette:
             for k, v in raw_dev.items()
             if isinstance(v, dict)
         }
+        raw_bt_ch = data.get("by_type_channels") or {}
+        by_type_channels: dict[str, float] = {
+            str(k): float(v) for k, v in raw_bt_ch.items()
+        }
+        raw_bt_val = data.get("by_type_values") or {}
+        by_type_values: dict[str, dict[str, typing.Any]] = {
+            str(k): {str(pk): copy.deepcopy(pv) for pk, pv in v.items()}
+            for k, v in raw_bt_val.items()
+            if isinstance(v, dict)
+        }
+        raw_univ_int = data.get("universal_intensity")
+        universal_intensity = float(raw_univ_int) if raw_univ_int is not None else None
+        raw_univ_val = data.get("universal_values") or {}
+        universal_values: dict[str, typing.Any] = (
+            {str(pk): copy.deepcopy(pv) for pk, pv in raw_univ_val.items()}
+            if isinstance(raw_univ_val, dict)
+            else {}
+        )
         palette_refs = deserialize_palette_refs(data.get("palette_refs"))
         return cls(
             category=category,
@@ -136,6 +270,12 @@ class Palette:
             channels=channels,
             device_values=device_values,
             palette_refs=palette_refs,
+            mode=mode,
+            locked=locked,
+            by_type_channels=by_type_channels,
+            by_type_values=by_type_values,
+            universal_intensity=universal_intensity,
+            universal_values=universal_values,
         )
 
 
@@ -145,19 +285,22 @@ def _apply_palette_param_to_target(
     param_name: str,
     target_channels: typing.MutableMapping[int, typing.Any],
     target_device_values: dict[int, dict[str, typing.Any]],
+    type_key: str | None = None,
 ) -> bool:
     """Copy referenced parameter(s) for *channel* from *source* to target dicts."""
     changed = False
+    resolved_int = source.resolve_intensity(channel, type_key)
+    resolved_devs = source.resolve_device_values(channel, type_key)
+
     if param_name == "*":
-        if channel in source.channels:
-            new_lvl = float(source.channels[channel])
+        if resolved_int is not None:
+            new_lvl = float(resolved_int)
             if target_channels.get(channel) != new_lvl:
                 target_channels[channel] = new_lvl
                 changed = True
-        if channel in source.device_values:
-            src_devs = source.device_values[channel]
+        if resolved_devs:
             dst_devs = target_device_values.setdefault(channel, {})
-            for pk, pv in src_devs.items():
+            for pk, pv in resolved_devs.items():
                 copied = copy.deepcopy(pv)
                 if dst_devs.get(pk) != copied:
                     dst_devs[pk] = copied
@@ -165,26 +308,24 @@ def _apply_palette_param_to_target(
         return changed
 
     if param_name == "intensity":
-        lvl: float | None = source.channels.get(channel)
-        if lvl is None and channel in source.device_values:
-            dev_int = source.device_values[channel].get("intensity")
+        lvl: float | None = resolved_int
+        if lvl is None:
+            dev_int = resolved_devs.get("intensity")
             if isinstance(dev_int, (int, float)):
                 lvl = float(dev_int)
         if lvl is not None:
             if target_channels.get(channel) != float(lvl):
                 target_channels[channel] = float(lvl)
                 changed = True
-            src_devs = source.device_values.get(channel, {})
-            if "intensity" in src_devs:
+            if "intensity" in resolved_devs:
                 dst_devs = target_device_values.setdefault(channel, {})
-                if dst_devs.get("intensity") != src_devs["intensity"]:
-                    dst_devs["intensity"] = copy.deepcopy(src_devs["intensity"])
+                if dst_devs.get("intensity") != resolved_devs["intensity"]:
+                    dst_devs["intensity"] = copy.deepcopy(resolved_devs["intensity"])
                     changed = True
         return changed
 
-    src_devs = source.device_values.get(channel, {})
-    if param_name in src_devs:
-        copied = copy.deepcopy(src_devs[param_name])
+    if param_name in resolved_devs:
+        copied = copy.deepcopy(resolved_devs[param_name])
         dst_devs = target_device_values.setdefault(channel, {})
         if dst_devs.get(param_name) != copied:
             dst_devs[param_name] = copied
@@ -305,6 +446,7 @@ class PaletteManager:
                                 param_name,
                                 preset.channels,
                                 preset.device_values,
+                                type_key=get_channel_type_key(lightshow, ch),
                             ):
                                 preset_changed = True
                 if preset_changed:
@@ -361,6 +503,7 @@ class PaletteManager:
                         param_name,
                         cue.channels,
                         cue.device_values,
+                        type_key=get_channel_type_key(lightshow, ch),
                     ):
                         cue_changed = True
             if cue_changed:
