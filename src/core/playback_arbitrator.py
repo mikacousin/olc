@@ -98,6 +98,7 @@ class PlaybackArbitrator:
         self._lock = threading.RLock()
         self._ltp_clock: int = 0
         self._states: dict[float, SequencePlaybackState] = {}
+        self._last_owners: dict[int, tuple[float, float | None]] = {}
 
     def _next_tick(self) -> int:
         self._ltp_clock += 1
@@ -107,7 +108,13 @@ class PlaybackArbitrator:
         """Reset all sequence playback states and LTP clock."""
         with self._lock:
             self._states.clear()
+            self._last_owners.clear()
             self._ltp_clock = 0
+
+    def get_channel_owner(self, channel: int) -> tuple[float, float | None] | None:
+        """Return ``(sequence_index, cue_number)`` owning *channel*, if any."""
+        with self._lock:
+            return self._last_owners.get(int(channel))
 
     def get_state(self, seq_index: float) -> SequencePlaybackState | None:
         """Return the playback state for *seq_index*, if any."""
@@ -309,6 +316,7 @@ class PlaybackArbitrator:
             out = ArbitratedOutput()
             active_states = [s for s in self._states.values() if s.active]
             if not active_states:
+                self._last_owners = {}
                 return out
 
             # Sort ascending by sequence_index for deterministic tie-breaking
@@ -379,4 +387,5 @@ class PlaybackArbitrator:
                             out.param_owners[key] = (s.sequence_index, s.cue_number)
                             out.owners.setdefault(ch, (s.sequence_index, s.cue_number))
 
+            self._last_owners = dict(out.owners)
             return out

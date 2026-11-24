@@ -329,6 +329,14 @@ class UpdatePaletteCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
+class SequenceControlCommandNode(CommandNode):
+    """Command to control a sequence playback (GO, PAUSE, RELEASE, ASSERT)."""
+
+    action: str
+    sequence_id: int | None = 1
+
+
+@dataclasses.dataclass
 class DeletePaletteCommandNode(CommandNode):
     """Command to delete an IFCB palette or preset (e.g. DELETE BEAM PALETTE 1)."""
 

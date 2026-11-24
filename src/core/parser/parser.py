@@ -57,6 +57,7 @@ from olc.core.parser.ast_nodes import (
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
+    SequenceControlCommandNode,
     SneakCommandNode,
     StopEffectCommandNode,
     UnblockCueCommandNode,
@@ -224,6 +225,11 @@ class CommandParser:
 
         if self._peek_is(TokenType.GOTO):
             return self._parse_goto_cue()
+
+        if self._peek_is(
+            TokenType.GO, TokenType.PAUSE, TokenType.RELEASE, TokenType.ASSERT
+        ):
+            return self._parse_sequence_control()
 
         if self._peek_is(TokenType.BLOCK):
             return self._parse_block_cue()
@@ -934,6 +940,27 @@ class CommandParser:
             fade_time = float(tok_time.value)
 
         return GotoCueCommandNode(cue_id=cue_id, time=fade_time, sequence_id=seq_id)
+
+    def _parse_sequence_control(self) -> SequenceControlCommandNode:
+        tok = self.advance()
+        if tok.type == TokenType.RELEASE and self.match(TokenType.ALL):
+            return SequenceControlCommandNode(action="release_all", sequence_id=None)
+        seq_id = 1
+        if self.match(TokenType.SEQUENCE):
+            num_tok = self.expect(
+                TokenType.NUMBER,
+                f"Expected Sequence number after {tok.raw_text.upper()} SEQ",
+            )
+            seq_id = int(num_tok.value)
+        action_map = {
+            TokenType.GO: "go",
+            TokenType.PAUSE: "pause",
+            TokenType.RELEASE: "release",
+            TokenType.ASSERT: "assert",
+        }
+        return SequenceControlCommandNode(
+            action=action_map[tok.type], sequence_id=seq_id
+        )
 
     def _parse_block_cue(self) -> BlockCueCommandNode:
         self.advance()  # Consume BLOCK

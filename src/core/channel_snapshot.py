@@ -146,6 +146,8 @@ class ChannelDisplaySnapshot:
     is_mib: bool
     intensity_effect_ref: Optional[PaletteRefDisplay] = None
     effect_ref: Optional[PaletteRefDisplay] = None
+    owner_sequence: Optional[float] = None
+    owner_cue: Optional[float] = None
 
 
 def _format_palette_num(number: float) -> str:
@@ -1168,6 +1170,11 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         else ""
     )
 
+    arb = getattr(app, "playback_arbitrator", None) if app is not None else None
+    owner_tuple = arb.get_channel_owner(ch) if arb is not None else None
+    owner_seq = owner_tuple[0] if owner_tuple is not None else None
+    owner_cue = owner_tuple[1] if owner_tuple is not None else None
+
     return ChannelDisplaySnapshot(
         channel=ch,
         is_patched=is_patched,
@@ -1194,6 +1201,8 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         is_mib=is_mib,
         intensity_effect_ref=fx_by_fam.get("intensity"),
         effect_ref=fx_by_fam.get("any"),
+        owner_sequence=owner_seq,
+        owner_cue=owner_cue,
     )
 
 

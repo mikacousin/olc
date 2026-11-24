@@ -667,3 +667,225 @@ class SequenceSetMibEnabledAction(Action):
 
     def redo(self) -> None:
         self._apply(self.enabled)
+
+
+def _resolve_sequence(
+    lightshow: typing.Any,  # noqa: ANN401
+    sequence_index: float,
+) -> Sequence | None:
+    """Resolve Sequence by index (1 = main_playback, >=2 = secondary)."""
+    if lightshow is None:
+        return None
+    if float(sequence_index) == 1.0:
+        return getattr(lightshow, "main_playback", None)
+    return lightshow.get_sequence(float(sequence_index))
+
+
+class SequenceGoAction(Action):
+    """Trigger Go on a specific Sequence."""
+
+    name = "sequence.go"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+
+    def configure(self, sequence_index: float = 1.0) -> None:
+        """Configure target sequence index."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Trigger Go on the target sequence."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return False
+        seq.do_go(None)
+        return True
+
+
+class SequenceGoBackAction(Action):
+    """Trigger Go Back on a specific Sequence."""
+
+    name = "sequence.go_back"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+
+    def configure(self, sequence_index: float = 1.0) -> None:
+        """Configure target sequence index."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Trigger Go Back on the target sequence."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return False
+        return bool(seq.go_back(None, None))
+
+
+class SequencePauseAction(Action):
+    """Pause any active transition on a specific Sequence."""
+
+    name = "sequence.pause"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+
+    def configure(self, sequence_index: float = 1.0) -> None:
+        """Configure target sequence index."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Pause the target sequence."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return False
+        seq.pause(None, None)
+        return True
+
+
+class SequenceReleaseAction(Action):
+    """Release a specific Sequence and restore lower layers."""
+
+    name = "sequence.release"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+
+    def configure(self, sequence_index: float = 1.0) -> None:
+        """Configure target sequence index."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Release the target sequence."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return False
+        seq.release()
+        return True
+
+
+class SequenceAssertAction(Action):
+    """Assert a specific Sequence so it reclaims ownership of its parameters."""
+
+    name = "sequence.assert"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+
+    def configure(self, sequence_index: float = 1.0) -> None:
+        """Configure target sequence index."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Assert the target sequence."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return False
+        seq.assert_playback()
+        return True
+
+
+class SequenceReleaseAllAction(Action):
+    """Release all active concurrent sequences."""
+
+    name = "sequence.release_all"
+    can_undo = False
+
+    def configure(self) -> None:
+        """No arguments required."""
+
+    def execute(self) -> list[float]:
+        """Release every active sequence in lightshow."""
+        arb = getattr(self.app, "playback_arbitrator", None)
+        active = arb.active_sequences() if arb is not None else []
+        released: list[float] = []
+        for idx in active:
+            seq = _resolve_sequence(self.app.lightshow, idx)
+            if seq is not None:
+                seq.release()
+                released.append(idx)
+        return released
+
+
+class SequenceSetPlaybackOptionsAction(Action):
+    """Reversibly update multi-sequence playback options on a Sequence."""
+
+    name = "sequence.set_playback_options"
+    can_undo = True
+
+    _OPTION_KEYS: tuple[str, ...] = (
+        "priority",
+        "htp_intensity",
+        "auto_start",
+        "auto_stop",
+        "off_on_overwritten",
+        "wrap_around",
+        "release_on_end",
+        "release_time",
+    )
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.options: dict[str, typing.Any] = {}
+        self._old_options: dict[str, typing.Any] = {}
+
+    def configure(
+        self,
+        sequence_index: float,
+        **options: typing.Any,  # noqa: ANN401
+    ) -> None:
+        """Configure target sequence index and playback option overrides."""
+        self.sequence_index = float(sequence_index)
+        self.options = {k: v for k, v in options.items() if k in self._OPTION_KEYS}
+
+    def execute(self) -> bool:
+        """Apply new playback options and record previous state for Undo."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None or not self.options:
+            self.can_undo = False
+            return False
+        self._old_options = {
+            k: getattr(seq, k) for k in self.options if hasattr(seq, k)
+        }
+        seq.apply_playback_options(self.options)
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.options_changed", seq.index)
+        return True
+
+    def undo(self) -> None:
+        """Restore previous playback options."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return
+        seq.apply_playback_options(self._old_options)
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.options_changed", seq.index)
+
+    def redo(self) -> None:
+        """Reapply updated playback options."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None:
+            return
+        seq.apply_playback_options(self.options)
+        self.app.lightshow.set_modified()
+        self.app.emit("sequence.options_changed", seq.index)
+
+    def get_history_details(self) -> str:
+        """Return sequence index for Undo History."""
+        idx = (
+            int(self.sequence_index)
+            if self.sequence_index.is_integer()
+            else self.sequence_index
+        )
+        return f"Seq {idx}"

@@ -78,6 +78,7 @@ from olc.core.parser.ast_nodes import (
     SelectionItemNode,
     SelectionNode,
     SelectOnlyCommandNode,
+    SequenceControlCommandNode,
     SneakCommandNode,
     StopEffectCommandNode,
     UnblockCueCommandNode,
@@ -160,6 +161,9 @@ class CommandExecutor:
 
         if isinstance(node, GotoCueCommandNode):
             return self._execute_goto_cue(node)
+
+        if isinstance(node, SequenceControlCommandNode):
+            return self._execute_sequence_control(node)
 
         if isinstance(node, BlockCueCommandNode):
             return self._execute_block_cue(node, is_block=True)
@@ -1323,6 +1327,51 @@ class CommandExecutor:
         return CommandResult(
             True, f"Jumped to {self._format_cue_label(seq_id, node.cue_id)}"
         )
+
+    def _execute_sequence_control(
+        self, node: SequenceControlCommandNode
+    ) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        registry = self._get_registry()
+        if node.action == "release_all":
+            if registry is not None and "sequence.release_all" in getattr(
+                registry, "_action_classes", {}
+            ):
+                released = registry.execute("sequence.release_all")
+            else:
+                arb = getattr(self.app, "playback_arbitrator", None)
+                released = arb.active_sequences() if arb is not None else []
+                for idx in released:
+                    if (
+                        lightshow is not None
+                        and (seq := self._get_target_sequence(lightshow, int(idx)))
+                        is not None
+                    ):
+                        seq.release()
+            count = len(released) if isinstance(released, list) else 0
+            return CommandResult(True, f"Released {count} sequence(s)")
+
+        seq_id = int(node.sequence_id or 1)
+        seq = self._get_target_sequence(lightshow, seq_id) if lightshow else None
+        if seq is None:
+            return CommandResult(False, f"Sequence {seq_id} does not exist")
+
+        action_name = f"sequence.{node.action}"
+        if registry is not None and action_name in getattr(
+            registry, "_action_classes", {}
+        ):
+            registry.execute(action_name, seq_id)
+        elif node.action == "go":
+            seq.do_go(None)
+        elif node.action == "pause":
+            seq.pause(None, None)
+        elif node.action == "release":
+            seq.release()
+        elif node.action == "assert":
+            seq.assert_playback()
+
+        verb = node.action.capitalize()
+        return CommandResult(True, f"{verb} Sequence {seq_id}")
 
     def _execute_block_cue(
         self, node: BlockCueCommandNode | UnblockCueCommandNode, is_block: bool
