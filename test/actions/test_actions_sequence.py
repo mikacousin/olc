@@ -44,11 +44,11 @@ def test_sequence_new_delete_actions_and_undo_redo() -> None:
     assert created_events[0].index == 2.0
 
     # 2. Duplicate check
-    with pytest.raises(ValueError, match="Chaser sequence 2.0 already exists"):
+    with pytest.raises(ValueError, match="Sequence 2.0 already exists"):
         app.action_registry.execute("sequence.new", 2.0)
 
     # 3. Reserved index check
-    with pytest.raises(ValueError, match="Chaser sequence cannot use index 1.0"):
+    with pytest.raises(ValueError, match="Secondary sequence cannot use index 1.0"):
         app.action_registry.execute("sequence.new", 1.0)
 
     # 4. Undo creation

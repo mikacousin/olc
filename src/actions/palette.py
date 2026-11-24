@@ -367,7 +367,12 @@ def _restore_device_state(
 def _flush_dmx(app: CoreApplication) -> None:
     """Refresh playback/channel state and push DMX frame if available."""
     lightshow = getattr(app, "lightshow", None)
-    main_pb = getattr(lightshow, "main_playback", None) if lightshow else None
+    engine = getattr(app, "playback_engine", None)
+    main_pb = (
+        engine.main_sequence
+        if engine is not None and engine.main_sequence is not None
+        else (getattr(lightshow, "main_playback", None) if lightshow else None)
+    )
     if main_pb is not None and hasattr(main_pb, "update_channels"):
         main_pb.update_channels()
     backend = getattr(app, "backend", None)

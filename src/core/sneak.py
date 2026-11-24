@@ -309,8 +309,15 @@ class SneakController:
             return
 
         lightshow = getattr(self.app, "lightshow", None)
+        engine = getattr(self.app, "playback_engine", None)
         main_pb = (
-            getattr(lightshow, "main_playback", None) if lightshow is not None else None
+            engine.main_sequence
+            if engine is not None and engine.main_sequence is not None
+            else (
+                getattr(lightshow, "main_playback", None)
+                if lightshow is not None
+                else None
+            )
         )
         steps = getattr(main_pb, "steps", None) if main_pb is not None else None
         pos = getattr(main_pb, "position", -1) if main_pb is not None else -1
@@ -354,8 +361,15 @@ class SneakController:
             return {}, set()
 
         cue_params: dict[str, typing.Any] = {}
+        engine = getattr(self.app, "playback_engine", None)
         main_pb = (
-            getattr(lightshow, "main_playback", None) if lightshow is not None else None
+            engine.main_sequence
+            if engine is not None and engine.main_sequence is not None
+            else (
+                getattr(lightshow, "main_playback", None)
+                if lightshow is not None
+                else None
+            )
         )
         steps = getattr(main_pb, "steps", None) if main_pb is not None else None
         pos = getattr(main_pb, "position", -1) if main_pb is not None else -1

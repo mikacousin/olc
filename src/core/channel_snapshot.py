@@ -1002,7 +1002,12 @@ def build_live_channel_snapshot(  # pylint: disable=too-many-locals, too-many-br
         and park_mgr.is_channel_parked(ch)
     )
 
-    main_pb = getattr(lightshow, "main_playback", None)
+    engine = getattr(app, "playback_engine", None)
+    main_pb = (
+        engine.main_sequence
+        if engine is not None and engine.main_sequence is not None
+        else getattr(lightshow, "main_playback", None)
+    )
     main_pos = getattr(main_pb, "position", 0) if main_pb is not None else 0
     if (
         resolved_step is None

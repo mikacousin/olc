@@ -77,8 +77,6 @@ class Sequence:
         self._on_go = False
         # Channels present in this sequence
         self.channels: set[int] = set()
-        # Flag for chasers
-        self.run = False
         # Thread for Go and GoBack
         self.thread = None
         # Tracking mode (False = Cue-Only, True = Tracking for intensity)

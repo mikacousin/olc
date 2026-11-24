@@ -764,13 +764,13 @@ class PlaybackStopAction(Action):
     can_undo = False
 
     def execute(self) -> None:
-        """Stop the main playback and any running chasers."""
+        """Stop all active sequences and the playback engine worker."""
         main_playback = _get_main_sequence(self.app)
         if main_playback:
             main_playback.stop()
         for seq in self.app.lightshow.sequences:
-            if seq.run and seq.thread:
-                seq.run = False
-                seq.thread.stop()
-                seq.thread.join()
+            seq.stop()
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None:
+            engine.stop_worker()
         self.app.emit("playback.stopped")

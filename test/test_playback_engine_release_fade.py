@@ -168,3 +168,41 @@ def test_concurrent_release_fades_real_40hz_worker() -> None:
     finally:
         engine.clear()
         assert engine._tick_thread is None
+
+
+def test_playback_stop_stops_secondary_sequences_and_engine_worker() -> None:
+    """PlaybackStopAction stops secondary sequences and PlaybackEngine worker."""
+    app = _make_app_with_chaser(2.0, {1: 255})
+    app.backend = None
+    seq2 = app.lightshow.get_sequence(2.0)
+    assert seq2 is not None
+    seq2.on_go = True
+    app.playback_engine.release(2.0, fade_time=1.0)
+    assert app.playback_engine._tick_thread is not None
+
+    app.action_registry.execute("playback.stop")
+    assert seq2.on_go is False
+    assert app.playback_engine._tick_thread is None
+
+
+def test_sequence_rename_syncs_fader_label_and_osc_uses_main_sequence() -> None:
+    """SequenceRenameAction syncs FaderSequence.text and OSC reads active MAIN."""
+    from olc.controllers.osc.delegate import OSCDelegate
+    from olc.show.fader import FaderType
+
+    app = _make_app_with_chaser(2.0, {1: 255})
+    app.backend = None
+    seq2 = app.lightshow.get_sequence(2.0)
+    assert seq2 is not None
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.SEQUENCE, 2)
+    fader = app.lightshow.fader_bank.faders[1][1]
+
+    app.action_registry.execute("sequence.rename", 2.0, "Chorus")
+    assert fader.text == "Chorus"
+    app.history.undo()
+    assert fader.text == ""
+
+    app.action_registry.execute("playback.set_main_sequence", 2.0)
+    delegate = OSCDelegate(app)
+    state = delegate._get_playback_telemetry()
+    assert state["active_cue"] == pytest.approx(1.0)

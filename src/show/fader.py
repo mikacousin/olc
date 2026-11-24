@@ -444,16 +444,16 @@ class FaderSequence(Fader):
     channels: set
 
     def __init__(
-        self, index: int, fader_bank: FaderBank, chaser: Sequence | None = None
+        self, index: int, fader_bank: FaderBank, sequence: Sequence | None = None
     ) -> None:
         super().__init__(index, fader_bank)
-        self.contents = chaser
+        self.contents = sequence
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.float64)
         self._prev_level: float = 0.0
         # Channels used by fader
         self.channels = set()
-        if chaser:
-            self.text = chaser.text
+        if sequence:
+            self.text = sequence.text
             self.update_channels()
 
     def update_channels(self) -> None:
@@ -463,15 +463,15 @@ class FaderSequence(Fader):
         self.channels = self.contents.channels
         self.fader_bank.update_active_faders()
 
-    def set_contents(self, chaser: Sequence | None) -> None:
-        """Set cue
+    def set_contents(self, sequence: Sequence | None) -> None:
+        """Set sequence assigned to fader.
 
         Args:
-            chaser: Chaser to put in fader
+            sequence: Sequence to assign to fader
         """
-        self.contents = chaser
-        if chaser is not None:
-            self.text = chaser.text
+        self.contents = sequence
+        if sequence is not None:
+            self.text = sequence.text
             self.update_channels()
         else:
             self.text = ""

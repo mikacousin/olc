@@ -77,22 +77,17 @@ def test_show_new_resets_show_state() -> None:
 
 
 def test_show_new_stops_running_chasers() -> None:
-    """Test that show.new stops and joins any running chasers."""
+    """Test that show.new stops all secondary sequences and clears them."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    mock_chaser = MagicMock()
-    mock_chaser.run = True
-    mock_thread = MagicMock()
-    mock_chaser.thread = mock_thread
-    app.lightshow.chasers.append(mock_chaser)
+    mock_seq = MagicMock()
+    app.lightshow.sequences.append(mock_seq)
 
     app.action_registry.execute("show.new")
 
-    assert mock_chaser.run is False
-    mock_thread.stop.assert_called_once()
-    mock_thread.join.assert_called_once()
-    assert len(app.lightshow.chasers) == 0
+    mock_seq.stop.assert_called_once_with()
+    assert len(app.lightshow.sequences) == 0
 
 
 def test_show_reset_user_levels_and_undo_redo() -> None:

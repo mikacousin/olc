@@ -28,7 +28,7 @@ if typing.TYPE_CHECKING:
 
 
 class SequenceNewAction(Action):
-    """Action to create a new sequence (chaser) in the lightshow."""
+    """Action to create a new secondary sequence in the lightshow."""
 
     name = "sequence.new"
     can_undo = True
@@ -36,7 +36,7 @@ class SequenceNewAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.index_seq: float = 0.0
-        self.created_chaser: Sequence | None = None
+        self.created_sequence: Sequence | None = None
 
     def configure(self, index_seq: float) -> None:
         """Configure the action with the sequence index."""
@@ -47,34 +47,34 @@ class SequenceNewAction(Action):
         # Verify if sequence index already exists
         for seq in lightshow.sequences:
             if seq.index == self.index_seq:
-                raise ValueError(f"Chaser sequence {self.index_seq} already exists.")
+                raise ValueError(f"Sequence {self.index_seq} already exists.")
         if self.index_seq == 1.0:
             raise ValueError(
-                "Chaser sequence cannot use index 1.0 (reserved for main playback)."
+                "Secondary sequence cannot use index 1.0 (reserved for sequence 1)."
             )
 
-        chaser = Sequence(self.index_seq, type_seq="Normal", lightshow=lightshow)
+        seq = Sequence(self.index_seq, type_seq="Normal", lightshow=lightshow)
         # Clear step 1+ as in the original GUI flow
-        del chaser.steps[1:]
-        chaser.last = len(chaser.steps)
+        del seq.steps[1:]
+        seq.last = len(seq.steps)
 
-        self.created_chaser = chaser
-        lightshow.sequences.append(chaser)
+        self.created_sequence = seq
+        lightshow.sequences.append(seq)
         lightshow.set_modified()
 
-        self.app.emit("sequence.created", chaser)
+        self.app.emit("sequence.created", seq)
 
     def undo(self) -> None:
-        if self.created_chaser:
-            self.app.lightshow.sequences.remove(self.created_chaser)
+        if self.created_sequence:
+            self.app.lightshow.sequences.remove(self.created_sequence)
             self.app.lightshow.set_modified()
-            self.app.emit("sequence.deleted", self.created_chaser)
+            self.app.emit("sequence.deleted", self.created_sequence)
 
     def redo(self) -> None:
-        if self.created_chaser:
-            self.app.lightshow.sequences.append(self.created_chaser)
+        if self.created_sequence:
+            self.app.lightshow.sequences.append(self.created_sequence)
             self.app.lightshow.set_modified()
-            self.app.emit("sequence.created", self.created_chaser)
+            self.app.emit("sequence.created", self.created_sequence)
 
 
 class SequenceRenameAction(Action):
@@ -94,6 +94,19 @@ class SequenceRenameAction(Action):
         self.sequence_index = float(sequence_index)
         self.text = str(text)
 
+    def _sync_fader_labels(self, seq: Sequence) -> None:
+        """Synchronize FaderSequence labels pointing to *seq*."""
+        fader_bank = getattr(self.app.lightshow, "fader_bank", None)
+        faders_map = getattr(fader_bank, "faders", None)
+        if not isinstance(faders_map, dict):
+            return
+        for page_faders in faders_map.values():
+            if not isinstance(page_faders, dict):
+                continue
+            for fader in page_faders.values():
+                if getattr(fader, "contents", None) is seq:
+                    fader.text = seq.text
+
     def execute(self) -> None:
         """Apply the new sequence label."""
         seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
@@ -101,6 +114,7 @@ class SequenceRenameAction(Action):
             raise ValueError(f"Sequence {self.sequence_index} does not exist.")
         self.old_text = str(seq.text)
         seq.text = self.text
+        self._sync_fader_labels(seq)
         self.app.lightshow.set_modified()
         self.app.emit("sequence.renamed", float(self.sequence_index))
 
@@ -110,6 +124,7 @@ class SequenceRenameAction(Action):
         if seq is None:
             return
         seq.text = self.old_text
+        self._sync_fader_labels(seq)
         self.app.lightshow.set_modified()
         self.app.emit("sequence.renamed", float(self.sequence_index))
 
@@ -119,6 +134,7 @@ class SequenceRenameAction(Action):
         if seq is None:
             return
         seq.text = self.text
+        self._sync_fader_labels(seq)
         self.app.lightshow.set_modified()
         self.app.emit("sequence.renamed", float(self.sequence_index))
 
@@ -138,7 +154,7 @@ class SequenceDeleteAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.index_seq: float = 0.0
-        self.deleted_chaser: Sequence | None = None
+        self.deleted_sequence: Sequence | None = None
         self.deleted_index: int = -1
 
     def configure(self, index_seq: float) -> None:
@@ -147,29 +163,31 @@ class SequenceDeleteAction(Action):
 
     def execute(self) -> None:
         lightshow = self.app.lightshow
-        chaser = lightshow.get_sequence(self.index_seq)
-        if not chaser:
-            raise ValueError(f"Chaser sequence {self.index_seq} does not exist.")
+        seq = lightshow.get_sequence(self.index_seq)
+        if not seq:
+            raise ValueError(f"Sequence {self.index_seq} does not exist.")
 
-        self.deleted_chaser = chaser
-        self.deleted_index = lightshow.sequences.index(chaser)
+        self.deleted_sequence = seq
+        self.deleted_index = lightshow.sequences.index(seq)
 
-        lightshow.sequences.remove(chaser)
+        lightshow.sequences.remove(seq)
         lightshow.set_modified()
 
-        self.app.emit("sequence.deleted", chaser)
+        self.app.emit("sequence.deleted", seq)
 
     def undo(self) -> None:
-        if self.deleted_chaser and self.deleted_index != -1:
-            self.app.lightshow.sequences.insert(self.deleted_index, self.deleted_chaser)
+        if self.deleted_sequence and self.deleted_index != -1:
+            self.app.lightshow.sequences.insert(
+                self.deleted_index, self.deleted_sequence
+            )
             self.app.lightshow.set_modified()
-            self.app.emit("sequence.created", self.deleted_chaser)
+            self.app.emit("sequence.created", self.deleted_sequence)
 
     def redo(self) -> None:
-        if self.deleted_chaser:
-            self.app.lightshow.sequences.remove(self.deleted_chaser)
+        if self.deleted_sequence:
+            self.app.lightshow.sequences.remove(self.deleted_sequence)
             self.app.lightshow.set_modified()
-            self.app.emit("sequence.deleted", self.deleted_chaser)
+            self.app.emit("sequence.deleted", self.deleted_sequence)
 
 
 class SequenceInsertStepAction(Action):

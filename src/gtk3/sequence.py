@@ -1158,22 +1158,28 @@ class SequenceTab(Gtk.Grid):
         if not sequence:
             return
         # Update Main Playback
-        if sequence is self.lightshow.main_playback:
-            # Update indexes of cues in liststore
-            for i in range(step, sequence.last - 2):
-                self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
+        engine = getattr(self.app.core, "playback_engine", None)
+        is_main = (
+            engine.is_main_sequence(sequence.index)
+            if engine is not None
+            else (sequence is self.lightshow.main_playback)
+        )
+        has_trailing_sentinel = (
+            len(sequence.steps) >= 2
+            and sequence.steps[-1].cue is not None
+            and sequence.steps[-1].cue.number == 0.0
+        )
+        end_idx = sequence.last - 2 if has_trailing_sentinel else sequence.last - 1
+        for i in range(step, end_idx):
+            self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
+        if is_main:
             # Update Main Tab
             self.window.playback.update_sequence_display()
-            if self.lightshow.main_playback.position + 1 == step:
+            if sequence.position + 1 == step:
                 # Update Crossfade
                 self.window.playback.update_xfade_display(step - 1)
                 # Update Channels Tab
                 self.window.update_channels_display(step - 1)
-        # Update Chasers
-        else:
-            # Update indexes of cues in liststore
-            for i in range(step, sequence.last - 1):
-                self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
         self.treeview2.set_cursor(path, None, False)

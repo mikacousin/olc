@@ -100,7 +100,13 @@ class BaseChannelLevelAction(Action):
                         dev.set_intensity(0.0)
 
         if dmx is not None:
-            self.app.lightshow.main_playback.update_channels()
+            engine = getattr(self.app, "playback_engine", None)
+            main_pb = (
+                engine.main_sequence
+                if engine is not None and engine.main_sequence is not None
+                else self.app.lightshow.main_playback
+            )
+            main_pb.update_channels()
             dmx.set_levels()
 
         for ch, norm_lvl in processed_levels.items():

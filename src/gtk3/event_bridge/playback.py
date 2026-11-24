@@ -271,6 +271,8 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
         if is_main and self.app.window and self.app.window.playback:
             self.app.window.playback.update_tab_title()
         if self.app.virtual_console is not None:
+            if hasattr(self.app.virtual_console, "update_page_display"):
+                self.app.virtual_console.update_page_display()
             self.app.virtual_console.queue_draw()
         return False
 

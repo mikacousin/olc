@@ -60,13 +60,13 @@ class ShowNewAction(Action):
             self.app.effects_engine.stop_all()
         if hasattr(lightshow, "effects"):
             lightshow.effects.clear()
+        if hasattr(self.app, "playback_engine"):
+            self.app.playback_engine.clear()
+        if lightshow.main_playback is not None:
+            lightshow.main_playback.stop()
         for seq in list(lightshow.sequences):
-            thread = getattr(seq, "thread", None)
-            if getattr(seq, "run", False) and thread is not None:
-                seq.run = False
-                thread.stop()
-                thread.join()
-            del lightshow.sequences[:]
+            seq.stop()
+        del lightshow.sequences[:]
 
         # Reset groups and palettes
         lightshow.groups.clear()
@@ -163,7 +163,13 @@ class ShowResetUserLevelsAction(Action):
                 if lvl >= 0.0:
                     self.old_levels[idx + 1] = float(lvl)
             user_levels.fill(-1.0)
-            self.app.lightshow.main_playback.update_channels()
+            engine = getattr(self.app, "playback_engine", None)
+            main_pb = (
+                engine.main_sequence
+                if engine is not None and engine.main_sequence is not None
+                else self.app.lightshow.main_playback
+            )
+            main_pb.update_channels()
             backend.dmx.set_levels()
 
         for ch in self.old_levels:
@@ -180,7 +186,13 @@ class ShowResetUserLevelsAction(Action):
             for ch, lvl in self.old_levels.items():
                 if 1 <= ch <= len(user_levels):
                     user_levels[ch - 1] = lvl
-            self.app.lightshow.main_playback.update_channels()
+            engine = getattr(self.app, "playback_engine", None)
+            main_pb = (
+                engine.main_sequence
+                if engine is not None and engine.main_sequence is not None
+                else self.app.lightshow.main_playback
+            )
+            main_pb.update_channels()
             backend.dmx.set_levels()
 
         for ch, lvl in self.old_levels.items():
@@ -411,7 +423,6 @@ def _copy_sequence(seq: Sequence, lightshow: LightShow) -> Sequence:
     copied.steps = [_copy_step(s) for s in seq.steps]
     copied.position = seq.position
     copied.last = seq.last
-    copied.run = seq.run
     copied.channels = set(seq.channels)
     copied.tracking_mode = bool(getattr(seq, "tracking_mode", False))
     copied.mib_enabled = bool(getattr(seq, "mib_enabled", True))
@@ -681,12 +692,10 @@ class ShowImportAction(Action):
         mp.tracking_mode = bool(snapshot.get("main_playback_tracking_mode", False))
         mp.update_channels()
 
+        if hasattr(self.app, "playback_engine"):
+            self.app.playback_engine.clear()
         for seq in list(lightshow.sequences):
-            thread = getattr(seq, "thread", None)
-            if getattr(seq, "run", False) and thread is not None:
-                seq.run = False
-                thread.stop()
-                thread.join()
+            seq.stop()
         del lightshow.sequences[:]
         for seq in snapshot["sequences"]:
             lightshow.sequences.append(_copy_sequence(seq, lightshow))

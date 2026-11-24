@@ -322,7 +322,7 @@ class OSCDelegate(
         next_text = ""
         state = "idle"
 
-        main_playback = getattr(self.app.lightshow, "main_playback", None)
+        main_playback = self._get_main_sequence()
         if main_playback is not None and hasattr(main_playback, "steps"):
             pos = getattr(main_playback, "position", 0)
             steps = main_playback.steps
@@ -362,9 +362,16 @@ class OSCDelegate(
             "state": state,
         }
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Return active Main Sequence from PlaybackEngine (fallback Seq 1)."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None and engine.main_sequence is not None:
+            return engine.main_sequence
+        return getattr(self.app.lightshow, "main_playback", None)
+
     def _get_cues_dump_json(self) -> str:
         """Export JSON dump of all cues in main playback."""
-        main_playback = getattr(self.app.lightshow, "main_playback", None)
+        main_playback = self._get_main_sequence()
         cues_data: list[dict[str, typing.Any]] = []
         if main_playback is not None and hasattr(main_playback, "steps"):
             for idx, step in enumerate(main_playback.steps):
