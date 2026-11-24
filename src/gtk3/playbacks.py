@@ -84,6 +84,11 @@ class PlaybacksTab(Gtk.Box):
                 self.app.core.unsubscribe(evt, cb)
         self._subscriptions.clear()
 
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
+        """Close Playbacks tab when its close icon is clicked."""
+        if self.app.tabs is not None:
+            self.app.tabs.close("playbacks")
+
     def _build_toolbar(self) -> None:
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
 

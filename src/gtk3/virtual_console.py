@@ -488,6 +488,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Faders
         self.faders_pad = Gtk.Grid()
+        self.faders_pad.set_column_spacing(4)
+        self.faders_pad.set_row_spacing(3)
         self.faders = []
         self.flashes = []
         for i in range(10):  # 10 Faders per page
@@ -507,11 +509,13 @@ class VirtualConsoleWindow(Gtk.Window):
                 )
             )
             self.faders[i].set_vexpand(True)
+            self.faders[i].set_halign(Gtk.Align.CENTER)
             self.faders[i].set_draw_value(False)
             self.faders[i].set_inverted(True)
             self.faders[i].connect("value-changed", self.fader_moved)
             self.faders[i].connect("clicked", self._fader_clicked)
             self.flashes.append(FlashWidget(""))
+            self.flashes[i].set_halign(Gtk.Align.CENTER)
             self.flashes[i].connect("button-press-event", self._flash_on)
             self.flashes[i].connect("button-release-event", self._flash_off)
             self.flashes[i].connect("clicked", self._on_flash)
@@ -542,6 +546,8 @@ class VirtualConsoleWindow(Gtk.Window):
         for i in range(10):
             strip_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             strip_box.set_homogeneous(True)
+            strip_box.set_halign(Gtk.Align.CENTER)
+            strip_box.set_size_request(40, -1)
             btns: list[Gtk.Button] = []
             for slot in range(3):
                 btn = Gtk.Button(label="—")
