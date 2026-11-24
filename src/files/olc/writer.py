@@ -240,6 +240,17 @@ class OlcWriter(WriteFile):
                     if getattr(fader, "intensity_master", False):
                         preset_entry["intensity_master"] = True
                     self.data["faders"][number] = preset_entry
+                elif content_type == FaderType.CHANNELS:
+                    ch_contents = getattr(fader, "contents", None)
+                    self.data["faders"][number] = {
+                        "page": page,
+                        "number": index,
+                        "type": int(content_type),
+                        "contents": (
+                            dict(ch_contents) if isinstance(ch_contents, dict) else None
+                        ),
+                        "text": fader.text,
+                    }
                 elif content_type == FaderType.EFFECT:
                     contents_val = (
                         fader.contents.number if fader.contents is not None else None
@@ -290,6 +301,17 @@ class OlcWriter(WriteFile):
                 if number in self.data["faders"]:
                     if getattr(fader, "exempt_grand_master", False):
                         self.data["faders"][number]["exempt_grand_master"] = True
+                    for flag in (
+                        "exclude_record",
+                        "inhibitive",
+                        "solo_mode",
+                        "swop_protect",
+                        "locked",
+                    ):
+                        if getattr(fader, flag, False):
+                            self.data["faders"][number][flag] = True
+                    if getattr(fader, "inhibitive", False):
+                        self.data["faders"][number]["level"] = float(fader.level)
                     if self.lightshow.fader_bank.is_fader_fixed(page, index):
                         self.data["faders"][number]["fixed"] = True
         if not self.data["faders"]:

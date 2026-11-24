@@ -48,6 +48,17 @@ class FaderType(IntEnum):
     MAIN = 99
 
 
+FADER_OPTION_FLAGS: tuple[str, ...] = (
+    "exempt_grand_master",
+    "exclude_record",
+    "inhibitive",
+    "solo_mode",
+    "swop_protect",
+    "locked",
+    "intensity_master",
+)
+
+
 class Fader:
     """Abstraction for physical fader"""
 
@@ -57,6 +68,11 @@ class Fader:
     old_level: float
     contents: typing.Any
     exempt_grand_master: bool
+    exclude_record: bool
+    inhibitive: bool
+    solo_mode: bool
+    swop_protect: bool
+    locked: bool
 
     def __init__(self, index: int, fader_bank: FaderBank) -> None:
         self.index = index
@@ -67,6 +83,11 @@ class Fader:
         self.old_level = 0.0
         self.contents = None
         self.exempt_grand_master = False
+        self.exclude_record = False
+        self.inhibitive = False
+        self.solo_mode = False
+        self.swop_protect = False
+        self.locked = False
 
     @property
     def app(self) -> CoreApplication | None:

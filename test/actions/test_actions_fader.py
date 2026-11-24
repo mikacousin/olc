@@ -409,3 +409,81 @@ def test_fader_configure_effect_and_assign_clear_undo_restore() -> None:
     assert isinstance(restored_after_clear, FaderEffect)
     assert restored_after_clear.control_mode == "both"
     assert restored_after_clear.effect_channels == [5, 6, 7]
+
+
+def test_fader_options_solo_inhibitive_swop_protect_lock_and_undo() -> None:
+    """Verify solo_mode, swop_protect, inhibitive, lock, and fader.set_options."""
+    import pytest
+
+    from olc.core.dmx_backend import DMXBackend
+
+    app = CoreApplication(MagicMock())
+    app.backend = DMXBackend(app.lightshow)
+    dmx = app.backend.dmx
+
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.CHANNELS, {1: 1})
+    app.action_registry.execute("fader.assign", 1, 2, FaderType.CHANNELS, {2: 1})
+    app.action_registry.execute("fader.assign", 1, 3, FaderType.CHANNELS, {3: 1})
+    app.action_registry.execute("fader.assign", 1, 4, FaderType.CHANNELS, {4: 1})
+
+    # 1. fader.set_options with Undo/Redo & locked guard
+    app.action_registry.execute("fader.set_options", 1, 1, locked=True, solo_mode=True)
+    f1 = app.lightshow.fader_bank.faders[1][1]
+    assert f1.locked is True
+    assert f1.solo_mode is True
+
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.NONE)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.CHANNELS
+    app.action_registry.execute("fader.clear", 1, 1)
+    assert app.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.CHANNELS
+
+    app.history.undo()  # undo fader.set_options
+    assert f1.locked is False
+    assert f1.solo_mode is False
+    app.history.redo()
+    assert f1.locked is True
+    assert f1.solo_mode is True
+
+    # 2. Proportional Solo + Swop Protect + GM Exempt + Park
+    app.action_registry.execute("fader.set_options", 1, 3, swop_protect=True)
+    app.action_registry.execute("fader.set_options", 1, 4, exempt_grand_master=True)
+    app.lightshow.park.park_channel(5, 0.8)
+    dmx.levels["sequence"][5] = 1.0  # Ch 6 driven by sequence
+
+    app.action_registry.execute("fader.set_level", 1, 2, 1.0)
+    app.action_registry.execute("fader.set_level", 1, 3, 0.9)
+    app.action_registry.execute("fader.set_level", 1, 4, 0.7)
+
+    # Solo fader 1 at 50% -> ducks non-protected fader 2 and sequence ch 6 by 50%
+    app.action_registry.execute("fader.set_level", 1, 1, 0.5)
+    comp = dmx.get_all_composite_levels()
+    assert comp[0] == pytest.approx(0.5)  # Solo fader ch 1
+    assert comp[1] == pytest.approx(0.5)  # Ducked fader 2
+    assert comp[2] == pytest.approx(0.9)  # Swop-protected fader 3
+    assert comp[3] == pytest.approx(0.7)  # GM-exempt fader 4
+    assert comp[4] == pytest.approx(0.8)  # Parked ch 5
+    assert comp[5] == pytest.approx(0.5)  # Ducked sequence ch 6
+
+    # Swop flash_on -> solo at 100%, non-protected sources ducked to 0.0
+    app.action_registry.execute("fader.flash", 1, 1, True)
+    comp_swop = dmx.get_all_composite_levels()
+    assert comp_swop[0] == pytest.approx(1.0)
+    assert comp_swop[1] == pytest.approx(0.0)
+    assert comp_swop[2] == pytest.approx(0.9)
+    assert comp_swop[3] == pytest.approx(0.7)
+    assert comp_swop[4] == pytest.approx(0.8)
+    assert comp_swop[5] == pytest.approx(0.0)
+    app.action_registry.execute("fader.flash", 1, 1, False)
+    app.action_registry.execute("fader.set_level", 1, 1, 0.0)
+
+    # 3. Inhibitive fader caps sequence & normal faders, preserves Park & GM-exempt
+    app.action_registry.execute("fader.assign", 1, 5, FaderType.CHANNELS, {2: 1, 6: 1})
+    app.action_registry.execute("fader.set_options", 1, 5, inhibitive=True)
+    f5 = app.lightshow.fader_bank.faders[1][5]
+    assert f5.level == pytest.approx(1.0)  # Defaults to 100% on enable
+    app.action_registry.execute("fader.set_level", 1, 5, 0.4)
+    comp_inhib = dmx.get_all_composite_levels()
+    assert comp_inhib[1] == pytest.approx(0.4)
+    assert comp_inhib[5] == pytest.approx(0.4)
+    assert comp_inhib[3] == pytest.approx(0.7)
+    assert comp_inhib[4] == pytest.approx(0.8)

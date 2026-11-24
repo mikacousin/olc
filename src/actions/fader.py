@@ -21,7 +21,12 @@ from gettext import gettext as _
 
 from olc.core.action import Action
 from olc.define import MAX_ALLOWED_FADER_PAGES, MAX_FADER_PAGE
-from olc.show.fader import FaderEffect, FaderEffectMaster, FaderType
+from olc.show.fader import (
+    FADER_OPTION_FLAGS,
+    FaderEffect,
+    FaderEffectMaster,
+    FaderType,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -83,6 +88,7 @@ class FaderAssignAction(Action):
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
         self.old_fixed_source: int | None = None
+        self._blocked: bool = False
 
     def configure(
         self,
@@ -107,6 +113,12 @@ class FaderAssignAction(Action):
 
     def execute(self) -> None:
         """Snapshot the current state, then apply the new assignment."""
+        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if getattr(old_fader, "locked", False):
+            self._blocked = True
+            self.can_undo = False
+            return
+        self._blocked = False
         self.old_type = self.app.lightshow.fader_bank.get_fader_type(
             self.page, self.index
         )
@@ -114,7 +126,6 @@ class FaderAssignAction(Action):
         self.old_fixed_source = self.app.lightshow.fader_bank.get_fixed_source_page(
             self.index
         )
-        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
             self.old_effect_channels = list(old_fader.effect_channels)
@@ -130,6 +141,8 @@ class FaderAssignAction(Action):
 
     def undo(self) -> None:
         """Restore the previous fader assignment."""
+        if self._blocked:
+            return
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.old_type, self.old_contents
         )
@@ -146,6 +159,8 @@ class FaderAssignAction(Action):
 
     def redo(self) -> None:
         """Re-apply the fader assignment."""
+        if self._blocked:
+            return
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.new_type, self.new_contents
         )
@@ -177,6 +192,7 @@ class FaderClearAction(Action):
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
         self.old_fixed_source: int | None = None
+        self._blocked: bool = False
 
     def configure(self, page: int, index: int) -> None:
         """Configure the fader to clear.
@@ -190,6 +206,12 @@ class FaderClearAction(Action):
 
     def execute(self) -> None:
         """Snapshot the current assignment, then clear the fader."""
+        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        if getattr(old_fader, "locked", False):
+            self._blocked = True
+            self.can_undo = False
+            return
+        self._blocked = False
         self.old_type = self.app.lightshow.fader_bank.get_fader_type(
             self.page, self.index
         )
@@ -197,7 +219,6 @@ class FaderClearAction(Action):
         self.old_fixed_source = self.app.lightshow.fader_bank.get_fixed_source_page(
             self.index
         )
-        old_fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
             self.old_effect_channels = list(old_fader.effect_channels)
@@ -213,6 +234,8 @@ class FaderClearAction(Action):
 
     def undo(self) -> None:
         """Restore the previous fader assignment."""
+        if self._blocked:
+            return
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.old_type, self.old_contents
         )
@@ -229,6 +252,8 @@ class FaderClearAction(Action):
 
     def redo(self) -> None:
         """Re-clear the fader."""
+        if self._blocked:
+            return
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, FaderType.NONE, None
         )
@@ -709,3 +734,75 @@ class FaderSetFixedAction(Action):
             "index": self.index,
             "fixed": self._applied_fixed,
         }
+
+
+class FaderSetOptionsAction(Action):
+    """Action to toggle exclusion/protection flags on a Fader with Undo/Redo."""
+
+    name = "fader.set_options"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.page: int = 1
+        self.index: int = 1
+        self.new_options: dict[str, bool] = {}
+        self.old_options: dict[str, bool] = {}
+        self.old_level: float = 0.0
+
+    def configure(self, page: int, index: int, **options: bool) -> None:
+        """Configure target fader and option flags to apply."""
+        self.page = page
+        self.index = index
+        self.new_options = {
+            k: bool(v) for k, v in options.items() if k in FADER_OPTION_FLAGS
+        }
+
+    def _apply_options(
+        self, options: dict[str, bool], level: float | None = None
+    ) -> None:
+        fader_bank = self.app.lightshow.fader_bank
+        fader = fader_bank.faders[self.page][self.index]
+        for key, val in options.items():
+            if hasattr(fader, key):
+                setattr(fader, key, bool(val))
+        if level is not None:
+            fader.level = float(level)
+        fader_bank.update_levels()
+        if hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
+        self.app.lightshow.set_modified()
+        self.app.emit("fader.changed", self.page, self.index)
+
+    def execute(self) -> None:
+        """Snapshot existing flags and apply new options."""
+        fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
+        self.old_options = {
+            key: bool(getattr(fader, key))
+            for key in self.new_options
+            if hasattr(fader, key)
+        }
+        self.old_level = float(fader.level)
+        new_level: float | None = None
+        if (
+            self.new_options.get("inhibitive") is True
+            and not self.old_options.get("inhibitive", False)
+            and fader.level == 0.0
+        ):
+            new_level = 1.0
+        self._apply_options(self.new_options, level=new_level)
+
+    def undo(self) -> None:
+        """Restore previous flags and fader level."""
+        self._apply_options(self.old_options, level=self.old_level)
+
+    def redo(self) -> None:
+        """Re-apply new options."""
+        new_level: float | None = None
+        if (
+            self.new_options.get("inhibitive") is True
+            and not self.old_options.get("inhibitive", False)
+            and self.old_level == 0.0
+        ):
+            new_level = 1.0
+        self._apply_options(self.new_options, level=new_level)

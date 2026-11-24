@@ -469,16 +469,48 @@ class FaderBank:
     def update_levels(self) -> None:
         """Update faders levels for DMX"""
         if self.app and hasattr(self.app, "backend") and self.app.backend:
-            levels = self.app.backend.dmx.levels
+            dmx = self.app.backend.dmx
+            levels = dmx.levels
             faders_levels = levels["faders"]
             faders_levels.fill(0)
             gm_exempt_levels = levels.get("faders_gm_exempt")
             if gm_exempt_levels is not None:
                 gm_exempt_levels.fill(0)
+            inhib_levels = levels.get("faders_inhibitive")
+            if inhib_levels is not None:
+                inhib_levels.fill(1.0)
+            solo_levels = levels.get("faders_solo")
+            if solo_levels is not None:
+                solo_levels.fill(0.0)
+            swop_prot_levels = levels.get("faders_swop_protect")
+            if swop_prot_levels is not None:
+                swop_prot_levels.fill(0.0)
+
+            max_solo_level = 0.0
             for fader in self.active_faders:
+                if getattr(fader, "inhibitive", False):
+                    if inhib_levels is not None:
+                        cap = max(0.0, min(1.0, float(fader.level)))
+                        for ch in fader.channels:
+                            if 1 <= ch <= len(inhib_levels):
+                                inhib_levels[ch - 1] = min(inhib_levels[ch - 1], cap)
+                    continue
+                if getattr(fader, "solo_mode", False):
+                    if fader.level > 0.0:
+                        max_solo_level = max(
+                            max_solo_level, min(1.0, float(fader.level))
+                        )
+                        if solo_levels is not None:
+                            np.maximum(solo_levels, fader.dmx, out=solo_levels)
+                    continue
                 if gm_exempt_levels is not None and getattr(
                     fader, "exempt_grand_master", False
                 ):
                     np.maximum(gm_exempt_levels, fader.dmx, out=gm_exempt_levels)
+                elif swop_prot_levels is not None and getattr(
+                    fader, "swop_protect", False
+                ):
+                    np.maximum(swop_prot_levels, fader.dmx, out=swop_prot_levels)
                 else:
                     np.maximum(faders_levels, fader.dmx, out=faders_levels)
+            dmx.solo_duck = max(0.0, 1.0 - max_solo_level)

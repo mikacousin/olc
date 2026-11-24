@@ -370,6 +370,21 @@ class ParsedData:
                         fader_obj, "intensity_master"
                     ):
                         fader_obj.intensity_master = True
+                    for flag in (
+                        "exclude_record",
+                        "inhibitive",
+                        "solo_mode",
+                        "swop_protect",
+                        "locked",
+                    ):
+                        if values.get(flag) and hasattr(fader_obj, flag):
+                            setattr(fader_obj, flag, True)
+                    if values.get("inhibitive"):
+                        fader_obj.level = (
+                            float(values["level"])
+                            if values.get("level") is not None
+                            else 1.0
+                        )
                 if values.get("fixed"):
                     self.lightshow.fader_bank.set_fader_fixed(page, number, True)
                 if fader_type == FaderType.FX_MASTER:

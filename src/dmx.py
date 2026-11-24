@@ -58,6 +58,7 @@ class Dmx:
     frame: list[np.ndarray]
     external_dmx: dict[int, np.ndarray]
     user_outputs: dict[tuple[int, int], int]
+    solo_duck: float
 
     def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
         self._lock = threading.RLock()
@@ -66,6 +67,7 @@ class Dmx:
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
         self.blackout = False
+        self.solo_duck = 1.0
         # Normalized channel levels [0.0..1.0] (user uses -1.0 as unset sentinel)
         self.levels = DmxLevels(
             {
@@ -73,6 +75,9 @@ class Dmx:
                 "user": np.full(MAX_CHANNELS, -1.0, dtype=np.float64),
                 "faders": np.zeros(MAX_CHANNELS, dtype=np.float64),
                 "faders_gm_exempt": np.zeros(MAX_CHANNELS, dtype=np.float64),
+                "faders_inhibitive": np.ones(MAX_CHANNELS, dtype=np.float64),
+                "faders_solo": np.zeros(MAX_CHANNELS, dtype=np.float64),
+                "faders_swop_protect": np.zeros(MAX_CHANNELS, dtype=np.float64),
             }
         )
         # DMX values
@@ -152,22 +157,35 @@ class Dmx:
             prev_resolved=prev_resolved,
         )
         color_level = get_tracking_color(state)
+        solo_duck = float(getattr(self, "solo_duck", 1.0))
         level = float(self.levels["sequence"][channel_idx])
         if self.levels["user"][channel_idx] >= 0.0:
-            level = float(self.levels["user"][channel_idx])
+            level = float(self.levels["user"][channel_idx]) * solo_duck
             color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         else:
-            fader_lvl = float(self.levels["faders"][channel_idx])
-            if "faders_gm_exempt" in self.levels:
+            level *= solo_duck
+            fader_lvl = float(self.levels["faders"][channel_idx]) * solo_duck
+            if "faders_swop_protect" in self.levels:
                 fader_lvl = max(
-                    fader_lvl, float(self.levels["faders_gm_exempt"][channel_idx])
+                    fader_lvl, float(self.levels["faders_swop_protect"][channel_idx])
+                )
+            if "faders_solo" in self.levels:
+                fader_lvl = max(
+                    fader_lvl, float(self.levels["faders_solo"][channel_idx])
                 )
             if fader_lvl > level:
                 level = fader_lvl
                 color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-            if self.lightshow.independents.dmx[channel_idx] > level:
-                level = float(self.lightshow.independents.dmx[channel_idx])
-                color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
+        if "faders_inhibitive" in self.levels:
+            level *= float(self.levels["faders_inhibitive"][channel_idx])
+        if "faders_gm_exempt" in self.levels:
+            gm_lvl = float(self.levels["faders_gm_exempt"][channel_idx])
+            if gm_lvl > level:
+                level = gm_lvl
+                color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
+        if self.lightshow.independents.dmx[channel_idx] > level:
+            level = float(self.lightshow.independents.dmx[channel_idx])
+            color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         app = getattr(self.lightshow, "app", None)
         eff_eng = getattr(app, "effects_engine", None)
         if (
@@ -185,11 +203,20 @@ class Dmx:
         """
         composite = self.levels["sequence"].copy()
         composite = np.maximum(composite, self.levels["faders"])
+        user_mask = self.levels["user"] >= 0.0
+        composite[user_mask] = self.levels["user"][user_mask]
+        solo_duck = float(getattr(self, "solo_duck", 1.0))
+        if solo_duck < 1.0:
+            composite = composite * solo_duck
+        if "faders_solo" in self.levels:
+            composite = np.maximum(composite, self.levels["faders_solo"])
+        if "faders_swop_protect" in self.levels:
+            composite = np.maximum(composite, self.levels["faders_swop_protect"])
+        if "faders_inhibitive" in self.levels:
+            composite = composite * self.levels["faders_inhibitive"]
         if "faders_gm_exempt" in self.levels:
             composite = np.maximum(composite, self.levels["faders_gm_exempt"])
         composite = np.maximum(composite, self.lightshow.independents.dmx)
-        user_mask = self.levels["user"] >= 0.0
-        composite[user_mask] = self.levels["user"][user_mask]
         app = getattr(self.lightshow, "app", None)
         eff_eng = getattr(app, "effects_engine", None)
         if (
@@ -606,6 +633,13 @@ class Dmx:
             self.levels["faders"].fill(0.0)
         if "faders_gm_exempt" in self.levels:
             self.levels["faders_gm_exempt"].fill(0.0)
+        if "faders_inhibitive" in self.levels:
+            self.levels["faders_inhibitive"].fill(1.0)
+        if "faders_solo" in self.levels:
+            self.levels["faders_solo"].fill(0.0)
+        if "faders_swop_protect" in self.levels:
+            self.levels["faders_swop_protect"].fill(0.0)
+        self.solo_duck = 1.0
         if reset_main_fader:
             self.main_fader.set_level(1.0)
         self.set_levels()

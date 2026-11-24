@@ -1027,3 +1027,42 @@ def test_olc_persistence_fader_effect_modifier_only(
     assert re_fader.min_scale == pytest.approx(0.0)
     assert re_fader.max_scale == pytest.approx(5.0)
     assert re_fader.level == pytest.approx(0.5)
+
+
+def test_olc_persistence_fader_exclusion_and_protection_flags(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for exclude_record, inhibitive, solo, swop, locked."""
+    from olc.show.fader import FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.CHANNELS, {1: 255})
+    app.action_registry.execute(
+        "fader.set_options",
+        1,
+        1,
+        exclude_record=True,
+        solo_mode=True,
+        swop_protect=True,
+        locked=True,
+    )
+    app.action_registry.execute("fader.assign", 1, 2, FaderType.CHANNELS, {2: 255})
+    app.action_registry.execute("fader.set_options", 1, 2, inhibitive=True)
+    app.action_registry.execute("fader.set_level", 1, 2, 0.6)
+
+    save_path = tmp_path / "fader_flags.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    f1 = app2.lightshow.fader_bank.faders[1][1]
+    assert f1.exclude_record is True
+    assert f1.solo_mode is True
+    assert f1.swop_protect is True
+    assert f1.locked is True
+    assert f1.inhibitive is False
+
+    f2 = app2.lightshow.fader_bank.faders[1][2]
+    assert f2.inhibitive is True
+    assert f2.level == pytest.approx(0.6)

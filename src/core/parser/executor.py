@@ -813,19 +813,37 @@ class CommandExecutor:
     ) -> tuple[dict[int, float], dict[int, dict[str, typing.Any]]]:
         """Capture current live user channel levels and device values."""
         channels_dict: dict[int, float] = {}
+        excluded_fader_chs: set[int] = set()
+        non_excluded_fader_chs: set[int] = set()
+        fader_bank = getattr(lightshow, "fader_bank", None)
+        if fader_bank is not None:
+            for fader in getattr(fader_bank, "active_faders", ()):
+                if float(getattr(fader, "level", 0.0)) <= 0.0:
+                    continue
+                if getattr(fader, "inhibitive", False):
+                    continue
+                f_chs = getattr(fader, "channels", ())
+                if getattr(fader, "exclude_record", False):
+                    excluded_fader_chs.update(int(c) for c in f_chs)
+                else:
+                    non_excluded_fader_chs.update(int(c) for c in f_chs)
+        record_excluded_chs = excluded_fader_chs - non_excluded_fader_chs
+
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
             user_levels = backend.dmx.levels.get("user", [])
             limit = min(MAX_CHANNELS, len(user_levels))
             for ch in range(1, limit + 1):
                 lvl = float(user_levels[ch - 1])
-                if lvl > 0.0:
+                if lvl > 0.0 and ch not in record_excluded_chs:
                     channels_dict[ch] = lvl
 
         device_values: dict[int, dict[str, typing.Any]] = {}
         patch = getattr(lightshow, "patch", None)
         if patch is not None:
             for dev_id, dev in patch.devices.items():
+                if dev_id in record_excluded_chs:
+                    continue
                 vals = self._get_device_active_values(dev)
                 dev_int = float(getattr(dev, "intensity", 0.0))
                 if dev_id in channels_dict:
