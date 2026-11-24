@@ -329,6 +329,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "patch_channels": app.open_patch_channels,
                 "track_channels": app.open_track_channels,
                 "sequences": app.open_sequences,
+                "playbacks": getattr(app, "open_playbacks", lambda: None),
                 "groups": app.open_groups,
                 "palettes": app.open_palettes,
                 "effects": getattr(app, "open_effects", lambda: None),

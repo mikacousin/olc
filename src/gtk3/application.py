@@ -46,6 +46,7 @@ from olc.gtk3.independent import IndependentsTab  # noqa: E402
 from olc.gtk3.lightshow import GtkLightShow  # noqa: E402
 from olc.gtk3.palettes import PalettesTab  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
+from olc.gtk3.playbacks import PlaybacksTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402
 from olc.gtk3.settings import SettingsTab  # noqa: E402
 from olc.gtk3.tabs_manager import Tabs  # noqa: E402
@@ -325,6 +326,7 @@ class Application(Gtk.Application):
             "groups": "groups_cb",
             "palettes": "palettes_cb",
             "effects": "effects_cb",
+            "playbacks": "playbacks_cb",
             "sequences": "sequences",
             "faders": "faders",
             "track_channels": "track_channels",
@@ -593,6 +595,17 @@ class Application(Gtk.Application):
         """Open Effects tab UI."""
         if self.tabs:
             self.tabs.open("effects", EffectsTab, _("Effects"), self)
+
+    def playbacks_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Create Playbacks Overview Tab."""
+        self.core.action_registry.execute("gui.tab_open", "playbacks")
+
+    def open_playbacks(self) -> None:
+        """Open Playbacks Overview tab UI."""
+        if self.tabs:
+            self.tabs.open("playbacks", PlaybacksTab, _("Playbacks"), self)
 
     def sequences(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

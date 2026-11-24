@@ -537,6 +537,32 @@ class VirtualConsoleWindow(Gtk.Window):
         self.fader_pages.attach(self.fader_page_minus, 0, 2, 1, 1)
         self.faders_pad.attach(self.fader_pages, 11, 0, 1, 1)
 
+        self.fader_strip_boxes: list[Gtk.Box] = []
+        self.fader_buttons: list[tuple[Gtk.Button, Gtk.Button, Gtk.Button]] = []
+        for i in range(10):
+            strip_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+            strip_box.set_homogeneous(True)
+            btns: list[Gtk.Button] = []
+            for slot in range(3):
+                btn = Gtk.Button(label="—")
+                btn.set_sensitive(False)
+                btn.connect(
+                    "clicked",
+                    lambda _w, idx=i, s=slot: self._on_fader_strip_button(idx, s),
+                )
+                strip_box.pack_start(btn, True, True, 0)
+                btns.append(btn)
+            self.fader_strip_boxes.append(strip_box)
+            self.fader_buttons.append((btns[0], btns[1], btns[2]))
+            self.faders_pad.attach(strip_box, i, 2, 1, 1)
+        for fader in fader_bank.iter_page_faders():
+            self._update_fader_strip_buttons(fader.index - 1, fader)
+
+        self._runner_sub = self._on_runner_changed_event
+        self.app.core.subscribe("playback.runner_changed", self._runner_sub)
+        self.app.core.subscribe("playback.main_sequence_changed", self._runner_sub)
+        self.connect("destroy", self._on_vc_destroy)
+
         # General Grid (7 Columns)
         self.grid = Gtk.Grid()
         self.grid.set_row_spacing(10)
@@ -875,6 +901,63 @@ class VirtualConsoleWindow(Gtk.Window):
             self.faders[fader.index - 1].set_value(val)
             self.flashes[fader.index - 1].label = self.format_fader_flash_label(fader)
             self.flashes[fader.index - 1].queue_draw()
+            self._update_fader_strip_buttons(fader.index - 1, fader)
+
+    def _on_vc_destroy(self, _widget: Gtk.Widget) -> None:
+        if hasattr(self.app.core, "unsubscribe"):
+            self.app.core.unsubscribe("playback.runner_changed", self._runner_sub)
+            self.app.core.unsubscribe(
+                "playback.main_sequence_changed", self._runner_sub
+            )
+
+    def _on_runner_changed_event(self, *_args: object) -> None:
+        GLib.idle_add(self._refresh_sequence_fader_labels)
+
+    def _refresh_sequence_fader_labels(self) -> bool:
+        if self.get_parent() is None:
+            return False
+        fader_bank = self.app.core.lightshow.fader_bank
+        for fader in fader_bank.iter_page_faders():
+            if isinstance(fader, FaderSequence):
+                self.flashes[fader.index - 1].label = self.format_fader_flash_label(
+                    fader
+                )
+                self.flashes[fader.index - 1].queue_draw()
+        return False
+
+    def _update_fader_strip_buttons(self, index: int, fader: Fader) -> None:
+        """Configure the 3 generic strip buttons under fader *index* for its type."""
+        if not (0 <= index < len(self.fader_buttons)):
+            return
+        btn0, btn1, btn2 = self.fader_buttons[index]
+        if isinstance(fader, FaderSequence) and fader.contents is not None:
+            specs = (
+                ("◀", "Go Back"),
+                ("⏸", "Pause"),
+                ("▶", "Go"),
+            )
+            for btn, (lbl, tip) in zip((btn0, btn1, btn2), specs, strict=True):
+                btn.set_label(lbl)
+                btn.set_tooltip_text(tip)
+                btn.set_sensitive(True)
+        else:
+            for btn in (btn0, btn1, btn2):
+                btn.set_label("—")
+                btn.set_tooltip_text("")
+                btn.set_sensitive(False)
+
+    def _on_fader_strip_button(self, index: int, slot: int) -> None:
+        """Dispatch click on one of the 3 generic strip buttons under a fader."""
+        fader_bank = self.app.core.lightshow.fader_bank
+        fader = fader_bank.faders[fader_bank.active_page].get(index + 1)
+        if isinstance(fader, FaderSequence) and fader.contents is not None:
+            actions = ("sequence.go_back", "sequence.pause", "sequence.go")
+            if 0 <= slot < len(actions):
+                self.app.core.action_registry.execute(
+                    actions[slot], fader.contents.index
+                )
+                self.flashes[index].label = self.format_fader_flash_label(fader)
+                self.flashes[index].queue_draw()
 
     def format_fader_flash_label(self, fader: Fader) -> str:
         """Format flash label with live telemetry and protection/solo badges."""
@@ -1645,6 +1728,18 @@ class VirtualConsoleWindow(Gtk.Window):
                 ),
             )
             vbox.pack_start(btn, False, False, 0)
+        main_btn = Gtk.ModelButton()
+        main_btn.set_label("Set as Main Sequence")
+        main_btn.connect(
+            "clicked",
+            lambda _b: (
+                self.app.core.action_registry.execute(
+                    "playback.set_main_sequence", seq.index
+                ),
+                popover.popdown(),
+            ),
+        )
+        vbox.pack_start(main_btn, False, False, 0)
         vbox.show_all()
         popover.add(vbox)
         popover.popup()
