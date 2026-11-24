@@ -82,6 +82,8 @@ class FaderEdit(Gtk.Box):
         self.effect_mode_button = None
         self.effect_channels_button = None
         self._updating_fix = False
+        self._updating_options = False
+        self.option_checks: dict[str, Gtk.CheckButton] = {}
 
         fader = self.lightshow.fader_bank.faders[page][index]
 
@@ -131,13 +133,44 @@ class FaderEdit(Gtk.Box):
         else:
             self._fader_none()
 
+        self.options_badges_label = Gtk.Label()
+        self.options_badges_label.set_no_show_all(True)
+        self.options_badges_label.set_visible(False)
+
+        self.options_button = Gtk.MenuButton(label=_("Options"))
+        opt_popover = Gtk.Popover()
+        opt_vbox = Gtk.Box(spacing=2, orientation=Gtk.Orientation.VERTICAL)
+        opt_vbox.set_border_width(6)
+        for flag_key, flag_lbl in (
+            ("exclude_record", _("Exclude from Record")),
+            ("exempt_grand_master", _("GM / Blackout Exempt")),
+            ("intensity_master", _("Intensity Master")),
+            ("inhibitive", _("Inhibitive")),
+            ("solo_mode", _("Solo / Swop Mode")),
+            ("swop_protect", _("Swop Protect")),
+            ("locked", _("Lock Fader")),
+        ):
+            chk = Gtk.CheckButton(label=flag_lbl)
+            chk.connect("toggled", self._on_option_toggled, flag_key)
+            self.option_checks[flag_key] = chk
+            opt_vbox.add(chk)
+        opt_vbox.show_all()
+        if "intensity_master" in self.option_checks:
+            self.option_checks["intensity_master"].set_no_show_all(True)
+        opt_popover.add(opt_vbox)
+        opt_popover.set_position(Gtk.PositionType.BOTTOM)
+        self.options_button.set_popover(opt_popover)
+
         self.add(header_box)
         self.add(self.fixed_origin_label)
+        self.add(self.options_badges_label)
         self.add(self.type_button)
         self.add(self.contents_button)
         if self.effect_controls_box is not None:
             self.add(self.effect_controls_box)
+        self.add(self.options_button)
         self._update_fix_ui()
+        self._update_options_ui()
 
     def _update_fix_ui(self) -> None:
         """Synchronize Fix toggle button and cross-page fixed indicator."""
@@ -161,6 +194,59 @@ class FaderEdit(Gtk.Box):
             self.fixed_origin_label.set_visible(True)
         else:
             self.fixed_origin_label.set_visible(False)
+
+    def _update_options_ui(self) -> None:
+        """Synchronize Options popover, Lock state, and protection badges."""
+        fader_bank = self.lightshow.fader_bank
+        fader = fader_bank.faders[self.page][self.index]
+        fader_type = fader_bank.get_fader_type(self.page, self.index)
+        has_fader = fader_type != FaderType.NONE
+        is_locked = bool(getattr(fader, "locked", False))
+
+        self._updating_options = True
+        try:
+            self.options_button.set_sensitive(has_fader)
+            for flag, chk in self.option_checks.items():
+                if flag == "intensity_master":
+                    chk.set_visible(isinstance(fader, FaderPreset))
+                chk.set_active(bool(getattr(fader, flag, False)))
+        finally:
+            self._updating_options = False
+
+        self.type_button.set_sensitive(not is_locked)
+        if self.contents_button is not None:
+            self.contents_button.set_sensitive(not is_locked)
+
+        badge_specs = (
+            ("exempt_grand_master", "GM"),
+            ("exclude_record", "NoRec"),
+            ("intensity_master", "IntM"),
+            ("inhibitive", "INHIB"),
+            ("solo_mode", "SOLO"),
+            ("swop_protect", "PROT"),
+            ("locked", "LOCK"),
+        )
+        badges = [lbl for key, lbl in badge_specs if getattr(fader, key, False)]
+        if badges:
+            txt = " · ".join(badges)
+            self.options_badges_label.set_markup(
+                f"<span foreground='#88c0d0' size='small'>{txt}</span>"
+            )
+            self.options_badges_label.set_visible(True)
+        else:
+            self.options_badges_label.set_visible(False)
+
+    def _on_option_toggled(self, widget: Gtk.CheckButton, flag: str) -> None:
+        if self._updating_options:
+            return
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.set_options",
+                self.page,
+                self.index,
+                **{flag: widget.get_active()},
+            )
 
     def _on_fix_toggled(self, widget: Gtk.ToggleButton) -> None:
         if self._updating_fix:
@@ -490,7 +576,9 @@ class FaderEdit(Gtk.Box):
         self.add(self.contents_button)
         if self.effect_controls_box is not None:
             self.add(self.effect_controls_box)
+        self.reorder_child(self.options_button, -1)
         self._update_fix_ui()
+        self._update_options_ui()
         self.show_all()
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:

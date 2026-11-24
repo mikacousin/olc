@@ -876,7 +876,23 @@ class VirtualConsoleWindow(Gtk.Window):
             self.flashes[fader.index - 1].queue_draw()
 
     def format_fader_flash_label(self, fader: Fader) -> str:
-        """Format flash label with live BPM/Rate/Size telemetry for FX Masters."""
+        """Format flash label with live telemetry and protection/solo badges."""
+        base = self._format_fader_base_label(fader)
+        badges: list[str] = []
+        if getattr(fader, "solo_mode", False):
+            badges.append("SOLO")
+        if getattr(fader, "inhibitive", False):
+            badges.append("INHIB")
+        if getattr(fader, "exempt_grand_master", False):
+            badges.append("GM")
+        if getattr(fader, "locked", False):
+            badges.append("LOCK")
+        if not badges:
+            return base
+        tag = f"[{' '.join(badges)}]"
+        return f"{base}\n{tag}" if base else tag
+
+    def _format_fader_base_label(self, fader: Fader) -> str:
         if isinstance(fader, FaderEffect) and getattr(fader, "modifier_only", False):
             scale = fader_level_to_centered_scale(
                 fader.level, fader.min_scale, fader.max_scale

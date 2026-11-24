@@ -643,3 +643,69 @@ def test_fx_master_fader_tab_and_virtual_console_sync(app_gui: Application) -> N
     finally:
         app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
         app_gui.core.history.clear()
+
+
+def test_fader_edit_options_popover_lock_and_badges(app_gui: Application) -> None:
+    """Verify FaderEdit Options popover, Lock sensitivity, and VC badges."""
+    from olc.gtk3.fader import FaderTab
+    from olc.show.fader import FaderType
+
+    app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+    app_gui.core.lightshow.palettes.clear()
+    app_gui.core.lightshow.palettes.add(
+        Palette(PaletteCategory.PRESET, 1.0, "Work Light", channels={1: 1.0})
+    )
+    app_gui.activate_action("faders", None)
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fader_tab = app_gui.tabs.tabs.get("faders")
+    assert isinstance(fader_tab, FaderTab)
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    try:
+        app_gui.core.action_registry.execute(
+            "fader.assign", 1, 1, FaderType.PRESET, 1.0
+        )
+        process_events()
+
+        fader_edit = fader_tab.fader_widgets.get((1, 1))
+        assert fader_edit is not None
+        assert fader_edit.options_button.get_sensitive() is True
+        assert fader_edit.options_badges_label.get_visible() is False
+
+        for flag in ("exclude_record", "exempt_grand_master", "solo_mode", "locked"):
+            fader_edit.option_checks[flag].set_active(True)
+        process_events()
+
+        fader = app_gui.core.lightshow.fader_bank.faders[1][1]
+        assert fader.exclude_record is True
+        assert fader.exempt_grand_master is True
+        assert fader.solo_mode is True
+        assert fader.locked is True
+
+        assert fader_edit.type_button.get_sensitive() is False
+        assert fader_edit.contents_button is not None
+        assert fader_edit.contents_button.get_sensitive() is False
+        assert fader_edit.options_badges_label.get_visible() is True
+        badges_txt = fader_edit.options_badges_label.get_text()
+        for token in ("GM", "NoRec", "SOLO", "LOCK"):
+            assert token in badges_txt
+
+        assert "SOLO" in vc.flashes[0].label
+        assert "GM" in vc.flashes[0].label
+
+        # Undo locked -> unlocks type/contents menus
+        app_gui.core.history.undo()
+        process_events()
+        assert fader.locked is False
+        assert fader_edit.type_button.get_sensitive() is True
+
+        vc.close()
+        process_events()
+    finally:
+        app_gui.core.lightshow.fader_bank.reset_faders(reset_page_count=True)
+        app_gui.core.lightshow.palettes.clear()
+        app_gui.core.history.clear()
