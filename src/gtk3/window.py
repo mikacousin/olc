@@ -476,6 +476,13 @@ class Window(Gtk.ApplicationWindow):
                 cv.select_all()
                 cv.grab_focus()
                 return True
+            if keyval in (Gdk.KEY_l, Gdk.KEY_L):
+                self._append_console_keyword("LABEL", trailing_space=True)
+                cmd_w = getattr(self, "commandline_widget", None)
+                entry = getattr(cmd_w, "entry", None) or getattr(cmd_w, "widget", None)
+                if entry is not None and hasattr(entry, "grab_focus"):
+                    entry.grab_focus()
+                return True
             if keyval == Gdk.KEY_Up:
                 cv = self._get_active_channels_view()
                 cv.level_plus()
@@ -536,6 +543,15 @@ class Window(Gtk.ApplicationWindow):
                 return True
             if keyval in (Gdk.KEY_e, Gdk.KEY_E):
                 self._append_console_keyword("EFFECT", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_a, Gdk.KEY_A):
+                self._append_console_keyword("ASSERT", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_x, Gdk.KEY_X):
+                self._append_console_keyword("RELEASE", trailing_space=True)
+                return True
+            if keyval in (Gdk.KEY_s, Gdk.KEY_S):
+                self._append_console_keyword("STOP", trailing_space=True)
                 return True
             if keyval == Gdk.KEY_Up:
                 if self._is_editing_tab_focused():

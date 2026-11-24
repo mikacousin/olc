@@ -121,6 +121,23 @@ def test_playbacks_tab_and_vc_three_strip_buttons(app_gui: Application) -> None:
         process_events()
         assert app_gui.core.commandline.get_string() == "SEQ 2 LABEL "
         app_gui.core.action_registry.execute("commandline.clear")
+
+        # 5. Keyboard shortcuts: Ctrl+L (LABEL), Alt+A/X/S (ASSERT/RELEASE/STOP)
+        from gi.repository import Gdk
+
+        assert app_gui.window is not None
+        ctrl = int(Gdk.ModifierType.CONTROL_MASK)
+        alt = int(Gdk.ModifierType.MOD1_MASK)
+        for keyval, mods, expected_cmd in (
+            (Gdk.KEY_l, ctrl, "LABEL "),
+            (Gdk.KEY_a, alt, "ASSERT "),
+            (Gdk.KEY_x, alt, "RELEASE "),
+            (Gdk.KEY_s, alt, "STOP "),
+        ):
+            app_gui.core.action_registry.execute("commandline.clear")
+            assert app_gui.window._handle_modifier_shortcuts(keyval, mods) is True
+            assert app_gui.core.commandline.get_string() == expected_cmd
+        app_gui.core.action_registry.execute("commandline.clear")
     finally:
         app_gui.core.playback_arbitrator.clear()
         app_gui.core.playback_engine.clear()

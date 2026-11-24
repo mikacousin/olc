@@ -282,13 +282,17 @@ class VirtualConsoleWindow(Gtk.Window):
         )
         self.preset.connect("clicked", self._on_preset)
 
-        self.label_btn = ButtonWidget(label="Label", text="label")
+        self.label_btn = ButtonWidget(label="Label", text="label", shortcut_text="^L")
         self.label_btn.connect("clicked", self._on_label)
-        self.assert_btn = ButtonWidget(label="Assert", text="assert")
+        self.assert_btn = ButtonWidget(
+            label="Assert", text="assert", shortcut_text="Alt+A"
+        )
         self.assert_btn.connect("clicked", self._on_assert)
-        self.release_btn = ButtonWidget(label="Release", text="release")
+        self.release_btn = ButtonWidget(
+            label="Release", text="release", shortcut_text="Alt+X"
+        )
         self.release_btn.connect("clicked", self._on_release)
-        self.stop_btn = ButtonWidget(label="Stop", text="stop")
+        self.stop_btn = ButtonWidget(label="Stop", text="stop", shortcut_text="Alt+S")
         self.stop_btn.connect("clicked", self._on_stop)
 
         # Attach Zone 2
