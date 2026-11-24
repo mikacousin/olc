@@ -758,17 +758,23 @@ class SequenceReleaseAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.sequence_index: float = 1.0
+        self.fade_time: float | None = None
 
-    def configure(self, sequence_index: float = 1.0) -> None:
-        """Configure target sequence index."""
+    def configure(
+        self,
+        sequence_index: float = 1.0,
+        fade_time: float | None = None,
+    ) -> None:
+        """Configure target sequence index and optional release fade time."""
         self.sequence_index = float(sequence_index)
+        self.fade_time = float(fade_time) if fade_time is not None else None
 
     def execute(self) -> bool:
         """Release the target sequence."""
         seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
         if seq is None:
             return False
-        seq.release()
+        seq.release(fade_time=self.fade_time)
         return True
 
 

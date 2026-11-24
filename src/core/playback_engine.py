@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import threading
+import time
 import typing
 from dataclasses import dataclass
 from enum import Enum
@@ -70,6 +71,16 @@ class SequenceRunner:
     fade_remaining: float = 0.0
 
 
+@dataclass
+class _ActiveReleaseFade:
+    """State for an active progressive release fade."""
+
+    seq_index: float
+    start_time: float
+    duration: float
+    start_level: float
+
+
 class PlaybackEngine:
     """Coordinates concurrent SequenceRunners and configurable Main Sequence."""
 
@@ -78,6 +89,10 @@ class PlaybackEngine:
         self._lock = threading.RLock()
         self._main_sequence_index: float = 1.0
         self._runners: dict[float, SequenceRunner] = {}
+        self._release_fades: dict[float, _ActiveReleaseFade] = {}
+        self._tick_interval: float = 0.025  # 40 Hz
+        self._tick_stop = threading.Event()
+        self._tick_thread: threading.Thread | None = None
 
     @property
     def main_sequence_index(self) -> float:
@@ -159,10 +174,125 @@ class PlaybackEngine:
             self.app.emit("playback.runner_changed", key)
 
     def clear(self) -> None:
-        """Reset all runners and restore Main Sequence to 1.0."""
+        """Reset all runners, stop worker, and restore Main Sequence to 1.0."""
+        self.stop_worker()
         with self._lock:
+            self._release_fades.clear()
             self._runners.clear()
             self._main_sequence_index = 1.0
+
+    def stop_worker(self) -> None:
+        """Stop the background 40 Hz tick thread if running."""
+        self._tick_stop.set()
+        with self._lock:
+            thread = self._tick_thread
+            self._tick_thread = None
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=1.0)
+
+    def _ensure_tick_worker(self) -> None:
+        """Start the background 40 Hz tick thread if not already alive."""
+        with self._lock:
+            if self._tick_thread is None or not self._tick_thread.is_alive():
+                self._tick_stop.clear()
+                self._tick_thread = threading.Thread(
+                    target=self._tick_loop,
+                    name="playback-engine-tick",
+                    daemon=True,
+                )
+                self._tick_thread.start()
+
+    def _tick_loop(self) -> None:
+        """Run 40 Hz ticks while release fades remain active."""
+        while not self._tick_stop.is_set():
+            has_work = self.tick()
+            if not has_work:
+                with self._lock:
+                    if not self._release_fades:
+                        self._tick_thread = None
+                        return
+            self._tick_stop.wait(self._tick_interval)
+
+    def cancel_release_fade(self, seq_index: float) -> bool:
+        """Cancel an active progressive release fade for *seq_index*."""
+        key = float(seq_index)
+        with self._lock:
+            fade = self._release_fades.pop(key, None)
+        if fade is None:
+            return False
+        arb = getattr(self.app, "playback_arbitrator", None)
+        if arb is not None:
+            seq = self._resolve_sequence(key)
+            restore_level = (
+                float(getattr(seq, "fader_level", fade.start_level))
+                if seq is not None
+                else fade.start_level
+            )
+            composed = arb.set_fader_level(key, restore_level)
+            if seq is not None:
+                from olc.show.sequence_threads import apply_arbitrated_output
+
+                apply_arbitrated_output(self.app, seq.backend, seq.patch, composed)
+        return True
+
+    def tick(self, now: float | None = None) -> bool:
+        """Advance all active release fades by one tick.
+
+        Returns True if any fades remain active after this tick.
+        """
+        current_time = time.monotonic() if now is None else float(now)
+        with self._lock:
+            fades = list(self._release_fades.values())
+        if not fades:
+            return False
+
+        from olc.show.sequence_threads import apply_arbitrated_output
+
+        arb = getattr(self.app, "playback_arbitrator", None)
+        completed: list[_ActiveReleaseFade] = []
+
+        for fade in fades:
+            with self._lock:
+                if fade.seq_index not in self._release_fades:
+                    continue
+            elapsed = max(0.0, current_time - fade.start_time)
+            progress = min(1.0, elapsed / fade.duration) if fade.duration > 0 else 1.0
+            remaining = max(0.0, fade.duration - elapsed)
+            if progress >= 1.0:
+                completed.append(fade)
+                continue
+
+            seq = self._resolve_sequence(fade.seq_index)
+            if seq is None:
+                completed.append(fade)
+                continue
+
+            if arb is not None:
+                level = fade.start_level * (1.0 - progress)
+                composed = arb.set_fader_level(fade.seq_index, level)
+                apply_arbitrated_output(self.app, seq.backend, seq.patch, composed)
+
+            self.notify_runner_state(
+                fade.seq_index,
+                RunnerState.RELEASING,
+                fade_progress=progress,
+                fade_remaining=remaining,
+            )
+
+        for fade in completed:
+            with self._lock:
+                active = self._release_fades.get(fade.seq_index)
+                if active is not fade:
+                    continue
+                self._release_fades.pop(fade.seq_index, None)
+            seq = self._resolve_sequence(fade.seq_index)
+            if seq is not None:
+                seq.release(fade_time=0.0)
+                if arb is not None:
+                    arb.set_fader_level(fade.seq_index, fade.start_level)
+
+        with self._lock:
+            return bool(self._release_fades)
 
     def go(self, seq_index: float) -> bool:
         """Trigger Go on *seq_index*."""
@@ -200,12 +330,41 @@ class PlaybackEngine:
         seq.pause(None, None)
         return True
 
-    def release(self, seq_index: float) -> bool:
-        """Release *seq_index* and restore lower layers."""
+    def release(self, seq_index: float, fade_time: float | None = None) -> bool:
+        """Release *seq_index* immediately or progressively over *fade_time*."""
         seq = self._resolve_sequence(seq_index)
         if seq is None:
             return False
-        seq.release()
+        key = float(seq.index)
+        eff_time = (
+            float(fade_time)
+            if fade_time is not None
+            else float(getattr(seq, "release_time", 0.0) or 0.0)
+        )
+        if eff_time <= 0.0:
+            with self._lock:
+                self._release_fades.pop(key, None)
+            seq.release(fade_time=0.0)
+            return True
+
+        seq.stop()
+        seq.on_go = False
+        start_level = float(getattr(seq, "fader_level", 1.0))
+        now = time.monotonic()
+        with self._lock:
+            self._release_fades[key] = _ActiveReleaseFade(
+                seq_index=key,
+                start_time=now,
+                duration=eff_time,
+                start_level=start_level,
+            )
+            self._ensure_tick_worker()
+        self.notify_runner_state(
+            key,
+            RunnerState.RELEASING,
+            fade_progress=0.0,
+            fade_remaining=eff_time,
+        )
         return True
 
     def assert_sequence(self, seq_index: float) -> bool:

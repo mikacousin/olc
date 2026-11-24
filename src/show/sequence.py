@@ -156,6 +156,9 @@ class Sequence:
         """Directly load and apply a sequence step state to DMX outputs."""
         if not self.steps or step_index < 0 or step_index >= len(self.steps):
             return
+        engine = getattr(self.app, "playback_engine", None) if self.app else None
+        if engine is not None:
+            engine.cancel_release_fade(self.index)
         self.invalidate_next_channel_levels_cache()
         self.position = step_index
         resolved = TrackingEngine.resolve_step_state(
@@ -211,8 +214,19 @@ class Sequence:
             _notify_runner(self, "active", fade_progress=0.0, fade_remaining=0.0)
         self.update_channels()
 
-    def release(self) -> None:
+    def release(self, fade_time: float | None = None) -> None:
         """Stop this sequence and release its ownership back to lower layers."""
+        eff_time = (
+            float(fade_time)
+            if fade_time is not None
+            else float(getattr(self, "release_time", 0.0) or 0.0)
+        )
+        engine = getattr(self.app, "playback_engine", None) if self.app else None
+        if eff_time > 0.0 and engine is not None:
+            engine.release(self.index, fade_time=eff_time)
+            return
+        if engine is not None:
+            engine.cancel_release_fade(self.index)
         self.stop()
         self.on_go = False
         self.position = 0
@@ -232,6 +246,9 @@ class Sequence:
 
     def assert_playback(self) -> None:
         """Reclaim ownership of all channels and parameters held by this sequence."""
+        engine = getattr(self.app, "playback_engine", None) if self.app else None
+        if engine is not None:
+            engine.cancel_release_fade(self.index)
         arb = getattr(self.app, "playback_arbitrator", None) if self.app else None
         if arb is not None:
             composed = arb.assert_sequence(self.index)
@@ -617,6 +634,9 @@ class Sequence:
             goto: True if Goto, False if Go (default)
             override_time: Optional override fade time in seconds
         """
+        engine = getattr(self.app, "playback_engine", None) if self.app else None
+        if engine is not None:
+            engine.cancel_release_fade(self.index)
         # If Go is active, go to next cue
         if self.stop():
             # Launch another Go
