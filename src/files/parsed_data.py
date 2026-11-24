@@ -625,6 +625,7 @@ class ParsedData:
         self.lightshow.main_playback.mib_fade_time = float(
             seq_data.get("mib_fade_time", 2.0)
         )
+        self.lightshow.main_playback.apply_playback_options(seq_data)
         for values in seq_data["steps"].values():
             cue_number = values.get("cue")
             cue_dict = seq_data["cues"][cue_number]
@@ -645,6 +646,7 @@ class ParsedData:
             self.lightshow.main_playback.mib_fade_time = float(
                 seq_data["mib_fade_time"]
             )
+        self.lightshow.main_playback.apply_playback_options(seq_data)
         sentinel_step = (
             self.lightshow.main_playback.steps.pop()
             if len(self.lightshow.main_playback.steps) > 1
@@ -722,6 +724,7 @@ class ParsedData:
             self.lightshow.sequences[index].mib_fade_time = float(
                 seq_data.get("mib_fade_time", 2.0)
             )
+        self.lightshow.sequences[index].apply_playback_options(seq_data)
         if action is Action.REPLACE:
             self._replace_chaser(sequence, index)
         elif action is Action.MERGE:

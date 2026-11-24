@@ -115,7 +115,7 @@ class OlcWriter(WriteFile):
 
     def _do_sequence(self, sequence: Sequence) -> None:
         seq_index = sequence.index
-        self.data["sequences"][seq_index] = {
+        seq_entry: dict[str, typing.Any] = {
             "label": sequence.text,
             "tracking_mode": bool(getattr(sequence, "tracking_mode", False)),
             "mib_enabled": bool(getattr(sequence, "mib_enabled", True)),
@@ -123,6 +123,9 @@ class OlcWriter(WriteFile):
             "steps": {},
             "cues": {},
         }
+        if hasattr(sequence, "playback_options_to_dict"):
+            seq_entry.update(sequence.playback_options_to_dict())
+        self.data["sequences"][seq_index] = seq_entry
         for index, step in enumerate(sequence.steps):
             if not step.cue or step.cue.number == 0:
                 continue

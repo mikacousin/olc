@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 from typing import Optional
 
+from olc.core.playback_arbitrator import PlaybackPriority, parse_playback_priority
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, TrackingEngine
 from olc.define import MAX_CHANNELS
 from olc.show.cue import Cue
@@ -82,6 +83,15 @@ class Sequence:
         # Move In Black (MIB) pre-positioning and post-extinction fade time (s)
         self.mib_enabled = True
         self.mib_fade_time = DEFAULT_MIB_FADE_TIME
+        # Multi-sequence playback options
+        self.priority: PlaybackPriority = PlaybackPriority.NORMAL
+        self.htp_intensity: bool = True
+        self.auto_start: bool = False
+        self.auto_stop: bool = False
+        self.off_on_overwritten: bool = False
+        self.wrap_around: bool = False
+        self.release_on_end: bool = False
+        self.release_time: float = 0.0
         self._cached_next_levels: tuple[typing.Any, list[int]] | None = None
 
         # Step and Cue 0
@@ -91,6 +101,46 @@ class Sequence:
         self.add_step(step)
         # Last Step
         self.add_step(step)
+
+    def playback_options_to_dict(self) -> dict[str, typing.Any]:
+        """Serialize non-default multi-sequence playback options."""
+        data: dict[str, typing.Any] = {}
+        if self.priority is not PlaybackPriority.NORMAL:
+            data["priority"] = int(self.priority)
+        if not self.htp_intensity:
+            data["htp_intensity"] = False
+        if self.auto_start:
+            data["auto_start"] = True
+        if self.auto_stop:
+            data["auto_stop"] = True
+        if self.off_on_overwritten:
+            data["off_on_overwritten"] = True
+        if self.wrap_around:
+            data["wrap_around"] = True
+        if self.release_on_end:
+            data["release_on_end"] = True
+        if self.release_time > 0.0:
+            data["release_time"] = float(self.release_time)
+        return data
+
+    def apply_playback_options(self, data: typing.Mapping[str, typing.Any]) -> None:
+        """Restore multi-sequence playback options from a serialized dictionary."""
+        if "priority" in data:
+            self.priority = parse_playback_priority(data["priority"])
+        if "htp_intensity" in data:
+            self.htp_intensity = bool(data["htp_intensity"])
+        if "auto_start" in data:
+            self.auto_start = bool(data["auto_start"])
+        if "auto_stop" in data:
+            self.auto_stop = bool(data["auto_stop"])
+        if "off_on_overwritten" in data:
+            self.off_on_overwritten = bool(data["off_on_overwritten"])
+        if "wrap_around" in data:
+            self.wrap_around = bool(data["wrap_around"])
+        if "release_on_end" in data:
+            self.release_on_end = bool(data["release_on_end"])
+        if "release_time" in data:
+            self.release_time = max(0.0, float(data["release_time"]))
 
     @property
     def patch(self) -> Optional[PatchManager]:
