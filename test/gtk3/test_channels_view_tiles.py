@@ -528,6 +528,9 @@ def test_channel_tiles_keep_constant_size_when_few_visible(
         alloc = widget.get_allocation()
         return (alloc.width, alloc.height)
 
+    app_gui.window.live_view.set_current_page(0)
+    process_events()
+
     for fmt in ("Compact", "Summary+"):
         live_cv.set_display_format(fmt)
         live_cv.set_view_mode_by_name("All")

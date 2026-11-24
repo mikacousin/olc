@@ -139,6 +139,8 @@ def test_playbacks_tab_and_vc_three_strip_buttons(app_gui: Application) -> None:
             assert app_gui.core.commandline.get_string() == expected_cmd
         app_gui.core.action_registry.execute("commandline.clear")
     finally:
+        if app_gui.tabs is not None:
+            app_gui.tabs.close("playbacks")
         app_gui.core.playback_arbitrator.clear()
         app_gui.core.playback_engine.clear()
         ls.fader_bank.reset_faders(reset_page_count=True)
