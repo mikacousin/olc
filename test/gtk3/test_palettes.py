@@ -632,3 +632,71 @@ def test_palettes_tab_keyboard_navigation(
     pal_tab._keypress_up()
     sel = pal_tab.get_selected_palette()
     assert sel is not None and sel.number == 1.0
+
+
+def test_palettes_tab_modes_lock_and_badges(app_gui: Application) -> None:
+    """Verify mode_combo recording, S/T/U & LOCK badges, and absolute recall."""
+    from olc.show.palette import PaletteMode
+
+    ls = app_gui.core.lightshow
+    ls.palettes.clear()
+    dev1 = ls.patch.patch_device(1, create_rgb_definition(), 1, 1, label="LED 1")
+    dev2 = ls.patch.patch_device(2, create_rgb_definition(), 1, 10, label="LED 2")
+    dev1.set_color_hex("#ff0000")
+    dev2.set_color_hex("#000000")
+    app_gui.core.selected_channels = [1]
+
+    app_gui.open_palettes()
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+    pal_tab.set_active_category(PaletteCategory.COLOR)
+    process_events()
+
+    # 1. Record using mode_combo = By Type
+    pal_tab.mode_combo.set_active_id(PaletteMode.BY_TYPE.value)
+    num = pal_tab.record_palette(1.0, label="Red Type")
+    process_events()
+    cp1 = ls.palettes.get(PaletteCategory.COLOR, num)
+    assert cp1 is not None
+    assert cp1.mode is PaletteMode.BY_TYPE
+    tile = pal_tab.get_selected_tile()
+    assert tile is not None
+    assert tile.mode is PaletteMode.BY_TYPE
+    assert tile.type_count == 1
+    assert tile.preview_rgb == pytest.approx((1.0, 0.0, 0.0))
+
+    # 2. Change mode via set_selected_mode + undo
+    pal_tab.set_selected_mode(PaletteMode.UNIVERSAL)
+    process_events()
+    assert cp1.mode is PaletteMode.UNIVERSAL
+    assert tile.mode is PaletteMode.UNIVERSAL
+
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert cp1.mode is PaletteMode.BY_TYPE
+    assert tile.mode is PaletteMode.BY_TYPE
+
+    # 3. Lock disables btn_update and updates tile.locked; undo restores
+    assert pal_tab.btn_update.get_sensitive() is True
+    pal_tab.toggle_selected_locked()
+    process_events()
+    assert cp1.locked is True
+    assert tile.locked is True
+    assert pal_tab.btn_update.get_sensitive() is False
+
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert cp1.locked is False
+    assert tile.locked is False
+    assert pal_tab.btn_update.get_sensitive() is True
+
+    # 4. Absolute recall from PalettesTab breaks palette_ref
+    app_gui.core.selected_channels = [2]
+    app_gui.core.live_state.set_palette_refs(
+        2, {"color": ("color", 99.0)}, mark_manual=True
+    )
+    affected = pal_tab.recall_palette(PaletteCategory.COLOR, 1.0, absolute=True)
+    assert affected == [2]
+    assert app_gui.core.live_state.get_palette_ref(2, "color") is None

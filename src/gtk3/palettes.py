@@ -38,7 +38,7 @@ from olc.gtk3.widgets.common import (
     rounded_rectangle_fill,
 )
 from olc.gtk3.widgets.group import format_channel_summary
-from olc.show.palette import Palette, PaletteCategory
+from olc.show.palette import Palette, PaletteCategory, PaletteMode
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
@@ -154,6 +154,16 @@ def extract_palette_preview_rgb(
         rgb = extract_device_values_rgb(vals)
         if rgb is not None:
             return rgb
+    for vals in palette.by_type_values.values():
+        if not isinstance(vals, typing.Mapping):
+            continue
+        rgb = extract_device_values_rgb(vals)
+        if rgb is not None:
+            return rgb
+    if isinstance(palette.universal_values, typing.Mapping):
+        rgb = extract_device_values_rgb(palette.universal_values)
+        if rgb is not None:
+            return rgb
     return None
 
 
@@ -246,6 +256,14 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         self.palette_ref_count = sum(
             len(refs) for refs in palette.palette_refs.values()
         )
+        self.mode: PaletteMode = palette.mode
+        self.locked: bool = bool(palette.locked)
+        self.type_count: int = len(
+            set(palette.by_type_channels) | set(palette.by_type_values)
+        )
+        self.has_universal: bool = palette.universal_intensity is not None or bool(
+            palette.universal_values
+        )
         self.accent_rgb = accent_rgb
         self.preview_rgb = extract_palette_preview_rgb(palette)
 
@@ -277,6 +295,14 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         self.channel_count = len(self.channels)
         self.palette_ref_count = sum(
             len(refs) for refs in palette.palette_refs.values()
+        )
+        self.mode = palette.mode
+        self.locked = bool(palette.locked)
+        self.type_count = len(
+            set(palette.by_type_channels) | set(palette.by_type_values)
+        )
+        self.has_universal = palette.universal_intensity is not None or bool(
+            palette.universal_values
         )
         self.preview_rgb = extract_palette_preview_rgb(palette)
         self.rename_entry.set_text(self.name)
@@ -310,6 +336,9 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
                 flowbox.select_child(parent)
 
         ev_type = getattr(event, "type", None)
+        if ev_type == Gdk.EventType.BUTTON_PRESS and getattr(event, "button", 1) == 3:
+            self.open_context_menu(event)
+            return True
         direct_active = self.tab.direct_select_toggle.get_active()
         if ev_type == Gdk.EventType.BUTTON_PRESS and direct_active:
             self.tab.recall_palette(self.category, self.number)
@@ -318,6 +347,58 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
             self.tab.recall_palette(self.category, self.number)
             return True
         return False
+
+    def open_context_menu(self, event: Gdk.Event) -> None:
+        """Open right-click context menu for mode, lock, absolute recall, etc."""
+        menu = Gtk.Menu()
+
+        item_abs = Gtk.MenuItem(label=_("Apply Absolute"))
+        item_abs.connect(
+            "activate",
+            lambda *_: self.tab.recall_palette(
+                self.category, self.number, absolute=True
+            ),
+        )
+        menu.append(item_abs)
+        menu.append(Gtk.SeparatorMenuItem())
+
+        for mode_val, mode_label in (
+            (PaletteMode.SELECTIVE, _("Mode: Selective")),
+            (PaletteMode.BY_TYPE, _("Mode: By Type")),
+            (PaletteMode.UNIVERSAL, _("Mode: Universal")),
+        ):
+            item = Gtk.MenuItem(label=mode_label)
+            item.set_sensitive(not self.locked and self.mode is not mode_val)
+            item.connect(
+                "activate",
+                lambda *_a, m=mode_val: self.tab.app.core.action_registry.execute(
+                    "palette.set_mode", self.category, self.number, m
+                ),
+            )
+            menu.append(item)
+
+        menu.append(Gtk.SeparatorMenuItem())
+
+        lock_label = _("Unlock") if self.locked else _("Lock")
+        item_lock = Gtk.MenuItem(label=lock_label)
+        item_lock.connect(
+            "activate",
+            lambda *_: self.tab.app.core.action_registry.execute(
+                "palette.set_locked", self.category, self.number, not self.locked
+            ),
+        )
+        menu.append(item_lock)
+
+        item_rename = Gtk.MenuItem(label=_("Rename"))
+        item_rename.connect("activate", lambda *_: self.open_rename_popover())
+        menu.append(item_rename)
+
+        item_delete = Gtk.MenuItem(label=_("Delete"))
+        item_delete.connect("activate", lambda *_: self.tab.delete_selected())
+        menu.append(item_delete)
+
+        menu.show_all()
+        menu.popup_at_pointer(event)
 
     def do_draw(self, cr: cairo.Context) -> bool:  # pylint: disable=too-many-locals
         """Draw the palette/preset tile using Cairo and Pango."""
@@ -375,7 +456,7 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         cr.move_to(8.0, 11.0)
         PangoCairo.show_layout(cr, badge_layout)
 
-        # Top-right channel count
+        # Top-right channel count + mode/lock badges
         cnt_text = f"{self.channel_count} ch"
         cr.set_source_rgb(0.68, 0.72, 0.76)
         cnt_layout = create_pango_layout_for_widget(cr, cnt_text)
@@ -383,8 +464,42 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         cdesc.set_size(8 * Pango.SCALE)
         cnt_layout.set_font_description(cdesc)
         _ink, clogical = cnt_layout.get_pixel_extents()
-        cr.move_to(width - clogical.width - 8.0, 13.0)
+        cnt_x = width - clogical.width - 8.0
+        cr.move_to(cnt_x, 13.0)
         PangoCairo.show_layout(cr, cnt_layout)
+
+        mode_char = {
+            PaletteMode.SELECTIVE: "S",
+            PaletteMode.BY_TYPE: "T",
+            PaletteMode.UNIVERSAL: "U",
+        }.get(self.mode, "S")
+        mode_rgb = {
+            PaletteMode.SELECTIVE: (0.45, 0.50, 0.56),
+            PaletteMode.BY_TYPE: (0.22, 0.62, 0.45),
+            PaletteMode.UNIVERSAL: (0.28, 0.52, 0.85),
+        }.get(self.mode, (0.45, 0.50, 0.56))
+        pill_x = cnt_x - 16.0
+        cr.set_source_rgb(*mode_rgb)
+        rounded_rectangle_fill(cr, (pill_x, pill_x + 13.0, 12.0, 24.0), 3.0)
+        m_layout = create_pango_layout_for_widget(cr, mode_char)
+        mdesc = create_system_font_description()
+        mdesc.set_weight(Pango.Weight.BOLD)
+        mdesc.set_size(7 * Pango.SCALE)
+        m_layout.set_font_description(mdesc)
+        _mink, mlog = m_layout.get_pixel_extents()
+        cr.set_source_rgb(0.98, 0.98, 0.98)
+        cr.move_to(pill_x + max(1.0, (13.0 - mlog.width) / 2.0), 12.5)
+        PangoCairo.show_layout(cr, m_layout)
+
+        if self.locked:
+            lock_x = pill_x - 28.0
+            cr.set_source_rgb(0.75, 0.32, 0.24)
+            rounded_rectangle_fill(cr, (lock_x, lock_x + 25.0, 12.0, 24.0), 3.0)
+            l_layout = create_pango_layout_for_widget(cr, "LOCK")
+            l_layout.set_font_description(mdesc)
+            cr.set_source_rgb(0.98, 0.98, 0.98)
+            cr.move_to(lock_x + 2.0, 12.5)
+            PangoCairo.show_layout(cr, l_layout)
 
         # Palette label (only drawn if non-empty; avoids duplicating top badge)
         if self.name:
@@ -402,10 +517,17 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
             PangoCairo.show_layout(cr, name_layout)
 
         # Compact channel preview at bottom
-        summary = format_channel_summary(self.channels, max_tokens=3) or _("Empty")
         if self.channels:
+            summary = format_channel_summary(self.channels, max_tokens=3)
             cr.set_source_rgb(0.62, 0.76, 0.86)
+        elif self.type_count > 0:
+            summary = f"{self.type_count} type(s)"
+            cr.set_source_rgb(0.55, 0.82, 0.68)
+        elif self.has_universal:
+            summary = _("Universal")
+            cr.set_source_rgb(0.60, 0.76, 0.95)
         else:
+            summary = _("Empty")
             cr.set_source_rgb(0.52, 0.55, 0.58)
         sum_layout = create_pango_layout_for_widget(cr, summary)
         sdesc = create_system_font_description()
@@ -577,6 +699,16 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
 
         spacer = Gtk.Box()
         toolbar.pack_start(spacer, True, True, 0)
+
+        self.mode_combo = Gtk.ComboBoxText()
+        self.mode_combo.set_tooltip_text(
+            _("Recording mode for new palettes/presets (Selective, By Type, Universal)")
+        )
+        self.mode_combo.append(PaletteMode.SELECTIVE.value, _("Selective"))
+        self.mode_combo.append(PaletteMode.BY_TYPE.value, _("By Type"))
+        self.mode_combo.append(PaletteMode.UNIVERSAL.value, _("Universal"))
+        self.mode_combo.set_active_id(PaletteMode.SELECTIVE.value)
+        toolbar.pack_start(self.mode_combo, False, False, 0)
 
         self.btn_record = Gtk.Button(label=_("Record"))
         self.btn_record.set_tooltip_text(
@@ -1134,7 +1266,7 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         has_channels = bool(pal is not None and (pal.channels or pal.device_values))
         self.btn_recall.set_sensitive(has_sel)
         self.btn_select_live.set_sensitive(has_channels)
-        self.btn_update.set_sensitive(has_sel)
+        self.btn_update.set_sensitive(has_sel and pal is not None and not pal.locked)
         self.btn_rename.set_sensitive(has_sel)
         self.btn_delete.set_sensitive(has_sel)
         self.btn_record.set_sensitive(True)
@@ -1186,10 +1318,16 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         self.details_label.set_tooltip_text("\n".join(tooltip_lines))
         self.refresh_inspector()
 
-    def recall_palette(self, category: PaletteCategory, number: float) -> list[int]:
+    def recall_palette(
+        self,
+        category: PaletteCategory,
+        number: float,
+        *,
+        absolute: bool = False,
+    ) -> list[int]:
         """Apply *category* / *number* via Core ActionRegistry."""
         raw_affected = self.app.core.action_registry.execute(
-            "palette.apply", category, number
+            "palette.apply", category, number, absolute=absolute
         )
         affected: list[int] = (
             [int(ch) for ch in raw_affected]
@@ -1223,7 +1361,12 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         if (pal := self.get_selected_palette()) is not None:
             self.recall_palette(pal.category, pal.number)
 
-    def record_palette(self, number: float | None = None, label: str = "") -> float:
+    def record_palette(
+        self,
+        number: float | None = None,
+        label: str = "",
+        mode: PaletteMode | str | None = None,
+    ) -> float:
         """Record live stage state into current category and return its number."""
         cat = self.current_category
         if number is None:
@@ -1241,12 +1384,35 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         else:
             target_num = float(number)
 
+        eff_mode = (
+            mode
+            if mode is not None
+            else PaletteMode(self.mode_combo.get_active_id() or "selective")
+        )
         self._selected_numbers[cat] = target_num
         self.app.core.action_registry.execute(
-            "palette.record", cat, target_num, label=label
+            "palette.record", cat, target_num, label=label, mode=eff_mode
         )
         self.refresh_category(cat)
         return target_num
+
+    def set_selected_mode(self, mode: PaletteMode | str) -> None:
+        """Change the mode of the currently selected palette/preset."""
+        if (pal := self.get_selected_palette()) is None:
+            return
+        self.app.core.action_registry.execute(
+            "palette.set_mode", pal.category, pal.number, mode
+        )
+        self.refresh_category(pal.category)
+
+    def toggle_selected_locked(self) -> None:
+        """Toggle locked state of the currently selected palette/preset."""
+        if (pal := self.get_selected_palette()) is None:
+            return
+        self.app.core.action_registry.execute(
+            "palette.set_locked", pal.category, pal.number, not pal.locked
+        )
+        self.refresh_category(pal.category)
 
     def update_selected(self) -> None:
         """Update selected palette/preset with current live stage values."""
