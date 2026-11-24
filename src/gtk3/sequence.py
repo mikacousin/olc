@@ -135,112 +135,46 @@ class SequenceTab(Gtk.Grid):
         self.attach_next_to(self.paned, seq_scroll, Gtk.PositionType.BOTTOM, 1, 1)
 
     def _setup_header_bar(self) -> None:
-        """Create top control bar with Tracking vs Cue-Only and MIB switches."""
-        self.header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        """Create two-row top bar for sequence management, modes, flags & playback."""
+        self.header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.header_box.set_margin_start(6)
         self.header_box.set_margin_end(6)
         self.header_box.set_margin_top(4)
         self.header_box.set_margin_bottom(2)
 
-        self.new_seq_btn = Gtk.Button(label="+ New Sequence")
+        row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+
+        self.new_seq_btn = Gtk.Button(label="+ New")
         self.new_seq_btn.set_tooltip_text("Create a new secondary sequence")
         self.new_seq_btn.connect("clicked", lambda *_: self.create_new_sequence())
-        self.header_box.pack_start(self.new_seq_btn, False, False, 0)
+        row1.pack_start(self.new_seq_btn, False, False, 0)
 
-        self.delete_seq_btn = Gtk.Button(label="Delete Sequence")
+        self.delete_seq_btn = Gtk.Button(label="Delete")
         self.delete_seq_btn.set_tooltip_text("Delete the selected secondary sequence")
         self.delete_seq_btn.connect(
             "clicked", lambda *_: self.delete_selected_sequence()
         )
-        self.header_box.pack_start(self.delete_seq_btn, False, False, 0)
+        row1.pack_start(self.delete_seq_btn, False, False, 0)
 
-        self.header_box.pack_start(
-            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
+        row1.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 2
         )
 
         initial_tracking = getattr(self.lightshow.main_playback, "tracking_mode", False)
         self.tracking_mode_btn = Gtk.ToggleButton(
-            label="Mode: Tracking" if initial_tracking else "Mode: Cue-Only"
+            label="Tracking" if initial_tracking else "Cue-Only"
         )
+        self.tracking_mode_btn.set_tooltip_text("Toggle Tracking vs Cue-Only mode")
         self.tracking_mode_btn.set_active(initial_tracking)
         self.tracking_mode_btn.connect("toggled", self._on_tracking_mode_toggled)
-        self.header_box.pack_start(self.tracking_mode_btn, False, False, 0)
+        row1.pack_start(self.tracking_mode_btn, False, False, 0)
 
         initial_mib = getattr(self.lightshow.main_playback, "mib_enabled", True)
         self.mib_btn = Gtk.ToggleButton(label="MIB: ON" if initial_mib else "MIB: OFF")
+        self.mib_btn.set_tooltip_text("Toggle Move In Black (MIB)")
         self.mib_btn.set_active(initial_mib)
         self.mib_btn.connect("toggled", self._on_mib_toggled)
-        self.header_box.pack_start(self.mib_btn, False, False, 0)
-
-        self.header_box.pack_start(
-            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
-        )
-
-        self.block_btn = Gtk.ToggleButton(label="Block")
-        self.block_btn.set_tooltip_text("Toggle Block flag (B) on selected cue")
-        self.block_btn.connect("toggled", self._on_flag_toggled, "cue.set_block")
-        self.header_box.pack_start(self.block_btn, False, False, 0)
-
-        self.int_block_btn = Gtk.ToggleButton(label="Int Block")
-        self.int_block_btn.set_tooltip_text(
-            "Toggle Intensity Block flag (IB) on selected cue"
-        )
-        self.int_block_btn.connect(
-            "toggled", self._on_flag_toggled, "cue.set_int_block"
-        )
-        self.header_box.pack_start(self.int_block_btn, False, False, 0)
-
-        self.assert_btn = Gtk.ToggleButton(label="Assert")
-        self.assert_btn.set_tooltip_text("Toggle Assert flag (A) on selected cue")
-        self.assert_btn.connect("toggled", self._on_flag_toggled, "cue.set_assert")
-        self.header_box.pack_start(self.assert_btn, False, False, 0)
-
-        self.header_box.pack_start(
-            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4
-        )
-
-        self.seq_go_btn = Gtk.Button(label="Go")
-        self.seq_go_btn.connect(
-            "clicked",
-            lambda *_: self.app.core.action_registry.execute(
-                "sequence.go", self.get_selected_sequence_index()
-            ),
-        )
-        self.header_box.pack_start(self.seq_go_btn, False, False, 0)
-
-        self.seq_pause_btn = Gtk.Button(label="Pause")
-        self.seq_pause_btn.connect(
-            "clicked",
-            lambda *_: self.app.core.action_registry.execute(
-                "sequence.pause", self.get_selected_sequence_index()
-            ),
-        )
-        self.header_box.pack_start(self.seq_pause_btn, False, False, 0)
-
-        self.seq_assert_btn = Gtk.Button(label="Assert Seq")
-        self.seq_assert_btn.connect(
-            "clicked",
-            lambda *_: self.app.core.action_registry.execute(
-                "sequence.assert", self.get_selected_sequence_index()
-            ),
-        )
-        self.header_box.pack_start(self.seq_assert_btn, False, False, 0)
-
-        self.seq_release_btn = Gtk.Button(label="Release")
-        self.seq_release_btn.connect(
-            "clicked",
-            lambda *_: self.app.core.action_registry.execute(
-                "sequence.release", self.get_selected_sequence_index()
-            ),
-        )
-        self.header_box.pack_start(self.seq_release_btn, False, False, 0)
-
-        self.seq_release_all_btn = Gtk.Button(label="Release All")
-        self.seq_release_all_btn.connect(
-            "clicked",
-            lambda *_: self.app.core.action_registry.execute("sequence.release_all"),
-        )
-        self.header_box.pack_start(self.seq_release_all_btn, False, False, 0)
+        row1.pack_start(self.mib_btn, False, False, 0)
 
         self.seq_priority_combo = Gtk.ComboBoxText()
         self.seq_priority_combo.set_tooltip_text("Selected sequence playback priority")
@@ -253,7 +187,78 @@ class SequenceTab(Gtk.Grid):
             self.seq_priority_combo.append(str(int(prio_val)), prio_lbl)
         self.seq_priority_combo.set_active_id(str(int(PlaybackPriority.NORMAL)))
         self.seq_priority_combo.connect("changed", self._on_seq_priority_changed)
-        self.header_box.pack_start(self.seq_priority_combo, False, False, 0)
+        row1.pack_start(self.seq_priority_combo, False, False, 0)
+
+        row1.pack_start(
+            Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 2
+        )
+
+        self.block_btn = Gtk.ToggleButton(label="Block")
+        self.block_btn.set_tooltip_text("Toggle Block flag (B) on selected cue")
+        self.block_btn.connect("toggled", self._on_flag_toggled, "cue.set_block")
+        row1.pack_start(self.block_btn, False, False, 0)
+
+        self.int_block_btn = Gtk.ToggleButton(label="Int Block")
+        self.int_block_btn.set_tooltip_text(
+            "Toggle Intensity Block flag (IB) on selected cue"
+        )
+        self.int_block_btn.connect(
+            "toggled", self._on_flag_toggled, "cue.set_int_block"
+        )
+        row1.pack_start(self.int_block_btn, False, False, 0)
+
+        self.assert_btn = Gtk.ToggleButton(label="Assert")
+        self.assert_btn.set_tooltip_text("Toggle Assert flag (A) on selected cue")
+        self.assert_btn.connect("toggled", self._on_flag_toggled, "cue.set_assert")
+        row1.pack_start(self.assert_btn, False, False, 0)
+
+        row2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+
+        self.seq_go_btn = Gtk.Button(label="Go")
+        self.seq_go_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.go", self.get_selected_sequence_index()
+            ),
+        )
+        row2.pack_start(self.seq_go_btn, False, False, 0)
+
+        self.seq_pause_btn = Gtk.Button(label="Pause")
+        self.seq_pause_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.pause", self.get_selected_sequence_index()
+            ),
+        )
+        row2.pack_start(self.seq_pause_btn, False, False, 0)
+
+        self.seq_assert_btn = Gtk.Button(label="Assert Seq")
+        self.seq_assert_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.assert", self.get_selected_sequence_index()
+            ),
+        )
+        row2.pack_start(self.seq_assert_btn, False, False, 0)
+
+        self.seq_release_btn = Gtk.Button(label="Release")
+        self.seq_release_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute(
+                "sequence.release", self.get_selected_sequence_index()
+            ),
+        )
+        row2.pack_start(self.seq_release_btn, False, False, 0)
+
+        self.seq_release_all_btn = Gtk.Button(label="Release All")
+        self.seq_release_all_btn.connect(
+            "clicked",
+            lambda *_: self.app.core.action_registry.execute("sequence.release_all"),
+        )
+        row2.pack_start(self.seq_release_all_btn, False, False, 0)
+
+        self.header_box.pack_start(row1, False, False, 0)
+        self.header_box.pack_start(row2, False, False, 0)
 
     def get_selected_sequence_index(self) -> float:
         """Return currently selected sequence index in treeview1 (default 1.0)."""
@@ -340,9 +345,7 @@ class SequenceTab(Gtk.Grid):
         )
         if self.tracking_mode_btn.get_active() != enabled:
             self.tracking_mode_btn.set_active(enabled)
-        self.tracking_mode_btn.set_label(
-            "Mode: Tracking" if enabled else "Mode: Cue-Only"
-        )
+        self.tracking_mode_btn.set_label("Tracking" if enabled else "Cue-Only")
         self.channels_view.flowbox.invalidate_filter()
         self.channels_view.flowbox.queue_draw()
         if hasattr(self, "liststore2"):
@@ -416,9 +419,6 @@ class SequenceTab(Gtk.Grid):
         """Setup the cues layout"""
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.set_position(300)
-
-        self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         self.channels_view = SeqChannelsView(app=self.window.app)
         self.paned.add1(self.channels_view)
