@@ -213,7 +213,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad.attach(self.channels_labels, 2, 5, 1, 1)
         self.num_pad.attach(self.channels_flexi, 3, 5, 1, 1)
 
-        # Zone 2: Levels, Actions & Command Line Editing (4x5)
+        # Zone 2: Levels, Actions & Command Line Editing (4x7)
         self.actions_pad = Gtk.Grid()
         self.at_level = ButtonWidget(label="At", text="at", shortcut_text="A")
         self.at_level.connect("clicked", self._on_at)
@@ -282,6 +282,15 @@ class VirtualConsoleWindow(Gtk.Window):
         )
         self.preset.connect("clicked", self._on_preset)
 
+        self.label_btn = ButtonWidget(label="Label", text="label")
+        self.label_btn.connect("clicked", self._on_label)
+        self.assert_btn = ButtonWidget(label="Assert", text="assert")
+        self.assert_btn.connect("clicked", self._on_assert)
+        self.release_btn = ButtonWidget(label="Release", text="release")
+        self.release_btn.connect("clicked", self._on_release)
+        self.stop_btn = ButtonWidget(label="Stop", text="stop")
+        self.stop_btn.connect("clicked", self._on_stop)
+
         # Attach Zone 2
         self.actions_pad.attach(self.at_level, 0, 0, 1, 1)
         self.actions_pad.attach(self.full, 1, 0, 1, 1)
@@ -311,6 +320,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.actions_pad.attach(self.check, 1, 5, 1, 1)
         self.actions_pad.attach(self.palette, 2, 5, 1, 1)
         self.actions_pad.attach(self.preset, 3, 5, 1, 1)
+
+        self.actions_pad.attach(self.label_btn, 0, 6, 1, 1)
+        self.actions_pad.attach(self.assert_btn, 1, 6, 1, 1)
+        self.actions_pad.attach(self.release_btn, 2, 6, 1, 1)
+        self.actions_pad.attach(self.stop_btn, 3, 6, 1, 1)
 
         # Zone 3: Moving Lights & Selection Tools (2x6)
         self.tools_pad = Gtk.Grid()
@@ -794,6 +808,10 @@ class VirtualConsoleWindow(Gtk.Window):
         set_sens("percent_plus", TokenType.AT in expected)
         set_sens("percent_minus", TokenType.AT in expected)
         set_sens("seq", TokenType.SEQUENCE in expected or is_empty)
+        set_sens("label_btn", True)
+        set_sens("assert_btn", TokenType.ASSERT in expected or is_empty)
+        set_sens("release_btn", TokenType.RELEASE in expected or is_empty)
+        set_sens("stop_btn", TokenType.STOP in expected or is_empty)
 
         can_undo = bool(
             hasattr(self.app.core, "history")
@@ -1384,6 +1402,38 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.core.action_registry.execute(
                 "commandline.append_char", "GOTO CUE "
             )
+
+    def _append_cli_keyword(self, midi_key: str, keyword: str) -> None:
+        """Append a CLI keyword to the command line or learn MIDI."""
+        if self.is_learning_midi:
+            self._select_midi_learn_target(midi_key)
+            return
+        curr = self.commandline.get_string()
+        prefix = " " if curr and not curr.endswith(" ") else ""
+        self.app.core.action_registry.execute(
+            "commandline.append_char", f"{prefix}{keyword} "
+        )
+
+    def _on_label(self, _widget: Gtk.Widget) -> None:
+        """Label"""
+        self._append_cli_keyword("label", "LABEL")
+        win = getattr(self.app, "window", None)
+        cmd_w = getattr(win, "commandline_widget", None) if win is not None else None
+        entry = getattr(cmd_w, "entry", None) or getattr(cmd_w, "widget", None)
+        if entry is not None and hasattr(entry, "grab_focus"):
+            entry.grab_focus()
+
+    def _on_assert(self, _widget: Gtk.Widget) -> None:
+        """Assert"""
+        self._append_cli_keyword("assert", "ASSERT")
+
+    def _on_release(self, _widget: Gtk.Widget) -> None:
+        """Release"""
+        self._append_cli_keyword("release", "RELEASE")
+
+    def _on_stop(self, _widget: Gtk.Widget) -> None:
+        """Stop"""
+        self._append_cli_keyword("stop", "STOP")
 
     def _on_delete(self, _widget: Gtk.Widget) -> None:
         """Delete"""

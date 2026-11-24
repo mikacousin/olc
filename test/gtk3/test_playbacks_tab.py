@@ -107,6 +107,20 @@ def test_playbacks_tab_and_vc_three_strip_buttons(app_gui: Application) -> None:
         pb_tab.btn_release_all.emit("clicked")
         process_events()
         assert app_gui.core.playback_arbitrator.active_sequences() == []
+
+        # 4. VirtualConsole CLI row 6: Label, Assert, Release, Stop
+        for btn_attr in ("label_btn", "assert_btn", "release_btn", "stop_btn"):
+            assert hasattr(vc, btn_attr)
+        app_gui.core.action_registry.execute("commandline.clear")
+        vc.label_btn.emit("clicked")
+        process_events()
+        assert app_gui.core.commandline.get_string() == "LABEL "
+        app_gui.core.action_registry.execute("commandline.clear")
+        app_gui.core.action_registry.execute("commandline.append_char", "SEQ 2")
+        vc.label_btn.emit("clicked")
+        process_events()
+        assert app_gui.core.commandline.get_string() == "SEQ 2 LABEL "
+        app_gui.core.action_registry.execute("commandline.clear")
     finally:
         app_gui.core.playback_arbitrator.clear()
         app_gui.core.playback_engine.clear()
