@@ -22,10 +22,34 @@ import typing
 from olc.core.action import Action
 from olc.define import MAX_CHANNELS
 from olc.devices.channel import COLOR_CHANNEL_TYPES, ChannelType
-from olc.show.palette import Palette, PaletteCategory
+from olc.show.palette import (
+    Palette,
+    PaletteCategory,
+    PaletteMode,
+    get_channel_type_key,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+
+_UNIVERSAL_ATTR_KEYS: frozenset[str] = frozenset(
+    {"intensity", "color", "cie", "rgb", "red", "green", "blue", "zoom", "frost"}
+)
+
+
+def _filter_universal_attrs(attrs: dict[str, typing.Any]) -> dict[str, typing.Any]:
+    """Keep only generic/universal attributes from a captured device attribute dict."""
+    return {
+        str(k): copy.deepcopy(v)
+        for k, v in attrs.items()
+        if str(k).lower() in _UNIVERSAL_ATTR_KEYS
+    }
+
+
+def _normalize_palette_mode(mode: PaletteMode | str) -> PaletteMode:
+    if isinstance(mode, PaletteMode):
+        return mode
+    return PaletteMode(str(mode).lower())
 
 
 def format_palette_number(number: float) -> str:
@@ -363,6 +387,7 @@ class PaletteApplyAction(Action):
         self.category: PaletteCategory = PaletteCategory.COLOR
         self.number: float = 0.0
         self.channels: list[int] | None = None
+        self.absolute: bool = False
         self._old_user_levels: dict[int, float] = {}
         self._new_user_levels: dict[int, float] = {}
         self._old_device_states: dict[int, dict[str, typing.Any]] = {}
@@ -376,11 +401,14 @@ class PaletteApplyAction(Action):
         category: PaletteCategory | str,
         number: float,
         channels: list[int] | None = None,
+        *,
+        absolute: bool = False,
     ) -> None:
         """Configure the palette/preset to recall and optional target channel list."""
         self.category = _normalize_category(category)
         self.number = float(number)
         self.channels = [int(ch) for ch in channels] if channels else None
+        self.absolute = bool(absolute)
 
     def execute(self) -> list[int]:
         """Apply the palette values to matching channels/devices."""
@@ -394,22 +422,39 @@ class PaletteApplyAction(Action):
             self.can_undo = False
             return []
 
+        patch = getattr(lightshow, "patch", None) if lightshow is not None else None
+        patch_devices = getattr(patch, "devices", None) if patch is not None else None
+
         if self.channels:
             candidates = list(self.channels)
         else:
             active_sel = [int(ch) for ch in getattr(self.app, "selected_channels", [])]
-            candidates = (
-                active_sel
-                if active_sel
-                else sorted(set(palette.channels) | set(palette.device_values))
-            )
+            if active_sel:
+                candidates = active_sel
+            elif palette.mode is PaletteMode.BY_TYPE and isinstance(
+                patch_devices, dict
+            ):
+                type_keys = set(palette.by_type_channels) | set(palette.by_type_values)
+                by_type_chs = [
+                    int(ch)
+                    for ch, dev in patch_devices.items()
+                    if getattr(dev, "type_key", None) in type_keys
+                ]
+                candidates = sorted(
+                    set(palette.channels)
+                    | set(palette.device_values)
+                    | set(by_type_chs)
+                )
+            else:
+                candidates = sorted(set(palette.channels) | set(palette.device_values))
 
         targets: list[int] = []
         seen: set[int] = set()
         for ch in candidates:
-            if ch not in seen and (
-                ch in palette.channels or ch in palette.device_values
-            ):
+            if ch in seen:
+                continue
+            type_key = get_channel_type_key(lightshow, ch)
+            if palette.has_data_for_channel(ch, type_key):
                 seen.add(ch)
                 targets.append(ch)
 
@@ -417,7 +462,6 @@ class PaletteApplyAction(Action):
             self.can_undo = False
             return []
 
-        patch = getattr(lightshow, "patch", None) if lightshow is not None else None
         backend = getattr(self.app, "backend", None)
         backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
         user_levels = (
@@ -449,18 +493,19 @@ class PaletteApplyAction(Action):
 
             changed = False
             applied_refs: dict[str, tuple[str, float]] = {}
+            type_key = get_channel_type_key(lightshow, ch)
+            resolved_int, resolved_devs = palette.resolve_channel(ch, type_key)
+
             target_intensity: float | None = None
             if (
                 self.category in (PaletteCategory.INTENSITY, PaletteCategory.PRESET)
-                and ch in palette.channels
+                and resolved_int is not None
             ):
-                target_intensity = max(0.0, min(1.0, float(palette.channels[ch])))
+                target_intensity = max(0.0, min(1.0, float(resolved_int)))
             elif (
-                self.category is PaletteCategory.PRESET
-                and ch in palette.device_values
-                and "intensity" in palette.device_values[ch]
+                self.category is PaletteCategory.PRESET and "intensity" in resolved_devs
             ):
-                raw_int = palette.device_values[ch]["intensity"]
+                raw_int = resolved_devs["intensity"]
                 if isinstance(raw_int, (int, float)):
                     val = float(raw_int)
                     target_intensity = max(
@@ -479,13 +524,9 @@ class PaletteApplyAction(Action):
             if (
                 dev is not None
                 and self.category is not PaletteCategory.INTENSITY
-                and ch in palette.device_values
+                and resolved_devs
             ):
-                attrs = {
-                    k: v
-                    for k, v in palette.device_values[ch].items()
-                    if k != "intensity"
-                }
+                attrs = {k: v for k, v in resolved_devs.items() if k != "intensity"}
                 if attrs and hasattr(dev, "apply_device_values"):
                     dev.apply_device_values(attrs)
                     for attr_name in attrs:
@@ -497,7 +538,12 @@ class PaletteApplyAction(Action):
                 self._new_device_states[ch] = _snapshot_device_state(dev)
             if changed:
                 if live_state is not None and applied_refs:
-                    live_state.set_palette_refs(ch, applied_refs, mark_manual=True)
+                    if not self.absolute:
+                        live_state.set_palette_refs(ch, applied_refs, mark_manual=True)
+                    elif hasattr(live_state, "mark_manual_params"):
+                        live_state.mark_manual_params(
+                            ch, list(applied_refs.keys()), break_refs=True
+                        )
                     self._new_live_states[ch] = live_state.snapshot_channel(ch)
                 self._affected_channels.append(ch)
 
@@ -596,6 +642,7 @@ class PaletteRecordAction(Action):
         self.channels_data: dict[int, float] | None = None
         self.device_values: dict[int, dict[str, typing.Any]] | None = None
         self.palette_refs: dict[int, dict[str, tuple[str, float]]] | None = None
+        self.mode: PaletteMode | None = None
         self._previous_palette: Palette | None = None
         self._recorded_palette: Palette | None = None
 
@@ -608,6 +655,7 @@ class PaletteRecordAction(Action):
         channels_data: dict[int, float] | None = None,
         device_values: dict[int, dict[str, typing.Any]] | None = None,
         palette_refs: dict[int, dict[str, tuple[str, float]]] | None = None,
+        mode: PaletteMode | str | None = None,
     ) -> None:
         """Configure palette recording target and optional explicit payload."""
         self.category = _normalize_category(category)
@@ -625,11 +673,15 @@ class PaletteRecordAction(Action):
         self.palette_refs = (
             copy.deepcopy(palette_refs) if palette_refs is not None else None
         )
+        self.mode = _normalize_palette_mode(mode) if mode is not None else None
 
     def execute(self) -> dict[str, typing.Any]:
         """Store the recorded palette/preset and propagate cascade updates."""
         lightshow = self.app.lightshow
         existing = lightshow.palettes.get(self.category, self.number)
+        if existing is not None and existing.locked:
+            self.can_undo = False
+            return {"palette": existing, "locked": True, "propagation": {}}
         self._previous_palette = copy.deepcopy(existing)
 
         if self.channels_data is None and self.device_values is None:
@@ -639,6 +691,12 @@ class PaletteRecordAction(Action):
         else:
             ch_data = dict(self.channels_data or {})
             dev_vals = copy.deepcopy(self.device_values or {})
+
+        eff_mode = (
+            self.mode
+            if self.mode is not None
+            else (existing.mode if existing is not None else PaletteMode.SELECTIVE)
+        )
 
         text = self.label or (existing.text if existing is not None else "")
         if self.palette_refs is not None:
@@ -655,13 +713,49 @@ class PaletteRecordAction(Action):
         else:
             refs = copy.deepcopy(existing.palette_refs if existing is not None else {})
 
+        sel_channels: dict[int, float] = {}
+        sel_devs: dict[int, dict[str, typing.Any]] = {}
+        by_type_ch: dict[str, float] = {}
+        by_type_vals: dict[str, dict[str, typing.Any]] = {}
+        univ_int: float | None = None
+        univ_vals: dict[str, typing.Any] = {}
+
+        if eff_mode is PaletteMode.BY_TYPE:
+            for ch, lvl in ch_data.items():
+                tk = get_channel_type_key(lightshow, ch)
+                if tk:
+                    by_type_ch.setdefault(tk, float(lvl))
+                else:
+                    sel_channels[ch] = float(lvl)
+            for ch, attrs in dev_vals.items():
+                tk = get_channel_type_key(lightshow, ch)
+                if tk:
+                    by_type_vals.setdefault(tk, copy.deepcopy(attrs))
+                else:
+                    sel_devs[ch] = copy.deepcopy(attrs)
+        elif eff_mode is PaletteMode.UNIVERSAL:
+            if ch_data:
+                first_ch = next(iter(ch_data))
+                univ_int = float(ch_data[first_ch])
+            if dev_vals:
+                first_ch = next(iter(dev_vals))
+                univ_vals = _filter_universal_attrs(dev_vals[first_ch])
+        else:
+            sel_channels = ch_data
+            sel_devs = dev_vals
+
         new_palette = Palette(
             category=self.category,
             number=self.number,
             text=text,
-            channels=ch_data,
-            device_values=dev_vals,
+            channels=sel_channels,
+            device_values=sel_devs,
             palette_refs=refs,
+            mode=eff_mode,
+            by_type_channels=by_type_ch,
+            by_type_values=by_type_vals,
+            universal_intensity=univ_int,
+            universal_values=univ_vals,
         )
         self._recorded_palette = copy.deepcopy(new_palette)
         lightshow.palettes.add(new_palette)
@@ -712,6 +806,7 @@ class PaletteUpdateAction(Action):
         self.channels: list[int] | None = None
         self.channels_data: dict[int, float] | None = None
         self.device_values: dict[int, dict[str, typing.Any]] | None = None
+        self.selective_override: bool = False
         self._previous_palette: Palette | None = None
         self._updated_palette: Palette | None = None
 
@@ -722,6 +817,7 @@ class PaletteUpdateAction(Action):
         channels: list[int] | None = None,
         channels_data: dict[int, float] | None = None,
         device_values: dict[int, dict[str, typing.Any]] | None = None,
+        selective_override: bool = False,
     ) -> None:
         """Configure palette/preset update target and optional explicit values."""
         self.category = _normalize_category(category)
@@ -735,12 +831,13 @@ class PaletteUpdateAction(Action):
         self.device_values = (
             copy.deepcopy(device_values) if device_values is not None else None
         )
+        self.selective_override = bool(selective_override)
 
     def execute(self) -> dict[str, typing.Any] | None:
         """Merge updated values into existing palette and propagate cascade."""
         lightshow = self.app.lightshow
         existing = lightshow.palettes.get(self.category, self.number)
-        if existing is None:
+        if existing is None or existing.locked:
             self.can_undo = False
             return None
 
@@ -754,10 +851,39 @@ class PaletteUpdateAction(Action):
             ch_data = dict(self.channels_data or {})
             dev_vals = copy.deepcopy(self.device_values or {})
 
-        for ch, lvl in ch_data.items():
-            existing.channels[int(ch)] = float(lvl)
-        for ch, attrs in dev_vals.items():
-            existing.device_values.setdefault(int(ch), {}).update(copy.deepcopy(attrs))
+        if self.selective_override or existing.mode is PaletteMode.SELECTIVE:
+            for ch, lvl in ch_data.items():
+                existing.channels[int(ch)] = float(lvl)
+            for ch, attrs in dev_vals.items():
+                existing.device_values.setdefault(int(ch), {}).update(
+                    copy.deepcopy(attrs)
+                )
+        elif existing.mode is PaletteMode.BY_TYPE:
+            for ch, lvl in ch_data.items():
+                tk = get_channel_type_key(lightshow, int(ch))
+                if tk:
+                    existing.by_type_channels[tk] = float(lvl)
+                else:
+                    existing.channels[int(ch)] = float(lvl)
+            for ch, attrs in dev_vals.items():
+                tk = get_channel_type_key(lightshow, int(ch))
+                if tk:
+                    existing.by_type_values.setdefault(tk, {}).update(
+                        copy.deepcopy(attrs)
+                    )
+                else:
+                    existing.device_values.setdefault(int(ch), {}).update(
+                        copy.deepcopy(attrs)
+                    )
+        else:
+            if ch_data:
+                first_ch = next(iter(ch_data))
+                existing.universal_intensity = float(ch_data[first_ch])
+            if dev_vals:
+                first_ch = next(iter(dev_vals))
+                existing.universal_values.update(
+                    _filter_universal_attrs(dev_vals[first_ch])
+                )
 
         if (
             self.category is PaletteCategory.PRESET
@@ -910,3 +1036,134 @@ class PaletteRenameAction(Action):
     def get_history_details(self) -> str:
         """Return renamed palette label for Undo History."""
         return f"{format_palette_label(self.category, self.number)} \u2192 {self.text}"
+
+
+class PaletteSetModeAction(Action):
+    """Change the storage/resolution mode of an existing Palette or Preset."""
+
+    name = "palette.set_mode"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.category: PaletteCategory = PaletteCategory.COLOR
+        self.number: float = 0.0
+        self.mode: PaletteMode = PaletteMode.SELECTIVE
+        self._old_mode: PaletteMode = PaletteMode.SELECTIVE
+
+    def configure(
+        self,
+        category: PaletteCategory | str,
+        number: float,
+        mode: PaletteMode | str,
+    ) -> None:
+        """Configure target palette and new mode."""
+        self.category = _normalize_category(category)
+        self.number = float(number)
+        self.mode = _normalize_palette_mode(mode)
+
+    def execute(self) -> bool:
+        """Set palette mode if it exists and is not locked."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None or existing.locked:
+            self.can_undo = False
+            return False
+        self._old_mode = existing.mode
+        if self._old_mode is self.mode:
+            self.can_undo = False
+            return True
+        existing.mode = self.mode
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+        return True
+
+    def undo(self) -> None:
+        """Restore previous palette mode."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.mode = self._old_mode
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def redo(self) -> None:
+        """Reapply new palette mode."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.mode = self.mode
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def get_history_details(self) -> str:
+        """Return palette mode change summary for Undo History."""
+        return f"{format_palette_label(self.category, self.number)}: {self.mode.value}"
+
+
+class PaletteSetLockedAction(Action):
+    """Lock or unlock an existing Palette or Preset."""
+
+    name = "palette.set_locked"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.category: PaletteCategory = PaletteCategory.COLOR
+        self.number: float = 0.0
+        self.locked: bool = True
+        self._old_locked: bool = False
+
+    def configure(
+        self,
+        category: PaletteCategory | str,
+        number: float,
+        locked: bool,
+    ) -> None:
+        """Configure target palette and lock state."""
+        self.category = _normalize_category(category)
+        self.number = float(number)
+        self.locked = bool(locked)
+
+    def execute(self) -> bool:
+        """Set palette lock state."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            self.can_undo = False
+            return False
+        self._old_locked = bool(existing.locked)
+        if self._old_locked is self.locked:
+            self.can_undo = False
+            return True
+        existing.locked = self.locked
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+        return True
+
+    def undo(self) -> None:
+        """Restore previous lock state."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.locked = self._old_locked
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def redo(self) -> None:
+        """Reapply new lock state."""
+        lightshow = self.app.lightshow
+        existing = lightshow.palettes.get(self.category, self.number)
+        if existing is None:
+            return
+        existing.locked = self.locked
+        lightshow.set_modified()
+        self.app.emit("palettes.changed", self.category.value, self.number)
+
+    def get_history_details(self) -> str:
+        """Return palette lock state change summary for Undo History."""
+        state = "Lock" if self.locked else "Unlock"
+        return f"{format_palette_label(self.category, self.number)} ({state})"

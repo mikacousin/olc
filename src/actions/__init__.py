@@ -163,6 +163,8 @@ from olc.actions.palette import (
     PaletteDeleteAction,
     PaletteRecordAction,
     PaletteRenameAction,
+    PaletteSetLockedAction,
+    PaletteSetModeAction,
     PaletteUpdateAction,
 )
 from olc.actions.park import (
@@ -382,6 +384,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PaletteUpdateAction,
         PaletteDeleteAction,
         PaletteRenameAction,
+        PaletteSetModeAction,
+        PaletteSetLockedAction,
         EffectCreateAction,
         EffectDeleteAction,
         EffectRenameAction,

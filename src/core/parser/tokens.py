@@ -56,6 +56,11 @@ class TokenType(Enum):
     FP = auto()
     CP = auto()
     BP = auto()
+    BY = auto()
+    TYPE = auto()
+    SELECTIVE = auto()
+    UNIVERSAL = auto()
+    ABSOLUTE = auto()
 
     # Moving lights & Attribute keywords
     HOME = auto()

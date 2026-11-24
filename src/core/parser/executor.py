@@ -1864,10 +1864,16 @@ class CommandExecutor:
                 node.category,
                 node.palette_id,
                 channels=target_channels,
+                absolute=node.absolute,
             )
         else:
             action = PaletteApplyAction(self.app)
-            action.configure(node.category, node.palette_id, channels=target_channels)
+            action.configure(
+                node.category,
+                node.palette_id,
+                channels=target_channels,
+                absolute=node.absolute,
+            )
             affected = action.execute()
 
         affected_list = list(affected) if isinstance(affected, list) else []
@@ -1888,13 +1894,17 @@ class CommandExecutor:
         if registry is not None and "palette.record" in getattr(
             registry, "_action_classes", {}
         ):
-            registry.execute("palette.record", node.category, node.palette_id)
+            res = registry.execute(
+                "palette.record", node.category, node.palette_id, mode=node.mode
+            )
         else:
             action = PaletteRecordAction(self.app)
-            action.configure(node.category, node.palette_id)
-            action.execute()
+            action.configure(node.category, node.palette_id, mode=node.mode)
+            res = action.execute()
 
         label = format_palette_label(node.category, node.palette_id)
+        if isinstance(res, dict) and res.get("locked"):
+            return CommandResult(False, f"{label} is locked")
         return CommandResult(True, f"Recorded {label}")
 
     def _execute_update_palette(self, node: UpdatePaletteCommandNode) -> CommandResult:
@@ -1903,17 +1913,27 @@ class CommandExecutor:
             return CommandResult(False, "Palettes store not available")
 
         label = format_palette_label(node.category, node.palette_id)
-        if lightshow.palettes.get(node.category, node.palette_id) is None:
+        existing = lightshow.palettes.get(node.category, node.palette_id)
+        if existing is None:
             return CommandResult(False, f"{label} does not exist")
+        if existing.locked:
+            return CommandResult(False, f"{label} is locked")
 
         registry = self._get_registry()
         if registry is not None and "palette.update" in getattr(
             registry, "_action_classes", {}
         ):
-            res = registry.execute("palette.update", node.category, node.palette_id)
+            res = registry.execute(
+                "palette.update",
+                node.category,
+                node.palette_id,
+                selective_override=node.selective,
+            )
         else:
             action = PaletteUpdateAction(self.app)
-            action.configure(node.category, node.palette_id)
+            action.configure(
+                node.category, node.palette_id, selective_override=node.selective
+            )
             res = action.execute()
 
         propagation = res.get("propagation", {}) if isinstance(res, dict) else {}

@@ -307,6 +307,7 @@ class ApplyPaletteCommandNode(CommandNode):
     selection: SelectionNode | None
     category: str
     palette_id: float
+    absolute: bool = False
 
 
 @dataclasses.dataclass
@@ -315,6 +316,7 @@ class RecordPaletteCommandNode(CommandNode):
 
     category: str
     palette_id: float
+    mode: str | None = None
 
 
 @dataclasses.dataclass
@@ -323,6 +325,7 @@ class UpdatePaletteCommandNode(CommandNode):
 
     category: str
     palette_id: float
+    selective: bool = False
 
 
 @dataclasses.dataclass

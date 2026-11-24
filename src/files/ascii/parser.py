@@ -45,7 +45,7 @@ from olc.files.ascii.eos_effects import (
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
-from olc.show.palette import PaletteCategory
+from olc.show.palette import PaletteCategory, PaletteMode
 
 LOGGER = logging.getLogger(__name__)
 _TOKEN_SPLIT_RE = re.compile(r"[\t,/; =><@]+")
@@ -188,6 +188,7 @@ class AsciiParser(ReadFile):
         self._palette_raw_refs: dict[
             tuple[str, float], dict[int, dict[int, tuple[str, float]]]
         ] = {}
+        self._palette_by_type_channels: dict[tuple[str, float], set[int]] = {}
         self._sub_raw_params: dict[int, dict[int, dict[int, float]]] = {}
         self._sub_raw_refs: dict[int, dict[int, dict[int, tuple[str, float]]]] = {}
         self._cue_raw_params: dict[tuple[int, float], dict[int, dict[int, float]]] = {}
@@ -723,6 +724,7 @@ class AsciiParser(ReadFile):
         self,
         raw_params_by_ch: dict[int, dict[int, float]],
         raw_refs_by_ch: dict[int, dict[int, tuple[str, float]]],
+        by_type_channels: set[int] | None = None,
     ) -> None:
         """Record numeric values and palette references from a $$Param line."""
         try:
@@ -738,9 +740,17 @@ class AsciiParser(ReadFile):
                 p_id = int(self.args[index])
             except ValueError:
                 continue
-            raw_val, pal_ref = parse_eos_param_token(self.args[index + 1])
+            raw_tok = self.args[index + 1]
+            raw_val, pal_ref = parse_eos_param_token(raw_tok)
             if raw_val is not None:
                 ch_raw[p_id] = raw_val
+                tok_clean = raw_tok.strip().lower()
+                if (
+                    by_type_channels is not None
+                    and len(tok_clean) > 1
+                    and tok_clean[0] == "t"
+                ):
+                    by_type_channels.add(channel)
             elif pal_ref is not None:
                 ch_refs[p_id] = pal_ref
 
@@ -784,6 +794,7 @@ class AsciiParser(ReadFile):
             self._record_param_line(
                 self._palette_raw_params.setdefault(pal_key, {}),
                 self._palette_raw_refs.setdefault(pal_key, {}),
+                self._palette_by_type_channels.setdefault(pal_key, set()),
             )
 
     def _new_eos_preset(self) -> None:
@@ -824,6 +835,7 @@ class AsciiParser(ReadFile):
             self._record_param_line(
                 self._palette_raw_params.setdefault(key, {}),
                 self._palette_raw_refs.setdefault(key, {}),
+                self._palette_by_type_channels.setdefault(key, set()),
             )
 
     def _new_group(self) -> None:
@@ -1803,6 +1815,49 @@ class AsciiParser(ReadFile):
             ):
                 target["channels"][ch] = intensity_val
 
+    def _ascii_channel_type_key(self, channel: int) -> str | None:
+        """Compute canonical LightingDevice.type_key for parsed ASCII device data."""
+        dev = self.data.get("devices", {}).get(int(channel))
+        if not isinstance(dev, dict):
+            return None
+        mode = str(dev.get("mode_name", "")).strip().lower()
+        gdtf = str(dev.get("gdtf_id", "")).strip().lower()
+        if gdtf:
+            return f"gdtf:{gdtf}::{mode}" if mode else f"gdtf:{gdtf}"
+        model = str(dev.get("model", "")).strip().lower()
+        if model:
+            mfr = str(dev.get("manufacturer", "")).strip().lower()
+            base = f"{mfr}:{model}" if mfr else model
+            return f"{base}::{mode}" if mode else base
+        ftype = str(dev.get("fixture_type", "generic")).strip().lower()
+        return f"type:{ftype}"
+
+    def _promote_by_type_palette_entries(
+        self, target: dict[str, typing.Any], by_type_chs: set[int]
+    ) -> None:
+        """Move Eos ``t``-prefixed channels into ``by_type_*`` mappings."""
+        if not by_type_chs:
+            return
+        bt_ch = target.setdefault("by_type_channels", {})
+        bt_vals = target.setdefault("by_type_values", {})
+        channels_map = target.get("channels", {})
+        dev_values_map = target.get("device_values", {})
+        promoted = False
+        for ch in sorted(by_type_chs):
+            tk = self._ascii_channel_type_key(ch)
+            if not tk:
+                continue
+            if ch in channels_map:
+                bt_ch.setdefault(tk, float(channels_map[ch]))
+                promoted = True
+            if ch in dev_values_map:
+                attrs = dev_values_map[ch]
+                if isinstance(attrs, dict):
+                    bt_vals.setdefault(tk, {}).update(dict(attrs))
+                    promoted = True
+        if promoted:
+            target["mode"] = PaletteMode.BY_TYPE.value
+
     def _resolve_palettes_and_refs(self) -> None:
         """Pass 2: decode base palettes and resolve refs on Presets, Subs, and Cues."""
         base_cats = (
@@ -1829,6 +1884,9 @@ class AsciiParser(ReadFile):
                     self._palette_raw_refs.get(key, {}),
                     store_resolved_key=key,
                 )
+                self._promote_by_type_palette_entries(
+                    target, self._palette_by_type_channels.get(key, set())
+                )
 
         # 2. Resolve Eos Presets (may reference base palettes, e.g. PR110 -> BP2)
         preset_cat = PaletteCategory.PRESET.value
@@ -1843,6 +1901,9 @@ class AsciiParser(ReadFile):
                     self._palette_raw_params.get(key, {}),
                     self._palette_raw_refs.get(key, {}),
                     store_resolved_key=key,
+                )
+                self._promote_by_type_palette_entries(
+                    target, self._palette_by_type_channels.get(key, set())
                 )
 
         # 3. Resolve mounted Subs backed by $$Param lines

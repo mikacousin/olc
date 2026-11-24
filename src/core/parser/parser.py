@@ -530,6 +530,17 @@ class CommandParser:
 
         return None
 
+    def _parse_optional_palette_mode(self) -> str | None:
+        """Parse optional BY TYPE, SELECTIVE, or UNIVERSAL modifier."""
+        if self.match(TokenType.BY):
+            self.expect(TokenType.TYPE, "Expected TYPE after BY")
+            return "by_type"
+        if self.match(TokenType.SELECTIVE):
+            return "selective"
+        if self.match(TokenType.UNIVERSAL):
+            return "universal"
+        return None
+
     def _try_parse_apply_palette(
         self, selection: SelectionNode | None
     ) -> ApplyPaletteCommandNode | None:
@@ -538,7 +549,10 @@ class CommandParser:
             self.advance()
             num_tok = self.expect(TokenType.NUMBER, "Expected preset number")
             return ApplyPaletteCommandNode(
-                selection=selection, category="preset", palette_id=float(num_tok.value)
+                selection=selection,
+                category="preset",
+                palette_id=float(num_tok.value),
+                absolute=self.match(TokenType.ABSOLUTE),
             )
 
         if self._peek_is(*PALETTE_SHORTHAND_TOKENS.keys()):
@@ -546,7 +560,10 @@ class CommandParser:
             category = PALETTE_SHORTHAND_TOKENS[short_tok.type]
             num_tok = self.expect(TokenType.NUMBER, "Expected palette number")
             return ApplyPaletteCommandNode(
-                selection=selection, category=category, palette_id=float(num_tok.value)
+                selection=selection,
+                category=category,
+                palette_id=float(num_tok.value),
+                absolute=self.match(TokenType.ABSOLUTE),
             )
 
         if self._peek_is(TokenType.INTENSITY):
@@ -557,6 +574,7 @@ class CommandParser:
                 selection=selection,
                 category="intensity",
                 palette_id=float(num_tok.value),
+                absolute=self.match(TokenType.ABSOLUTE),
             )
 
         if self._peek_is(TokenType.FOCUS, TokenType.COLOR, TokenType.BEAM):
@@ -569,6 +587,7 @@ class CommandParser:
                     selection=selection,
                     category=PALETTE_CATEGORY_TOKENS[cat_tok.type],
                     palette_id=float(num_tok.value),
+                    absolute=self.match(TokenType.ABSOLUTE),
                 )
             if (
                 self._probe_expected is not None
@@ -863,7 +882,10 @@ class CommandParser:
 
         spec = self._parse_palette_spec()
         if spec is not None:
-            return RecordPaletteCommandNode(category=spec[0], palette_id=spec[1])
+            mode = self._parse_optional_palette_mode()
+            return RecordPaletteCommandNode(
+                category=spec[0], palette_id=spec[1], mode=mode
+            )
 
         seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
@@ -884,7 +906,10 @@ class CommandParser:
 
         spec = self._parse_palette_spec()
         if spec is not None:
-            return UpdatePaletteCommandNode(category=spec[0], palette_id=spec[1])
+            selective = self.match(TokenType.SELECTIVE)
+            return UpdatePaletteCommandNode(
+                category=spec[0], palette_id=spec[1], selective=selective
+            )
 
         seq_id = self._parse_optional_sequence_prefix()
         self.match(TokenType.CUE)  # Optional CUE keyword
