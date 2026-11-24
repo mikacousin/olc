@@ -120,7 +120,7 @@ class LightShow(ShowFile):
         # Curves
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
-        self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
+        self.main_playback = Sequence(1, text="", lightshow=lightshow_type)
         # Blind cue level editor
         self.cue_editor = CueEditor(lightshow_type)
         # Secondary sequences (2..N) and parametric Effects Manager

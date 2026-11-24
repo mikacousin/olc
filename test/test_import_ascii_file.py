@@ -1,5 +1,6 @@
 """Unit and integration tests for ASCII / EOS show file importation."""
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import gi
@@ -2678,9 +2679,6 @@ def test_eos_show_dmx_fidelity_and_bkgrd_effects(
 
 def test_import_eos_nocturne_page3_and_page4_three_fader_effect_controllers() -> None:
     """Verify Eos $$Control 3-fader effect wings (Master, Rate, Size) import & run."""
-    from pathlib import Path
-    from unittest.mock import MagicMock
-
     from olc.core.app import CoreApplication
     from olc.show.fader import FaderEffect
 
@@ -2844,3 +2842,86 @@ def test_import_eos_fader_exclusion_solo_inhibitive_and_roundtrip(
     rt2 = ls3.fader_bank.faders[1][2]
     assert rt2.inhibitive is True
     assert rt2.locked is True
+
+
+def test_sequence_1_default_empty_and_ascii_label_roundtrip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sequence 1 must default to empty text and preserve labels on ASCII I/O."""
+    from olc.core.app import CoreApplication
+    from olc.files.ascii.writer import AsciiWriter
+
+    mock_app = MagicMock()
+    monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
+    monkeypatch.setattr("olc.show.lightshow.App", lambda: mock_app, raising=False)
+
+    app = CoreApplication(MagicMock())
+    assert app.lightshow.main_playback.text == ""
+    app.lightshow.main_playback.text = "Temp"
+    app.action_registry.execute("show.new")
+    assert app.lightshow.main_playback.text == ""
+
+    # 1. Eos $CueList 1 with Text Strip -> main_playback.text == "Strip"
+    asc_named = tmp_path / "eos_named.asc"
+    asc_named.write_text(
+        "\n".join(
+            [
+                "IDENT 3:0",
+                "MANUFACTURER ETC",
+                "CONSOLE Eos",
+                "$CueList 1",
+                "   Text Strip",
+                "Cue 1 1",
+                "   Up 2",
+                "   Chan 1 @ 50",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+    ls_named = LightShow()
+    ImportFile(
+        ls_named, Gio.File.new_for_path(str(asc_named)), FileType.ASCII
+    ).parse_sync(auto_import=True)
+    assert ls_named.main_playback.text == "Strip"
+
+    # 2. Round-trip via AsciiWriter preserves "Strip"
+    rt_path = tmp_path / "eos_named_rt.asc"
+    AsciiWriter(rt_path, ls_named).write()
+    rt_text = rt_path.read_text(encoding="utf-8")
+    assert "TEXT Strip\n" in rt_text
+    assert "$$TEXT Strip\n" in rt_text
+
+    ls_rt = LightShow()
+    ImportFile(ls_rt, Gio.File.new_for_path(str(rt_path)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    assert ls_rt.main_playback.text == "Strip"
+
+    # 3. Eos $CueList 1 without Text -> main_playback.text == ""
+    asc_unnamed = tmp_path / "eos_unnamed.asc"
+    asc_unnamed.write_text(
+        "\n".join(
+            [
+                "IDENT 3:0",
+                "MANUFACTURER ETC",
+                "CONSOLE Eos",
+                "$CueList 1",
+                "Cue 1 1",
+                "   Up 2",
+                "   Chan 1 @ 50",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+    ls_unnamed = LightShow()
+    ImportFile(
+        ls_unnamed, Gio.File.new_for_path(str(asc_unnamed)), FileType.ASCII
+    ).parse_sync(auto_import=True)
+    assert ls_unnamed.main_playback.text == ""
+
+    rt_empty = tmp_path / "eos_unnamed_rt.asc"
+    AsciiWriter(rt_empty, ls_unnamed).write()
+    assert "$SEQUENCE 1 0\n\n" in rt_empty.read_text(encoding="utf-8")

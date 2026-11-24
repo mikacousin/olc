@@ -138,7 +138,13 @@ class AsciiWriter(WriteFile):
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
         self.stream.write(bytes("! Main sequence\n\n", "ascii"))
-        self.stream.write(bytes("$SEQUENCE 1 0\n\n", "ascii"))
+        self.stream.write(bytes("$SEQUENCE 1 0\n", "ascii"))
+        if self.lightshow.main_playback.text:
+            self._ascii_text(self.lightshow.main_playback.text)
+            self.stream.write(
+                bytes(f"$$TEXT {self.lightshow.main_playback.text}\n", "utf8")
+            )
+        self.stream.write(bytes("\n", "ascii"))
         for step in self.lightshow.main_playback.steps:
             if not step.cue or step.cue.number == 0:
                 continue

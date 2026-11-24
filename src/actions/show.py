@@ -97,7 +97,7 @@ class ShowNewAction(Action):
             self.app.emit("park.changed", 0)
 
         # Reset main playback
-        lightshow.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow)
+        lightshow.main_playback = Sequence(1, text="", lightshow=lightshow)
         lightshow.main_playback.position = 0
         lightshow.main_playback.update_channels()
 

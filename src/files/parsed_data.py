@@ -616,6 +616,7 @@ class ParsedData:
 
     def _replace_main_playback(self, sequence: int) -> None:
         seq_data = self.data["sequences"][sequence]
+        self.lightshow.main_playback.text = str(seq_data.get("label", ""))
         self.lightshow.main_playback.tracking_mode = bool(
             seq_data.get("tracking_mode", False)
         )
@@ -638,6 +639,8 @@ class ParsedData:
 
     def _merge_main_playback(self, sequence: int) -> None:
         seq_data = self.data["sequences"][sequence]
+        if seq_data.get("label"):
+            self.lightshow.main_playback.text = str(seq_data["label"])
         if "tracking_mode" in seq_data:
             self.lightshow.main_playback.tracking_mode = bool(seq_data["tracking_mode"])
         if "mib_enabled" in seq_data:
