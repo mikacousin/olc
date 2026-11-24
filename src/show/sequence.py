@@ -29,10 +29,12 @@ from olc.show.sequence_threads import (
     _emit_device_changes,
     _interpolate_device_states,
     _next_step,
+    _notify_runner,
     _parse_rgb_norm,
     _sync_resolved_effects,
     apply_arbitrated_output,
     get_cue,
+    is_main_sequence,
 )
 from olc.show.step import Step
 
@@ -191,6 +193,7 @@ class Sequence:
             _sync_resolved_effects(
                 self.app, resolved, fade_time=0.0, clear_live_state=True
             )
+            _notify_runner(self, "active", fade_progress=0.0, fade_remaining=0.0)
         elif self.backend is not None and hasattr(self.backend, "dmx"):
             n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
             self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
@@ -199,11 +202,13 @@ class Sequence:
             _sync_resolved_effects(
                 self.app, resolved, fade_time=0.0, clear_live_state=True
             )
+            _notify_runner(self, "active", fade_progress=0.0, fade_remaining=0.0)
             self.backend.dmx.set_levels()
         else:
             _sync_resolved_effects(
                 self.app, resolved, fade_time=0.0, clear_live_state=True
             )
+            _notify_runner(self, "active", fade_progress=0.0, fade_remaining=0.0)
         self.update_channels()
 
     def release(self) -> None:
@@ -223,6 +228,7 @@ class Sequence:
             )
         if self.app is not None and hasattr(self.app, "emit"):
             self.app.emit("playback.sequence_released", self.index)
+        _notify_runner(self, "idle", fade_progress=0.0, fade_remaining=0.0)
 
     def assert_playback(self) -> None:
         """Reclaim ownership of all channels and parameters held by this sequence."""
@@ -249,7 +255,7 @@ class Sequence:
         """Set the on_go transition flag and trigger event notifications."""
         if getattr(self, "_on_go", False) != value:
             self._on_go = value
-            if self.app is not None:
+            if self.app is not None and is_main_sequence(self):
                 # Update action registry feedback for MIDI bindings
                 self.app.action_registry.trigger_feedback("playback.go")
                 # Emit event for GUI (GuiEventBridge)
@@ -279,10 +285,11 @@ class Sequence:
             True if Go to stop, else False
         """
         if self.on_go and self.thread:
+            is_main = is_main_sequence(self)
             # Switch off Pause Led / Feedback
             if not self.thread.pause.is_set():
                 self.thread.pause.set()
-                if self.app is not None:
+                if is_main and self.app is not None:
                     if hasattr(self.app, "action_registry"):
                         self.app.action_registry.trigger_feedback("playback.pause")
                     if hasattr(self.app, "emit"):
@@ -300,9 +307,9 @@ class Sequence:
             self.thread.join(timeout=1.0)
             self.thread = None
             self.on_go = False
-            if self.app is not None and hasattr(self.app, "emit"):
+            if is_main and self.app is not None and hasattr(self.app, "emit"):
                 self.app.emit("playback.stopped")
-            if self.app is not None and self.app.crossfade is not None:
+            if is_main and self.app is not None and self.app.crossfade is not None:
                 self.app.crossfade.scale_a.set_value(0)
                 self.app.crossfade.scale_b.set_value(0)
             # Stop at the end
@@ -549,7 +556,8 @@ class Sequence:
                 )
 
                 # Emit event for GUI (GuiEventBridge) to setup times and view
-                if self.app is not None:
+                is_main = is_main_sequence(self)
+                if is_main and self.app is not None:
                     self.app.emit(
                         "playback.goto_selected",
                         {
@@ -587,7 +595,7 @@ class Sequence:
                     self.load_step(i)
                     self.position = i - 1
                     next_after = _next_step(typing.cast(typing.Any, self))
-                    if self.app is not None:
+                    if is_main and self.app is not None:
                         self.app.emit(
                             "playback.transition_completed",
                             {"next_step": next_after},
@@ -630,7 +638,7 @@ class Sequence:
             )
 
             # Emit event for GUI (GuiEventBridge)
-            if self.app is not None:
+            if is_main_sequence(self) and self.app is not None:
                 self.app.emit(
                     "playback.go_triggered_direct",
                     {
@@ -657,7 +665,12 @@ class Sequence:
                     self.position = 0
             # Indicates that a Go is in progress
             self.on_go = True
-            if self.app is not None and hasattr(self.app, "emit"):
+            _notify_runner(self, "fading", fade_progress=0.0, fade_remaining=0.0)
+            if (
+                is_main_sequence(self)
+                and self.app is not None
+                and hasattr(self.app, "emit")
+            ):
                 self.app.emit("playback.go_started")
             self.thread = ThreadGo(
                 goto, typing.cast(typing.Any, self), override_time=override_time
@@ -691,7 +704,7 @@ class Sequence:
         )
 
         # Emit event for GUI (GuiEventBridge)
-        if self.app is not None:
+        if is_main_sequence(self) and self.app is not None:
             self.app.emit(
                 "playback.go_back_started",
                 {
@@ -711,9 +724,11 @@ class Sequence:
         if self.thread:
             if self.thread.pause.is_set():
                 self.thread.pause.clear()
+                _notify_runner(self, "paused")
             else:
                 self.thread.pause.set()
-            if self.app is not None:
+                _notify_runner(self, "fading")
+            if is_main_sequence(self) and self.app is not None:
                 self.app.action_registry.trigger_feedback("playback.pause")
                 self.app.emit(
                     "playback.pause_triggered",

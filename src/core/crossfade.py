@@ -75,9 +75,16 @@ class CrossFade:
         self._start_device_states: dict[int, dict[str, typing.Any]] | None = None
         self._start_channels: np.ndarray | None = None
 
+    def _get_main_sequence(self) -> typing.Any:  # noqa: ANN401
+        """Resolve the currently configured Main Sequence."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None:
+            return engine.main_sequence
+        return self.app.lightshow.main_playback
+
     def _get_next_step_idx(self) -> int:
         """Return the target step index for the current transition."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         next_step = main_pb.position + 1
         if next_step >= main_pb.last - 1:
             return 0
@@ -85,7 +92,7 @@ class CrossFade:
 
     def _resolve_step(self, step_idx: int) -> ResolvedState:
         """Resolve full sequential state for step_idx via TrackingEngine."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         return TrackingEngine.resolve_step_state(
             main_pb,
             step_idx,
@@ -95,7 +102,7 @@ class CrossFade:
 
     def _ensure_start_state(self) -> None:
         """Capture baseline conventional and device states when manual fade starts."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         if self._start_channels is None:
             resolved_curr = self._resolve_step(main_pb.position)
             self._start_channels = resolved_curr.channels.astype(np.float64)
@@ -140,7 +147,7 @@ class CrossFade:
         """
         scale.moved = True
         level = scale.get_value()
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
 
         self._takeover_background_thread(main_pb)
 
@@ -177,7 +184,7 @@ class CrossFade:
 
     def at_full(self) -> None:
         """Slider A and B at Full"""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         if not main_pb.on_go:
             return
         self.scale_a.moved = False
@@ -235,7 +242,7 @@ class CrossFade:
             scale: Scale object
             level: int or float
         """
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         step_idx = main_pb.position + 1
         step = main_pb.steps[step_idx]
         total_time = step.total_time * 1000
@@ -297,7 +304,7 @@ class CrossFade:
         total_time: float,
     ) -> None:
         """Interpolate multi-parameter devices according to scale_a and scale_b."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         if main_pb.patch is None or not resolved.device_values:
             return
 
@@ -391,7 +398,7 @@ class CrossFade:
 
     def _resolve_endpoints(self) -> tuple[np.ndarray, np.ndarray]:
         """Resolve old_levels and next_levels arrays for conventional channels."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self._get_main_sequence()
         old_levels = (
             self._start_channels
             if self._start_channels is not None

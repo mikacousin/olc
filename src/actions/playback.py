@@ -26,6 +26,15 @@ from olc.show.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.show.sequence import Sequence
+
+
+def _get_main_sequence(app: CoreApplication) -> Sequence | None:
+    """Resolve the currently configured Main Sequence."""
+    engine = getattr(app, "playback_engine", None)
+    if engine is not None:
+        return engine.main_sequence
+    return getattr(getattr(app, "lightshow", None), "main_playback", None)
 
 
 class GoAction(Action):
@@ -36,7 +45,7 @@ class GoAction(Action):
 
     def execute(self) -> None:
         """Execute the action, running the next cue in the active sequence."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback:
             return
 
@@ -48,7 +57,7 @@ class GoAction(Action):
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the GO transition."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         on_go = bool(main_playback.on_go) if main_playback else False
         return {
             "active": on_go,
@@ -64,7 +73,7 @@ class PauseAction(Action):
 
     def execute(self) -> None:
         """Execute the action, toggling the pause state of the crossfade."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback:
             return
 
@@ -76,7 +85,7 @@ class PauseAction(Action):
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the PAUSE state."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         is_paused = False
         if main_playback and main_playback.on_go and main_playback.thread:
             is_paused = not main_playback.thread.pause.is_set()
@@ -174,7 +183,7 @@ class GoBackAction(Action):
 
     def execute(self) -> None:
         """Execute the action, running the previous cue transition."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         if not main_playback:
             return
 
@@ -184,12 +193,61 @@ class GoBackAction(Action):
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the GO BACK transition."""
-        main_playback = self.app.lightshow.main_playback
+        main_playback = _get_main_sequence(self.app)
         on_go = bool(main_playback.on_go) if main_playback else False
         return {
             "active": on_go,
             "label": "GOBACK",
         }
+
+
+class PlaybackSetMainSequenceAction(Action):
+    """Reversibly choose which Sequence acts as the Main Playback (CrossFade/Header)."""
+
+    name = "playback.set_main_sequence"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self._old_index: float = 1.0
+
+    def configure(self, sequence_index: float) -> None:
+        """Configure target sequence index to promote as Main Sequence."""
+        self.sequence_index = float(sequence_index)
+
+    def execute(self) -> bool:
+        """Set the Main Sequence in PlaybackEngine."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is None:
+            self.can_undo = False
+            return False
+        self._old_index = engine.main_sequence_index
+        ok = engine.set_main_sequence(self.sequence_index)
+        if not ok or self._old_index == self.sequence_index:
+            self.can_undo = False
+        return ok
+
+    def undo(self) -> None:
+        """Restore previous Main Sequence."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None:
+            engine.set_main_sequence(self._old_index)
+
+    def redo(self) -> None:
+        """Reapply selected Main Sequence."""
+        engine = getattr(self.app, "playback_engine", None)
+        if engine is not None:
+            engine.set_main_sequence(self.sequence_index)
+
+    def get_history_details(self) -> str:
+        """Return sequence index for Undo History."""
+        idx = (
+            int(self.sequence_index)
+            if self.sequence_index.is_integer()
+            else self.sequence_index
+        )
+        return f"Main Seq {idx}"
 
 
 class PlaybackGotoAction(Action):

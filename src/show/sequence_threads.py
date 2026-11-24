@@ -272,6 +272,38 @@ def apply_arbitrated_output(
         backend.dmx.set_levels()
 
 
+def is_main_sequence(seq: typing.Any) -> bool:  # noqa: ANN401
+    """Return True iff *seq* is currently configured as the Main Sequence."""
+    app = getattr(seq, "app", None)
+    engine = getattr(app, "playback_engine", None) if app is not None else None
+    seq_idx = float(getattr(seq, "index", 1.0))
+    if engine is not None:
+        return bool(engine.is_main_sequence(seq_idx))
+    return seq_idx == 1.0
+
+
+def _notify_runner(
+    seq: typing.Any,  # noqa: ANN401
+    state_value: str,
+    *,
+    fade_progress: float = 0.0,
+    fade_remaining: float = 0.0,
+) -> None:
+    """Update PlaybackEngine runner telemetry if available."""
+    app = getattr(seq, "app", None)
+    engine = getattr(app, "playback_engine", None) if app is not None else None
+    if engine is None:
+        return
+    from olc.core.playback_engine import RunnerState
+
+    engine.notify_runner_state(
+        float(getattr(seq, "index", 1.0)),
+        RunnerState(state_value),
+        fade_progress=fade_progress,
+        fade_remaining=fade_remaining,
+    )
+
+
 def _sync_resolved_effects(  # pylint: disable=too-many-locals,too-many-branches
     app: Optional[CoreApplication],
     resolved: typing.Any,  # noqa: ANN401
@@ -698,7 +730,7 @@ def _next_step(sequence: Sequence) -> int:
     )
 
     # Emit event for GUI (GuiEventBridge)
-    if sequence.app is not None:
+    if sequence.app is not None and is_main_sequence(sequence):
         sequence.app.emit(
             "playback.step_changed",
             {
@@ -930,7 +962,8 @@ class ThreadGo(threading.Thread):
         _apply_execute_preset(self.sequence, self.backend, self.app, target_cue)
 
         self.sequence.on_go = False
-        if self.app is not None and self.app.crossfade is not None:
+        is_main = is_main_sequence(self.sequence)
+        if is_main and self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
 
@@ -940,8 +973,10 @@ class ThreadGo(threading.Thread):
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
 
+        _notify_runner(self.sequence, "active", fade_progress=0.0, fade_remaining=0.0)
+
         # Emit event for GUI (GuiEventBridge)
-        if self.app is not None:
+        if is_main and self.app is not None:
             self.app.emit(
                 "playback.transition_completed",
                 {
@@ -987,12 +1022,21 @@ class ThreadGo(threading.Thread):
             i: Time spent
         """
         val = round((255 / self.total_time) * i)
-        if self.app is not None and self.app.crossfade is not None:
+        is_main = is_main_sequence(self.sequence)
+        if is_main and self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(val)
             self.app.crossfade.scale_b.set_value(val)
 
+        progress = (
+            max(0.0, min(1.0, i / self.total_time)) if self.total_time > 0 else 1.0
+        )
+        remaining = max(0.0, (self.total_time - i) / 1000.0)
+        _notify_runner(
+            self.sequence, "fading", fade_progress=progress, fade_remaining=remaining
+        )
+
         # Emit event for GUI (GuiEventBridge)
-        if self.app is not None:
+        if is_main and self.app is not None:
             self.app.emit(
                 "playback.transition_progress",
                 {
@@ -1376,13 +1420,16 @@ class ThreadGoBack(threading.Thread):
         _sync_resolved_effects(self.app, resolved, fade_time=0.0, clear_live_state=True)
 
         self.sequence.on_go = False
-        if self.app is not None and self.app.crossfade is not None:
+        is_main = is_main_sequence(self.sequence)
+        if is_main and self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(0)
             self.app.crossfade.scale_b.set_value(0)
         self._sync_dmx_levels()
 
         self.sequence.update_channels()
         self.sequence.position = prev_step
+
+        _notify_runner(self.sequence, "active", fade_progress=0.0, fade_remaining=0.0)
 
         subtitle = (
             f"Cue : {get_cue(self.sequence.steps[prev_step]).number} "
@@ -1392,7 +1439,7 @@ class ThreadGoBack(threading.Thread):
         )
 
         # Emit event for GUI (GuiEventBridge)
-        if self.app is not None:
+        if is_main and self.app is not None:
             self.app.emit(
                 "playback.goback_completed",
                 {
@@ -1469,12 +1516,19 @@ class ThreadGoBack(threading.Thread):
             position: Step
         """
         val = round((255 / go_back_time) * i)
-        if self.app is not None and self.app.crossfade is not None:
+        is_main = is_main_sequence(self.sequence)
+        if is_main and self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(val)
             self.app.crossfade.scale_b.set_value(val)
 
+        progress = max(0.0, min(1.0, i / go_back_time)) if go_back_time > 0 else 1.0
+        remaining = max(0.0, (go_back_time - i) / 1000.0)
+        _notify_runner(
+            self.sequence, "fading", fade_progress=progress, fade_remaining=remaining
+        )
+
         # Emit event for GUI (GuiEventBridge)
-        if self.app is not None:
+        if is_main and self.app is not None:
             self.app.emit(
                 "playback.goback_progress",
                 {

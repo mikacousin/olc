@@ -103,6 +103,7 @@ _DEFAULT_HISTORY_LABELS: dict[str, str] = {
     "palette.update": _("Update palette"),
     "park.unpark_all": _("Unpark all"),
     "playback.record_cue": _("Record cue"),
+    "playback.set_main_sequence": _("Set Main Sequence"),
     "playback.update_active_step": _("Update active cue"),
     "sequence.assert": _("Assert sequence"),
     "sequence.delete": _("Delete sequence"),

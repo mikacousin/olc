@@ -140,6 +140,10 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             lambda data: self._run_idle(self._on_playback_goback_completed, data),
         )
         self.app.core.subscribe(
+            "playback.main_sequence_changed",
+            lambda _idx: self._run_idle(self._on_main_sequence_changed),
+        )
+        self.app.core.subscribe(
             "sequence.created",
             lambda seq: self._run_idle(self._on_sequence_created, seq),
         )
@@ -165,6 +169,12 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                 self._on_step_changed, seq_idx, step_idx
             ),
         )
+
+    def _on_main_sequence_changed(self) -> bool:
+        if self.app.window and self.app.window.playback:
+            self.app.window.playback.update_sequence_display()
+            self.app.window.playback.update_active_cues_display()
+        return False
 
     def _on_sequence_created(self, _sequence: Sequence) -> bool:
         """Handle sequence creation event to refresh UI.
