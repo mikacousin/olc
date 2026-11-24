@@ -1333,3 +1333,20 @@ def test_commandline_text_mode_and_unquoted_label_execution() -> None:
     res1 = cmd.execute()
     assert res1.success is True
     assert app.lightshow.main_playback.text == "Acte 1"
+
+
+def test_highlighter_label_text_and_unclosed_quote() -> None:
+    """Accents and symbols after LABEL or inside unclosed quotes must not show error."""
+    from olc.core.parser.highlighter import COLOR_STRING, highlight_commandline_markup
+
+    for sample in (
+        "SEQ 2 LABEL Entrée (100%)*$",
+        "LABEL SEQ 1 Acte éàç (test)*$",
+        'RECORD GROUP 1 "Face (50%)',
+    ):
+        markup = highlight_commandline_markup(sample)
+        assert 'underline="error"' not in markup
+        assert COLOR_STRING in markup
+
+    err_markup = highlight_commandline_markup("1 @ $")
+    assert 'underline="error"' in err_markup

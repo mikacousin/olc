@@ -17,9 +17,16 @@
 from __future__ import annotations
 
 import html
+import re
 
 from olc.core.parser.executor import COLOR_PRESETS
 from olc.core.parser.lexer import CommandLexer
+
+_VERB_LABEL_PREFIX_RE = re.compile(
+    r"^(\s*LABEL\s+(?:SEQ|SEQUENCE|GROUP)\s+\d+(?:\.\d+)?\s+)(.*)$",
+    re.IGNORECASE,
+)
+_NOUN_LABEL_PREFIX_RE = re.compile(r"^(.+?\s+LABEL\s+)(.*)$", re.IGNORECASE)
 
 # Color Palette for Pango Markup
 COLOR_SELECTION = "#FFB74D"  # Amber (+, -, /, THRU, GROUP, ALL, ODD, EVEN)
@@ -129,9 +136,22 @@ def highlight_commandline_markup(  # pylint: disable=too-many-branches
     if not text:
         return ""
 
+    prefix = text
+    label_tail = ""
+    verb_match = _VERB_LABEL_PREFIX_RE.match(text)
+    noun_match = _NOUN_LABEL_PREFIX_RE.match(text) if verb_match is None else None
+    active_match = verb_match or noun_match
+    if active_match is not None and active_match.group(2):
+        prefix = active_match.group(1)
+        label_tail = active_match.group(2)
+    elif text.count('"') % 2 == 1:
+        last_quote = text.rfind('"')
+        prefix = text[:last_quote]
+        label_tail = text[last_quote:]
+
     parts: list[str] = []
 
-    for match in CommandLexer._TOKEN_RE.finditer(text):  # pylint: disable=protected-access
+    for match in CommandLexer._TOKEN_RE.finditer(prefix):  # pylint: disable=protected-access
         kind = match.lastgroup
         val = match.group()
         escaped = html.escape(val, quote=True)
@@ -181,5 +201,9 @@ def highlight_commandline_markup(  # pylint: disable=too-many-branches
             parts.append(
                 f'<span foreground="{COLOR_ERROR}" underline="error">{escaped}</span>'
             )
+
+    if label_tail:
+        escaped_tail = html.escape(label_tail, quote=True)
+        parts.append(f'<span foreground="{COLOR_STRING}">{escaped_tail}</span>')
 
     return "".join(parts)
