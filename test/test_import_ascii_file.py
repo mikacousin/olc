@@ -2756,3 +2756,91 @@ def test_import_eos_nocturne_page3_and_page4_three_fader_effect_controllers() ->
     remaining = app.effects_engine.get_active_instances()
     assert len(remaining) == 1
     assert remaining[0].channels == [21, 22, 23, 24, 25, 26]
+
+
+def test_import_eos_fader_exclusion_solo_inhibitive_and_roundtrip(
+    tmp_path: object,
+) -> None:
+    """Verify Eos $$Exclude/$$Exclusive/$$SoloMode/$$Locked/$$Master 2 & round-trip."""
+    from pathlib import Path
+
+    from olc.files.ascii.writer import AsciiWriter
+
+    assert isinstance(tmp_path, Path)
+
+    asc_path = str(
+        Path(__file__).resolve().parent.parent
+        / "doc"
+        / "Conduites Eos"
+        / "00  Base  Nocturne.asc"
+    )
+    ls = LightShow()
+    ImportFile(ls, Gio.File.new_for_path(asc_path), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+
+    # Fader 1 -> Sub 6 ($$Exclude 1, $$IntensityMaster, $$Exclusive)
+    f1 = ls.fader_bank.faders[1][1]
+    assert f1.exclude_record is True
+    assert f1.swop_protect is True
+    assert getattr(f1, "intensity_master", False) is True
+    assert f1.exempt_grand_master is False
+
+    # Fader 6 -> Sub 900 ($$Exclude 9, $$Exclusive)
+    f6 = ls.fader_bank.faders[1][6]
+    assert f6.exempt_grand_master is True
+    assert f6.exclude_record is True
+    assert f6.swop_protect is True
+
+    # Synthetic Eos ASCII with SoloMode, Locked, Inhibitive ($$Master 2) + round-trip
+    syn_path = tmp_path / "fader_flags_eos.asc"
+    syn_path.write_text(
+        "\n".join(
+            [
+                "IDENT 3:0",
+                "MANUFACTURER ETC",
+                "CONSOLE Eos",
+                "PATCH 1 1 1 100",
+                "PATCH 1 2 2 100",
+                "SUB 1 1",
+                "TEXT SoloFader",
+                "$$SOLOMODE",
+                "$$EXCLUDE 1",
+                "CHAN 1@HFF",
+                "SUB 2 1",
+                "TEXT InhibFader",
+                "$$MASTER 2",
+                "$$LOCKED",
+                "CHAN 2@HFF",
+                "$FaderDef 1",
+                "$$TARGET S 1",
+                "$FaderDef 2",
+                "$$TARGET S 2",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+    ls2 = LightShow()
+    ImportFile(ls2, Gio.File.new_for_path(str(syn_path)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    sf1 = ls2.fader_bank.faders[1][1]
+    assert sf1.solo_mode is True
+    assert sf1.exclude_record is True
+    sf2 = ls2.fader_bank.faders[1][2]
+    assert sf2.inhibitive is True
+    assert sf2.locked is True
+
+    rt_path = tmp_path / "fader_flags_rt.asc"
+    AsciiWriter(rt_path, ls2).write()
+    ls3 = LightShow()
+    ImportFile(ls3, Gio.File.new_for_path(str(rt_path)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    rt1 = ls3.fader_bank.faders[1][1]
+    assert rt1.solo_mode is True
+    assert rt1.exclude_record is True
+    rt2 = ls3.fader_bank.faders[1][2]
+    assert rt2.inhibitive is True
+    assert rt2.locked is True

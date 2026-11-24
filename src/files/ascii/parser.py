@@ -913,8 +913,26 @@ class AsciiParser(ReadFile):
             mode = self.args[0].strip().lower()
             if mode in ("size", "rate", "both"):
                 fader["control_mode"] = mode
-        elif self.keyword == "$$exclude" and "9" in self.args:
-            fader["exempt_grand_master"] = True
+        elif self.keyword == "$$exclude" and self.args:
+            try:
+                mask = int(self.args[0])
+                if mask & 1:
+                    fader["exclude_record"] = True
+                if mask & 8:
+                    fader["exempt_grand_master"] = True
+            except ValueError:
+                pass
+        elif self.keyword == "$$exclusive":
+            fader["exclude_record"] = True
+            fader["swop_protect"] = True
+        elif self.keyword == "$$solomode":
+            fader["solo_mode"] = True
+        elif self.keyword == "$$swopprotect":
+            fader["swop_protect"] = True
+        elif self.keyword == "$$inhibitive":
+            fader["inhibitive"] = True
+        elif self.keyword == "$$locked":
+            fader["locked"] = True
         elif self.keyword == "$$intensitymaster":
             fader["intensity_master"] = True
         elif self.keyword == "$$fixed":
@@ -1219,6 +1237,11 @@ class AsciiParser(ReadFile):
             "channels": {},
             "exempt_gm": False,
             "intensity_master": False,
+            "exclude_record": False,
+            "swop_protect": False,
+            "solo_mode": False,
+            "inhibitive": False,
+            "locked": False,
             "controls": [],
         }
         self._sub_raw_params[sub_id] = {}
@@ -1236,14 +1259,26 @@ class AsciiParser(ReadFile):
             self._apply_label(sub)
         elif self.keyword == "$$exclude" and self.args:
             try:
-                if int(self.args[0]) & 8:
+                mask = int(self.args[0])
+                if mask & 1:
+                    sub["exclude_record"] = True
+                if mask & 8:
                     sub["exempt_gm"] = True
             except ValueError:
                 pass
+        elif self.keyword == "$$exclusive":
+            sub["exclude_record"] = True
+            sub["swop_protect"] = True
+        elif self.keyword == "$$solomode":
+            sub["solo_mode"] = True
+        elif self.keyword == "$$locked":
+            sub["locked"] = True
         elif self.keyword == "$$intensitymaster" or (
             self.keyword == "$$master" and self.args and self.args[0] == "8"
         ):
             sub["intensity_master"] = True
+        elif self.keyword == "$$master" and self.args and self.args[0] == "2":
+            sub["inhibitive"] = True
         elif self.keyword == "$$control" and len(self.args) >= 4:
             try:
                 sub.setdefault("controls", []).append(
@@ -1509,11 +1544,19 @@ class AsciiParser(ReadFile):
         self.current["faderdef"] = index
         self.current["faderdef_page"] = page
         self.current["faderdef_number"] = number
+        self.current["faderdef_locked"] = False
         self.state = State.IN_FADERDEF
 
     def _do_faderdef(self) -> None:
         index = self.current.get("faderdef", -1)
-        if index < 0 or self.keyword != "$$target" or not self.args:
+        if index < 0:
+            return
+        if self.keyword == "$$locked":
+            self.current["faderdef_locked"] = True
+            if index in self.data["faders"]:
+                self.data["faders"][index]["locked"] = True
+            return
+        if self.keyword != "$$target" or not self.args:
             return
         page = int(self.current.get("faderdef_page", 1))
         number = int(self.current.get("faderdef_number", 1))
@@ -1543,6 +1586,17 @@ class AsciiParser(ReadFile):
                         fader_entry["text"] = sub["label"]
                     if sub.get("exempt_gm"):
                         fader_entry["exempt_grand_master"] = True
+                    for flag in (
+                        "exclude_record",
+                        "swop_protect",
+                        "solo_mode",
+                        "inhibitive",
+                        "locked",
+                    ):
+                        if sub.get(flag):
+                            fader_entry[flag] = True
+                if self.current.get("faderdef_locked"):
+                    fader_entry["locked"] = True
                 self.data["faders"][index] = fader_entry
 
                 max_total_faders = MAX_ALLOWED_FADER_PAGES * MAX_FADER_PER_PAGE
@@ -1613,22 +1667,39 @@ class AsciiParser(ReadFile):
                     preset_fader_entry["exempt_grand_master"] = True
                 if sub.get("intensity_master"):
                     preset_fader_entry["intensity_master"] = True
+                for flag in (
+                    "exclude_record",
+                    "swop_protect",
+                    "solo_mode",
+                    "inhibitive",
+                    "locked",
+                ):
+                    if sub.get(flag):
+                        preset_fader_entry[flag] = True
+                if self.current.get("faderdef_locked"):
+                    preset_fader_entry["locked"] = True
                 self.data["faders"][index] = preset_fader_entry
         elif target_type == "cl" and len(self.args) >= 2:
             seq_id = int(self.args[1])
-            self.data["faders"][index] = {
+            cl_entry: dict[str, typing.Any] = {
                 "page": page,
                 "number": number,
                 "type": FaderType.SEQUENCE,
                 "contents": seq_id,
             }
+            if self.current.get("faderdef_locked"):
+                cl_entry["locked"] = True
+            self.data["faders"][index] = cl_entry
         elif target_type == "gm":
-            self.data["faders"][index] = {
+            gm_entry: dict[str, typing.Any] = {
                 "page": page,
                 "number": number,
                 "type": FaderType.MAIN,
                 "contents": None,
             }
+            if self.current.get("faderdef_locked"):
+                gm_entry["locked"] = True
+            self.data["faders"][index] = gm_entry
 
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:

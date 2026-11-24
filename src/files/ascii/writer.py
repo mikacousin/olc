@@ -456,8 +456,19 @@ class AsciiWriter(WriteFile):
                             "ascii",
                         )
                     )
-                    if getattr(fader, "exempt_grand_master", False):
-                        self.stream.write(bytes("$$EXCLUDE 9\n", "ascii"))
+                    excl_mask = (
+                        1 if getattr(fader, "exclude_record", False) else 0
+                    ) | (8 if getattr(fader, "exempt_grand_master", False) else 0)
+                    if excl_mask:
+                        self.stream.write(bytes(f"$$EXCLUDE {excl_mask}\n", "ascii"))
+                    if getattr(fader, "solo_mode", False):
+                        self.stream.write(bytes("$$SOLOMODE\n", "ascii"))
+                    if getattr(fader, "swop_protect", False):
+                        self.stream.write(bytes("$$SWOPPROTECT\n", "ascii"))
+                    if getattr(fader, "inhibitive", False):
+                        self.stream.write(bytes("$$INHIBITIVE\n", "ascii"))
+                    if getattr(fader, "locked", False):
+                        self.stream.write(bytes("$$LOCKED\n", "ascii"))
                     if getattr(fader, "intensity_master", False):
                         self.stream.write(bytes("$$INTENSITYMASTER\n", "ascii"))
                     if self.lightshow.fader_bank.is_fader_fixed(page, index):
