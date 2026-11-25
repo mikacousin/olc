@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import pathlib
 import sys
+import threading
 import typing
 from gettext import gettext as _
 from typing import Optional
@@ -257,6 +258,7 @@ class Application(Gtk.Application):
                         self.core.action_registry.execute("show.open", path)
             return False
 
+        self.core.viz_command_dispatch = self._dispatch_on_main_thread
         self.core.init_engine(monitor_port=5555, no_listen=True)
 
         self.core.start()
@@ -273,6 +275,30 @@ class Application(Gtk.Application):
                 self.core.action_registry.execute("show.open", path)
         self.core.history.clear()
         return False
+
+    @staticmethod
+    def _dispatch_on_main_thread(
+        fn: typing.Callable[[], dict[str, typing.Any]],
+    ) -> dict[str, typing.Any]:
+        """Run a CoreApplication viz command on the GTK main thread."""
+        if threading.current_thread() is threading.main_thread():
+            return fn()
+        done = threading.Event()
+        holder: dict[str, typing.Any] = {}
+
+        def _invoke() -> bool:
+            try:
+                holder["result"] = fn()
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                holder["result"] = {"ok": False, "error": str(err)}
+            finally:
+                done.set()
+            return False
+
+        GLib.idle_add(_invoke)
+        if not done.wait(timeout=1.5):
+            return {"ok": False, "error": "UI busy"}
+        return dict(holder.get("result", {"ok": False}))
 
     def on_backend_notification(self, title: str, body: str) -> None:
         """Handle notifications triggered by backend (Dmx)."""

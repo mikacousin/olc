@@ -1,0 +1,15 @@
+[package]
+name = "viz-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "olc-viz"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "0.37.0", features = ["wgpu"] }
+viz-core.workspace = true
+viz-render.workspace = true
+viz-source.workspace = true

@@ -20,12 +20,18 @@ import copy
 import typing
 
 from olc.core.action import Action
-from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType
+from olc.devices.device import (
+    COLOR_CHANNEL_TYPES,
+    ChannelType,
+    compute_pan_tilt_for_target,
+)
+from olc.show.lightshow import StageConfig
 from olc.show.palette import PaletteCategory
 from olc.show.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.devices.device import LightingDevice
 
 
 def _update_dmx_and_send(app: CoreApplication) -> None:
@@ -1036,3 +1042,275 @@ class DeviceLocateAction(Action):
 
         _update_dmx_and_send(self.app)
         self.app.emit("device.parameters_changed", list(self.new_states.keys()))
+
+
+class DeviceSetFocusAction(Action):
+    """Set 3D focus point on a device (and pan/tilt IK if motorized)."""
+
+    name = "device.set_focus"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 0
+        self.target: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        self.commit: bool = True
+        self._old_focus: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        self._new_focus: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        self._old_pt: tuple[float, float] | None = None
+        self._new_pt: tuple[float, float] | None = None
+        self._old_live: dict[int, typing.Any] = {}
+        self._new_live: dict[int, typing.Any] = {}
+
+    def configure(
+        self,
+        device_id: int,
+        target: tuple[float, float, float],
+        commit: bool = True,
+    ) -> None:
+        """Configure target device ID, 3D target coordinates, and undo commit flag."""
+        self.device_id = int(device_id)
+        self.target = (float(target[0]), float(target[1]), float(target[2]))
+        self.commit = bool(commit)
+
+    @staticmethod
+    def _channel_bounds(
+        dev: LightingDevice,
+        ctype: ChannelType,
+    ) -> tuple[float, float] | None:
+        ch = dev.get_channel(ctype)
+        if ch is None:
+            return None
+        if (ch.physical_min, ch.physical_max) == (0.0, 1.0):
+            return None
+        return (float(ch.physical_min), float(ch.physical_max))
+
+    def execute(self) -> None:
+        """Apply 3D focus_point and update Pan/Tilt DMX if the device has them."""
+        patch = getattr(self.app.lightshow, "patch", None)
+        dev = patch.devices.get(self.device_id) if patch is not None else None
+        if dev is None:
+            self.can_undo = False
+            return
+
+        self._old_focus = dev.focus_point
+        self._new_focus = self.target
+        dev.focus_point = self._new_focus
+
+        has_pan = dev.get_channel(ChannelType.PAN) is not None
+        has_tilt = dev.get_channel(ChannelType.TILT) is not None
+        if has_pan or has_tilt:
+            self._old_pt = (dev.pan_degrees, dev.tilt_degrees)
+            _snapshot_live_state(self.app, self.device_id, self._old_live)
+            pt = compute_pan_tilt_for_target(
+                dev.position,
+                dev.orientation,
+                self._new_focus,
+                pan_bounds=self._channel_bounds(dev, ChannelType.PAN),
+                tilt_bounds=self._channel_bounds(dev, ChannelType.TILT),
+            )
+            if pt is not None:
+                changed: list[str] = []
+                if has_pan:
+                    dev.set_pan_degrees(pt[0])
+                    changed.append("pan")
+                if has_tilt:
+                    dev.set_tilt_degrees(pt[1])
+                    changed.append("tilt")
+                self._new_pt = (dev.pan_degrees, dev.tilt_degrees)
+                _mark_live_manual(self.app, self.device_id, changed, self._new_live)
+                _update_dmx_and_send(self.app)
+                self.app.emit("device.parameters_changed", [self.device_id])
+
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("device.focus_changed", self.device_id, self._new_focus)
+        self.can_undo = self.commit
+
+    def undo(self) -> None:
+        """Restore previous focus point and pan/tilt."""
+        patch = getattr(self.app.lightshow, "patch", None)
+        dev = patch.devices.get(self.device_id) if patch is not None else None
+        if dev is None:
+            return
+        dev.focus_point = self._old_focus
+        if self._old_pt is not None:
+            if dev.get_channel(ChannelType.PAN) is not None:
+                dev.set_pan_degrees(self._old_pt[0])
+            if dev.get_channel(ChannelType.TILT) is not None:
+                dev.set_tilt_degrees(self._old_pt[1])
+            _restore_live_states(self.app, self._old_live)
+            _update_dmx_and_send(self.app)
+            self.app.emit("device.parameters_changed", [self.device_id])
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("device.focus_changed", self.device_id, self._old_focus)
+
+    def redo(self) -> None:
+        """Reapply focus point and pan/tilt."""
+        patch = getattr(self.app.lightshow, "patch", None)
+        dev = patch.devices.get(self.device_id) if patch is not None else None
+        if dev is None:
+            return
+        dev.focus_point = self._new_focus
+        if self._new_pt is not None:
+            if dev.get_channel(ChannelType.PAN) is not None:
+                dev.set_pan_degrees(self._new_pt[0])
+            if dev.get_channel(ChannelType.TILT) is not None:
+                dev.set_tilt_degrees(self._new_pt[1])
+            _restore_live_states(self.app, self._new_live)
+            _update_dmx_and_send(self.app)
+            self.app.emit("device.parameters_changed", [self.device_id])
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("device.focus_changed", self.device_id, self._new_focus)
+
+
+class StageUpdateAction(Action):
+    """Update 3D stage floor and atmospheric fog configuration."""
+
+    name = "stage.update"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self._updates: dict[str, typing.Any] = {}
+        self.commit: bool = True
+        self._old_stage: dict[str, typing.Any] = {}
+        self._new_stage: dict[str, typing.Any] = {}
+
+    def configure(
+        self,
+        *,
+        width: float | None = None,
+        depth: float | None = None,
+        color: str | None = None,
+        grid_spacing: float | None = None,
+        fog_density: float | None = None,
+        commit: bool = True,
+    ) -> None:
+        """Configure stage fields to update."""
+        self._updates = {}
+        for key, val in (
+            ("width", width),
+            ("depth", depth),
+            ("color", color),
+            ("grid_spacing", grid_spacing),
+            ("fog_density", fog_density),
+        ):
+            if val is not None:
+                self._updates[key] = val
+        self.commit = bool(commit)
+
+    def execute(self) -> None:
+        """Apply stage configuration updates."""
+        if not self._updates:
+            self.can_undo = False
+            return
+        self._old_stage = self.app.lightshow.stage.to_dict()
+        merged = {**self._old_stage, **self._updates}
+        new_cfg = StageConfig.from_dict(merged)
+        self._new_stage = new_cfg.to_dict()
+        self.app.lightshow.stage = new_cfg
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("stage.changed", self._new_stage)
+        self.can_undo = self.commit
+
+    def undo(self) -> None:
+        """Restore previous stage configuration."""
+        self.app.lightshow.stage = StageConfig.from_dict(self._old_stage)
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("stage.changed", self._old_stage)
+
+    def redo(self) -> None:
+        """Reapply stage configuration."""
+        self.app.lightshow.stage = StageConfig.from_dict(self._new_stage)
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("stage.changed", self._new_stage)
+
+
+class DeviceSet3DAction(Action):
+    """Update 3D position, focus point, orientation, and beam angle of a device."""
+
+    name = "device.set_3d"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 0
+        self._updates: dict[str, typing.Any] = {}
+        self._old_state: dict[str, typing.Any] = {}
+        self._new_state: dict[str, typing.Any] = {}
+
+    def configure(
+        self,
+        device_id: int,
+        *,
+        position: tuple[float, float, float] | None = None,
+        focus_point: tuple[float, float, float] | None = None,
+        orientation: tuple[float, float, float] | None = None,
+        beam_angle: float | None = None,
+    ) -> None:
+        """Configure device ID and 3D attributes to update."""
+        self.device_id = int(device_id)
+        self._updates = {}
+        if position is not None:
+            self._updates["position"] = (
+                float(position[0]),
+                float(position[1]),
+                float(position[2]),
+            )
+        if focus_point is not None:
+            self._updates["focus_point"] = (
+                float(focus_point[0]),
+                float(focus_point[1]),
+                float(focus_point[2]),
+            )
+        if orientation is not None:
+            self._updates["orientation"] = (
+                float(orientation[0]),
+                float(orientation[1]),
+                float(orientation[2]),
+            )
+        if beam_angle is not None:
+            self._updates["beam_angle"] = max(1.0, min(180.0, float(beam_angle)))
+
+    def _apply_state(self, state: dict[str, typing.Any]) -> None:
+        patch = getattr(self.app.lightshow, "patch", None)
+        dev = patch.devices.get(self.device_id) if patch is not None else None
+        if dev is None:
+            return
+        dev.position = state["position"]
+        dev.focus_point = state["focus_point"]
+        dev.orientation = state["orientation"]
+        dev.beam_angle = state["beam_angle"]
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("device.3d_changed", self.device_id)
+
+    def execute(self) -> None:
+        """Apply 3D updates to the target device."""
+        patch = getattr(self.app.lightshow, "patch", None)
+        dev = patch.devices.get(self.device_id) if patch is not None else None
+        if dev is None or not self._updates:
+            self.can_undo = False
+            return
+        self._old_state = {
+            "position": dev.position,
+            "focus_point": dev.focus_point,
+            "orientation": dev.orientation,
+            "beam_angle": dev.beam_angle,
+        }
+        self._new_state = {**self._old_state, **self._updates}
+        self._apply_state(self._new_state)
+
+    def undo(self) -> None:
+        """Restore previous 3D attributes."""
+        self._apply_state(self._old_state)
+
+    def redo(self) -> None:
+        """Reapply updated 3D attributes."""
+        self._apply_state(self._new_state)

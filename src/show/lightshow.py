@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import typing
+from dataclasses import dataclass
 
 from olc.define import DEFAULT_UNIVERSES
 from olc.devices.builtin import populate_builtin_library
@@ -72,6 +73,38 @@ class ShowFile:
             self.on_modified_changed(self.basename)
 
 
+@dataclass
+class StageConfig:
+    """3D stage floor and atmospheric fog configuration (meters, Z-up)."""
+
+    width: float = 12.0
+    depth: float = 10.0
+    color: str = "#222226"
+    grid_spacing: float = 1.0
+    fog_density: float = 0.35
+
+    def to_dict(self) -> dict[str, typing.Any]:
+        """Serialize stage configuration to a dictionary."""
+        return {
+            "width": max(0.5, float(self.width)),
+            "depth": max(0.5, float(self.depth)),
+            "color": str(self.color),
+            "grid_spacing": max(0.0, float(self.grid_spacing)),
+            "fog_density": max(0.0, min(1.0, float(self.fog_density))),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, typing.Any]) -> StageConfig:
+        """Instantiate StageConfig from a dictionary with safe bounds."""
+        return cls(
+            width=max(0.5, float(data.get("width", 12.0))),
+            depth=max(0.5, float(data.get("depth", 10.0))),
+            color=str(data.get("color", "#222226")),
+            grid_spacing=max(0.0, float(data.get("grid_spacing", 1.0))),
+            fog_density=max(0.0, min(1.0, float(data.get("fog_density", 0.35)))),
+        )
+
+
 def default_workspace() -> dict[str, typing.Any]:
     """Return default workspace configuration dictionary."""
     return {
@@ -105,6 +138,7 @@ class LightShow(ShowFile):
     park: ParkManager
     universe_map: UniverseMap
     workspace: dict[str, typing.Any]
+    stage: StageConfig
     title: str
     home_preset: float | None
 
@@ -112,8 +146,10 @@ class LightShow(ShowFile):
         super().__init__(None)
         self.app = app
         self.workspace = default_workspace()
+        self.stage = StageConfig()
         self.title = ""
         self.home_preset = None
+        self.stage = StageConfig()
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
         # Fixture Library
         self.fixture_library = populate_builtin_library()
@@ -207,6 +243,7 @@ class LightShow(ShowFile):
             self.app.effects_engine.stop_all()
         self.title = ""
         self.home_preset = None
+        self.stage = StageConfig()
         self.fixture_library = populate_builtin_library()
         del self.main_playback.steps[1:]
         for seq in self.sequences:

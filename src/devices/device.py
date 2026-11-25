@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
@@ -56,6 +57,80 @@ _ADDITIVE_RGB_TYPES: frozenset[ChannelType] = frozenset(
 )
 
 
+def _parse_vec3(
+    value: object, default: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    """Parse a 3-element sequence into a float 3-tuple, falling back to default."""
+    if isinstance(value, (list, tuple)) and len(value) == 3:
+        try:
+            return (float(value[0]), float(value[1]), float(value[2]))
+        except (TypeError, ValueError):
+            return default
+    return default
+
+
+def _rotate_inv_zyx(
+    dx: float, dy: float, dz: float, orientation: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    """Rotate world vector into fixture-local frame (inverse Z-Y-X Euler degrees)."""
+    yaw, pitch, roll = (math.radians(a) for a in orientation)
+    # Rz(-yaw)
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    x1 = cy * dx + sy * dy
+    y1 = -sy * dx + cy * dy
+    z1 = dz
+    # Ry(-pitch)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    x2 = cp * x1 - sp * z1
+    y2 = y1
+    z2 = sp * x1 + cp * z1
+    # Rx(-roll)
+    cr, sr = math.cos(roll), math.sin(roll)
+    lx = x2
+    ly = cr * y2 + sr * z2
+    lz = -sr * y2 + cr * z2
+    return (lx, ly, lz)
+
+
+def compute_pan_tilt_for_target(
+    position: tuple[float, float, float],
+    orientation: tuple[float, float, float],
+    target: tuple[float, float, float],
+    pan_bounds: tuple[float, float] | None = None,
+    tilt_bounds: tuple[float, float] | None = None,
+) -> tuple[float, float] | None:
+    """Compute (pan_deg, tilt_deg) aiming fixture at *target* (Z-up, beam -Z at 0,0)."""
+    dx = target[0] - position[0]
+    dy = target[1] - position[1]
+    dz = target[2] - position[2]
+    norm = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if norm < 1e-6:
+        return None
+    lx, ly, lz = _rotate_inv_zyx(dx, dy, dz, orientation)
+    cos_tilt = max(-1.0, min(1.0, -lz / norm))
+    tilt = math.degrees(math.acos(cos_tilt))
+    horiz = math.hypot(lx, ly)
+    pan = math.degrees(math.atan2(lx, ly)) if horiz > 1e-6 else 0.0
+
+    def _in_bounds(p: float, t: float) -> bool:
+        p_ok = pan_bounds is None or pan_bounds[0] <= p <= pan_bounds[1]
+        t_ok = tilt_bounds is None or tilt_bounds[0] <= t <= tilt_bounds[1]
+        return p_ok and t_ok
+
+    if not _in_bounds(pan, tilt):
+        alt_pan = pan - 180.0 if pan >= 0.0 else pan + 180.0
+        alt_tilt = -tilt
+        if _in_bounds(alt_pan, alt_tilt):
+            pan, tilt = alt_pan, alt_tilt
+        else:
+            if pan_bounds is not None:
+                pan = max(pan_bounds[0], min(pan_bounds[1], pan))
+            if tilt_bounds is not None:
+                tilt = max(tilt_bounds[0], min(tilt_bounds[1], tilt))
+
+    return (pan, tilt)
+
+
 class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-public-methods
     """Patched lighting fixture in the show."""
 
@@ -72,6 +147,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         model: str = "",
         mode_name: str = "",
         gdtf_id: str = "",
+        position: tuple[float, float, float] = (0.0, 0.0, 4.0),
+        focus_point: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        orientation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        beam_angle: float = 25.0,
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -84,6 +163,22 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self.model = model
         self.mode_name = mode_name
         self.gdtf_id = gdtf_id
+        self.position: tuple[float, float, float] = (
+            float(position[0]),
+            float(position[1]),
+            float(position[2]),
+        )
+        self.focus_point: tuple[float, float, float] = (
+            float(focus_point[0]),
+            float(focus_point[1]),
+            float(focus_point[2]),
+        )
+        self.orientation: tuple[float, float, float] = (
+            float(orientation[0]),
+            float(orientation[1]),
+            float(orientation[2]),
+        )
+        self.beam_angle: float = max(1.0, min(180.0, float(beam_angle)))
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
@@ -1540,6 +1635,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "enabled": self._enabled,
             "locked": self._locked,
             "curve_id": self.curve_id,
+            "position": list(self.position),
+            "focus_point": list(self.focus_point),
+            "orientation": list(self.orientation),
+            "beam_angle": self.beam_angle,
             "intensity": self._intensity,
             "target_color": self._target_color.to_hex(),
             "base_emitters": {
@@ -1615,6 +1714,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             model=str(data.get("model", "")),
             mode_name=str(data.get("mode_name", "")),
             gdtf_id=str(data.get("gdtf_id", "")),
+            position=_parse_vec3(data.get("position"), (0.0, 0.0, 4.0)),
+            focus_point=_parse_vec3(data.get("focus_point"), (0.0, 0.0, 0.0)),
+            orientation=_parse_vec3(data.get("orientation"), (0.0, 0.0, 0.0)),
+            beam_angle=float(data.get("beam_angle", 25.0)),
         )
         device._enabled = bool(data.get("enabled", True))
         device._locked = bool(data.get("locked", False))

@@ -55,6 +55,7 @@ class OlcWriter(WriteFile):
 
     def export(self) -> None:
         self._show_metadata()
+        self._stage()
         self._curves()
         self._fixture_definitions()
         self._devices()
@@ -91,6 +92,11 @@ class OlcWriter(WriteFile):
             meta["skip_empty_fader_pages"] = True
         if meta:
             self.data["show_metadata"] = meta
+
+    def _stage(self) -> None:
+        stage = getattr(self.lightshow, "stage", None)
+        if stage is not None and hasattr(stage, "to_dict"):
+            self.data["stage"] = stage.to_dict()
 
     def _fixture_definitions(self) -> None:
         if not hasattr(self.lightshow, "fixture_library"):

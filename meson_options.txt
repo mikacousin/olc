@@ -1,0 +1,6 @@
+option(
+  'viz',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build and install olc-viz 3D visualizer (requires cargo)',
+)

@@ -99,6 +99,10 @@ class CoreApplication(EventDispatcher):
         self.osc = None
         self.blackout_active = False
         self.main_fader_level = 1.0
+        self._viz_lock = threading.RLock()
+        self.viz_command_dispatch: typing.Optional[
+            typing.Callable[[typing.Callable[[], typing.Any]], typing.Any]
+        ] = None
 
         # For crossfade
         self.crossfade = CrossFade(self)
@@ -367,7 +371,70 @@ class CoreApplication(EventDispatcher):
         )
         if self.backend is not None:
             self.backend.bind_engine(typing.cast(typing.Any, self.engine))
+
+        # Publish the patch to external viewers (olc-viz) now and after each change
+        engine = self.engine
+        lightshow = self.lightshow
+        patch = lightshow.patch
+        patch.on_patch_changed_cb = lambda: engine.publish_patch(
+            patch.devices.values(), stage=lightshow.stage
+        )
+        engine.set_command_handler(self._handle_viz_command)
+        engine.publish_patch(patch.devices.values(), stage=lightshow.stage)
         return self.engine
+
+    def publish_patch(self) -> None:
+        """Republish current patch and stage snapshot to external viewers."""
+        if self.engine is not None:
+            self.engine.publish_patch(
+                self.lightshow.patch.devices.values(), stage=self.lightshow.stage
+            )
+
+    def _run_viz_action(
+        self, fn: typing.Callable[[], dict[str, typing.Any]]
+    ) -> dict[str, typing.Any]:
+        if self.viz_command_dispatch is not None:
+            return dict(self.viz_command_dispatch(fn))
+        with self._viz_lock:
+            return fn()
+
+    def _handle_viz_command(
+        self, payload: dict[str, typing.Any]
+    ) -> dict[str, typing.Any]:
+        """Handle incoming JSON command from external visualizer (olc-viz)."""
+        cmd = payload.get("cmd")
+        if cmd == "set_focus":
+            device_id = int(payload["device_id"])
+            raw_target = payload["target"]
+            target = (float(raw_target[0]), float(raw_target[1]), float(raw_target[2]))
+            commit = bool(payload.get("commit", True))
+
+            def _do_focus() -> dict[str, typing.Any]:
+                self.action_registry.execute(
+                    "device.set_focus", device_id, target, commit
+                )
+                dev = self.lightshow.patch.devices.get(device_id)
+                if dev is None:
+                    return {"ok": False, "error": f"Unknown device {device_id}"}
+                return {"ok": True, "focus_point": list(dev.focus_point)}
+
+            return self._run_viz_action(_do_focus)
+
+        if cmd == "set_stage":
+            kwargs: dict[str, typing.Any] = {
+                k: payload[k]
+                for k in ("width", "depth", "color", "grid_spacing", "fog_density")
+                if k in payload
+            }
+            commit = bool(payload.get("commit", True))
+
+            def _do_stage() -> dict[str, typing.Any]:
+                self.action_registry.execute("stage.update", commit=commit, **kwargs)
+                return {"ok": True, "stage": self.lightshow.stage.to_dict()}
+
+            return self._run_viz_action(_do_stage)
+
+        return {"ok": False, "error": f"Unknown command: {cmd}"}
 
     def init_midi(
         self, on_ports_changed: typing.Optional[typing.Callable[[], None]] = None

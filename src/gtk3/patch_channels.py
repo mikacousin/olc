@@ -202,6 +202,20 @@ class PatchChannelsTab(Gtk.Box):
         self.exchange_btn.connect("clicked", self._on_exchange_clicked)
         self.toolbar.pack_start(self.exchange_btn, False, False, 0)
 
+        self.edit_3d_btn = Gtk.Button(label=_("3D / Focus…"))
+        self.edit_3d_btn.set_tooltip_text(
+            _("Edit 3D position, focus point, orientation, and beam angle")
+        )
+        self.edit_3d_btn.connect("clicked", self._on_edit_3d_clicked)
+        self.toolbar.pack_start(self.edit_3d_btn, False, False, 0)
+
+        self.stage_3d_btn = Gtk.Button(label=_("Stage / Fog…"))
+        self.stage_3d_btn.set_tooltip_text(
+            _("Configure 3D stage floor dimensions, grid, color, and fog")
+        )
+        self.stage_3d_btn.connect("clicked", self._on_stage_3d_clicked)
+        self.toolbar.pack_start(self.stage_3d_btn, False, False, 0)
+
         # Global patch operations (packed on the right)
         self.unpatch_all_btn = Gtk.Button(label="Unpatch all")
         self.unpatch_all_btn.connect("clicked", self._on_unpatch_all_clicked)
@@ -1447,3 +1461,138 @@ class PatchChannelsTab(Gtk.Box):
         target = max(0, curr - 15)
         self.select_row_index(target)
         self.devices_treeview.grab_focus()
+
+    def _on_edit_3d_clicked(self, _button: Gtk.Button) -> None:
+        """Open dialog to edit 3D position, focus point, orientation, and beam."""
+        dev_id = self.get_selected_device_id()
+        if dev_id is None:
+            return
+        dev = self.patch.devices.get(dev_id)
+        if dev is None:
+            return
+
+        dialog = Gtk.Dialog(
+            title=_("3D & Focus — #{id} {label}").format(id=dev_id, label=dev.label),
+            transient_for=self.window,
+            modal=True,
+            destroy_with_parent=True,
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OK,
+            Gtk.ResponseType.OK,
+        )
+        grid = Gtk.Grid(column_spacing=8, row_spacing=6, margin=12)
+
+        def _make_spin(
+            val: float, lo: float, hi: float, step: float, digits: int
+        ) -> Gtk.SpinButton:
+            sb = Gtk.SpinButton.new_with_range(lo, hi, step)
+            sb.set_digits(digits)
+            sb.set_value(val)
+            return sb
+
+        pos_spins = [_make_spin(dev.position[i], -50.0, 50.0, 0.1, 2) for i in range(3)]
+        foc_spins = [
+            _make_spin(dev.focus_point[i], -50.0, 50.0, 0.1, 2) for i in range(3)
+        ]
+        ori_spins = [
+            _make_spin(dev.orientation[i], -360.0, 360.0, 1.0, 1) for i in range(3)
+        ]
+        beam_spin = _make_spin(dev.beam_angle, 1.0, 180.0, 1.0, 1)
+
+        for col, axis in enumerate(("X (m)", "Y (m)", "Z (m)"), start=1):
+            grid.attach(Gtk.Label(label=axis), col, 0, 1, 1)
+        grid.attach(Gtk.Label(label=_("Position"), xalign=0.0), 0, 1, 1, 1)
+        grid.attach(Gtk.Label(label=_("Focus"), xalign=0.0), 0, 2, 1, 1)
+        grid.attach(Gtk.Label(label=_("Orientation (°)"), xalign=0.0), 0, 3, 1, 1)
+        for col in range(3):
+            grid.attach(pos_spins[col], col + 1, 1, 1, 1)
+            grid.attach(foc_spins[col], col + 1, 2, 1, 1)
+            grid.attach(ori_spins[col], col + 1, 3, 1, 1)
+        grid.attach(Gtk.Label(label=_("Beam Angle (°)"), xalign=0.0), 0, 4, 1, 1)
+        grid.attach(beam_spin, 1, 4, 1, 1)
+
+        dialog.get_content_area().add(grid)
+        dialog.show_all()
+        resp = dialog.run()
+        if resp == Gtk.ResponseType.OK:
+            self.app.core.action_registry.execute(
+                "device.set_3d",
+                dev_id,
+                position=tuple(s.get_value() for s in pos_spins),
+                focus_point=tuple(s.get_value() for s in foc_spins),
+                orientation=tuple(s.get_value() for s in ori_spins),
+                beam_angle=beam_spin.get_value(),
+            )
+        dialog.destroy()
+
+    def _on_stage_3d_clicked(self, _button: Gtk.Button) -> None:
+        """Open dialog to configure 3D stage floor and atmospheric fog."""
+        stage = self.lightshow.stage
+        dialog = Gtk.Dialog(
+            title=_("Stage & Fog Settings"),
+            transient_for=self.window,
+            modal=True,
+            destroy_with_parent=True,
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OK,
+            Gtk.ResponseType.OK,
+        )
+        grid = Gtk.Grid(column_spacing=8, row_spacing=8, margin=12)
+
+        width_spin = Gtk.SpinButton.new_with_range(1.0, 100.0, 0.5)
+        width_spin.set_digits(1)
+        width_spin.set_value(stage.width)
+
+        depth_spin = Gtk.SpinButton.new_with_range(1.0, 100.0, 0.5)
+        depth_spin.set_digits(1)
+        depth_spin.set_value(stage.depth)
+
+        grid_spin = Gtk.SpinButton.new_with_range(0.0, 10.0, 0.25)
+        grid_spin.set_digits(2)
+        grid_spin.set_value(stage.grid_spacing)
+
+        rgba = Gdk.RGBA()
+        if not rgba.parse(stage.color):
+            rgba.parse("#222226")
+        color_btn = Gtk.ColorButton.new_with_rgba(rgba)
+
+        fog_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 1.0, 0.01)
+        fog_scale.set_value(stage.fog_density)
+        fog_scale.set_hexpand(True)
+
+        rows: list[tuple[str, Gtk.Widget]] = [
+            (_("Width (m)"), width_spin),
+            (_("Depth (m)"), depth_spin),
+            (_("Grid Spacing (m)"), grid_spin),
+            (_("Floor Color"), color_btn),
+            (_("Fog Density"), fog_scale),
+        ]
+        for idx, (lbl, widget) in enumerate(rows):
+            grid.attach(Gtk.Label(label=lbl, xalign=0.0), 0, idx, 1, 1)
+            grid.attach(widget, 1, idx, 1, 1)
+
+        dialog.get_content_area().add(grid)
+        dialog.show_all()
+        resp = dialog.run()
+        if resp == Gtk.ResponseType.OK:
+            chosen = color_btn.get_rgba()
+            hex_color = (
+                f"#{round(chosen.red * 255):02x}"
+                f"{round(chosen.green * 255):02x}"
+                f"{round(chosen.blue * 255):02x}"
+            )
+            self.app.core.action_registry.execute(
+                "stage.update",
+                width=width_spin.get_value(),
+                depth=depth_spin.get_value(),
+                grid_spacing=grid_spin.get_value(),
+                color=hex_color,
+                fog_density=fog_scale.get_value(),
+            )
+        dialog.destroy()

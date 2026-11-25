@@ -24,3 +24,4 @@ pyproject.toml
 /olc
 olc-bench-report.json
 olc-bench-report.md
+target/

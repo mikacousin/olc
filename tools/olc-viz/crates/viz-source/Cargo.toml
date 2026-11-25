@@ -1,0 +1,15 @@
+[package]
+name = "viz-source"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.154"
+tokio = { version = "1.54.1", features = ["rt", "time", "macros", "sync"] }
+viz-core.workspace = true
+zeromq = "0.7.0"
+
+[dev-dependencies]
+bytes = "1.12.2"

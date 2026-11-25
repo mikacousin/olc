@@ -17,7 +17,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 
@@ -27,6 +27,7 @@ from olc.dmx_engine.artnet.protocol import ArtPollReply
 from olc.dmx_engine.dmxloop import DMXLoop
 from olc.dmx_engine.enttec import DmxUsbProManager, resolve_port
 from olc.dmx_engine.mergers import HTPMerger, LTPMerger
+from olc.dmx_engine.patch_snapshot import PatchSnapshotServer
 from olc.dmx_engine.sacn import SacnManager
 from olc.dmx_engine.sacn.merge import SacnMerger
 from olc.dmx_engine.senders import ArtNetSender, DmxUsbProSender, SACNSender
@@ -230,6 +231,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self._zmq_pub = None
         self._monitor_interval = 1.0 / monitor_fps if monitor_fps > 0 else 0.0
         self._last_monitor_time = 0.0
+        # Patch snapshots for external viewers (REP on monitor_port + 1)
+        self._patch_server: PatchSnapshotServer | None = None
 
         if monitor_port is not None:
             try:
@@ -245,9 +248,34 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 )
                 self._zmq_pub = None
                 self._zmq_ctx = None
+            else:
+                self._patch_server = PatchSnapshotServer(monitor_port + 1)
+
+    def publish_patch(self, devices: Iterable[Any], stage: object = None) -> None:
+        """Publish a new patch snapshot for external viewers.
+
+        Call from the thread that owns the PatchManager, after each patch
+        change. The new version is announced in the monitor metadata.
+        """
+        if self._patch_server is not None:
+            self._patch_server.update(devices, stage=stage)
+
+    def set_command_handler(
+        self,
+        handler: Callable[[dict[str, Any]], dict[str, Any]] | None,
+    ) -> None:
+        """Register callback for external viewer commands on monitor_port + 1."""
+        if self._patch_server is not None:
+            self._patch_server.set_command_handler(handler)
 
     def start(self) -> None:
         """Start the DMX output loop."""
+        if self._patch_server is not None:
+            try:
+                self._patch_server.start()
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                print(f"[ZMQ] Warning: patch snapshot server disabled ({err}).")
+                self._patch_server = None
         if self._artnet_manager is not None and any(
             Protocol.ARTNET in c.protocols for c in self._map
         ):
@@ -272,6 +300,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             manager.stop()
         if self._network_thread is not None:
             self._network_thread.stop()
+        if self._patch_server is not None:
+            self._patch_server.stop()
         if self._zmq_pub is not None:
             try:
                 shutdown_meta = json.dumps(
@@ -696,6 +726,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if now - self._last_monitor_time < self._monitor_interval:
                 return
             self._last_monitor_time = now
+            patch_version = (
+                self._patch_server.version if self._patch_server is not None else None
+            )
             for uid, slot in self._slots.items():
                 protocols = []
                 if uid in self._map:
@@ -719,6 +752,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                     "protocols": protocols,
                     "active_universes": list(self._slots.keys()),
                 }
+                if patch_version is not None:
+                    metadata["patch_version"] = patch_version
                 meta_bytes = json.dumps(metadata).encode("utf-8")
                 topic = f"universe:{uid}".encode("ascii")
                 # Multipart: [Topic, Metadata JSON, Raw DMX Bytes]

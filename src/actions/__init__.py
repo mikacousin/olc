@@ -71,9 +71,12 @@ from olc.actions.device import (
     DeviceHomeAction,
     DeviceLocateAction,
     DevicePanTiltAdjustAction,
+    DeviceSet3DAction,
     DeviceSetColorAction,
+    DeviceSetFocusAction,
     DeviceSetPanTiltAction,
     DeviceSetParameterAction,
+    StageUpdateAction,
 )
 from olc.actions.dmx import (
     DmxBlackoutAllAction,
@@ -281,6 +284,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PatchSetDeviceCurveAction,
         PatchSetDeviceLabelAction,
         PatchMoveDeviceAddressAction,
+        DeviceSet3DAction,
+        DeviceSetFocusAction,
+        StageUpdateAction,
         CurveNewAction,
         CurveDeleteAction,
         CurveUpdatePointsAction,

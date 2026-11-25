@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/viz-core",
+    "crates/viz-mvr",
+    "crates/viz-source",
+    "crates/viz-render",
+    "crates/viz-export",
+    "crates/viz-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+viz-core = { path = "crates/viz-core" }
+viz-mvr = { path = "crates/viz-mvr" }
+viz-source = { path = "crates/viz-source" }
+viz-render = { path = "crates/viz-render" }
+viz-export = { path = "crates/viz-export" }
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+lto = "thin"

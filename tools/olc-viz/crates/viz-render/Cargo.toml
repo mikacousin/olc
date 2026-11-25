@@ -1,0 +1,12 @@
+[package]
+name = "viz-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bytemuck = { version = "1.25.2", features = ["derive"] }
+egui = "0.37.0"
+egui-wgpu = "0.37.0"
+viz-core.workspace = true
+wgpu = "30.0.2"

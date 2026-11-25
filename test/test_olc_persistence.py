@@ -1066,3 +1066,50 @@ def test_olc_persistence_fader_exclusion_and_protection_flags(
     f2 = app2.lightshow.fader_bank.faders[1][2]
     assert f2.inhibitive is True
     assert f2.level == pytest.approx(0.6)
+
+
+def test_olc_persistence_stage_and_device_3d_fields(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip for LightShow.stage and LightingDevice 3D fields."""
+    from olc.devices.channel import Channel, ChannelType, FixtureType
+    from olc.devices.device import LightingDevice
+    from olc.show.lightshow import StageConfig
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.stage = StageConfig(
+        width=18.5, depth=14.0, color="#121418", grid_spacing=0.5, fog_density=0.75
+    )
+    dev = LightingDevice(
+        fixture_id=42,
+        label="Contre 42",
+        fixture_type=FixtureType.LED_PAR,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.RED, 1, 2),
+        ],
+        position=(3.0, 4.5, 5.5),
+        focus_point=(-1.0, 0.5, 1.2),
+        orientation=(15.0, -5.0, 0.0),
+        beam_angle=32.0,
+    )
+    app.lightshow.patch.devices[dev.fixture_id] = dev
+
+    save_path = tmp_path / "stage_3d.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    assert app2.lightshow.stage.width == pytest.approx(18.5)
+    assert app2.lightshow.stage.depth == pytest.approx(14.0)
+    assert app2.lightshow.stage.color == "#121418"
+    assert app2.lightshow.stage.grid_spacing == pytest.approx(0.5)
+    assert app2.lightshow.stage.fog_density == pytest.approx(0.75)
+
+    r_dev = app2.lightshow.patch.get_device(42)
+    assert r_dev is not None
+    assert r_dev.position == pytest.approx((3.0, 4.5, 5.5))
+    assert r_dev.focus_point == pytest.approx((-1.0, 0.5, 1.2))
+    assert r_dev.orientation == pytest.approx((15.0, -5.0, 0.0))
+    assert r_dev.beam_angle == pytest.approx(32.0)

@@ -61,6 +61,7 @@ class ParsedData:
             "devices": {},
             "patch": {},
             "show_metadata": {},
+            "stage": {},
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
             "palettes": {},
@@ -472,6 +473,14 @@ class ParsedData:
             fader_bank = getattr(self.lightshow, "fader_bank", None)
             if fader_bank is not None:
                 fader_bank.skip_empty_pages = bool(meta["skip_empty_fader_pages"])
+
+    def import_stage(self) -> None:
+        """Apply 3D stage floor and fog configuration to lightshow."""
+        stage_data = self.data.get("stage")
+        if isinstance(stage_data, dict) and stage_data:
+            from olc.show.lightshow import StageConfig  # pylint: disable=import-outside-toplevel
+
+            self.lightshow.stage = StageConfig.from_dict(stage_data)
 
     @staticmethod
     def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:

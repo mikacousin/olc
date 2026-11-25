@@ -210,6 +210,8 @@ class PatchManager:
         }
         self.on_patch_empty_cb: typing.Callable[[], None] | None = None
         self.on_unpatch_cb: typing.Callable[[int, int], None] | None = None
+        # Called after the routing cache is rebuilt, i.e. after any patch change
+        self.on_patch_changed_cb: typing.Callable[[], None] | None = None
         self._numpy_cache_dirty = True
         self.is_patched_mask = np.zeros(MAX_CHANNELS, dtype=bool)
         self.map_src_channels = np.array([], dtype=np.intp)
@@ -996,6 +998,8 @@ class PatchManager:
         ):
             self._update_numpy_cache()
             self._numpy_cache_dirty = False
+            if self.on_patch_changed_cb is not None:
+                self.on_patch_changed_cb()
 
     def _update_numpy_cache(  # pylint: disable=too-many-locals, too-many-branches
         self,
