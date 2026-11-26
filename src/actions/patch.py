@@ -18,6 +18,7 @@ import typing
 from gettext import gettext as _
 
 from olc.core.action import Action
+from olc.devices.color_pick.gels import resolve_gel_hex
 from olc.devices.device import FixtureType, LightingDevice
 from olc.devices.fixture import FixtureDefinition
 from olc.show.patch import PatchCollisionError
@@ -234,6 +235,71 @@ class PatchSetDeviceCurveAction(Action):
     def get_history_details(self) -> str:
         """Return device and target curve details."""
         return f"Ch {self.device_id} → Curve #{self.curve}"
+
+
+class PatchSetDeviceGelAction(Action):
+    """Action to set or clear the gel filter and color on a lighting device."""
+
+    name = "patch.set_device_gel"
+    history_label = _("Set device gel")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.gel: str = ""
+        self.gel_color: str = ""
+        self.old_gel: str = ""
+        self.old_gel_color: str = ""
+
+    def configure(self, device_id: int, gel: str, gel_color: str = "") -> None:
+        """Configure the action with device ID, gel code/name, and optional hex color.
+
+        Args:
+            device_id: The lighting device ID.
+            gel: Gel code or label (empty string clears the gel).
+            gel_color: Explicit ``#rrggbb`` color; resolved from ``gel`` if empty.
+        """
+        self.device_id = int(device_id)
+        self.gel = gel.strip()
+        cleaned_color = gel_color.strip()
+        if self.gel and not cleaned_color:
+            cleaned_color = resolve_gel_hex(self.gel)
+        self.gel_color = cleaned_color
+
+    def _apply_gel(self, gel: str, gel_color: str) -> None:
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        dev.gel = gel
+        dev.gel_color = gel_color
+        self.app.lightshow.set_modified()
+        if hasattr(self.app, "publish_patch"):
+            self.app.publish_patch()
+        self.app.emit("patch.changed")
+
+    def execute(self) -> None:
+        """Execute the action, setting the gel on the device."""
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        self.old_gel = dev.gel
+        self.old_gel_color = dev.gel_color
+        self._apply_gel(self.gel, self.gel_color)
+
+    def undo(self) -> None:
+        """Undo the action, restoring the previous gel."""
+        self._apply_gel(self.old_gel, self.old_gel_color)
+
+    def redo(self) -> None:
+        """Redo the action, re-applying the configured gel."""
+        self._apply_gel(self.gel, self.gel_color)
+
+    def get_history_details(self) -> str:
+        """Return device and target gel details."""
+        return f"Ch {self.device_id} → Gel {self.gel or self.gel_color or 'Open'}"
 
 
 class PatchDeviceAction(Action):
@@ -667,6 +733,7 @@ __all__ = [
     "PatchMoveDeviceAddressAction",
     "PatchSet1on1Action",
     "PatchSetDeviceCurveAction",
+    "PatchSetDeviceGelAction",
     "PatchSetDeviceLabelAction",
     "PatchUnpatchBatchAction",
     "PatchUnpatchDeviceAction",

@@ -22,9 +22,35 @@ from typing import Callable
 
 from gi.repository import Gdk, Gtk
 
+from olc.devices.color_pick.gels import filter_gels
+
 if typing.TYPE_CHECKING:
     from olc.devices.device import LightingDevice
     from olc.devices.fixture import FixtureDefinition, FixtureLibrary
+
+
+def _handle_listbox_nav(listbox: Gtk.ListBox, keyval: int) -> bool:
+    """Move ListBox selection up or down on arrow key press."""
+    if keyval not in (Gdk.KEY_Down, Gdk.KEY_Up):
+        return False
+    rows = listbox.get_children()
+    if not rows:
+        return True
+    selected = listbox.get_selected_row()
+    curr_idx = selected.get_index() if selected is not None else -1
+    step = 1 if keyval == Gdk.KEY_Down else -1
+    next_idx = max(0, min(len(rows) - 1, curr_idx + step))
+    target_row = listbox.get_row_at_index(next_idx)
+    if target_row is not None:
+        listbox.select_row(target_row)
+        adj = listbox.get_adjustment()
+        if adj is not None:
+            alloc = target_row.get_allocation()
+            if alloc.y < adj.get_value():
+                adj.set_value(alloc.y)
+            elif alloc.y + alloc.height > adj.get_value() + adj.get_page_size():
+                adj.set_value(alloc.y + alloc.height - adj.get_page_size())
+    return True
 
 
 class ModeSelectionPopover(Gtk.Popover):
@@ -196,26 +222,7 @@ class FixtureSelectionPopover(Gtk.Popover):
     def _on_search_key_press(
         self, _entry: Gtk.SearchEntry, event: Gdk.EventKey
     ) -> bool:
-        if event.keyval not in (Gdk.KEY_Down, Gdk.KEY_Up):
-            return False
-        rows = self._listbox.get_children()
-        if not rows:
-            return True
-        selected = self._listbox.get_selected_row()
-        curr_idx = selected.get_index() if selected is not None else -1
-        step = 1 if event.keyval == Gdk.KEY_Down else -1
-        next_idx = max(0, min(len(rows) - 1, curr_idx + step))
-        target_row = self._listbox.get_row_at_index(next_idx)
-        if target_row is not None:
-            self._listbox.select_row(target_row)
-            adj = self._listbox.get_adjustment()
-            if adj is not None:
-                alloc = target_row.get_allocation()
-                if alloc.y < adj.get_value():
-                    adj.set_value(alloc.y)
-                elif alloc.y + alloc.height > adj.get_value() + adj.get_page_size():
-                    adj.set_value(alloc.y + alloc.height - adj.get_page_size())
-        return True
+        return _handle_listbox_nav(self._listbox, event.keyval)
 
     def _on_row_activated(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
         fixture_key = self._row_keys.get(row)
@@ -226,3 +233,148 @@ class FixtureSelectionPopover(Gtk.Popover):
     def _on_advanced_btn_clicked(self, _btn: Gtk.Button) -> None:
         self.popdown()
         self._on_advanced_clicked()
+
+
+class GelSelectionPopover(Gtk.Popover):
+    """Searchable popover for quick Lee/Rosco or custom gel selection."""
+
+    def __init__(self, on_gel_selected: Callable[[str, str], None]) -> None:
+        super().__init__()
+        self._on_gel_selected = on_gel_selected
+        self._row_gels: dict[Gtk.ListBoxRow, tuple[str, str]] = {}
+        self.set_position(Gtk.PositionType.BOTTOM)
+        self.set_size_request(320, 360)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.set_margin_start(6)
+        box.set_margin_end(6)
+        box.set_margin_top(6)
+        box.set_margin_bottom(6)
+
+        search_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self._search_entry = Gtk.SearchEntry()
+        self._search_entry.set_placeholder_text(_("Search gel (L201, R80, Amber)..."))
+        self._search_entry.connect("search-changed", self._on_filter_changed)
+        self._search_entry.connect("activate", self._on_search_activate)
+        self._search_entry.connect("key-press-event", self._on_search_key_press)
+        search_row.pack_start(self._search_entry, True, True, 0)
+
+        self._mfg_combo = Gtk.ComboBoxText()
+        self._mfg_combo.append("All", _("All"))
+        self._mfg_combo.append("Lee", "Lee")
+        self._mfg_combo.append("Rosco", "Rosco")
+        self._mfg_combo.set_active_id("All")
+        self._mfg_combo.connect("changed", self._on_filter_changed)
+        search_row.pack_start(self._mfg_combo, False, False, 0)
+        box.pack_start(search_row, False, False, 0)
+
+        open_btn = Gtk.Button(label=_("Open / Clear Gel"))
+        open_btn.connect("clicked", lambda _b: self.select_gel("", ""))
+        box.pack_start(open_btn, False, False, 0)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self._listbox = Gtk.ListBox()
+        self._listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self._listbox.connect("row-activated", self._on_row_activated)
+        scroll.add(self._listbox)
+        box.pack_start(scroll, True, True, 0)
+
+        custom_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self._custom_color_btn = Gtk.ColorButton()
+        self._custom_code_entry = Gtk.Entry()
+        self._custom_code_entry.set_placeholder_text(_("Custom code..."))
+        apply_btn = Gtk.Button(label=_("Apply"))
+        apply_btn.connect("clicked", self._on_custom_apply_clicked)
+        custom_row.pack_start(self._custom_color_btn, False, False, 0)
+        custom_row.pack_start(self._custom_code_entry, True, True, 0)
+        custom_row.pack_start(apply_btn, False, False, 0)
+        box.pack_end(custom_row, False, False, 0)
+
+        self.add(box)
+
+    def _populate_list(self) -> None:
+        for child in self._listbox.get_children():
+            child.destroy()
+        self._row_gels.clear()
+
+        query = self._search_entry.get_text().strip()
+        mfg = self._mfg_combo.get_active_id() or "All"
+        for gel in filter_gels(query=query, manufacturer=mfg):
+            r = round(gel.rgb[0] * 255)
+            g = round(gel.rgb[1] * 255)
+            b = round(gel.rgb[2] * 255)
+            hex_col = f"#{r:02x}{g:02x}{b:02x}"
+            row = Gtk.ListBoxRow()
+            self._row_gels[row] = (gel.code, hex_col)
+
+            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            hbox.set_margin_start(6)
+            hbox.set_margin_end(6)
+            hbox.set_margin_top(3)
+            hbox.set_margin_bottom(3)
+
+            swatch = Gtk.Label()
+            swatch.set_markup(f'<span background="{hex_col}">   </span>')
+            lbl = Gtk.Label(label=f"{gel.code} — {gel.name}", xalign=0.0)
+            hbox.pack_start(swatch, False, False, 0)
+            hbox.pack_start(lbl, True, True, 0)
+            row.add(hbox)
+            self._listbox.add(row)
+
+        self._listbox.show_all()
+        first_row = self._listbox.get_row_at_index(0)
+        if first_row is not None:
+            self._listbox.select_row(first_row)
+
+    def select_gel(self, gel: str, gel_color: str = "") -> None:
+        """Close popover and notify callback with chosen gel and hex color."""
+        self.popdown()
+        self._on_gel_selected(gel, gel_color)
+
+    def open_for_device(
+        self,
+        device: LightingDevice,
+        relative_to: Gtk.Widget,
+        pointing_to: Gdk.Rectangle,
+    ) -> None:
+        """Reset search, pre-fill current device gel, and open at *pointing_to*."""
+        self._search_entry.set_text("")
+        self._mfg_combo.set_active_id("All")
+        self._populate_list()
+        self._custom_code_entry.set_text(device.gel)
+        rgba = Gdk.RGBA()
+        if not rgba.parse(device.effective_gel_color or "#ffffff"):
+            rgba.parse("#ffffff")
+        self._custom_color_btn.set_rgba(rgba)
+        self.set_relative_to(relative_to)
+        self.set_pointing_to(pointing_to)
+        self.show_all()
+        self._search_entry.grab_focus()
+
+    def _on_filter_changed(self, _widget: Gtk.Widget) -> None:
+        self._populate_list()
+
+    def _on_search_activate(self, _entry: Gtk.SearchEntry) -> None:
+        row = self._listbox.get_selected_row()
+        if row is not None:
+            self._on_row_activated(self._listbox, row)
+
+    def _on_search_key_press(
+        self, _entry: Gtk.SearchEntry, event: Gdk.EventKey
+    ) -> bool:
+        return _handle_listbox_nav(self._listbox, event.keyval)
+
+    def _on_row_activated(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
+        pair = self._row_gels.get(row)
+        if pair is not None:
+            self.select_gel(pair[0], pair[1])
+
+    def _on_custom_apply_clicked(self, _btn: Gtk.Button) -> None:
+        rgba = self._custom_color_btn.get_rgba()
+        hex_col = (
+            f"#{round(rgba.red * 255):02x}"
+            f"{round(rgba.green * 255):02x}"
+            f"{round(rgba.blue * 255):02x}"
+        )
+        self.select_gel(self._custom_code_entry.get_text().strip(), hex_col)

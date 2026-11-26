@@ -110,6 +110,7 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
         "Address",
         "Footprint",
         "Curve",
+        "Gel",
     ]
 
     # 2. Physical sort (by (universe, address) ascending: U1:100, U1:200, U2:50)
@@ -134,6 +135,7 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
         "Mode",
         "Footprint",
         "Curve",
+        "Gel",
     ]
 
     # 3. Toggle back to logical
@@ -754,3 +756,114 @@ def test_add_device_and_exchange_dialogs_sort_fixtures(app_gui: Application) -> 
     ex_entries = [row[0] for row in ex_model]
     assert ex_entries == ["Ayrton:Ghibli", "Generic:Dimmer", "martin:MAC", "Zebra:Spot"]
     ex_dlg.destroy()
+
+
+@pytest.mark.gui
+def test_patch_gel_column_and_popover(app_gui: Application) -> None:
+    """Test Gel column display, GelSelectionPopover, multiselect, and color guard."""
+    from olc.devices.channel import ChannelType
+    from olc.devices.fixture import (
+        ChannelDefinition,
+        DmxModeDefinition,
+        FixtureDefinition,
+    )
+    from olc.gtk3.patch_channels import (
+        COL_GEL,
+        COL_GEL_BG,
+        COL_GEL_BG_SET,
+        PatchChannelsTab,
+    )
+
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+    assert patch_tab.gel_column is not None
+
+    app_gui.core.action_registry.execute("patch.clear")
+    patch_tab.patch.patch_dimmer(channel=1, universe=1, address=1, curve=0)
+    patch_tab.patch.patch_dimmer(channel=2, universe=1, address=2, curve=0)
+    rgb_def = FixtureDefinition(
+        manufacturer="Test",
+        model="RGBPar",
+        dmx_modes=[
+            DmxModeDefinition(
+                "3ch",
+                [
+                    ChannelDefinition(ChannelType.RED, 0),
+                    ChannelDefinition(ChannelType.GREEN, 1),
+                    ChannelDefinition(ChannelType.BLUE, 2),
+                ],
+            )
+        ],
+    )
+    rgb_dev = patch_tab.patch.patch_device(
+        device_id=3,
+        fixture_def=rgb_def,
+        universe=1,
+        address=10,
+        mode_name="3ch",
+    )
+    patch_tab.refresh()
+    process_events()
+
+    assert len(patch_tab.devices_store) == 3
+    assert patch_tab.devices_store[0][COL_GEL] == "-"
+    assert patch_tab.devices_store[0][COL_GEL_BG_SET] is False
+    assert patch_tab.devices_store[2][COL_GEL] == "—"
+
+    # Opening gel popover on color-capable fixture must be refused
+    assert (
+        patch_tab._open_gel_popover_at_cell(
+            patch_tab.devices_treeview,
+            Gtk.TreePath.new_from_string("2"),
+            patch_tab.gel_column,
+        )
+        is False
+    )
+
+    # Open on dimmer 1 and select L201
+    assert (
+        patch_tab._open_gel_popover_at_cell(
+            patch_tab.devices_treeview,
+            Gtk.TreePath.new_from_string("0"),
+            patch_tab.gel_column,
+        )
+        is True
+    )
+    patch_tab.gel_popover.select_gel("L201", "#b0c8ff")
+    process_events()
+
+    dev1 = patch_tab.patch.get_device(1)
+    assert dev1 is not None
+    assert dev1.gel == "L201"
+    assert dev1.gel_color == "#b0c8ff"
+    assert patch_tab.devices_store[0][COL_GEL] == "L201"
+    assert patch_tab.devices_store[0][COL_GEL_BG] == "#b0c8ff"
+    assert patch_tab.devices_store[0][COL_GEL_BG_SET] is True
+
+    # Multi-select all 3 devices: only dimmers 1 and 2 receive R80, RGB stays untouched
+    selection = patch_tab.devices_treeview.get_selection()
+    selection.select_all()
+    patch_tab._active_gel_device_id = 1
+    patch_tab._on_gel_selected("R80", "#3070ff")
+    process_events()
+
+    dev2 = patch_tab.patch.get_device(2)
+    assert dev2 is not None
+    assert dev1.gel == "R80"
+    assert dev2.gel == "R80"
+    assert rgb_dev.gel == ""
+
+    # Clear gel on dimmer 1
+    selection.unselect_all()
+    selection.select_path(Gtk.TreePath.new_from_string("0"))
+    patch_tab._active_gel_device_id = 1
+    patch_tab._on_gel_selected("", "")
+    process_events()
+    assert dev1.gel == ""
+    assert dev1.gel_color == ""
+    assert patch_tab.devices_store[0][COL_GEL] == "-"
+    assert patch_tab.devices_store[0][COL_GEL_BG_SET] is False

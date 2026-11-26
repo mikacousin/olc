@@ -603,3 +603,65 @@ def test_multi_address_dimmer_remains_simple_dimmer() -> None:
     assert info_coarse.short_name == "DIM"
     assert info_fine is not None and info_fine.is_simple_dimmer is False
     assert info_fine.short_name == "DIM_F"
+
+
+def test_action_patch_set_device_gel() -> None:
+    """Test PatchSetDeviceGelAction resolve, custom color, clear, undo/redo, sync."""
+    from olc.devices.color_pick.gels import resolve_gel_hex
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+    patch.patch_dimmer(channel=1, universe=1, address=1, curve=0)
+    dev = patch.get_device(1)
+    assert dev is not None
+    assert dev.gel == ""
+    assert dev.gel_color == ""
+
+    changed_events = 0
+    published = 0
+
+    def _on_changed(*_args: object) -> None:
+        nonlocal changed_events
+        changed_events += 1
+
+    app.subscribe("patch.changed", _on_changed)
+    app.publish_patch = lambda: nonlocal_inc()  # type: ignore[method-assign]
+
+    def nonlocal_inc() -> None:
+        nonlocal published
+        published += 1
+
+    # 1. Lee code without explicit hex -> auto-resolved
+    app.action_registry.execute("patch.set_device_gel", 1, "L201")
+    expected_l201 = resolve_gel_hex("L201")
+    assert expected_l201.startswith("#")
+    assert dev.gel == "L201"
+    assert dev.gel_color == expected_l201
+    assert changed_events == 1
+    assert published == 1
+
+    # 2. Custom hex override
+    app.action_registry.execute("patch.set_device_gel", 1, "CustomAmber", "#ffaa22")
+    assert dev.gel == "CustomAmber"
+    assert dev.gel_color == "#ffaa22"
+
+    # Undo restores L201
+    app.history.undo()
+    assert dev.gel == "L201"
+    assert dev.gel_color == expected_l201
+
+    # Redo restores CustomAmber
+    app.history.redo()
+    assert dev.gel == "CustomAmber"
+    assert dev.gel_color == "#ffaa22"
+
+    # 3. Clear gel
+    app.action_registry.execute("patch.set_device_gel", 1, "", "")
+    assert dev.gel == ""
+    assert dev.gel_color == ""
+
+    # 4. Unknown device raises ValueError
+    with pytest.raises(ValueError, match="Device 999 is not patched"):
+        app.action_registry.execute("patch.set_device_gel", 999, "L201")

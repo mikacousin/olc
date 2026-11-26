@@ -25,12 +25,14 @@ from gi.repository import Gdk, GLib, Gtk
 
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_dimmer_definition, populate_builtin_library
+from olc.devices.color_pick.gels import resolve_gel_hex
 from olc.devices.device import FixtureType
 from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
 from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
 from olc.gtk3.widgets.patch_popovers import (
     FixtureSelectionPopover,
+    GelSelectionPopover,
     ModeSelectionPopover,
 )
 from olc.show.patch import PatchCollisionError
@@ -57,11 +59,14 @@ COL_UNIVERSE = 4
 COL_ADDRESS = 5
 COL_FOOTPRINT = 6
 COL_CURVE = 7
-COL_COLOR = 8
-COL_IS_PATCHED = 9
-COL_RAW_ID = 10
-COL_RAW_UNIV = 11
-COL_RAW_ADDR = 12
+COL_GEL = 8
+COL_COLOR = 9
+COL_IS_PATCHED = 10
+COL_RAW_ID = 11
+COL_RAW_UNIV = 12
+COL_RAW_ADDR = 13
+COL_GEL_BG = 14
+COL_GEL_BG_SET = 15
 
 # Visual column order depending on sort mode
 _LOGICAL_COL_ORDER = [
@@ -73,6 +78,7 @@ _LOGICAL_COL_ORDER = [
     COL_ADDRESS,
     COL_FOOTPRINT,
     COL_CURVE,
+    COL_GEL,
 ]
 _PHYSICAL_COL_ORDER = [
     COL_UNIVERSE,
@@ -83,6 +89,7 @@ _PHYSICAL_COL_ORDER = [
     COL_MODE,
     COL_FOOTPRINT,
     COL_CURVE,
+    COL_GEL,
 ]
 
 
@@ -111,12 +118,15 @@ class PatchChannelsTab(Gtk.Box):
     remove_device_btn: Gtk.Button
     exchange_btn: Gtk.Button
     curve_column: Optional[Gtk.TreeViewColumn]
+    gel_column: Optional[Gtk.TreeViewColumn]
     mode_column: Optional[Gtk.TreeViewColumn]
     type_column: Optional[Gtk.TreeViewColumn]
     curve_popover: CurveSelectionPopover
+    gel_popover: GelSelectionPopover
     mode_popover: ModeSelectionPopover
     fixture_popover: FixtureSelectionPopover
     _active_curve_device_id: Optional[int]
+    _active_gel_device_id: Optional[int]
     _active_popover_device_id: Optional[int]
     tree_columns: dict[int, Gtk.TreeViewColumn]
     cell_renderers: dict[int, Gtk.CellRendererText]
@@ -144,9 +154,11 @@ class PatchChannelsTab(Gtk.Box):
         self.sort_mode = "logical"
         self.scope_mode = "patched"
         self.curve_column = None
+        self.gel_column = None
         self.mode_column = None
         self.type_column = None
         self._active_curve_device_id = None
+        self._active_gel_device_id = None
         self._active_popover_device_id = None
         self._needs_idle_refresh: bool = False
         self.tree_columns = {}
@@ -154,6 +166,7 @@ class PatchChannelsTab(Gtk.Box):
         self.curve_popover = CurveSelectionPopover(
             self.lightshow, self._on_curve_selected
         )
+        self.gel_popover = GelSelectionPopover(self._on_gel_selected)
         self.mode_popover = ModeSelectionPopover(self._on_mode_selected)
         self.fixture_popover = FixtureSelectionPopover(
             self.fixture_library,
@@ -247,11 +260,14 @@ class PatchChannelsTab(Gtk.Box):
             str,  # COL_ADDRESS
             str,  # COL_FOOTPRINT
             str,  # COL_CURVE
+            str,  # COL_GEL
             str,  # COL_COLOR ("#dedede" or "#777777")
             bool,  # COL_IS_PATCHED
             int,  # COL_RAW_ID
             int,  # COL_RAW_UNIV
             int,  # COL_RAW_ADDR
+            str,  # COL_GEL_BG
+            bool,  # COL_GEL_BG_SET
         )
         self.devices_treeview = Gtk.TreeView(model=self.devices_store)
         self.devices_treeview.set_enable_search(True)
@@ -275,12 +291,27 @@ class PatchChannelsTab(Gtk.Box):
             ("Address", COL_ADDRESS, 90),
             ("Footprint", COL_FOOTPRINT, 80),
             ("Curve", COL_CURVE, 100),
+            ("Gel", COL_GEL, 95),
         ]
         for title, col_idx, min_width in columns_spec:
             renderer = Gtk.CellRendererText()
-            column = Gtk.TreeViewColumn(title, renderer)
-            column.add_attribute(renderer, "text", col_idx)
-            column.add_attribute(renderer, "foreground", COL_COLOR)
+            if col_idx == COL_GEL:
+                column = Gtk.TreeViewColumn(title)
+                swatch_renderer = Gtk.CellRendererText()
+                swatch_renderer.set_fixed_size(14, -1)
+                column.pack_start(swatch_renderer, False)
+                column.add_attribute(swatch_renderer, "cell-background", COL_GEL_BG)
+                column.add_attribute(
+                    swatch_renderer, "cell-background-set", COL_GEL_BG_SET
+                )
+                column.pack_start(renderer, True)
+                column.add_attribute(renderer, "text", col_idx)
+                column.add_attribute(renderer, "foreground", COL_COLOR)
+                self.gel_column = column
+            else:
+                column = Gtk.TreeViewColumn(title, renderer)
+                column.add_attribute(renderer, "text", col_idx)
+                column.add_attribute(renderer, "foreground", COL_COLOR)
             column.set_min_width(min_width)
             column.set_resizable(True)
             if col_idx in edit_callbacks:
@@ -357,6 +388,17 @@ class PatchChannelsTab(Gtk.Box):
             )
             self.select_row_index(target_idx)
 
+    @staticmethod
+    def _gel_row_values(dev: Optional[LightingDevice]) -> tuple[str, str, bool]:
+        """Return (label, background_hex, background_set) for the Gel column."""
+        if dev is None:
+            return ("-", "#000000", False)
+        if dev.has_color_capability:
+            return ("—", "#000000", False)
+        hex_col = dev.effective_gel_color
+        label = dev.gel or (hex_col if hex_col else "-")
+        return (label, hex_col or "#000000", bool(hex_col))
+
     def _populate_patched_devices(self) -> None:
         """Populate only patched devices, sorted according to sort_mode."""
         devices = list(self.patch.devices.values())
@@ -373,6 +415,7 @@ class PatchChannelsTab(Gtk.Box):
                 else (_("Linear") if dev.curve_id == 0 else f"Curve #{dev.curve_id}")
             )
             mode_str = dev.mode_name if dev.mode_name else "-"
+            gel_str, gel_bg, gel_bg_set = self._gel_row_values(dev)
             self.devices_store.append(
                 [
                     str(dev.fixture_id),
@@ -383,11 +426,14 @@ class PatchChannelsTab(Gtk.Box):
                     dev.address_range_str,
                     str(dev.channel_count()),
                     curve_str,
+                    gel_str,
                     "#dedede",
                     True,
                     dev.fixture_id,
                     dev.universe,
                     dev.address,
+                    gel_bg,
+                    gel_bg_set,
                 ]
             )
 
@@ -405,6 +451,7 @@ class PatchChannelsTab(Gtk.Box):
                     )
                 )
                 mode_str = dev.mode_name if dev.mode_name else "-"
+                gel_str, gel_bg, gel_bg_set = self._gel_row_values(dev)
                 self.devices_store.append(
                     [
                         str(dev.fixture_id),
@@ -415,11 +462,14 @@ class PatchChannelsTab(Gtk.Box):
                         dev.address_range_str,
                         str(dev.channel_count()),
                         curve_str,
+                        gel_str,
                         "#dedede",
                         True,
                         dev.fixture_id,
                         dev.universe,
                         dev.address,
+                        gel_bg,
+                        gel_bg_set,
                     ]
                 )
             else:
@@ -433,11 +483,14 @@ class PatchChannelsTab(Gtk.Box):
                         "-",
                         "-",
                         "-",
+                        "-",
                         "#777777",
                         False,
                         ch,
                         0,
                         0,
+                        "",
+                        False,
                     ]
                 )
 
@@ -471,6 +524,7 @@ class PatchChannelsTab(Gtk.Box):
                         mode_str = dev.mode_name if dev.mode_name else "-"
                         footprint_str = str(dev.channel_count())
                         raw_id = dev.fixture_id
+                        gel_str, gel_bg, gel_bg_set = self._gel_row_values(dev)
                     else:
                         output_info = self.patch.get_output_info(u, addr)
                         dim_curve_id = output_info[1] if output_info is not None else 0
@@ -489,6 +543,7 @@ class PatchChannelsTab(Gtk.Box):
                         mode_str = "-"
                         footprint_str = "1"
                         raw_id = info.device_id
+                        gel_str, gel_bg, gel_bg_set = "-", "#000000", False
 
                     self.devices_store.append(
                         [
@@ -500,11 +555,14 @@ class PatchChannelsTab(Gtk.Box):
                             str(addr),
                             footprint_str,
                             curve_str,
+                            gel_str,
                             "#dedede",
                             True,
                             raw_id,
                             u,
                             addr,
+                            gel_bg,
+                            gel_bg_set,
                         ]
                     )
                 else:
@@ -518,11 +576,14 @@ class PatchChannelsTab(Gtk.Box):
                             str(addr),
                             "-",
                             "-",
+                            "-",
                             "#777777",
                             False,
                             0,
                             u,
                             addr,
+                            "#000000",
+                            False,
                         ]
                     )
 
@@ -562,6 +623,33 @@ class PatchChannelsTab(Gtk.Box):
         pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
         self.curve_popover.open_for_curve(
             dev.curve_id, relative_to=treeview, pointing_to=pointing_rect
+        )
+        return True
+
+    def _open_gel_popover_at_cell(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> bool:
+        """Open gel popover pointing to the specified cell (dimmers only)."""
+        model = treeview.get_model()
+        if model is None:
+            return False
+        treeiter = model.get_iter(path)
+        if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+            return False
+        device_id = int(model.get_value(treeiter, COL_RAW_ID))
+        dev = self.patch.devices.get(device_id)
+        if dev is None or dev.has_color_capability:
+            return False
+
+        self._active_gel_device_id = device_id
+        selection = treeview.get_selection()
+        if not selection.path_is_selected(path):
+            selection.unselect_all()
+            selection.select_path(path)
+
+        pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
+        self.gel_popover.open_for_device(
+            dev, relative_to=treeview, pointing_to=pointing_rect
         )
         return True
 
@@ -647,6 +735,8 @@ class PatchChannelsTab(Gtk.Box):
 
         if col == self.curve_column:
             return self._open_curve_popover_at_cell(treeview, path, col)
+        if col == self.gel_column:
+            return self._open_gel_popover_at_cell(treeview, path, col)
         if col == self.mode_column:
             return self._open_mode_popover_at_cell(treeview, path, col)
         if col == self.type_column:
@@ -666,6 +756,25 @@ class PatchChannelsTab(Gtk.Box):
         for dev_id in targets:
             self.app.core.action_registry.execute(
                 "patch.set_device_curve", dev_id, curve_id
+            )
+        self.refresh()
+
+    def _on_gel_selected(self, gel: str, gel_color: str) -> None:
+        """Handle gel selection from popover (single or multi-selection)."""
+        if self._active_gel_device_id is None:
+            return
+        selected_ids = self.get_selected_device_ids()
+        targets = (
+            selected_ids
+            if len(selected_ids) > 1 and self._active_gel_device_id in selected_ids
+            else [self._active_gel_device_id]
+        )
+        for dev_id in targets:
+            dev = self.patch.devices.get(dev_id)
+            if dev is None or dev.has_color_capability:
+                continue
+            self.app.core.action_registry.execute(
+                "patch.set_device_gel", dev_id, gel, gel_color
             )
         self.refresh()
 
@@ -849,6 +958,10 @@ class PatchChannelsTab(Gtk.Box):
             if col_idx == COL_CURVE and self.curve_column is not None:
                 return self._open_curve_popover_at_cell(
                     self.devices_treeview, path, self.curve_column
+                )
+            if col_idx == COL_GEL and self.gel_column is not None:
+                return self._open_gel_popover_at_cell(
+                    self.devices_treeview, path, self.gel_column
                 )
             if col_idx == COL_MODE and self.mode_column is not None:
                 return self._open_mode_popover_at_cell(
@@ -1523,6 +1636,53 @@ class PatchChannelsTab(Gtk.Box):
         grid.attach(Gtk.Label(label=_("Beam Angle (°)"), xalign=0.0), 0, 4, 1, 1)
         grid.attach(beam_spin, 1, 4, 1, 1)
 
+        gel_entry: Optional[Gtk.Entry] = None
+        gel_color_btn: Optional[Gtk.ColorButton] = None
+        color_picked = False
+        gel_cleared = False
+        if not dev.has_color_capability:
+            gel_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            gel_entry = Gtk.Entry()
+            gel_entry.set_placeholder_text(_("L201, R80..."))
+            gel_entry.set_text(dev.gel)
+            gel_entry.connect(
+                "changed",
+                lambda _e: nonlocal_clear_reset(),
+            )
+            gel_rgba = Gdk.RGBA()
+            if not gel_rgba.parse(dev.effective_gel_color or "#ffffff"):
+                gel_rgba.parse("#ffffff")
+            gel_color_btn = Gtk.ColorButton.new_with_rgba(gel_rgba)
+            clear_gel_btn = Gtk.Button(label=_("Clear"))
+
+            def nonlocal_clear_reset() -> None:
+                nonlocal gel_cleared
+                gel_cleared = False
+
+            def _on_gel_color_set(_btn: Gtk.ColorButton) -> None:
+                nonlocal color_picked, gel_cleared
+                color_picked = True
+                gel_cleared = False
+
+            def _on_clear_gel(_btn: Gtk.Button) -> None:
+                nonlocal color_picked, gel_cleared
+                if gel_entry is not None:
+                    gel_entry.set_text("")
+                if gel_color_btn is not None:
+                    white = Gdk.RGBA()
+                    white.parse("#ffffff")
+                    gel_color_btn.set_rgba(white)
+                color_picked = False
+                gel_cleared = True
+
+            gel_color_btn.connect("color-set", _on_gel_color_set)
+            clear_gel_btn.connect("clicked", _on_clear_gel)
+            gel_box.pack_start(gel_entry, True, True, 0)
+            gel_box.pack_start(gel_color_btn, False, False, 0)
+            gel_box.pack_start(clear_gel_btn, False, False, 0)
+            grid.attach(Gtk.Label(label=_("Gel"), xalign=0.0), 0, 5, 1, 1)
+            grid.attach(gel_box, 1, 5, 3, 1)
+
         dialog.get_content_area().add(grid)
         dialog.show_all()
         resp = dialog.run()
@@ -1535,6 +1695,29 @@ class PatchChannelsTab(Gtk.Box):
                 orientation=tuple(s.get_value() for s in ori_spins),
                 beam_angle=beam_spin.get_value(),
             )
+            if gel_entry is not None and gel_color_btn is not None:
+                new_gel = gel_entry.get_text().strip()
+                if gel_cleared or (not new_gel and not color_picked):
+                    if dev.gel or dev.gel_color:
+                        self.app.core.action_registry.execute(
+                            "patch.set_device_gel", dev_id, "", ""
+                        )
+                elif color_picked:
+                    chosen = gel_color_btn.get_rgba()
+                    new_color = (
+                        f"#{round(chosen.red * 255):02x}"
+                        f"{round(chosen.green * 255):02x}"
+                        f"{round(chosen.blue * 255):02x}"
+                    )
+                    if new_gel != dev.gel or new_color != dev.gel_color:
+                        self.app.core.action_registry.execute(
+                            "patch.set_device_gel", dev_id, new_gel, new_color
+                        )
+                elif new_gel != dev.gel:
+                    resolved = resolve_gel_hex(new_gel)
+                    self.app.core.action_registry.execute(
+                        "patch.set_device_gel", dev_id, new_gel, resolved
+                    )
         dialog.destroy()
 
     def _on_stage_3d_clicked(self, _button: Gtk.Button) -> None:
