@@ -21,7 +21,7 @@ import pathlib
 import zipfile
 from typing import TYPE_CHECKING, Any
 
-from olc.define import NB_UNIVERSES, UNIVERSES
+from olc.define import MAX_FADER_PER_PAGE, NB_UNIVERSES, UNIVERSES
 from olc.devices.channel import ChannelType
 from olc.devices.color_pick.gels import lookup_gel, resolve_gel_hex
 from olc.devices.device import compute_focus_point_from_orientation
@@ -29,6 +29,15 @@ from olc.files.ascii.eos_devices import (
     _PHYSICAL_PARAM_NAMES,
     EOS_GENERIC_PARAM_NAMES,
     EOS_PARAM_TO_CHANNEL_TYPE,
+)
+from olc.files.ascii.eos_effects import (
+    EOS_TYPE_ABSOLUTE,
+    EOS_TYPE_COLOR,
+    EOS_TYPE_FOCUS,
+    EOS_TYPE_LINEAR,
+    EOS_TYPE_STEPBASED,
+    convert_eos_effect,
+    new_eos_effect,
 )
 from olc.files.eos.a3d import eos_euler_to_olc, parse_working_a3d_patch
 from olc.files.eos.personality import (
@@ -40,6 +49,7 @@ from olc.files.eos.personality import (
     parse_personalities,
 )
 from olc.files.eos.wire import decode_showdat
+from olc.show.fader import FaderType
 from olc.show.palette import PaletteCategory
 
 if TYPE_CHECKING:
@@ -785,6 +795,149 @@ class Esf3dParser:
                         "channels": pal_channels,
                         "device_values": pal_dev_vals,
                     }
+
+            # Curve: len == 5, item[3] header, item[4] points
+            elif (
+                len(item) == 5
+                and isinstance(item[3], list)
+                and len(item[3]) >= 4
+                and isinstance(item[3][2], int)
+                and item[3][2] > 0
+                and isinstance(item[4], list)
+                and len(item[4]) > 10
+            ):
+                curve_num = item[3][2] // 10000
+                if curve_num > 0:
+                    label = str(item[3][3]) if isinstance(item[3][3], str) else ""
+                    curve_type = (
+                        "SteppedCurve" if item[2] is None else "InterpolateCurve"
+                    )
+                    pts_raw = item[4][10:]
+                    points: list[tuple[float, float]] = []
+                    idx_p = 0
+                    while idx_p + 1 < len(pts_raw):
+                        x_val = pts_raw[idx_p]
+                        y_obj = pts_raw[idx_p + 1]
+                        if (
+                            isinstance(x_val, (int, float))
+                            and isinstance(y_obj, list)
+                            and len(y_obj) >= 3
+                            and isinstance(y_obj[2], (int, float))
+                        ):
+                            nx = max(0.0, min(1.0, float(x_val) / 100.0))
+                            ny = max(0.0, min(1.0, float(y_obj[2]) / 100.0))
+                            points.append((nx, ny))
+                        idx_p += 2
+                    if points:
+                        data["curves"][curve_num] = {
+                            "type": curve_type,
+                            "label": label,
+                            "points": points,
+                            "normalized": True,
+                        }
+
+            # Submaster: len == 21, item[2] header, item[16] channels
+            elif (
+                len(item) == 21
+                and isinstance(item[2], list)
+                and len(item[2]) >= 4
+                and isinstance(item[2][2], int)
+                and item[2][2] > 0
+                and isinstance(item[16], list)
+            ):
+                sub_num = float(item[2][2])
+                label = str(item[2][3]) if isinstance(item[2][3], str) else ""
+                sub_channels: dict[int, float] = {}
+                sub_dev_vals: dict[int, dict[str, Any]] = {}
+                for channels, ch_obj in _iter_eos_channel_blocks(item[16]):
+                    raw_p = _parse_eos_channel_params(ch_obj, channels[0])
+                    if raw_p:
+                        for ch in channels:
+                            dvals, ival = _decode_channel_values(
+                                raw_p, ch_pers.get(ch), param_names
+                            )
+                            if ival is not None:
+                                sub_channels[ch] = ival
+                            if dvals:
+                                sub_dev_vals[ch] = dvals
+                presets_pool = data.setdefault("palettes", {}).setdefault(
+                    PaletteCategory.PRESET.value, {}
+                )
+                if sub_num not in presets_pool:
+                    presets_pool[sub_num] = {
+                        "category": PaletteCategory.PRESET.value,
+                        "number": sub_num,
+                        "label": label,
+                        "channels": sub_channels,
+                        "device_values": sub_dev_vals,
+                    }
+                sub_int = int(sub_num)
+                page = ((sub_int - 1) // MAX_FADER_PER_PAGE) + 1
+                fader_nb = ((sub_int - 1) % MAX_FADER_PER_PAGE) + 1
+                data["faders"][(page, fader_nb)] = {
+                    "page": page,
+                    "number": fader_nb,
+                    "type": FaderType.PRESET,
+                    "contents": sub_num,
+                    "label": label,
+                }
+
+            # Effect: len == 27, item[2] is ['OBJ', 1, eff_num*10000, label, ...]
+            elif (
+                len(item) == 27
+                and isinstance(item[2], list)
+                and len(item[2]) >= 4
+                and isinstance(item[2][2], int)
+                and item[2][2] > 0
+            ):
+                eff_num = item[2][2] / 10000.0
+                label = str(item[2][3]) if isinstance(item[2][3], str) else ""
+                raw_eff = new_eos_effect(eff_num)
+                raw_eff["label"] = label
+                e24_11 = (
+                    item[24][11]
+                    if len(item) > 24
+                    and isinstance(item[24], list)
+                    and len(item[24]) > 11
+                    and isinstance(item[24][11], list)
+                    else None
+                )
+                if e24_11 is not None:
+                    if len(e24_11) > 3 and isinstance(e24_11[3], (int, float)):
+                        raw_eff["scale"] = float(e24_11[3])
+                    pcount = (
+                        e24_11[5]
+                        if len(e24_11) > 5 and isinstance(e24_11[5], int)
+                        else 0
+                    )
+                    if pcount > 0:
+                        pids = [
+                            int(x)
+                            for x in e24_11[6 : 6 + pcount]
+                            if isinstance(x, int)
+                        ]
+                        raw_eff["param_ids"] = pids
+                        if any(p in (2, 3) for p in pids):
+                            raw_eff["eos_type"] = EOS_TYPE_FOCUS
+                        elif any(p in (9, 10, 11, 12, 13, 14) for p in pids):
+                            raw_eff["eos_type"] = EOS_TYPE_COLOR
+                        else:
+                            raw_eff["eos_type"] = EOS_TYPE_LINEAR
+                    else:
+                        raw_eff["eos_type"] = (
+                            EOS_TYPE_STEPBASED
+                            if "||ch" in label.lower()
+                            else EOS_TYPE_ABSOLUTE
+                        )
+                        if (
+                            len(e24_11) > 6
+                            and isinstance(e24_11[6], list)
+                            and len(e24_11[6]) > 8
+                            and isinstance(e24_11[6][8], (int, float))
+                            and e24_11[6][8] > 0
+                        ):
+                            raw_eff["step_times_ms"].append(float(e24_11[6][8]))
+                data["effects"].append(convert_eos_effect(raw_eff, param_names))
 
         # Route cues into their Cue Lists without collisions
         cues_by_list: dict[

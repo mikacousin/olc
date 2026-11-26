@@ -124,6 +124,16 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert col_pal.device_values[4]["cyan"] == pytest.approx(1.0)
     assert col_pal.device_values[5]["cyan"] == pytest.approx(1.0)
 
+    # Curve 901, Submaster 2 -> Preset 2 & Fader (1, 2), and Effect 1.0
+    assert 901 in show.curves.curves
+    assert show.curves.curves[901].name == "Anon Curve"
+    sub_preset = show.palettes.get(PaletteCategory.PRESET, 2.0)
+    assert sub_preset is not None
+    assert sub_preset.text == "Anon Sub"
+    assert sub_preset.channels[1] == pytest.approx(0.75)
+    assert show.fader_bank.faders[1][2].contents.number == 2.0
+    assert len(show.effects) == 1
+
 
 def test_import_esf3d_routes_cuelists_without_duplication(
     tmp_path: pathlib.Path,
