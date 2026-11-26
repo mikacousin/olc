@@ -447,6 +447,15 @@ class Esf3dParser:
                         gel_hex = resolve_gel_hex(gel_str) or ""
                         break
 
+            # Optional BeamAngle at index 64
+            beam_angle: float | None = None
+            if (
+                len(item) > 64
+                and isinstance(item[64], (int, float))
+                and 1.0 <= float(item[64]) <= 180.0
+            ):
+                beam_angle = float(item[64])
+
             pers = personalities.get(guid)
             if pers is not None:
                 ch_pers[ch] = pers
@@ -464,6 +473,8 @@ class Esf3dParser:
                 dev.position = position
                 dev.orientation = orientation
                 dev.focus_point = focus_point
+                if beam_angle is not None:
+                    dev.beam_angle = beam_angle
                 if gel_str:
                     dev.gel = gel_str
                     dev.gel_color = gel_hex
@@ -486,6 +497,8 @@ class Esf3dParser:
                     meta["position"] = position
                     meta["orientation"] = orientation
                     meta["focus_point"] = focus_point
+                if beam_angle is not None:
+                    meta["beam_angle"] = beam_angle
                 if gel_str:
                     meta["gel"] = gel_str
                     meta["gel_color"] = gel_hex
@@ -589,6 +602,10 @@ class Esf3dParser:
                     "label": label,
                     "channels": {},
                     "device_values": {},
+                    "is_int_block": item[12] is not None,
+                    "is_block": item[13] is not None,
+                    "is_assert": item[14] is not None,
+                    "notes": str(item[16]) if isinstance(item[16], str) else "",
                 }
                 step_dict: dict[str, Any] = {
                     "cue": cue_num,

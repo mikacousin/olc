@@ -67,9 +67,10 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert fdef is not None
     assert fdef.dmx_modes[0].channel_count() == 12
 
-    # Dimmer channel 1 with gel and 3D transform
+    # Dimmer channel 1 with gel, beam_angle, and 3D transform
     dim1 = show.patch.devices[1]
     assert dim1.gel == "L201"
+    assert dim1.beam_angle == pytest.approx(22.0)
     assert dim1.position == pytest.approx((1.0, 2.0, 5.0))
     assert dim1.orientation == pytest.approx((-90.0, 0.0, 0.0))
 
@@ -77,9 +78,10 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     spot5 = show.patch.devices[5]
     assert spot5.channels[0].universe == 2
     assert spot5.channels[0].address == 13
+    assert spot5.beam_angle == pytest.approx(60.0)
     assert spot5.orientation == pytest.approx((-45.0, 180.0, 40.0))
 
-    # Cue 1: Ch 1 cloned to Ch 2 (both at 80%)
+    # Cue 1: Ch 1 cloned to Ch 2 (both at 80%), not blocked
     cue1 = next(
         s.cue
         for s in show.main_playback.steps
@@ -87,6 +89,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     )
     assert cue1.channels[1] == pytest.approx(0.8)
     assert cue1.channels[2] == pytest.approx(0.8)
+    assert cue1.is_block is False
 
     # Cue 115: Gobo_Mode=191 tracked from Cue 110 -> -55=CCW (52155), +55=CW (46148)
     cue115 = next(
@@ -94,6 +97,9 @@ def test_import_esf3d_autonomous_fixtures_and_show(
         for s in show.main_playback.steps
         if s.cue is not None and s.cue.number == 115.0
     )
+    assert cue115.is_block is True
+    assert cue115.is_assert is True
+    assert cue115.notes == "Check smoke"
     val_ch4 = cue115.device_values[4]["gobo_index/speed"]
     val_ch5 = cue115.device_values[5]["gobo_index/speed"]
     assert round(val_ch4 * 65535) == 52155  # coarse 203 (CCW)
