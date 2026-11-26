@@ -465,11 +465,24 @@ class Esf3dParser:
         param_names: dict[int, str],
         data: dict[str, Any],
     ) -> None:
-        step_idx = 1
-        cues_list: list[tuple[float, dict[str, Any], dict[str, Any]]] = []
+        cuelist_labels: dict[int, str] = {}
+        cues_by_list: dict[int, list[tuple[float, dict[str, Any], dict[str, Any]]]] = {}
 
         for item in items:
             if not isinstance(item, list):
+                continue
+
+            # Cue List: len == 27, item[2] is int cl_id, item[4] is optional label
+            if len(item) == 27 and isinstance(item[2], int) and item[2] > 0:
+                cl_id = item[2]
+                cl_label = str(item[4]) if isinstance(item[4], str) else ""
+                cuelist_labels[cl_id] = cl_label
+                seq = data["sequences"].setdefault(
+                    cl_id,
+                    {"label": cl_label, "mode": "normal", "steps": {}, "cues": {}},
+                )
+                if cl_label:
+                    seq["label"] = cl_label
                 continue
 
             # Cue: len == 31, item[2] is ['OBJ', 1, cue_num*10000, label, ...]
@@ -480,6 +493,16 @@ class Esf3dParser:
                 and isinstance(item[2][2], int)
                 and item[2][2] > 0
             ):
+                cl_id = 1
+                if (
+                    len(item) > 20
+                    and isinstance(item[20], list)
+                    and len(item[20]) > 3
+                    and isinstance(item[20][3], int)
+                    and item[20][3] > 0
+                ):
+                    cl_id = item[20][3]
+
                 cue_num = item[2][2] / 10000.0
                 label = str(item[2][3]) if isinstance(item[2][3], str) else ""
                 cue_channels: dict[int, float] = {}
@@ -554,7 +577,9 @@ class Esf3dParser:
                     step_dict["time_beam"] = t_bm
                 if d_bm is not None:
                     step_dict["delay_beam"] = d_bm
-                cues_list.append((cue_num, cue_dict, step_dict))
+                cues_by_list.setdefault(cl_id, []).append(
+                    (cue_num, cue_dict, step_dict)
+                )
 
             # Group: len == 4, item[2] header, item[3] channel list
             elif (
@@ -619,8 +644,19 @@ class Esf3dParser:
                         "device_values": pal_dev_vals,
                     }
 
-        cues_list.sort(key=lambda c: c[0])
-        for cue_num, cue_dict, step_dict in cues_list:
-            data["sequences"][1]["cues"][cue_num] = cue_dict
-            data["sequences"][1]["steps"][step_idx] = step_dict
-            step_idx += 1
+        for cl_id, cl_cues in sorted(cues_by_list.items()):
+            seq = data["sequences"].setdefault(
+                cl_id,
+                {
+                    "label": cuelist_labels.get(cl_id, ""),
+                    "mode": "normal",
+                    "steps": {},
+                    "cues": {},
+                },
+            )
+            if cl_id in cuelist_labels and cuelist_labels[cl_id]:
+                seq["label"] = cuelist_labels[cl_id]
+            cl_cues.sort(key=lambda c: c[0])
+            for step_idx, (cue_num, cue_dict, step_dict) in enumerate(cl_cues, 1):
+                seq["cues"][cue_num] = cue_dict
+                seq["steps"][step_idx] = step_dict
