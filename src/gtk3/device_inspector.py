@@ -36,7 +36,12 @@ from olc.devices.color_pick import (
     rgb_to_hs,
     shift_color_hs,
 )
-from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, LightingDevice
+from olc.devices.device import (
+    COLOR_CHANNEL_TYPES,
+    Channel,
+    ChannelType,
+    LightingDevice,
+)
 from olc.devices.gobo import (
     BUILTIN_GOBO_IDS,
     BUILTIN_GOBO_LABELS,
@@ -110,6 +115,8 @@ class DeviceInspectorWidget(Gtk.Box):
         self._updating_ui: bool = False
         self._syncing_devices: bool = False
         self._gobo_grid_signature: tuple[Any, ...] | None = None
+        self._active_gobo_wheel_index: int = 0
+        self._gobo_wheel_buttons: list[Gtk.ToggleButton] = []
 
         self._build_header()
         self._build_ifcb_sections()
@@ -427,6 +434,9 @@ class DeviceInspectorWidget(Gtk.Box):
 
         gobo_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.gobos_header_label = Gtk.Label(label="GOBOS & EFFECTS [0/0]", xalign=0)
+        self.gobo_wheel_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.gobo_wheel_box.set_no_show_all(True)
+        self.gobo_wheel_box.set_visible(False)
         self.gobo_flowbox = Gtk.FlowBox()
         self.gobo_flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.gobo_flowbox.set_homogeneous(True)
@@ -465,6 +475,7 @@ class DeviceInspectorWidget(Gtk.Box):
         )
         self.prism_scale.connect("value-changed", self._on_prism_scale_changed)
         gobo_box.pack_start(self.gobos_header_label, False, False, 0)
+        gobo_box.pack_start(self.gobo_wheel_box, False, False, 0)
         gobo_box.pack_start(self.gobo_scroll, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
         gobo_box.pack_start(self.gobo_value_label, False, False, 0)
@@ -753,9 +764,11 @@ class DeviceInspectorWidget(Gtk.Box):
         if p == "frost" and dev.get_channel(ChannelType.FROST) is not None:
             fr = dev.get_parameter_percent(ChannelType.FROST)
             return round(fr, 1) if fr is not None else None
-        if p == "gobo" and dev.get_channel(ChannelType.GOBO_WHEEL) is not None:
-            gb = dev.get_parameter_percent(ChannelType.GOBO_WHEEL)
-            return round(gb, 1) if gb is not None else None
+        if p == "gobo":
+            gobo_ch = self._get_active_gobo_channel(dev)
+            if gobo_ch is not None:
+                return round(gobo_ch.value / 255.0 * 100.0, 1)
+            return None
         if p == "prism" and dev.get_channel(ChannelType.PRISM) is not None:
             pr = dev.get_parameter_percent(ChannelType.PRISM)
             return round(pr, 1) if pr is not None else None
@@ -791,9 +804,13 @@ class DeviceInspectorWidget(Gtk.Box):
         if p in ("intensity", "iris", "frost", "prism"):
             base = f"{val}%"
         elif p == "gobo":
-            gobo_label = lead.gobo if lead.gobo is not None else None
-            if isinstance(gobo_label, str):
-                base = f"{gobo_label} ({val}%)"
+            gobo_ch = self._get_active_gobo_channel(lead)
+            if (
+                gobo_ch is not None
+                and gobo_ch.value != gobo_ch.default_value
+                and gobo_ch.active_range is not None
+            ):
+                base = f"{gobo_ch.active_range.label} ({val}%)"
             else:
                 base = f"{val}%"
         elif p in ("pan", "tilt", "zoom"):
@@ -1229,12 +1246,46 @@ class DeviceInspectorWidget(Gtk.Box):
         self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
+    @staticmethod
+    def _get_gobo_wheels(dev: LightingDevice) -> list[Channel]:
+        return [
+            ch
+            for ch in dev.channels
+            if ch.is_coarse
+            and (
+                ch.channel_type is ChannelType.GOBO_WHEEL
+                or ch.label.lower() == "gobo_select_2"
+            )
+        ]
+
+    def _get_active_gobo_channel(self, dev: LightingDevice) -> Channel | None:
+        wheels = self._get_gobo_wheels(dev)
+        if not wheels:
+            return None
+        idx = max(0, min(self._active_gobo_wheel_index, len(wheels) - 1))
+        return wheels[idx]
+
+    def _target_channel(
+        self, dev: LightingDevice, channel_type: ChannelType, wheel_index: int | None
+    ) -> Channel | None:
+        if channel_type is ChannelType.GOBO_WHEEL and wheel_index is not None:
+            wheels = self._get_gobo_wheels(dev)
+            if 0 <= wheel_index < len(wheels):
+                return wheels[wheel_index]
+            return None
+        return dev.get_channel(channel_type)
+
     def apply_normalized_parameter(
-        self, channel_type: ChannelType, norm: float
+        self,
+        channel_type: ChannelType,
+        norm: float,
+        wheel_index: int | None = None,
     ) -> None:
         """Apply normalized [0.0..1.0] parameter to eligible devices."""
         eligible = [
-            d for d in self.selected_devices if d.get_channel(channel_type) is not None
+            d
+            for d in self.selected_devices
+            if self._target_channel(d, channel_type, wheel_index) is not None
         ]
         if not eligible:
             return
@@ -1243,25 +1294,34 @@ class DeviceInspectorWidget(Gtk.Box):
         if self.edit_mode == "relative":
             ref_dev = self.lead_device if self.lead_device in eligible else eligible[0]
             assert ref_dev is not None
-            ref_val = ref_dev.get_parameter_normalized(channel_type) or 0.0
+            ref_ch = self._target_channel(ref_dev, channel_type, wheel_index)
+            ref_val = (ref_ch.value / 255.0) if ref_ch is not None else 0.0
             delta = target - float(ref_val)
             for dev in eligible:
-                cur_val = dev.get_parameter_normalized(channel_type) or 0.0
-                dev.set_parameter_normalized(
-                    channel_type, max(0.0, min(1.0, float(cur_val) + delta))
-                )
+                ch = self._target_channel(dev, channel_type, wheel_index)
+                if ch is not None:
+                    cur_val = ch.value / 255.0
+                    new_norm = max(0.0, min(1.0, cur_val + delta))
+                    ch.set_value(round(new_norm * 255.0))
         else:
             for dev in eligible:
-                dev.set_parameter_normalized(channel_type, target)
+                ch = self._target_channel(dev, channel_type, wheel_index)
+                if ch is not None:
+                    ch.set_value(round(target * 255.0))
 
         self._sync_devices_to_live_and_dmx(eligible)
         self.refresh_ui()
 
-    def apply_discrete_range(self, channel_type: ChannelType, range_label: str) -> int:
+    def apply_discrete_range(
+        self,
+        channel_type: ChannelType,
+        range_label: str,
+        wheel_index: int | None = None,
+    ) -> int:
         """Activate a named ChannelRange on all compatible selected devices."""
         activated_count = 0
         for dev in self.selected_devices:
-            ch = dev.get_channel(channel_type)
+            ch = self._target_channel(dev, channel_type, wheel_index)
             if ch is None:
                 continue
             for r in ch.ranges:
@@ -1311,7 +1371,9 @@ class DeviceInspectorWidget(Gtk.Box):
         if self._updating_ui:
             return
         self.apply_normalized_parameter(
-            ChannelType.GOBO_WHEEL, scale.get_value() / 100.0
+            ChannelType.GOBO_WHEEL,
+            scale.get_value() / 100.0,
+            wheel_index=self._active_gobo_wheel_index,
         )
 
     def _on_prism_scale_changed(self, scale: Gtk.Scale) -> None:
@@ -1348,7 +1410,11 @@ class DeviceInspectorWidget(Gtk.Box):
             return
         label = combo.get_active_text()
         if label:
-            self.apply_discrete_range(ChannelType.GOBO_WHEEL, label)
+            self.apply_discrete_range(
+                ChannelType.GOBO_WHEEL,
+                label,
+                wheel_index=self._active_gobo_wheel_index,
+            )
 
     def _get_gobo_image_bytes(self, gobo_id: str) -> bytes | None:
         if not gobo_id or self.app is None or not hasattr(self.app, "core"):
@@ -1372,18 +1438,62 @@ class DeviceInspectorWidget(Gtk.Box):
             self.app.core.publish_patch()
         self.refresh_ui()
 
+    def _on_gobo_wheel_selected(self, button: Gtk.ToggleButton, idx: int) -> None:
+        if self._updating_ui:
+            return
+        if not button.get_active():
+            if idx == self._active_gobo_wheel_index:
+                self._updating_ui = True
+                try:
+                    button.set_active(True)
+                finally:
+                    self._updating_ui = False
+            return
+        self._active_gobo_wheel_index = idx
+        self.refresh_ui()
+
+    def _refresh_gobo_wheel_selector(self, lead: LightingDevice | None) -> None:
+        for child in self.gobo_wheel_box.get_children():
+            self.gobo_wheel_box.remove(child)
+        self._gobo_wheel_buttons.clear()
+        if lead is None:
+            self._active_gobo_wheel_index = 0
+            self.gobo_wheel_box.set_visible(False)
+            return
+        wheels = self._get_gobo_wheels(lead)
+        if len(wheels) <= 1:
+            self._active_gobo_wheel_index = 0
+            self.gobo_wheel_box.set_visible(False)
+            return
+        if self._active_gobo_wheel_index >= len(wheels):
+            self._active_gobo_wheel_index = 0
+        for idx, ch in enumerate(wheels):
+            btn = Gtk.ToggleButton(label=ch.label or f"Gobo {idx + 1}")
+            btn.set_active(idx == self._active_gobo_wheel_index)
+            ctx = btn.get_style_context()
+            ctx.add_class("gobo-tile-btn")
+            ctx.add_provider(
+                _get_gobo_btn_css(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+            btn.connect("toggled", self._on_gobo_wheel_selected, idx)
+            self._gobo_wheel_buttons.append(btn)
+            self.gobo_wheel_box.pack_start(btn, False, False, 0)
+        self.gobo_wheel_box.show_all()
+        self.gobo_wheel_box.set_visible(True)
+
     def _refresh_gobo_grid(self, lead: LightingDevice | None) -> None:
         if lead is None:
             sig: tuple[Any, ...] | None = None
             gobo_ch = None
         else:
-            gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
+            gobo_ch = self._get_active_gobo_channel(lead)
             if gobo_ch is not None and gobo_ch.ranges:
                 act_range = gobo_ch.active_range
                 act_label = act_range.label if act_range is not None else None
                 sig = (
                     "ranges",
                     lead.fixture_id,
+                    self._active_gobo_wheel_index,
                     act_label,
                     tuple(
                         (r.label, r.gobo_id, r.value_min, r.value_max)
@@ -1405,6 +1515,7 @@ class DeviceInspectorWidget(Gtk.Box):
 
         if gobo_ch is not None and gobo_ch.ranges:
             act_range = gobo_ch.active_range
+            wheel_idx = self._active_gobo_wheel_index
             for idx, r in enumerate(gobo_ch.ranges):
                 gid = r.gobo_id or resolve_builtin_gobo(r.label, idx)
                 is_active = act_range is not None and act_range.label == r.label
@@ -1413,8 +1524,8 @@ class DeviceInspectorWidget(Gtk.Box):
                     r.label,
                     f"{r.label} (DMX {r.value_min}–{r.value_max})",
                     is_active,
-                    lambda *_a, lbl=r.label: self.apply_discrete_range(
-                        ChannelType.GOBO_WHEEL, lbl
+                    lambda *_a, lbl=r.label, widx=wheel_idx: self.apply_discrete_range(
+                        ChannelType.GOBO_WHEEL, lbl, wheel_index=widx
                     ),
                 )
                 self.gobo_flowbox.add(btn)
@@ -1563,14 +1674,14 @@ class DeviceInspectorWidget(Gtk.Box):
                 frost_pct = lead.get_parameter_percent(ChannelType.FROST)
                 if frost_pct is not None:
                     self.frost_scale.set_value(frost_pct)
-                gobo_pct = lead.get_parameter_percent(ChannelType.GOBO_WHEEL)
-                if gobo_pct is not None:
-                    self.gobo_scale.set_value(gobo_pct)
+                self._refresh_gobo_wheel_selector(lead)
+                gobo_ch = self._get_active_gobo_channel(lead)
+                if gobo_ch is not None:
+                    self.gobo_scale.set_value(gobo_ch.value / 255.0 * 100.0)
                 prism_pct = lead.get_parameter_percent(ChannelType.PRISM)
                 if prism_pct is not None:
                     self.prism_scale.set_value(prism_pct)
 
-                gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
                 self.gobo_combo.remove_all()
                 if gobo_ch is not None and gobo_ch.ranges:
                     active_idx = -1
@@ -1586,6 +1697,7 @@ class DeviceInspectorWidget(Gtk.Box):
                     self.gobo_combo.set_visible(False)
                 self._refresh_gobo_grid(lead)
             else:
+                self._refresh_gobo_wheel_selector(None)
                 self.gobo_combo.remove_all()
                 self.gobo_combo.set_visible(False)
                 self._refresh_gobo_grid(None)

@@ -245,6 +245,11 @@ class FixtureImportGdtfAction(Action):
         defn = importer.load(self.file_path)
         defn.is_builtin = False
 
+        gobo_lib = getattr(self.app.lightshow, "gobo_library", None)
+        if gobo_lib is not None and importer.last_gobo_assets:
+            for asset in importer.last_gobo_assets.values():
+                gobo_lib.add(asset)
+
         try:
             self.was_existing = library.get(defn.manufacturer, defn.model)
         except KeyError:

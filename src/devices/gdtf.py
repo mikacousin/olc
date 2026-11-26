@@ -175,11 +175,12 @@ def _resolve_bit_shift(functions: list[dict[str, Any]]) -> int:
 
 
 def _normalize_ranges(ranges: list[ChannelRange]) -> list[ChannelRange]:
-    """Sort and clamp overlapping ChannelRanges so coarse 8-bit bounds are disjoint."""
-    if len(ranges) <= 1:
+    """Sort, deduplicate labels, and clamp overlapping ChannelRanges."""
+    if not ranges:
         return ranges
     sorted_ranges = sorted(ranges, key=lambda r: (r.value_min, r.value_max))
     normalized: list[ChannelRange] = []
+    seen_labels: dict[str, int] = {}
     prev_hi = -1
     for r in sorted_ranges:
         lo = r.value_min
@@ -189,10 +190,19 @@ def _normalize_ranges(ranges: list[ChannelRange]) -> list[ChannelRange]:
         if lo > hi:
             continue
         snap = max(lo, min(hi, r.snap_value)) if r.snap_value is not None else None
-        if lo != r.value_min or hi != r.value_max or snap != r.snap_value:
+        key = r.label.lower()
+        count = seen_labels.get(key, 0) + 1
+        seen_labels[key] = count
+        label = r.label if count == 1 else f"{r.label} ({count})"
+        if (
+            lo != r.value_min
+            or hi != r.value_max
+            or snap != r.snap_value
+            or label != r.label
+        ):
             normalized.append(
                 ChannelRange(
-                    label=r.label,
+                    label=label,
                     channel_type=r.channel_type,
                     value_min=lo,
                     value_max=hi,
@@ -215,6 +225,7 @@ class GdtfImporter:
 
     def __init__(self) -> None:
         self.last_gobo_assets: dict[str, GoboAsset] = {}
+        self._cf_wheel_map: dict[tuple[str, str], str] = {}
 
     def load(self, path: str | Path) -> FixtureDefinition:
         """Load a .gdtf file from disk."""
@@ -278,7 +289,22 @@ class GdtfImporter:
 
     def _adapt_mode(self, mode: Any) -> DmxModeDefinition:  # noqa: ANN401
         channel_defs: list[ChannelDefinition] = []
+        self._cf_wheel_map = {}
         dmx_channels = getattr(mode, "dmx_channels", None)
+        if dmx_channels is not None:
+            try:
+                for ch_obj in dmx_channels:
+                    for lc in getattr(ch_obj, "logical_channels", []) or []:
+                        for cf in getattr(lc, "channel_functions", []) or []:
+                            w_ref = getattr(cf, "wheel", None)
+                            w_name = str(getattr(w_ref, "str_link", None) or "").strip()
+                            if w_name:
+                                cf_name = str(getattr(cf, "name", "") or "")
+                                cf_attr = str(getattr(cf, "attribute", "") or "")
+                                self._cf_wheel_map[(cf_name, cf_attr)] = w_name
+                                self._cf_wheel_map.setdefault((cf_attr, ""), w_name)
+            except TypeError:
+                pass
         if dmx_channels and hasattr(dmx_channels, "as_dict"):
             for ch_dict in dmx_channels.as_dict():
                 if ch_dict.get("attribute", "").startswith("+"):
@@ -348,11 +374,9 @@ class GdtfImporter:
             )
 
         bit_shift = _resolve_bit_shift(real_functions)
-        raw_ranges = [
-            r
-            for cf in real_functions
-            if (r := self._adapt_function(cf, bit_shift)) is not None
-        ]
+        raw_ranges: list[ChannelRange] = []
+        for cf in real_functions:
+            raw_ranges.extend(self._adapt_function_ranges(cf, bit_shift))
         ranges = _normalize_ranges(raw_ranges)
         if not ranges:
             return None
@@ -418,8 +442,76 @@ class GdtfImporter:
             gobo_id=gobo_id,
         )
 
+    def _resolve_wheel_name(self, cf: dict[str, Any]) -> str:
+        raw_wheel = str(cf.get("wheel") or "").strip()
+        if raw_wheel and raw_wheel != "None":
+            return raw_wheel
+        name = str(cf.get("name") or "")
+        attr = str(cf.get("attribute") or "")
+        return self._cf_wheel_map.get((name, attr)) or self._cf_wheel_map.get(
+            (attr, ""), ""
+        )
+
+    def _adapt_function_ranges(
+        self, cf: dict[str, Any], bit_shift: int = 0
+    ) -> list[ChannelRange]:
+        attr = cf.get("attribute", "NoFeature")
+        if attr in ("NoFeature", ""):
+            return []
+        ch_type = _attr_to_channel_type(attr)
+        slot_sets = [
+            cs for cs in cf.get("channel_sets", []) if cs.get("wheel_slot_index")
+        ]
+        if ch_type is ChannelType.GOBO_WHEEL and slot_sets:
+            wheel = self._resolve_wheel_name(cf)
+            p_from = cf.get("physical_from")
+            p_to = cf.get("physical_to")
+            phys_min, phys_max, phys_unit = _resolve_physical_bounds(
+                ch_type, p_from, p_to
+            )
+            is_shake = "shake" in str(attr).lower()
+            out: list[ChannelRange] = []
+            for cs in slot_sets:
+                slot_idx = int(cs["wheel_slot_index"])
+                raw_from = int(cs.get("dmx_from", 0))
+                raw_to = int(cs.get("dmx_to", raw_from))
+                dmx_from = max(0, min(255, raw_from >> bit_shift))
+                dmx_to = max(0, min(255, raw_to >> bit_shift))
+                lo, hi = (
+                    (dmx_from, dmx_to) if dmx_from <= dmx_to else (dmx_to, dmx_from)
+                )
+                cs_name = str(cs.get("name") or f"Slot {slot_idx}").strip()
+                label = (
+                    f"{cs_name} (Shake)"
+                    if is_shake and "shake" not in cs_name.lower()
+                    else cs_name
+                )
+                key = f"{wheel}:{slot_idx}"
+                if key in self.last_gobo_assets:
+                    gobo_id = self.last_gobo_assets[key].gobo_id
+                else:
+                    gobo_id = resolve_builtin_gobo(cs_name, max(0, slot_idx - 1))
+                out.append(
+                    ChannelRange(
+                        label=label,
+                        channel_type=ch_type,
+                        value_min=lo,
+                        value_max=hi,
+                        snap_value=(lo + hi) // 2,
+                        description=cs_name,
+                        physical_min=phys_min,
+                        physical_max=phys_max,
+                        physical_unit=phys_unit,
+                        gobo_id=gobo_id,
+                    )
+                )
+            return out
+
+        single = self._adapt_function(cf, bit_shift)
+        return [single] if single is not None else []
+
     def _resolve_cf_gobo_id(self, cf: dict[str, Any], fallback_name: str) -> str:
-        wheel = str(cf.get("wheel") or "")
+        wheel = self._resolve_wheel_name(cf)
         for cs in cf.get("channel_sets", []):
             slot_idx = cs.get("wheel_slot_index")
             if slot_idx:
@@ -443,16 +535,27 @@ class GdtfImporter:
                     for idx, slot in enumerate(
                         getattr(wheel, "wheel_slots", []) or [], start=1
                     ):
-                        media = str(getattr(slot, "media_file_name", "") or "").strip()
-                        if not media:
+                        raw_media = getattr(slot, "media_file_name", None)
+                        if raw_media is None:
                             continue
-                        for ext in ("png", "svg", "jpg"):
-                            cand = f"wheels/{media}.{ext}"
+                        media_name = str(
+                            getattr(raw_media, "name", None)
+                            if hasattr(raw_media, "name")
+                            else raw_media
+                        ).strip()
+                        if not media_name:
+                            continue
+                        ext_hint = str(
+                            getattr(raw_media, "extension", None) or ""
+                        ).strip()
+                        exts = [e for e in (ext_hint, "png", "svg", "jpg") if e]
+                        for ext in dict.fromkeys(exts):
+                            cand = f"wheels/{media_name}.{ext}"
                             if cand in names:
-                                gid = f"gdtf:{ft_id}:{media}"
+                                gid = f"gdtf:{ft_id}:{media_name}"
                                 assets[f"{w_name}:{idx}"] = GoboAsset(
                                     gobo_id=gid,
-                                    name=str(getattr(slot, "name", "") or media),
+                                    name=str(getattr(slot, "name", "") or media_name),
                                     data=zf.read(cand),
                                     ext=ext,
                                 )

@@ -1326,6 +1326,37 @@ def test_gdtf_gobo_wheel_attributes_classified_as_gobo_wheel() -> None:
     assert len(cd.ranges) == 3
 
 
+def test_gdtf_channel_sets_expanded_and_real_png_extracted() -> None:
+    if not HAS_PYGDTF:
+        pytest.skip("pygdtf not installed")
+    ghibli = (
+        DATA_DIR.parent.parent / "doc" / "Ayrton@Ghibli@V2.41_Add_Emitter_Dimmer.gdtf"
+    )
+    if not ghibli.exists():
+        pytest.skip("Ghibli GDTF fixture not present in doc/")
+
+    importer = GdtfImporter()
+    defn = importer.load(ghibli)
+    assert len(importer.last_gobo_assets) > 0
+
+    dev = defn.instantiate(
+        fixture_id=1,
+        label="Ghibli",
+        universe=1,
+        address=1,
+        mode_name=defn.dmx_modes[0].name,
+    )
+    wheels = dev.get_channels(ChannelType.GOBO_WHEEL)
+    assert len(wheels) == 2
+    assert len(wheels[0].ranges) >= 15
+    assert len(wheels[1].ranges) >= 15
+    assert any(r.gobo_id.startswith("gdtf:") for r in wheels[0].ranges)
+    assert any(r.gobo_id.startswith("gdtf:") for r in wheels[1].ranges)
+    asset_ids = {a.gobo_id for a in importer.last_gobo_assets.values()}
+    assert any(r.gobo_id in asset_ids for r in wheels[0].ranges)
+    assert any(r.gobo_id in asset_ids for r in wheels[1].ranges)
+
+
 def test_substep_accumulation_8bit_vs_float() -> None:
     """Verify micro-stepping (0.05 deg) accumulates in float on 8-bit fixtures."""
     mode = DmxModeDefinition(

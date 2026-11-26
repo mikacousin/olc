@@ -273,6 +273,7 @@ def _build_channel_ranges(
     num_bytes: int,
     ctype: ChannelType,
     unit: str,
+    resolve_gobos: bool = False,
 ) -> list[dict[str, typing.Any]]:
     """Convert multi-slot Eos $$PersSlot definitions into ChannelRange dicts."""
     if len(slot_list) <= 1:
@@ -304,7 +305,7 @@ def _build_channel_ranges(
 
         label = str(slot.get("label", "")).strip() or f"Slot {idx}"
         gobo_id = str(slot.get("gobo_id", "")).strip()
-        if ctype is ChannelType.GOBO_WHEEL and not gobo_id:
+        if (ctype is ChannelType.GOBO_WHEEL or resolve_gobos) and not gobo_id:
             gobo_id = resolve_builtin_gobo(label, idx - 1)
         parsed.append((lo, hi, snap, p0, p1, label, gobo_id))
 
@@ -335,7 +336,9 @@ def _build_channel_ranges(
     return ranges
 
 
-def _default_gobo_wheel_ranges() -> list[dict[str, typing.Any]]:
+def _default_gobo_wheel_ranges(
+    channel_type_value: str = ChannelType.GOBO_WHEEL.value,
+) -> list[dict[str, typing.Any]]:
     """Build fallback 9-slot gobo wheel ranges when Eos omits $$PersSlot."""
     slots = BUILTIN_GOBO_IDS[:9]
     ranges: list[dict[str, typing.Any]] = []
@@ -346,7 +349,7 @@ def _default_gobo_wheel_ranges() -> list[dict[str, typing.Any]]:
         ranges.append(
             {
                 "label": BUILTIN_GOBO_LABELS.get(gid, f"Gobo {idx}"),
-                "channel_type": ChannelType.GOBO_WHEEL.value,
+                "channel_type": channel_type_value,
                 "value_min": lo,
                 "value_max": hi,
                 "snap_value": (lo + hi) // 2,
@@ -426,9 +429,14 @@ def build_fixture_definition(
         slot_list: list[dict[str, typing.Any]] = pc.get("slot_list", [])
         phys_min, phys_max = _resolve_channel_physical_bounds(pc)
         phys_unit = _extract_physical_unit(slot_list, ctype)
-        ranges = _build_channel_ranges(slot_list, num_bytes, ctype, phys_unit)
-        if ctype is ChannelType.GOBO_WHEEL and not ranges:
-            ranges = _default_gobo_wheel_ranges()
+        is_gobo_wheel = (
+            ctype is ChannelType.GOBO_WHEEL or p_name.lower() == "gobo_select_2"
+        )
+        ranges = _build_channel_ranges(
+            slot_list, num_bytes, ctype, phys_unit, resolve_gobos=is_gobo_wheel
+        )
+        if is_gobo_wheel and not ranges:
+            ranges = _default_gobo_wheel_ranges(ctype.value)
 
         ctypes.append(ctype)
         offset_0 = off_c - 1

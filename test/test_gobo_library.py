@@ -143,6 +143,9 @@ def test_olc_persistence_gobo_library_and_static_gobo(tmp_path: pathlib.Path) ->
 @pytest.mark.gui
 def test_device_inspector_displays_and_applies_gobo_tiles() -> None:
     """DeviceInspectorWidget renders gobo tiles and clicking applies the gobo slot."""
+    import gi
+
+    gi.require_version("Gtk", "3.0")
     from gi.repository import Gtk
 
     from olc.gtk3.device_inspector import DeviceInspectorWidget
@@ -209,6 +212,9 @@ def test_device_inspector_displays_and_applies_gobo_tiles() -> None:
 @pytest.mark.gui
 def test_device_inspector_gobo_grid_scroll_and_cache() -> None:
     """DeviceInspectorWidget bounds gobo grid height and caches unchanged grids."""
+    import gi
+
+    gi.require_version("Gtk", "3.0")
     from gi.repository import Gtk
 
     from olc.gtk3.device_inspector import DeviceInspectorWidget
@@ -289,3 +295,104 @@ def test_device_inspector_gobo_grid_scroll_and_cache() -> None:
         Gtk.main_iteration()
     assert inspector.gobo_combo.get_visible() is False
     win.destroy()
+
+
+@pytest.mark.gui
+def test_device_inspector_multi_gobo_wheels_and_eos_gobo2() -> None:
+    """DeviceInspectorWidget switches between Gobo 1 and Gobo 2 wheels."""
+    import gi
+
+    from olc.files.ascii.eos_devices import eos_param_id_to_olc_key
+
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gtk
+
+    from olc.gtk3.device_inspector import DeviceInspectorWidget
+
+    assert eos_param_id_to_olc_key(211, {211: "Gobo_Select_2"}) == "gobo_select_2"
+
+    core = CoreApplication(MagicMock())
+    w1_ranges = [
+        ChannelRange("W1 Open", ChannelType.GOBO_WHEEL, 0, 127, gobo_id="builtin:open"),
+        ChannelRange(
+            "W1 Stars", ChannelType.GOBO_WHEEL, 128, 255, gobo_id="builtin:stars"
+        ),
+    ]
+    w2_ranges = [
+        ChannelRange("W2 Open", ChannelType.GOBO_WHEEL, 0, 127, gobo_id="builtin:open"),
+        ChannelRange(
+            "W2 Bars", ChannelType.GOBO_WHEEL, 128, 255, gobo_id="builtin:bars"
+        ),
+    ]
+    dev = LightingDevice(
+        fixture_id=20,
+        label="Dual Gobo Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.GOBO_WHEEL, 1, 2, label="Gobo1", ranges=w1_ranges),
+            Channel(ChannelType.GENERIC, 1, 3, label="Gobo_Select_2", ranges=w2_ranges),
+        ],
+    )
+    core.lightshow.patch.devices[20] = dev
+
+    mock_gtk_app = MagicMock()
+    mock_gtk_app.core = core
+    inspector = DeviceInspectorWidget(app=mock_gtk_app)
+    win = Gtk.Window()
+    win.add(inspector)
+    win.show_all()
+
+    inspector.set_selected_channels([20])
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+
+    assert inspector.gobo_wheel_box.get_visible() is True
+    assert len(inspector._gobo_wheel_buttons) == 2
+    assert len(inspector.gobo_flowbox.get_children()) == 2
+
+    # Switch to Gobo2 wheel and click "W2 Bars"
+    inspector._gobo_wheel_buttons[1].set_active(True)
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+
+    w2_children = list(inspector.gobo_flowbox.get_children())
+    assert len(w2_children) == 2
+    flow_child = w2_children[1]
+    assert isinstance(flow_child, Gtk.FlowBoxChild)
+    btn = flow_child.get_child()
+    assert isinstance(btn, Gtk.Button)
+    btn.clicked()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+
+    wheels = DeviceInspectorWidget._get_gobo_wheels(dev)
+    assert len(wheels) == 2
+    assert wheels[0].value == 0  # Gobo1 untouched
+    assert wheels[1].value == 191  # midpoint of [128, 255] on Gobo_Select_2
+    win.destroy()
+
+
+def test_import_gdtf_action_registers_gobos_in_library(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """ImportGdtfAction registers extracted GDTF wheel PNGs in gobo_library."""
+    import pathlib
+
+    from olc.devices.gdtf import HAS_PYGDTF
+
+    if not HAS_PYGDTF:
+        pytest.skip("pygdtf not installed")
+    ghibli = (
+        pathlib.Path(__file__).resolve().parent.parent
+        / "doc"
+        / "Ayrton@Ghibli@V2.41_Add_Emitter_Dimmer.gdtf"
+    )
+    if not ghibli.exists():
+        pytest.skip("Ghibli GDTF fixture not present in doc/")
+
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
+    core = CoreApplication(MagicMock())
+    defn = core.action_registry.execute("fixture.import_gdtf", str(ghibli))
+    assert defn is not None
+    assert len(core.lightshow.gobo_library) > 0
