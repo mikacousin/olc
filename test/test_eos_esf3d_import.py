@@ -100,6 +100,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert cue115.is_block is True
     assert cue115.is_assert is True
     assert cue115.notes == "Check smoke"
+    assert cue115.palette_refs[4]["cyan"] == ("color", 1.0)
     val_ch4 = cue115.device_values[4]["gobo_index/speed"]
     val_ch5 = cue115.device_values[5]["gobo_index/speed"]
     assert round(val_ch4 * 65535) == 52155  # coarse 203 (CCW)
@@ -107,10 +108,16 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert (round(val_ch4 * 65535) >> 8) == 203
     assert (round(val_ch5 * 65535) >> 8) == 180
 
-    # Groups & Palettes (including cloned Ch 5)
+    # Groups & Palettes (Focus + Color including cloned Ch 5)
     grp1 = show.groups.get(1.0)
     assert grp1 is not None
     assert grp1.channels == [4, 5]
+
+    foc_pal = show.palettes.get(PaletteCategory.FOCUS, 1.0)
+    assert foc_pal is not None
+    assert foc_pal.text == "Stage Center"
+    assert foc_pal.device_values[4]["pan"] == pytest.approx(15.0, abs=0.05)
+    assert foc_pal.device_values[4]["tilt"] == pytest.approx(-10.0, abs=0.05)
 
     col_pal = show.palettes.get(PaletteCategory.COLOR, 1.0)
     assert col_pal is not None

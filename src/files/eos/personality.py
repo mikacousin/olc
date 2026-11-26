@@ -153,6 +153,25 @@ def parse_param_types(tree3: list[Any]) -> dict[int, str]:
     return result
 
 
+def parse_param_categories(tree3: list[Any]) -> dict[int, int]:
+    """Build ``param_id -> Eos category`` mapping from ``tree[3]``.
+
+    Eos categories: ``1=Intensity``, ``2=Focus``, ``3=Color``, ``4/5/6=Beam``.
+    """
+    result: dict[int, int] = {}
+    if not isinstance(tree3, list):
+        return result
+    for item in tree3:
+        if (
+            isinstance(item, list)
+            and len(item) >= 6
+            and isinstance(item[4], int)
+            and isinstance(item[5], int)
+        ):
+            result[item[5]] = item[4]
+    return result
+
+
 def _parse_condition(cond_obj: object) -> tuple[int | None, float, float]:
     """Parse Eos conditional range header."""
     if not isinstance(cond_obj, list) or len(cond_obj) < 3:
