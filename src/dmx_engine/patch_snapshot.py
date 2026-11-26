@@ -74,6 +74,17 @@ def _channel_row(ch: Any) -> dict[str, Any]:  # noqa: ANN401
     if pmin is not None and pmax is not None and (pmin, pmax) != (0.0, 1.0):
         row["physical_min"] = float(pmin)
         row["physical_max"] = float(pmax)
+    ranges = getattr(ch, "ranges", None)
+    if ranges:
+        row["ranges"] = [
+            {
+                "label": str(r.label),
+                "min": int(r.value_min),
+                "max": int(r.value_max),
+                **({"gobo_id": str(r.gobo_id)} if getattr(r, "gobo_id", "") else {}),
+            }
+            for r in ranges
+        ]
     return row
 
 
@@ -101,6 +112,7 @@ def _device_row(device: Any) -> dict[str, Any]:  # noqa: ANN401
             getattr(device, "orientation", None), (0.0, 0.0, 0.0)
         ),
         "beam_angle": float(getattr(device, "beam_angle", 25.0)),
+        "static_gobo": str(getattr(device, "static_gobo", "")),
         "channels": [_channel_row(ch) for ch in getattr(device, "channels", [])],
     }
 
@@ -134,7 +146,7 @@ class PatchSnapshotServer:
         self,
         port: int,
         host: str = "127.0.0.1",
-        on_command: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        on_command: Callable[[dict[str, Any]], dict[str, Any] | bytes] | None = None,
     ) -> None:
         self._endpoint = f"tcp://{host}:{port}"
         self._snapshot: tuple[int, bytes] = (0, build_snapshot([], 0))
@@ -146,7 +158,7 @@ class PatchSnapshotServer:
         self._error: Exception | None = None
 
     def set_command_handler(
-        self, handler: Callable[[dict[str, Any]], dict[str, Any]] | None
+        self, handler: Callable[[dict[str, Any]], dict[str, Any] | bytes] | None
     ) -> None:
         """Register or clear the callback invoked for JSON commands."""
         self._on_command = handler
@@ -205,6 +217,8 @@ class PatchSnapshotServer:
             reply = handler(payload)
         except Exception as err:  # pylint: disable=broad-exception-caught
             reply = {"ok": False, "error": str(err)}
+        if isinstance(reply, bytes):
+            return reply
         return json.dumps(reply).encode("utf-8")
 
     def _serve(self) -> None:

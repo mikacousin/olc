@@ -3630,6 +3630,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "egui-wgpu",
+ "image",
  "viz-core",
  "wgpu",
 ]

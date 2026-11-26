@@ -375,3 +375,73 @@ def test_device_set_3d_action_and_undo_redo() -> None:
     app.history.redo()
     assert dev.position == pytest.approx((1.5, -2.0, 5.0))
     assert dev.beam_angle == pytest.approx(40.0)
+
+
+def test_snapshot_gobo_ranges_static_gobo_and_get_gobo_command() -> None:
+    """Snapshot exports gobo ranges/static_gobo and get_gobo returns raw PNG bytes."""
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.devices.channel import Channel, ChannelRange, ChannelType, FixtureType
+    from olc.devices.device import LightingDevice
+    from olc.devices.gobo import GoboAsset
+
+    port = _free_port() - 1
+    app = CoreApplication(MagicMock())
+    png_bytes = b"\x89PNG\r\n\x1a\nfake-gobo-png"
+    app.lightshow.gobo_library.add(
+        GoboAsset(gobo_id="cid-g1", name="Star", data=png_bytes, ext="png")
+    )
+    mover = LightingDevice(
+        fixture_id=10,
+        label="Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(
+                ChannelType.GOBO_WHEEL,
+                1,
+                1,
+                ranges=[
+                    ChannelRange(
+                        "Open", ChannelType.GOBO_WHEEL, 0, 127, gobo_id="builtin:open"
+                    ),
+                    ChannelRange(
+                        "Star", ChannelType.GOBO_WHEEL, 128, 255, gobo_id="cid-g1"
+                    ),
+                ],
+            )
+        ],
+    )
+    fixed = LightingDevice(
+        fixture_id=11,
+        label="Decoupe",
+        fixture_type=FixtureType.DIMMER,
+        channels=[Channel(ChannelType.INTENSITY, 1, 2)],
+        static_gobo="builtin:breakup",
+    )
+    app.lightshow.patch.devices[10] = mover
+    app.lightshow.patch.devices[11] = fixed
+
+    engine = app.init_engine(monitor_port=port, no_listen=True, no_transmit=True)
+    engine.start()
+    ctx = zmq.Context()
+    sock = ctx.socket(zmq.REQ)
+    sock.setsockopt(zmq.LINGER, 0)
+    sock.setsockopt(zmq.RCVTIMEO, 3000)
+    sock.connect(f"tcp://127.0.0.1:{port + 1}")
+    try:
+        sock.send(SNAPSHOT_REQUEST)
+        snap = json.loads(sock.recv())
+        d10, d11 = snap["devices"]
+        assert d10["channels"][0]["ranges"] == [
+            {"label": "Open", "min": 0, "max": 127, "gobo_id": "builtin:open"},
+            {"label": "Star", "min": 128, "max": 255, "gobo_id": "cid-g1"},
+        ]
+        assert d11["static_gobo"] == "builtin:breakup"
+
+        sock.send_json({"cmd": "get_gobo", "id": "cid-g1"})
+        assert sock.recv() == png_bytes
+    finally:
+        sock.close()
+        ctx.term()
+        engine.stop()

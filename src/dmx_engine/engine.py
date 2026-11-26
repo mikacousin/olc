@@ -262,7 +262,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
     def set_command_handler(
         self,
-        handler: Callable[[dict[str, Any]], dict[str, Any]] | None,
+        handler: Callable[[dict[str, Any]], dict[str, Any] | bytes] | None,
     ) -> None:
         """Register callback for external viewer commands on monitor_port + 1."""
         if self._patch_server is not None:

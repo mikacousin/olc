@@ -400,9 +400,15 @@ class CoreApplication(EventDispatcher):
 
     def _handle_viz_command(
         self, payload: dict[str, typing.Any]
-    ) -> dict[str, typing.Any]:
+    ) -> dict[str, typing.Any] | bytes:
         """Handle incoming JSON command from external visualizer (olc-viz)."""
         cmd = payload.get("cmd")
+        if cmd == "get_gobo":
+            gobo_id = str(payload.get("id", ""))
+            asset = self.lightshow.gobo_library.get(gobo_id)
+            if asset is not None and asset.data:
+                return asset.data
+            return {"ok": False, "error": f"Unknown gobo {gobo_id}"}
         if cmd == "set_focus":
             device_id = int(payload["device_id"])
             raw_target = payload["target"]

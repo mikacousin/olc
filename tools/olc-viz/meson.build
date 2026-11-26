@@ -15,6 +15,7 @@ if cargo.found() and not viz_opt.disabled()
     'crates/viz-source/src/lib.rs',
     'crates/viz-render/Cargo.toml',
     'crates/viz-render/src/lib.rs',
+    'crates/viz-render/src/gobo.rs',
     'crates/viz-render/src/math.rs',
     'crates/viz-render/src/camera.rs',
     'crates/viz-render/src/dmx_eval.rs',
