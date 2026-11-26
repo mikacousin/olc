@@ -177,55 +177,64 @@ class PatchChannelsTab(Gtk.Box):
 
     def _setup_toolbar(self) -> None:
         """Create top action toolbar for device patch management."""
-        self.toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.toolbar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.toolbar.set_margin_start(6)
         self.toolbar.set_margin_end(6)
         self.toolbar.set_margin_top(4)
 
+        row1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.sort_toggle_btn = Gtk.ToggleButton(label="Sort by Channels")
         self.sort_toggle_btn.connect("toggled", self._on_sort_toggled)
-        self.toolbar.pack_start(self.sort_toggle_btn, False, False, 0)
+        row1.pack_start(self.sort_toggle_btn, False, False, 0)
 
         self.scope_toggle_btn = Gtk.ToggleButton(label="Patched only")
         self.scope_toggle_btn.connect("toggled", self._on_scope_toggled)
-        self.toolbar.pack_start(self.scope_toggle_btn, False, False, 0)
+        row1.pack_start(self.scope_toggle_btn, False, False, 0)
 
         self.add_device_btn = Gtk.Button(label="Add Device")
         self.add_device_btn.connect("clicked", self._on_add_device_clicked)
-        self.toolbar.pack_start(self.add_device_btn, False, False, 0)
+        row1.pack_start(self.add_device_btn, False, False, 0)
 
         self.remove_device_btn = Gtk.Button(label="Remove Device")
         self.remove_device_btn.connect("clicked", self._on_remove_device_clicked)
-        self.toolbar.pack_start(self.remove_device_btn, False, False, 0)
+        row1.pack_start(self.remove_device_btn, False, False, 0)
 
         self.exchange_btn = Gtk.Button(label="Fixture Exchange")
         self.exchange_btn.connect("clicked", self._on_exchange_clicked)
-        self.toolbar.pack_start(self.exchange_btn, False, False, 0)
+        row1.pack_start(self.exchange_btn, False, False, 0)
+        self.toolbar.pack_start(row1, False, False, 0)
 
+        row2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.edit_3d_btn = Gtk.Button(label=_("3D / Focus…"))
         self.edit_3d_btn.set_tooltip_text(
             _("Edit 3D position, focus point, orientation, and beam angle")
         )
         self.edit_3d_btn.connect("clicked", self._on_edit_3d_clicked)
-        self.toolbar.pack_start(self.edit_3d_btn, False, False, 0)
+        row2.pack_start(self.edit_3d_btn, False, False, 0)
 
         self.stage_3d_btn = Gtk.Button(label=_("Stage / Fog…"))
         self.stage_3d_btn.set_tooltip_text(
             _("Configure 3D stage floor dimensions, grid, color, and fog")
         )
         self.stage_3d_btn.connect("clicked", self._on_stage_3d_clicked)
-        self.toolbar.pack_start(self.stage_3d_btn, False, False, 0)
+        row2.pack_start(self.stage_3d_btn, False, False, 0)
 
         # Global patch operations (packed on the right)
         self.unpatch_all_btn = Gtk.Button(label="Unpatch all")
         self.unpatch_all_btn.connect("clicked", self._on_unpatch_all_clicked)
-        self.toolbar.pack_end(self.unpatch_all_btn, False, False, 0)
+        row2.pack_end(self.unpatch_all_btn, False, False, 0)
 
         self.patch_1on1_btn = Gtk.Button(label="Patch 1:1")
         self.patch_1on1_btn.connect("clicked", self._on_patch_1on1_clicked)
-        self.toolbar.pack_end(self.patch_1on1_btn, False, False, 0)
+        row2.pack_end(self.patch_1on1_btn, False, False, 0)
+        self.toolbar.pack_start(row2, False, False, 0)
 
-        self.pack_start(self.toolbar, False, False, 2)
+        toolbar_scroll = Gtk.ScrolledWindow()
+        toolbar_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        toolbar_scroll.set_propagate_natural_width(False)
+        toolbar_scroll.set_propagate_natural_height(True)
+        toolbar_scroll.add(self.toolbar)
+        self.pack_start(toolbar_scroll, False, False, 2)
 
     def _setup_views(self) -> None:
         """Create the Devices TreeView and add it to the tab."""

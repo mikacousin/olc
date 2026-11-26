@@ -21,7 +21,7 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from gi.repository import GLib, Gtk
+from gi.repository import Gdk, GLib, Gtk, Pango
 
 from olc.devices.color import sRGB
 from olc.devices.color_pick import (
@@ -69,6 +69,28 @@ GOBO_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
     }
 )
 
+_GOBO_BTN_CSS: Gtk.CssProvider | None = None
+
+
+def _get_gobo_btn_css() -> Gtk.CssProvider:
+    """Return shared CSS provider making gobo tile buttons compact."""
+    global _GOBO_BTN_CSS  # pylint: disable=global-statement
+    if _GOBO_BTN_CSS is None:
+        provider = Gtk.CssProvider()
+        provider.load_from_data(
+            b"""
+            button.gobo-tile-btn { padding: 2px 4px; min-width: 0; min-height: 0; }
+            stackswitcher.inspector-switcher button { padding: 2px 6px; min-width: 0; }
+            """
+        )
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+        _GOBO_BTN_CSS = provider
+    return _GOBO_BTN_CSS
+
 
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DeviceInspectorWidget(Gtk.Box):
@@ -87,6 +109,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self._color_solver = ColorSolver()
         self._updating_ui: bool = False
         self._syncing_devices: bool = False
+        self._gobo_grid_signature: tuple[Any, ...] | None = None
 
         self._build_header()
         self._build_ifcb_sections()
@@ -124,6 +147,7 @@ class DeviceInspectorWidget(Gtk.Box):
 
         top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.selection_summary_label = Gtk.Label(label="No device selected", xalign=0)
+        self.selection_summary_label.set_ellipsize(Pango.EllipsizeMode.END)
         top_row.pack_start(self.selection_summary_label, True, True, 0)
 
         self.home_btn = Gtk.Button(label="Home")
@@ -140,35 +164,41 @@ class DeviceInspectorWidget(Gtk.Box):
         self.locate_btn.connect("clicked", lambda _b: self.locate_selected_devices())
         top_row.pack_end(self.locate_btn, False, False, 0)
 
-        self.mode_toggle_btn = Gtk.ToggleButton(label="Mode: Relative (Delta)")
+        self.mode_toggle_btn = Gtk.ToggleButton(label="Rel")
+        self.mode_toggle_btn.set_tooltip_text(
+            "Toggle Relative (Delta) vs Absolute edit mode"
+        )
         self.mode_toggle_btn.set_active(False)
         self.mode_toggle_btn.connect("toggled", self._on_mode_btn_toggled)
         top_row.pack_end(self.mode_toggle_btn, False, False, 0)
         header_box.pack_start(top_row, False, False, 0)
 
         lead_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        lead_row.pack_start(Gtk.Label(label="Lead Fixture:", xalign=0), False, False, 0)
+        lead_row.pack_start(Gtk.Label(label="Lead:", xalign=0), False, False, 0)
 
         self.prev_lead_btn = Gtk.Button(label="<")
         self.prev_lead_btn.connect("clicked", lambda _b: self.prev_lead())
         lead_row.pack_start(self.prev_lead_btn, False, False, 0)
 
         self.lead_label = Gtk.Label(label="None", xalign=0)
+        self.lead_label.set_ellipsize(Pango.EllipsizeMode.END)
         lead_row.pack_start(self.lead_label, True, True, 0)
 
         self.next_lead_btn = Gtk.Button(label=">")
         self.next_lead_btn.connect("clicked", lambda _b: self.next_lead())
         lead_row.pack_start(self.next_lead_btn, False, False, 0)
 
-        self.align_btn = Gtk.Button(label="Align to Lead")
+        self.align_btn = Gtk.Button(label="Align")
+        self.align_btn.set_tooltip_text("Align selected fixtures to Lead Fixture")
         self.align_btn.connect("clicked", lambda _b: self.align_to_lead())
         lead_row.pack_end(self.align_btn, False, False, 0)
         header_box.pack_start(lead_row, False, False, 0)
 
         # Permanent Intensity Bar (always visible regardless of active IFCB page)
-        int_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        int_top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.intensity_header_label = Gtk.Label(label="INTENSITY [0/0]", xalign=0)
         self.intensity_value_label = Gtk.Label(label="Dimmer: --", xalign=0)
+        self.intensity_value_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.intensity_scale = Gtk.Scale.new_with_range(
             Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 1.0
         )
@@ -191,13 +221,13 @@ class DeviceInspectorWidget(Gtk.Box):
             lambda _b: self.apply_intensity_percent(100.0, force_absolute=True),
         )
 
-        int_row.pack_start(self.intensity_header_label, False, False, 0)
-        int_row.pack_start(self.intensity_value_label, False, False, 0)
-        int_row.pack_start(self.intensity_scale, True, True, 0)
-        int_row.pack_start(btn_zero, False, False, 0)
-        int_row.pack_start(btn_half, False, False, 0)
-        int_row.pack_start(btn_full, False, False, 0)
-        header_box.pack_start(int_row, False, False, 0)
+        int_top.pack_start(self.intensity_header_label, False, False, 0)
+        int_top.pack_start(self.intensity_value_label, True, True, 0)
+        int_top.pack_end(btn_full, False, False, 0)
+        int_top.pack_end(btn_half, False, False, 0)
+        int_top.pack_end(btn_zero, False, False, 0)
+        header_box.pack_start(int_top, False, False, 0)
+        header_box.pack_start(self.intensity_scale, False, False, 0)
 
         header_box.pack_start(
             Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2
@@ -208,21 +238,39 @@ class DeviceInspectorWidget(Gtk.Box):
         """Build paginated IFCB (Position, Color, Beam & Gobos) stack pages."""
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.stack.set_hhomogeneous(False)
+        self.stack.set_vhomogeneous(False)
 
         self.stack_switcher = Gtk.StackSwitcher()
         self.stack_switcher.set_stack(self.stack)
         self.stack_switcher.set_halign(Gtk.Align.CENTER)
+        sw_ctx = self.stack_switcher.get_style_context()
+        sw_ctx.add_class("inspector-switcher")
+        sw_ctx.add_provider(
+            _get_gobo_btn_css(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
         self.pack_start(self.stack_switcher, False, False, 2)
 
         # Page 1: POSITION (PAN / TILT)
-        self.position_page = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        self.position_page.set_valign(Gtk.Align.START)
-        self.position_page.set_margin_start(6)
-        self.position_page.set_margin_end(6)
-        self.position_page.set_margin_top(4)
+        self.position_page = Gtk.ScrolledWindow()
+        self.position_page.set_policy(
+            Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC
+        )
+        self.position_page.set_propagate_natural_width(False)
+        self.position_page.set_propagate_natural_height(False)
+
+        pos_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        pos_content.set_valign(Gtk.Align.START)
+        pos_content.set_margin_start(6)
+        pos_content.set_margin_end(6)
+        pos_content.set_margin_top(4)
+        pos_content.set_margin_bottom(4)
+
+        pos_top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        pos_top.set_valign(Gtk.Align.START)
 
         self.pan_tilt_pad = PanTiltPadWidget(self)
-        self.position_page.pack_start(self.pan_tilt_pad, False, False, 0)
+        pos_top.pack_start(self.pan_tilt_pad, False, False, 0)
 
         # Rotary encoders column (Pan & Tilt wheels + Coarse/Fine 16-bit toggle)
         encoders_col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -249,7 +297,8 @@ class DeviceInspectorWidget(Gtk.Box):
             lambda btn: setattr(self, "fine_position_mode", btn.get_active()),
         )
         encoders_col.pack_start(self.fine_position_btn, False, False, 0)
-        self.position_page.pack_start(encoders_col, False, False, 0)
+        pos_top.pack_start(encoders_col, False, False, 0)
+        pos_content.pack_start(pos_top, False, False, 0)
 
         pos_right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         pos_right.set_valign(Gtk.Align.START)
@@ -277,14 +326,21 @@ class DeviceInspectorWidget(Gtk.Box):
         pos_fan_row.pack_start(fan_pan_90_btn, False, False, 0)
         pos_right.pack_start(pos_fan_row, False, False, 0)
 
-        self.position_page.pack_start(pos_right, True, True, 0)
+        pos_content.pack_start(pos_right, False, False, 0)
+        self.position_page.add(pos_content)
         self.stack.add_titled(self.position_page, "position", "POSITION [0/0]")
 
         # Page 2: COLOR
-        self.color_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.color_page.set_margin_start(6)
-        self.color_page.set_margin_end(6)
-        self.color_page.set_margin_top(4)
+        self.color_page = Gtk.ScrolledWindow()
+        self.color_page.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.color_page.set_propagate_natural_width(False)
+        self.color_page.set_propagate_natural_height(False)
+
+        color_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        color_content.set_margin_start(6)
+        color_content.set_margin_end(6)
+        color_content.set_margin_top(4)
+        color_content.set_margin_bottom(4)
 
         col_top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.color_value_label = Gtk.Label(label="Color: --", xalign=0)
@@ -295,7 +351,7 @@ class DeviceInspectorWidget(Gtk.Box):
         col_top_row.pack_start(self.color_value_label, True, True, 0)
         col_top_row.pack_end(fan_rainbow_btn, False, False, 0)
         col_top_row.pack_end(fan_short_btn, False, False, 0)
-        self.color_page.pack_start(col_top_row, False, False, 0)
+        color_content.pack_start(col_top_row, False, False, 0)
 
         self.color_picker = ConsoleColorPicker(
             self._on_wheel_color_picked,
@@ -304,14 +360,20 @@ class DeviceInspectorWidget(Gtk.Box):
             on_strategy_changed=self.set_color_solver_strategy,
             on_wheel_slot_clicked=self._on_wheel_slot_clicked,
         )
-        self.color_page.pack_start(self.color_picker, True, True, 0)
+        color_content.pack_start(self.color_picker, True, True, 0)
+        self.color_page.add(color_content)
         self.stack.add_titled(self.color_page, "color", "COLOR [0/0]")
 
         # Page 3: BEAM & GOBOS
-        self.beam_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        self.beam_page.set_margin_start(6)
-        self.beam_page.set_margin_end(6)
-        self.beam_page.set_margin_top(4)
+        self.beam_page = Gtk.ScrolledWindow()
+        self.beam_page.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.beam_page.set_propagate_natural_height(False)
+
+        beam_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        beam_content.set_margin_start(6)
+        beam_content.set_margin_end(6)
+        beam_content.set_margin_top(4)
+        beam_content.set_margin_bottom(4)
 
         beam_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.beam_header_label = Gtk.Label(label="BEAM & OPTICS [0/0]", xalign=0)
@@ -357,9 +419,9 @@ class DeviceInspectorWidget(Gtk.Box):
         beam_box.pack_start(self.frost_value_label, False, False, 0)
         beam_box.pack_start(self.frost_scale, False, False, 0)
 
-        self.beam_page.pack_start(beam_box, False, False, 0)
+        beam_content.pack_start(beam_box, False, False, 0)
 
-        self.beam_page.pack_start(
+        beam_content.pack_start(
             Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2
         )
 
@@ -368,10 +430,29 @@ class DeviceInspectorWidget(Gtk.Box):
         self.gobo_flowbox = Gtk.FlowBox()
         self.gobo_flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.gobo_flowbox.set_homogeneous(True)
+        self.gobo_flowbox.set_halign(Gtk.Align.START)
+        self.gobo_flowbox.set_valign(Gtk.Align.START)
+        self.gobo_flowbox.set_min_children_per_line(3)
         self.gobo_flowbox.set_max_children_per_line(5)
         self.gobo_flowbox.set_column_spacing(4)
         self.gobo_flowbox.set_row_spacing(4)
+
+        self.gobo_scroll = Gtk.ScrolledWindow()
+        self.gobo_scroll.set_halign(Gtk.Align.START)
+        self.gobo_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.gobo_scroll.set_min_content_height(84)
+        self.gobo_scroll.set_max_content_height(175)
+        self.gobo_scroll.set_max_content_width(360)
+        self.gobo_scroll.set_propagate_natural_width(True)
+        self.gobo_scroll.set_propagate_natural_height(True)
+        self.gobo_scroll.add(self.gobo_flowbox)
+
         self.gobo_combo = Gtk.ComboBoxText()
+        self.gobo_combo.set_no_show_all(True)
+        self.gobo_combo.set_visible(False)
+        for cell in self.gobo_combo.get_cells():
+            if isinstance(cell, Gtk.CellRendererText):
+                cell.set_property("ellipsize", Pango.EllipsizeMode.END)
         self.gobo_combo.connect("changed", self._on_gobo_combo_changed)
         self.gobo_value_label = Gtk.Label(label="Gobo: --", xalign=0)
         self.gobo_scale = Gtk.Scale.new_with_range(
@@ -384,13 +465,14 @@ class DeviceInspectorWidget(Gtk.Box):
         )
         self.prism_scale.connect("value-changed", self._on_prism_scale_changed)
         gobo_box.pack_start(self.gobos_header_label, False, False, 0)
-        gobo_box.pack_start(self.gobo_flowbox, False, False, 0)
+        gobo_box.pack_start(self.gobo_scroll, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
         gobo_box.pack_start(self.gobo_value_label, False, False, 0)
         gobo_box.pack_start(self.gobo_scale, False, False, 0)
         gobo_box.pack_start(self.prism_value_label, False, False, 0)
         gobo_box.pack_start(self.prism_scale, False, False, 0)
-        self.beam_page.pack_start(gobo_box, False, False, 0)
+        beam_content.pack_start(gobo_box, False, False, 0)
+        self.beam_page.add(beam_content)
 
         self.stack.add_titled(self.beam_page, "beam", "BEAM & GOBOS [0/0]")
 
@@ -573,9 +655,7 @@ class DeviceInspectorWidget(Gtk.Box):
         is_abs = mode == "absolute"
         if self.mode_toggle_btn.get_active() != is_abs:
             self.mode_toggle_btn.set_active(is_abs)
-        self.mode_toggle_btn.set_label(
-            "Mode: Absolute" if is_abs else "Mode: Relative (Delta)"
-        )
+        self.mode_toggle_btn.set_label("Abs" if is_abs else "Rel")
 
     def toggle_edit_mode(self) -> str:
         """Toggle between 'relative' and 'absolute' edit modes."""
@@ -1293,12 +1373,36 @@ class DeviceInspectorWidget(Gtk.Box):
         self.refresh_ui()
 
     def _refresh_gobo_grid(self, lead: LightingDevice | None) -> None:
+        if lead is None:
+            sig: tuple[Any, ...] | None = None
+            gobo_ch = None
+        else:
+            gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
+            if gobo_ch is not None and gobo_ch.ranges:
+                act_range = gobo_ch.active_range
+                act_label = act_range.label if act_range is not None else None
+                sig = (
+                    "ranges",
+                    lead.fixture_id,
+                    act_label,
+                    tuple(
+                        (r.label, r.gobo_id, r.value_min, r.value_max)
+                        for r in gobo_ch.ranges
+                    ),
+                )
+            else:
+                active_gid = lead.static_gobo or "builtin:open"
+                sig = ("static", lead.fixture_id, active_gid)
+
+        if sig == self._gobo_grid_signature:
+            return
+        self._gobo_grid_signature = sig
+
         for child in self.gobo_flowbox.get_children():
             self.gobo_flowbox.remove(child)
         if lead is None:
             return
 
-        gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
         if gobo_ch is not None and gobo_ch.ranges:
             act_range = gobo_ch.active_range
             for idx, r in enumerate(gobo_ch.ranges):
@@ -1341,15 +1445,21 @@ class DeviceInspectorWidget(Gtk.Box):
             gobo_id,
             image_bytes=self._get_gobo_image_bytes(gobo_id),
             active=active,
+            size=36,
         )
-        short = label if len(label) <= 9 else f"{label[:8]}…"
-        lbl = Gtk.Label(label=short)
-        lbl.set_max_width_chars(10)
+        tile.set_halign(Gtk.Align.CENTER)
+        lbl = Gtk.Label(label=label)
+        lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        lbl.set_width_chars(6)
+        lbl.set_max_width_chars(7)
         vbox.pack_start(tile, False, False, 0)
         vbox.pack_start(lbl, False, False, 0)
         btn = Gtk.Button()
         btn.set_relief(Gtk.ReliefStyle.NONE)
         btn.set_tooltip_text(tooltip)
+        ctx = btn.get_style_context()
+        ctx.add_class("gobo-tile-btn")
+        ctx.add_provider(_get_gobo_btn_css(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         btn.add(vbox)
         btn.connect("clicked", on_click)
         return btn
@@ -1471,7 +1581,14 @@ class DeviceInspectorWidget(Gtk.Box):
                             active_idx = idx
                     if active_idx >= 0:
                         self.gobo_combo.set_active(active_idx)
+                    self.gobo_combo.set_visible(True)
+                else:
+                    self.gobo_combo.set_visible(False)
                 self._refresh_gobo_grid(lead)
+            else:
+                self.gobo_combo.remove_all()
+                self.gobo_combo.set_visible(False)
+                self._refresh_gobo_grid(None)
 
             self.pan_tilt_pad.queue_draw()
             color_devs = [d for d in self.selected_devices if self._has_color(d)]

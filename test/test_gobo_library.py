@@ -204,3 +204,88 @@ def test_device_inspector_displays_and_applies_gobo_tiles() -> None:
     assert gobo_ch is not None
     assert gobo_ch.value == 127  # midpoint of [85, 170]
     win.destroy()
+
+
+@pytest.mark.gui
+def test_device_inspector_gobo_grid_scroll_and_cache() -> None:
+    """DeviceInspectorWidget bounds gobo grid height and caches unchanged grids."""
+    from gi.repository import Gtk
+
+    from olc.gtk3.device_inspector import DeviceInspectorWidget
+
+    core = CoreApplication(MagicMock())
+    ranges = [
+        ChannelRange(
+            f"Gobo {i + 1}",
+            ChannelType.GOBO_WHEEL,
+            i * 8,
+            min(255, i * 8 + 7),
+        )
+        for i in range(30)
+    ]
+    dev = LightingDevice(
+        fixture_id=11,
+        label="Robe Lighting Robin T1 Profile",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(ChannelType.INTENSITY, 1, 1),
+            Channel(ChannelType.GOBO_WHEEL, 1, 2, ranges=ranges),
+        ],
+    )
+    core.lightshow.patch.devices[11] = dev
+
+    mock_gtk_app = MagicMock()
+    mock_gtk_app.core = core
+    inspector = DeviceInspectorWidget(app=mock_gtk_app)
+    win = Gtk.Window()
+    win.add(inspector)
+    win.show_all()
+
+    assert inspector.stack.get_hhomogeneous() is False
+    assert inspector.stack.get_vhomogeneous() is False
+    assert isinstance(inspector.position_page, Gtk.ScrolledWindow)
+    assert isinstance(inspector.color_page, Gtk.ScrolledWindow)
+    assert isinstance(inspector.beam_page, Gtk.ScrolledWindow)
+    assert isinstance(inspector.gobo_scroll, Gtk.ScrolledWindow)
+    assert inspector.gobo_flowbox.get_max_children_per_line() == 5
+    assert inspector.gobo_flowbox.get_halign() == Gtk.Align.START
+    assert inspector.gobo_scroll.get_halign() == Gtk.Align.START
+    assert inspector.gobo_scroll.get_max_content_width() <= 380
+    assert inspector.gobo_scroll.get_max_content_height() <= 180
+
+    inspector.set_selected_channels([11])
+    inspector.stack.set_visible_child_name("beam")
+    win.resize(900, 600)
+    for _ in range(5):
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
+    min_w, _nat_w = inspector.get_preferred_width()
+    assert min_w <= 420
+    assert inspector.gobo_scroll.get_allocation().width <= 400
+    assert inspector.gobo_combo.get_visible() is True
+
+    first_children = list(inspector.gobo_flowbox.get_children())
+    assert len(first_children) == 30
+    distinct_rows = {child.get_allocation().y for child in first_children}
+    assert len(distinct_rows) >= 2
+
+    inspector.refresh_ui()
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+
+    second_children = list(inspector.gobo_flowbox.get_children())
+    assert second_children == first_children
+
+    dev_no_gobo = LightingDevice(
+        fixture_id=12,
+        label="Dimmer 12",
+        fixture_type=FixtureType.DIMMER,
+        channels=[Channel(ChannelType.INTENSITY, 1, 10)],
+    )
+    core.lightshow.patch.devices[12] = dev_no_gobo
+    inspector.set_selected_channels([12])
+    while Gtk.events_pending():
+        Gtk.main_iteration()
+    assert inspector.gobo_combo.get_visible() is False
+    win.destroy()

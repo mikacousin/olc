@@ -681,3 +681,16 @@ def test_patch_tab_refreshes_fixture_library_after_ascii_import(
         app_gui.core.emit("fixture_library.changed")
         app_gui.core.emit("patch.changed")
         process_events()
+
+
+def test_patch_channels_tab_minimum_width_is_compact(app_gui: Application) -> None:
+    """Verify PatchChannelsTab does not force sibling tabs to over-expand."""
+    app_gui.activate_action("patch_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    patch_tab = app_gui.tabs.tabs.get("patch_channels")
+    assert isinstance(patch_tab, PatchChannelsTab)
+
+    min_w, _nat_w = patch_tab.get_preferred_width()
+    assert min_w <= 500

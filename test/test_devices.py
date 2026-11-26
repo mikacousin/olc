@@ -1286,6 +1286,46 @@ def test_gdtf_overlapping_mode_dependent_ranges() -> None:
     assert len(dev.channels) == 3
 
 
+def test_gdtf_gobo_wheel_attributes_classified_as_gobo_wheel() -> None:
+    importer = GdtfImporter()
+    gobo_ch = {
+        "attribute": "Gobo1",
+        "offset": [1],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "Gobo1",
+                        "attribute": "Gobo1",
+                        "dmx_from": 0,
+                        "dmx_to": 127,
+                        "default": 0,
+                    },
+                    {
+                        "name": "Gobo1Shake",
+                        "attribute": "Gobo1SelectShake",
+                        "dmx_from": 128,
+                        "dmx_to": 191,
+                        "default": 128,
+                    },
+                    {
+                        "name": "Gobo1WheelRotation",
+                        "attribute": "Gobo1WheelSpin",
+                        "dmx_from": 192,
+                        "dmx_to": 255,
+                        "default": 192,
+                    },
+                ]
+            }
+        ],
+    }
+    cd = importer._adapt_channel(gobo_ch)
+    assert cd is not None
+    assert cd.channel_type is ChannelType.GOBO_WHEEL
+    assert len(cd.ranges) == 3
+
+
 def test_substep_accumulation_8bit_vs_float() -> None:
     """Verify micro-stepping (0.05 deg) accumulates in float on 8-bit fixtures."""
     mode = DmxModeDefinition(
