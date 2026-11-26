@@ -236,6 +236,8 @@ fn evaluate_one(
             1.0 - m.unwrap_or(0.0),
             1.0 - y.unwrap_or(0.0),
         ]
+    } else if !f.gel_color.is_empty() {
+        crate::math::parse_hex_color(&f.gel_color)
     } else {
         // Blanc chaud halogène pour gradateur sans couleur
         [1.0, 0.95, 0.85]
@@ -381,6 +383,8 @@ mod tests {
                 orientation: Orientation::default(),
                 beam_angle: 25.0,
                 static_gobo: String::new(),
+                gel: String::new(),
+                gel_color: String::new(),
                 channels: vec![
                     DmxChannel {
                         channel_type: "intensity".into(),
@@ -526,6 +530,8 @@ mod tests {
                 orientation: Orientation::default(),
                 beam_angle: 25.0,
                 static_gobo: String::new(),
+                gel: String::new(),
+                gel_color: String::new(),
                 channels: vec![
                     ch_simple("intensity", "Dimmer", 1, vec![]),
                     ch_simple("gobo_wheel", "Gobo1", 2, w1_ranges),
@@ -588,6 +594,8 @@ mod tests {
                 orientation: Orientation::default(),
                 beam_angle: 25.0,
                 static_gobo: String::new(),
+                gel: String::new(),
+                gel_color: String::new(),
                 channels: vec![
                     ch_simple("intensity", "intens", 1, vec![]),
                     ch_simple("gobo_wheel", "gobo_select", 2, w1_ranges),
@@ -610,5 +618,48 @@ mod tests {
         let res = evaluate_fixtures(&patch, 3.0, |u| (u == 1).then_some(frame));
         assert_eq!(res[0].gobos[0].gobo_id, "builtin:ring");
         assert!((res[0].gobos[0].rot_rad - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn evaluates_conventional_gel_color_and_default_tungsten() {
+        let mk_dimmer = |id: &str, ch: u32, gel_color: &str| Fixture {
+            id: id.into(),
+            channel: Some(ch),
+            unit: None,
+            name: id.into(),
+            fixture_type: FixtureType::Dimmer,
+            gdtf: None,
+            mode: None,
+            address: Some(DmxAddress { universe: 1, channel: ch as u16 }),
+            footprint: Some(1),
+            position: Vec3::new(0.0, 0.0, 4.0),
+            focus_point: Vec3::ZERO,
+            orientation: Orientation::default(),
+            beam_angle: 35.0,
+            static_gobo: String::new(),
+            gel: String::new(),
+            gel_color: gel_color.into(),
+            channels: vec![ch_simple("intensity", "intens", ch as u16, vec![])],
+        };
+        let patch = Patch {
+            version: 1,
+            stage: Stage::default(),
+            fixtures: vec![
+                mk_dimmer("gelled", 1, "#ff6600"),
+                mk_dimmer("open", 2, ""),
+            ],
+        };
+        let mut frame = [0u8; DMX_CHANNELS];
+        frame[0] = 255;
+        frame[1] = 255;
+
+        let res = evaluate_fixtures(&patch, 0.0, |u| (u == 1).then_some(frame));
+        assert!((res[0].color[0] - 1.0).abs() < 1e-3);
+        assert!((res[0].color[1] - (0x66 as f32 / 255.0)).abs() < 1e-2);
+        assert!(res[0].color[2] < 1e-3);
+        // Without gel_color -> default warm halogen
+        assert!((res[1].color[0] - 1.0).abs() < 1e-4);
+        assert!((res[1].color[1] - 0.95).abs() < 1e-4);
+        assert!((res[1].color[2] - 0.85).abs() < 1e-4);
     }
 }

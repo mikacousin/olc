@@ -116,6 +116,11 @@ def _device_row(device: Any) -> dict[str, Any]:  # noqa: ANN401
         ),
         "beam_angle": float(getattr(device, "beam_angle", 25.0)),
         "static_gobo": str(getattr(device, "static_gobo", "")),
+        "gel": str(getattr(device, "gel", "")),
+        "gel_color": str(
+            getattr(device, "effective_gel_color", "")
+            or getattr(device, "gel_color", "")
+        ),
         "channels": [_channel_row(ch) for ch in getattr(device, "channels", [])],
     }
 

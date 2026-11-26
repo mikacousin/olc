@@ -293,6 +293,24 @@ class ParsedData:
                     dev_obj := self.lightshow.patch.devices.get(int(channel))
                 ) is not None:
                     dev_obj.label = str(label)
+            if (meta := self.data.get("patch_meta", {}).get(int(channel))) and (
+                dev_obj := self.lightshow.patch.devices.get(int(channel))
+            ) is not None:
+                if "position" in meta:
+                    p = meta["position"]
+                    dev_obj.position = (float(p[0]), float(p[1]), float(p[2]))
+                if "orientation" in meta:
+                    o = meta["orientation"]
+                    dev_obj.orientation = (float(o[0]), float(o[1]), float(o[2]))
+                if "focus_point" in meta:
+                    fp = meta["focus_point"]
+                    dev_obj.focus_point = (float(fp[0]), float(fp[1]), float(fp[2]))
+                if "beam_angle" in meta:
+                    dev_obj.beam_angle = max(1.0, min(180.0, float(meta["beam_angle"])))
+                if "gel" in meta:
+                    dev_obj.gel = str(meta["gel"])
+                if "gel_color" in meta:
+                    dev_obj.gel_color = str(meta["gel_color"])
 
     def _normalize_channels_dict(
         self, channels: dict[typing.Any, typing.Any] | None

@@ -137,6 +137,10 @@ pub struct Fixture {
     #[serde(default)]
     pub static_gobo: String,
     #[serde(default)]
+    pub gel: String,
+    #[serde(default)]
+    pub gel_color: String,
+    #[serde(default)]
     pub channels: Vec<DmxChannel>,
 }
 

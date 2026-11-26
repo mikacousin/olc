@@ -115,7 +115,82 @@ GEL_LIBRARY: tuple[GelSwatch, ...] = (
     GelSwatch("R68", "Rosco", "68", "Parry Sky Blue", "Cool", 0.168, 0.205, 13.5),
     GelSwatch("R80", "Rosco", "80", "Primary Blue", "Saturated", 0.146, 0.115, 7.0),
     GelSwatch("R382", "Rosco", "382", "Congo Blue", "Saturated", 0.154, 0.050, 0.9),
+    # Additional standard theatre Lee & Rosco filters
+    GelSwatch("L101", "Lee", "101", "Yellow", "Warm", 0.480, 0.490, 79.0),
+    GelSwatch("L111", "Lee", "111", "Dark Pink", "Saturated", 0.430, 0.200, 14.0),
+    GelSwatch("L118", "Lee", "118", "Light Blue", "Cool", 0.155, 0.245, 22.0),
+    GelSwatch("L151", "Lee", "151", "Gold Tint", "Cosmetic", 0.365, 0.368, 82.0),
+    GelSwatch("L156", "Lee", "156", "Chocolate", "Cosmetic", 0.415, 0.365, 42.0),
+    GelSwatch("L161", "Lee", "161", "Slate Blue", "Cool", 0.215, 0.275, 41.0),
+    GelSwatch("L174", "Lee", "174", "Dark Steel Blue", "Cool", 0.220, 0.260, 38.0),
+    GelSwatch(
+        "L200", "Lee", "200", "Double C.T. Blue", "Correction", 0.215, 0.210, 18.0
+    ),
+    GelSwatch(
+        "L207",
+        "Lee",
+        "207",
+        "Full C.T. Orange + .3ND",
+        "Correction",
+        0.440,
+        0.405,
+        29.0,
+    ),
+    GelSwatch(
+        "L208",
+        "Lee",
+        "208",
+        "Full C.T. Orange + .6ND",
+        "Correction",
+        0.440,
+        0.405,
+        14.5,
+    ),
+    GelSwatch(
+        "L500", "Lee", "500", "Double New Colour Blue", "Cool", 0.268, 0.280, 52.0
+    ),
+    GelSwatch("R09", "Rosco", "09", "Pale Amber Gold", "Warm", 0.388, 0.382, 74.0),
+    GelSwatch("R36", "Rosco", "36", "Medium Pink", "Cosmetic", 0.410, 0.270, 44.0),
+    GelSwatch("R51", "Rosco", "51", "Surprise Pink", "Cosmetic", 0.335, 0.275, 52.0),
+    GelSwatch("R60", "Rosco", "60", "No Color Blue", "Cool", 0.295, 0.312, 74.0),
+    GelSwatch(
+        "R119", "Rosco", "119", "Light Hamburg Frost", "Correction", 0.313, 0.329, 85.0
+    ),
 )
+
+
+def lookup_gel(code: str) -> Optional[GelSwatch]:
+    """Look up a GelSwatch by manufacturer code (e.g. 'L203', 'Lee 203', 'R119')."""
+    raw = str(code).strip().lower().replace("-", "").replace(" ", "")
+    if not raw:
+        return None
+    if raw.startswith("lee"):
+        raw = "l" + raw[3:]
+    elif raw.startswith("rosco"):
+        raw = "r" + raw[5:]
+
+    for g in GEL_LIBRARY:
+        g_code = g.code.lower()
+        if raw == g_code:
+            return g
+        g_prefix = g_code[0]
+        g_num = g.number.lower().lstrip("0") or "0"
+        if raw.startswith(g_prefix) and (raw[1:].lstrip("0") or "0") == g_num:
+            return g
+    return None
+
+
+def resolve_gel_hex(code: str) -> str:
+    """Resolve a gel code to '#rrggbb' hex color, or '' if unknown."""
+    swatch = lookup_gel(code)
+    if swatch is None:
+        return ""
+    r, g, b = swatch.rgb
+    return (
+        f"#{max(0, min(255, round(r * 255))):02x}"
+        f"{max(0, min(255, round(g * 255))):02x}"
+        f"{max(0, min(255, round(b * 255))):02x}"
+    )
 
 
 def filter_gels(query: str = "", manufacturer: str = "All") -> list[GelSwatch]:

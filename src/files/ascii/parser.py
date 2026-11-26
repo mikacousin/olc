@@ -28,6 +28,8 @@ from olc.define import (
     UNIVERSES,
     string_to_time,
 )
+from olc.devices.color_pick.gels import lookup_gel, resolve_gel_hex
+from olc.devices.device import compute_focus_point_from_orientation
 from olc.devices.gobo import GoboAsset, decode_eos_resource_hex
 from olc.files.ascii.eos_devices import (
     build_device_from_definition,
@@ -1241,6 +1243,72 @@ class AsciiParser(ReadFile):
                         break
         elif self.keyword == "$$options" and dev is not None and self.args:
             self._apply_patch_options(dev, "".join(self.args).lower())
+        elif self.keyword == "$$position" and len(self.args) >= 3:
+            target = self._get_patch_meta_target(ch, dev)
+            if target is not None:
+                try:
+                    pos = (
+                        float(self.args[0]),
+                        float(self.args[1]),
+                        float(self.args[2]),
+                    )
+                except ValueError:
+                    return
+                target["position"] = [pos[0], pos[1], pos[2]]
+                if "orientation" in target:
+                    o = target["orientation"]
+                    target["focus_point"] = list(
+                        compute_focus_point_from_orientation(
+                            pos, (float(o[0]), float(o[1]), float(o[2]))
+                        )
+                    )
+        elif self.keyword == "$$orientation" and len(self.args) >= 3:
+            target = self._get_patch_meta_target(ch, dev)
+            if target is not None:
+                try:
+                    rx, ry, rz = (
+                        float(self.args[0]),
+                        float(self.args[1]),
+                        float(self.args[2]),
+                    )
+                except ValueError:
+                    return
+                orient = (rz, ry, rx)
+                target["orientation"] = [orient[0], orient[1], orient[2]]
+                p = target.get("position", (0.0, 0.0, 4.0))
+                target["focus_point"] = list(
+                    compute_focus_point_from_orientation(
+                        (float(p[0]), float(p[1]), float(p[2])), orient
+                    )
+                )
+        elif (
+            self.keyword == "$$data"
+            and len(self.args) >= 2
+            and self.args[0].lower() == "beamangle"
+        ):
+            target = self._get_patch_meta_target(ch, dev)
+            if target is not None:
+                try:
+                    target["beam_angle"] = max(1.0, min(180.0, float(self.args[1])))
+                except ValueError:
+                    return
+        elif self.keyword == "$$textgel" and self.args:
+            target = self._get_patch_meta_target(ch, dev)
+            if target is not None:
+                gel_code = " ".join(self.args).strip()
+                swatch = lookup_gel(gel_code)
+                target["gel"] = swatch.code if swatch is not None else gel_code.upper()
+                if hex_col := resolve_gel_hex(gel_code):
+                    target["gel_color"] = hex_col
+
+    def _get_patch_meta_target(
+        self, ch: int, dev: dict[str, typing.Any] | None
+    ) -> dict[str, typing.Any] | None:
+        if dev is not None:
+            return dev
+        if ch in self.data.get("patch", {}):
+            return self.data.setdefault("patch_meta", {}).setdefault(ch, {})
+        return None
 
     @staticmethod
     def _apply_patch_options(dev: dict[str, typing.Any], flags: str) -> None:

@@ -131,6 +131,34 @@ def compute_pan_tilt_for_target(
     return (pan, tilt)
 
 
+def compute_focus_point_from_orientation(
+    position: tuple[float, float, float],
+    orientation: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    """Project local beam (0, 0, -1) rotated by Z-Y-X Euler degrees to floor or 5m."""
+    yaw, pitch, roll = (math.radians(a) for a in orientation)
+    # Rx(roll) * [0, 0, -1]
+    y1 = math.sin(roll)
+    z1 = -math.cos(roll)
+    # Ry(pitch) * [0, y1, z1]
+    x2 = math.sin(pitch) * z1
+    y2 = y1
+    z2 = math.cos(pitch) * z1
+    # Rz(yaw) * [x2, y2, z2]
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    dx = cy * x2 - sy * y2
+    dy = sy * x2 + cy * y2
+    dz = z2
+
+    px, py, pz = (float(position[0]), float(position[1]), float(position[2]))
+    t = pz / -dz if (dz < -1e-4 and pz > 0.01) else 5.0
+    return (
+        round(px + dx * t, 4),
+        round(py + dy * t, 4),
+        0.0 if (dz < -1e-4 and pz > 0.01) else round(pz + dz * t, 4),
+    )
+
+
 class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-public-methods
     """Patched lighting fixture in the show."""
 
@@ -152,6 +180,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         orientation: tuple[float, float, float] = (0.0, 0.0, 0.0),
         beam_angle: float = 25.0,
         static_gobo: str = "",
+        gel: str = "",
+        gel_color: str = "",
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -181,6 +211,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         )
         self.beam_angle: float = max(1.0, min(180.0, float(beam_angle)))
         self.static_gobo: str = str(static_gobo)
+        self.gel: str = str(gel)
+        self.gel_color: str = str(gel_color)
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
@@ -197,6 +229,17 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._param_normalized: dict[ChannelType, float] = {}
         self._param_last_raw: dict[ChannelType, int] = {}
         self._init_base_emitters()
+
+    @property
+    def effective_gel_color(self) -> str:
+        """Return '#rrggbb' gel color from gel_color or resolved gel code."""
+        if self.gel_color:
+            return self.gel_color
+        if self.gel:
+            from .color_pick.gels import resolve_gel_hex  # pylint: disable=import-outside-toplevel
+
+            return resolve_gel_hex(self.gel)
+        return ""
 
     @property
     def universe(self) -> int:
@@ -1645,6 +1688,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "orientation": list(self.orientation),
             "beam_angle": self.beam_angle,
             "static_gobo": self.static_gobo,
+            "gel": self.gel,
+            "gel_color": self.gel_color,
             "intensity": self._intensity,
             "target_color": self._target_color.to_hex(),
             "base_emitters": {
@@ -1725,6 +1770,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             orientation=_parse_vec3(data.get("orientation"), (0.0, 0.0, 0.0)),
             beam_angle=float(data.get("beam_angle", 25.0)),
             static_gobo=str(data.get("static_gobo", "")),
+            gel=str(data.get("gel", "")),
+            gel_color=str(data.get("gel_color", "")),
         )
         device._enabled = bool(data.get("enabled", True))
         device._locked = bool(data.get("locked", False))

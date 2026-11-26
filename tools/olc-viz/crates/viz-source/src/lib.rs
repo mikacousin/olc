@@ -206,6 +206,8 @@ impl SharedState {
                         DmxChannel { channel_type: "frost".into(), label: "Frost".into(), universe: 1, address: 20, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
                     ],
                     static_gobo: String::new(),
+                    gel: String::new(),
+                    gel_color: String::new(),
                 },
                 Fixture {
                     id: "demo:2".into(),
@@ -222,6 +224,8 @@ impl SharedState {
                     orientation: Orientation::default(),
                     beam_angle: 22.0,
                     static_gobo: String::new(),
+                    gel: String::new(),
+                    gel_color: String::new(),
                     channels: vec![
                         DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 7, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
                         DmxChannel { channel_type: "red".into(), label: String::new(), universe: 1, address: 8, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
@@ -246,6 +250,8 @@ impl SharedState {
                     orientation: Orientation::default(),
                     beam_angle: 32.0,
                     static_gobo: String::new(),
+                    gel: String::new(),
+                    gel_color: String::new(),
                     channels: vec![
                         DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 13, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
                         DmxChannel { channel_type: "red".into(), label: String::new(), universe: 1, address: 14, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
@@ -268,6 +274,8 @@ impl SharedState {
                     orientation: Orientation::default(),
                     beam_angle: 28.0,
                     static_gobo: "builtin:breakup".into(),
+                    gel: String::new(),
+                    gel_color: String::new(),
                     channels: vec![DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 17, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] }],
                 },
             ],
@@ -490,6 +498,10 @@ pub mod zmq {
         #[serde(default)]
         static_gobo: String,
         #[serde(default)]
+        gel: String,
+        #[serde(default)]
+        gel_color: String,
+        #[serde(default)]
         channels: Vec<DmxChannel>,
     }
 
@@ -543,6 +555,8 @@ pub mod zmq {
                     },
                     beam_angle: d.beam_angle,
                     static_gobo: d.static_gobo,
+                    gel: d.gel,
+                    gel_color: d.gel_color,
                     channels: d.channels,
                 }
             })
