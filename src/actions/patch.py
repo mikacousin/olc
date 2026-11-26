@@ -275,8 +275,6 @@ class PatchSetDeviceGelAction(Action):
         dev.gel = gel
         dev.gel_color = gel_color
         self.app.lightshow.set_modified()
-        if hasattr(self.app, "publish_patch"):
-            self.app.publish_patch()
         self.app.emit("patch.changed")
 
     def execute(self) -> None:

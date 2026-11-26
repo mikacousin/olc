@@ -141,6 +141,10 @@ class CoreApplication(EventDispatcher):
 
         # Auto-register action classes from the actions package
         self._register_actions()
+        self.subscribe("patch.changed", self._on_patch_changed)
+
+    def _on_patch_changed(self, *_args: object, **_kwargs: object) -> None:
+        self.publish_patch()
 
     def step_address_check(self, delta: int) -> bool:
         """Step active Address Check to next (+1) or previous (-1) DMX address."""
@@ -374,13 +378,9 @@ class CoreApplication(EventDispatcher):
 
         # Publish the patch to external viewers (olc-viz) now and after each change
         engine = self.engine
-        lightshow = self.lightshow
-        patch = lightshow.patch
-        patch.on_patch_changed_cb = lambda: engine.publish_patch(
-            patch.devices.values(), stage=lightshow.stage
-        )
+        self.lightshow.patch.on_patch_changed_cb = self.publish_patch
         engine.set_command_handler(self._handle_viz_command)
-        engine.publish_patch(patch.devices.values(), stage=lightshow.stage)
+        self.publish_patch()
         return self.engine
 
     def publish_patch(self) -> None:

@@ -665,3 +665,33 @@ def test_action_patch_set_device_gel() -> None:
     # 4. Unknown device raises ValueError
     with pytest.raises(ValueError, match="Device 999 is not patched"):
         app.action_registry.execute("patch.set_device_gel", 999, "L201")
+
+
+def test_patch_actions_immediately_publish_patch() -> None:
+    """Unpatching, patching, renaming, and undo/redo immediately publish patch."""
+    from olc.devices.builtin import create_dimmer_definition
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.patch.patch_empty()
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    dim_def = create_dimmer_definition()
+    app.action_registry.execute(
+        "patch.device", 1, dim_def, universe=1, address=1, label="Dim 1"
+    )
+    assert mock_engine.publish_patch.call_count == 1
+
+    app.action_registry.execute("patch.set_device_label", 1, "Front 1")
+    assert mock_engine.publish_patch.call_count == 2
+
+    app.action_registry.execute("patch.unpatch_device", 1)
+    assert mock_engine.publish_patch.call_count == 3
+
+    app.history.undo()
+    assert mock_engine.publish_patch.call_count == 4
+
+    app.history.redo()
+    assert mock_engine.publish_patch.call_count == 5
