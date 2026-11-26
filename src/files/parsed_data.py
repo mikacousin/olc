@@ -58,6 +58,7 @@ class ParsedData:
             "console": {"console": "", "manufacturer": ""},
             "curves": {},
             "fixture_definitions": [],
+            "gobo_library": {},
             "devices": {},
             "patch": {},
             "show_metadata": {},
@@ -481,6 +482,16 @@ class ParsedData:
             from olc.show.lightshow import StageConfig  # pylint: disable=import-outside-toplevel
 
             self.lightshow.stage = StageConfig.from_dict(stage_data)
+
+    def import_gobo_library(self) -> None:
+        """Load custom gobo image assets into lightshow.gobo_library."""
+        raw = self.data.get("gobo_library")
+        if isinstance(raw, dict) and raw:
+            from olc.devices.gobo import GoboLibrary  # pylint: disable=import-outside-toplevel
+
+            loaded = GoboLibrary.from_dict(raw)
+            for asset in loaded.all():
+                self.lightshow.gobo_library.add(asset)
 
     @staticmethod
     def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:

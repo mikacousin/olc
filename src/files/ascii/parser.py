@@ -28,6 +28,7 @@ from olc.define import (
     UNIVERSES,
     string_to_time,
 )
+from olc.devices.gobo import GoboAsset, decode_eos_resource_hex
 from olc.files.ascii.eos_devices import (
     build_device_from_definition,
     build_fixture_definition,
@@ -72,6 +73,7 @@ _RAW_TEXT_KEYWORDS: frozenset[str] = frozenset(
         "$$pers",
         "$$persslot",
         "$$perssltext",
+        "$$perssldcid",
         "$$notes",
         "$$title",
         "$$cuenotes",
@@ -101,6 +103,7 @@ class State(Enum):
     NEW_CURVE = auto()
     NEW_FADERDEF = auto()
     NEW_EFFECT = auto()
+    NEW_RESOURCE = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
@@ -115,6 +118,7 @@ class State(Enum):
     IN_CURVE = auto()
     IN_FADERDEF = auto()
     IN_EFFECT = auto()
+    IN_RESOURCE = auto()
 
 
 # pylint: disable=too-many-instance-attributes
@@ -203,6 +207,7 @@ class AsciiParser(ReadFile):
         self._cue_chan_moves: dict[tuple[int, float], dict[int, float]] = {}
         self._cue_execute_subs: dict[tuple[int, float], float] = {}
         self._eos_automark: bool | None = None
+        self._current_resource: dict[str, typing.Any] | None = None
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -344,6 +349,10 @@ class AsciiParser(ReadFile):
             self._new_effect()
         elif self.state is State.IN_EFFECT:
             self._do_effect()
+        elif self.state is State.NEW_RESOURCE:
+            self._new_resource()
+        elif self.state is State.IN_RESOURCE:
+            self._do_resource()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
@@ -1054,6 +1063,13 @@ class AsciiParser(ReadFile):
             pers["channels"][-1]["slot_list"][-1]["label"] = html.unescape(
                 self.args[0].strip()
             )
+        elif (
+            self.keyword == "$$perssldcid"
+            and self.args
+            and pers["channels"]
+            and pers["channels"][-1]["slot_list"]
+        ):
+            pers["channels"][-1]["slot_list"][-1]["gobo_id"] = self.args[0].strip()
 
     def _register_personality_definition(
         self, pers_id: int
@@ -1756,7 +1772,64 @@ class AsciiParser(ReadFile):
                 gm_entry["locked"] = True
             self.data["faders"][index] = gm_entry
 
+    def _new_resource(self) -> None:
+        self._flush_current_resource()
+        cid = self.args[0].strip() if self.args else ""
+        self._current_resource = {
+            "cid": cid,
+            "res_type": -1,
+            "name": cid,
+            "ext": "png",
+            "hex_parts": [],
+        }
+        self.state = State.IN_RESOURCE
+
+    def _do_resource(self) -> None:
+        res = self._current_resource
+        if res is None:
+            return
+        if self.keyword == "$$data" and self.args:
+            sub = self.args[0].lower()
+            if sub == "type" and len(self.args) >= 2:
+                try:
+                    res["res_type"] = int(self.args[1])
+                except ValueError:
+                    pass
+            elif sub == "filename" and len(self.args) >= 2:
+                res["name"] = " ".join(self.args[1:])
+            elif sub == "fileextension" and len(self.args) >= 2:
+                res["ext"] = self.args[1].lower()
+        elif self.keyword == "$$hd" and self.args:
+            res["hex_parts"].append("".join(self.args))
+
+    def _flush_current_resource(self) -> None:
+        res = self._current_resource
+        self._current_resource = None
+        if (
+            res is None
+            or res["res_type"] != 1
+            or not res["cid"]
+            or not res["hex_parts"]
+        ):
+            return
+        decoded = decode_eos_resource_hex("".join(res["hex_parts"]))
+        if not decoded:
+            return
+        asset = GoboAsset(
+            gobo_id=res["cid"],
+            name=res["name"],
+            data=decoded,
+            ext=res["ext"],
+        )
+        self.data.setdefault("gobo_library", {})[res["cid"]] = asset.to_dict()
+
     def _set_state(self) -> None:
+        if self.state is State.IN_RESOURCE and self.keyword not in (
+            "$resource",
+            "$$data",
+            "$$hd",
+        ):
+            self._flush_current_resource()
         if self.state is State.START and self.keyword in self.tokens["basic"]:
             self.state = State.NO_PRIMARY
         elif self.keyword == "$personality":
@@ -1769,6 +1842,8 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_FADERDEF
         elif self.keyword == "$effect":
             self.state = State.NEW_EFFECT
+        elif self.keyword == "$resource":
+            self.state = State.NEW_RESOURCE
         elif self.keyword in ("$sequence", "$cuelist", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):

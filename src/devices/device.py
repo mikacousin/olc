@@ -151,6 +151,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         focus_point: tuple[float, float, float] = (0.0, 0.0, 0.0),
         orientation: tuple[float, float, float] = (0.0, 0.0, 0.0),
         beam_angle: float = 25.0,
+        static_gobo: str = "",
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -179,6 +180,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             float(orientation[2]),
         )
         self.beam_angle: float = max(1.0, min(180.0, float(beam_angle)))
+        self.static_gobo: str = str(static_gobo)
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
@@ -1639,6 +1641,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "focus_point": list(self.focus_point),
             "orientation": list(self.orientation),
             "beam_angle": self.beam_angle,
+            "static_gobo": self.static_gobo,
             "intensity": self._intensity,
             "target_color": self._target_color.to_hex(),
             "base_emitters": {
@@ -1718,6 +1721,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             focus_point=_parse_vec3(data.get("focus_point"), (0.0, 0.0, 0.0)),
             orientation=_parse_vec3(data.get("orientation"), (0.0, 0.0, 0.0)),
             beam_angle=float(data.get("beam_angle", 25.0)),
+            static_gobo=str(data.get("static_gobo", "")),
         )
         device._enabled = bool(data.get("enabled", True))
         device._locked = bool(data.get("locked", False))

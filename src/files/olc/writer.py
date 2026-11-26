@@ -58,6 +58,7 @@ class OlcWriter(WriteFile):
         self._stage()
         self._curves()
         self._fixture_definitions()
+        self._gobo_library()
         self._devices()
         self._sequences()
         self._groups()
@@ -104,6 +105,11 @@ class OlcWriter(WriteFile):
         defs = [fdef.to_dict() for fdef in self.lightshow.fixture_library.all()]
         if defs:
             self.data["fixture_definitions"] = defs
+
+    def _gobo_library(self) -> None:
+        lib = getattr(self.lightshow, "gobo_library", None)
+        if lib is not None and len(lib) > 0:
+            self.data["gobo_library"] = lib.to_dict()
 
     def _devices(self) -> None:
         if not self.lightshow.patch.devices:

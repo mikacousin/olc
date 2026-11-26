@@ -37,7 +37,13 @@ from olc.devices.color_pick import (
     shift_color_hs,
 )
 from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, LightingDevice
+from olc.devices.gobo import (
+    BUILTIN_GOBO_IDS,
+    BUILTIN_GOBO_LABELS,
+    resolve_builtin_gobo,
+)
 from olc.gtk3.widgets.color_picker import ConsoleColorPicker
+from olc.gtk3.widgets.gobo_tile import GoboTileWidget
 from olc.gtk3.widgets.pan_tilt_pad import PanTiltPadWidget
 from olc.gtk3.widgets.rotary_encoder import RotaryEncoderWidget
 
@@ -359,6 +365,12 @@ class DeviceInspectorWidget(Gtk.Box):
 
         gobo_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.gobos_header_label = Gtk.Label(label="GOBOS & EFFECTS [0/0]", xalign=0)
+        self.gobo_flowbox = Gtk.FlowBox()
+        self.gobo_flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.gobo_flowbox.set_homogeneous(True)
+        self.gobo_flowbox.set_max_children_per_line(5)
+        self.gobo_flowbox.set_column_spacing(4)
+        self.gobo_flowbox.set_row_spacing(4)
         self.gobo_combo = Gtk.ComboBoxText()
         self.gobo_combo.connect("changed", self._on_gobo_combo_changed)
         self.gobo_value_label = Gtk.Label(label="Gobo: --", xalign=0)
@@ -372,6 +384,7 @@ class DeviceInspectorWidget(Gtk.Box):
         )
         self.prism_scale.connect("value-changed", self._on_prism_scale_changed)
         gobo_box.pack_start(self.gobos_header_label, False, False, 0)
+        gobo_box.pack_start(self.gobo_flowbox, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
         gobo_box.pack_start(self.gobo_value_label, False, False, 0)
         gobo_box.pack_start(self.gobo_scale, False, False, 0)
@@ -1257,6 +1270,90 @@ class DeviceInspectorWidget(Gtk.Box):
         if label:
             self.apply_discrete_range(ChannelType.GOBO_WHEEL, label)
 
+    def _get_gobo_image_bytes(self, gobo_id: str) -> bytes | None:
+        if not gobo_id or self.app is None or not hasattr(self.app, "core"):
+            return None
+        lib = getattr(self.app.core.lightshow, "gobo_library", None)
+        if lib is None:
+            return None
+        asset = lib.get(gobo_id)
+        return asset.data if asset is not None else None
+
+    def _on_static_gobo_clicked(self, gobo_id: str) -> None:
+        if self._updating_ui:
+            return
+        for dev in self.selected_devices:
+            dev.static_gobo = "" if gobo_id == "builtin:open" else gobo_id
+        if (
+            self.app is not None
+            and hasattr(self.app, "core")
+            and hasattr(self.app.core, "publish_patch")
+        ):
+            self.app.core.publish_patch()
+        self.refresh_ui()
+
+    def _refresh_gobo_grid(self, lead: LightingDevice | None) -> None:
+        for child in self.gobo_flowbox.get_children():
+            self.gobo_flowbox.remove(child)
+        if lead is None:
+            return
+
+        gobo_ch = lead.get_channel(ChannelType.GOBO_WHEEL)
+        if gobo_ch is not None and gobo_ch.ranges:
+            act_range = gobo_ch.active_range
+            for idx, r in enumerate(gobo_ch.ranges):
+                gid = r.gobo_id or resolve_builtin_gobo(r.label, idx)
+                is_active = act_range is not None and act_range.label == r.label
+                btn = self._build_gobo_tile_button(
+                    gid,
+                    r.label,
+                    f"{r.label} (DMX {r.value_min}–{r.value_max})",
+                    is_active,
+                    lambda *_a, lbl=r.label: self.apply_discrete_range(
+                        ChannelType.GOBO_WHEEL, lbl
+                    ),
+                )
+                self.gobo_flowbox.add(btn)
+        else:
+            active_gid = lead.static_gobo or "builtin:open"
+            for gid in BUILTIN_GOBO_IDS:
+                lbl = BUILTIN_GOBO_LABELS.get(gid, gid)
+                btn = self._build_gobo_tile_button(
+                    gid,
+                    lbl,
+                    f"Static gobo: {lbl}",
+                    active_gid == gid,
+                    lambda *_a, g=gid: self._on_static_gobo_clicked(g),
+                )
+                self.gobo_flowbox.add(btn)
+        self.gobo_flowbox.show_all()
+
+    def _build_gobo_tile_button(
+        self,
+        gobo_id: str,
+        label: str,
+        tooltip: str,
+        active: bool,
+        on_click: Callable[..., Any],
+    ) -> Gtk.Button:
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        tile = GoboTileWidget(
+            gobo_id,
+            image_bytes=self._get_gobo_image_bytes(gobo_id),
+            active=active,
+        )
+        short = label if len(label) <= 9 else f"{label[:8]}…"
+        lbl = Gtk.Label(label=short)
+        lbl.set_max_width_chars(10)
+        vbox.pack_start(tile, False, False, 0)
+        vbox.pack_start(lbl, False, False, 0)
+        btn = Gtk.Button()
+        btn.set_relief(Gtk.ReliefStyle.NONE)
+        btn.set_tooltip_text(tooltip)
+        btn.add(vbox)
+        btn.connect("clicked", on_click)
+        return btn
+
     def refresh_ui(  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         self,
     ) -> None:
@@ -1374,6 +1471,7 @@ class DeviceInspectorWidget(Gtk.Box):
                             active_idx = idx
                     if active_idx >= 0:
                         self.gobo_combo.set_active(active_idx)
+                self._refresh_gobo_grid(lead)
 
             self.pan_tilt_pad.queue_draw()
             color_devs = [d for d in self.selected_devices if self._has_color(d)]

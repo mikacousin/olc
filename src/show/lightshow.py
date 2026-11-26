@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from olc.define import DEFAULT_UNIVERSES
 from olc.devices.builtin import populate_builtin_library
+from olc.devices.gobo import GoboLibrary
 from olc.dmx_engine.universe_config import UniverseMap, default_universe_map
 from olc.show.cue import CueEditor
 from olc.show.curve import Curves
@@ -125,6 +126,7 @@ class LightShow(ShowFile):
 
     app: CoreApplication | None
     fixture_library: FixtureLibrary
+    gobo_library: GoboLibrary
     curves: Curves
     main_playback: Sequence
     cue_editor: CueEditor
@@ -153,6 +155,7 @@ class LightShow(ShowFile):
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
         # Fixture Library
         self.fixture_library = populate_builtin_library()
+        self.gobo_library = GoboLibrary()
         # Curves
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
@@ -245,6 +248,7 @@ class LightShow(ShowFile):
         self.home_preset = None
         self.stage = StageConfig()
         self.fixture_library = populate_builtin_library()
+        self.gobo_library.clear()
         del self.main_playback.steps[1:]
         for seq in self.sequences:
             if seq.run and seq.thread:

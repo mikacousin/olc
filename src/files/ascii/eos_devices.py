@@ -28,6 +28,7 @@ from olc.devices.color import (
     default_cmy_profile,
 )
 from olc.devices.fixture import FixtureDefinition
+from olc.devices.gobo import BUILTIN_GOBO_IDS, BUILTIN_GOBO_LABELS, resolve_builtin_gobo
 
 _PALETTE_REF_RE = re.compile(r"^(ip|fp|cp|bp|pr)(\d+(?:\.\d+)?)$")
 _PALETTE_PREFIX_TO_CATEGORY: dict[str, str] = {
@@ -280,7 +281,7 @@ def _build_channel_ranges(
     is_16bit = num_bytes == 2 or any(
         max(int(s["dmx_min"]), int(s["dmx_max"])) > 255 for s in slot_list
     )
-    parsed: list[tuple[int, int, int, float, float, str]] = []
+    parsed: list[tuple[int, int, int, float, float, str, str]] = []
     for idx, slot in enumerate(slot_list, start=1):
         d0 = int(slot["dmx_min"])
         d1 = int(slot["dmx_max"])
@@ -302,31 +303,56 @@ def _build_channel_ranges(
             lo, hi = hi, lo
 
         label = str(slot.get("label", "")).strip() or f"Slot {idx}"
-        parsed.append((lo, hi, snap, p0, p1, label))
+        gobo_id = str(slot.get("gobo_id", "")).strip()
+        if ctype is ChannelType.GOBO_WHEEL and not gobo_id:
+            gobo_id = resolve_builtin_gobo(label, idx - 1)
+        parsed.append((lo, hi, snap, p0, p1, label, gobo_id))
 
     parsed.sort(key=lambda item: (item[0], item[1]))
     ranges: list[dict[str, typing.Any]] = []
     prev_hi = -1
-    for lo, hi, snap, p0, p1, label in parsed:
+    for lo, hi, snap, p0, p1, label, gobo_id in parsed:
         if lo <= prev_hi:
             lo = prev_hi + 1
         if lo > hi:
             continue
         snap_clamped = max(lo, min(hi, snap))
-        ranges.append(
-            {
-                "label": label,
-                "channel_type": ctype.value,
-                "value_min": lo,
-                "value_max": hi,
-                "snap_value": snap_clamped,
-                "physical_min": p0,
-                "physical_max": p1,
-                "physical_unit": unit,
-            }
-        )
+        entry: dict[str, typing.Any] = {
+            "label": label,
+            "channel_type": ctype.value,
+            "value_min": lo,
+            "value_max": hi,
+            "snap_value": snap_clamped,
+            "physical_min": p0,
+            "physical_max": p1,
+            "physical_unit": unit,
+        }
+        if gobo_id:
+            entry["gobo_id"] = gobo_id
+        ranges.append(entry)
         prev_hi = hi
 
+    return ranges
+
+
+def _default_gobo_wheel_ranges() -> list[dict[str, typing.Any]]:
+    """Build fallback 9-slot gobo wheel ranges when Eos omits $$PersSlot."""
+    slots = BUILTIN_GOBO_IDS[:9]
+    ranges: list[dict[str, typing.Any]] = []
+    step = 256 // len(slots)
+    for idx, gid in enumerate(slots):
+        lo = idx * step
+        hi = 255 if idx == len(slots) - 1 else (idx + 1) * step - 1
+        ranges.append(
+            {
+                "label": BUILTIN_GOBO_LABELS.get(gid, f"Gobo {idx}"),
+                "channel_type": ChannelType.GOBO_WHEEL.value,
+                "value_min": lo,
+                "value_max": hi,
+                "snap_value": (lo + hi) // 2,
+                "gobo_id": gid,
+            }
+        )
     return ranges
 
 
@@ -401,6 +427,8 @@ def build_fixture_definition(
         phys_min, phys_max = _resolve_channel_physical_bounds(pc)
         phys_unit = _extract_physical_unit(slot_list, ctype)
         ranges = _build_channel_ranges(slot_list, num_bytes, ctype, phys_unit)
+        if ctype is ChannelType.GOBO_WHEEL and not ranges:
+            ranges = _default_gobo_wheel_ranges()
 
         ctypes.append(ctype)
         offset_0 = off_c - 1

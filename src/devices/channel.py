@@ -198,6 +198,7 @@ class ChannelRange:  # pylint: disable=too-many-instance-attributes
     physical_min: Optional[float] = None
     physical_max: Optional[float] = None
     physical_unit: str = ""
+    gobo_id: str = ""
 
     def __post_init__(self) -> None:
         if not (0 <= self.value_min <= 255 and 0 <= self.value_max <= 255):
@@ -252,7 +253,7 @@ class ChannelRange:  # pylint: disable=too-many-instance-attributes
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize ChannelRange to dictionary."""
-        return {
+        res: dict[str, Any] = {
             "label": self.label,
             "channel_type": self.channel_type.value,
             "value_min": self.value_min,
@@ -263,6 +264,9 @@ class ChannelRange:  # pylint: disable=too-many-instance-attributes
             "physical_max": self.physical_max,
             "physical_unit": self.physical_unit,
         }
+        if self.gobo_id:
+            res["gobo_id"] = self.gobo_id
+        return res
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChannelRange:
@@ -287,6 +291,7 @@ class ChannelRange:  # pylint: disable=too-many-instance-attributes
                 else None
             ),
             physical_unit=str(data.get("physical_unit", "")),
+            gobo_id=str(data.get("gobo_id", "")),
         )
 
     def __repr__(self) -> str:

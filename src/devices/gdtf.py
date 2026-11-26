@@ -25,6 +25,7 @@ from typing import Any, Optional
 from .color import FixtureColorProfile, extract_color_profile
 from .device import ChannelRange, ChannelType, FixtureType
 from .fixture import ChannelDefinition, DmxModeDefinition, FixtureDefinition
+from .gobo import GoboAsset, resolve_builtin_gobo
 
 try:
     import pygdtf
@@ -149,6 +150,9 @@ def _resolve_physical_bounds(
 class GdtfImporter:
     """Imports GDTF archives and creates FixtureDefinition instances."""
 
+    def __init__(self) -> None:
+        self.last_gobo_assets: dict[str, GoboAsset] = {}
+
     def load(self, path: str | Path) -> FixtureDefinition:
         """Load a .gdtf file from disk."""
         if not HAS_PYGDTF or pygdtf is None:
@@ -161,6 +165,7 @@ class GdtfImporter:
             raise FileNotFoundError(f"GDTF file not found: {path}")
         gdtf_obj = pygdtf.FixtureType(str(path))
         thumbnail = self._read_thumbnail(path)
+        self.last_gobo_assets = self._read_wheel_gobos(path, gdtf_obj)
         return self._adapt(gdtf_obj, thumbnail)
 
     def load_from_bytes(self, data: bytes) -> FixtureDefinition:
@@ -317,6 +322,9 @@ class GdtfImporter:
         phys_min, phys_max, phys_unit = _resolve_physical_bounds(ch_type, p_from, p_to)
 
         snap_names = [cs["name"] for cs in cf.get("channel_sets", []) if cs.get("name")]
+        gobo_id = ""
+        if ch_type is ChannelType.GOBO_WHEEL:
+            gobo_id = self._resolve_cf_gobo_id(cf, name)
 
         return ChannelRange(
             label=name,
@@ -328,7 +336,51 @@ class GdtfImporter:
             physical_min=phys_min,
             physical_max=phys_max,
             physical_unit=phys_unit,
+            gobo_id=gobo_id,
         )
+
+    def _resolve_cf_gobo_id(self, cf: dict[str, Any], fallback_name: str) -> str:
+        wheel = str(cf.get("wheel") or "")
+        for cs in cf.get("channel_sets", []):
+            slot_idx = cs.get("wheel_slot_index")
+            if slot_idx:
+                key = f"{wheel}:{slot_idx}"
+                if key in self.last_gobo_assets:
+                    return self.last_gobo_assets[key].gobo_id
+        return resolve_builtin_gobo(fallback_name, 0)
+
+    @staticmethod
+    def _read_wheel_gobos(
+        gdtf_path: Path,
+        gdtf_obj: Any,  # noqa: ANN401
+    ) -> dict[str, GoboAsset]:
+        assets: dict[str, GoboAsset] = {}
+        ft_id = str(getattr(gdtf_obj, "fixture_type_id", None) or gdtf_path.stem)
+        try:
+            with zipfile.ZipFile(gdtf_path) as zf:
+                names = set(zf.namelist())
+                for wheel in getattr(gdtf_obj, "wheels", []) or []:
+                    w_name = str(getattr(wheel, "name", "") or "")
+                    for idx, slot in enumerate(
+                        getattr(wheel, "wheel_slots", []) or [], start=1
+                    ):
+                        media = str(getattr(slot, "media_file_name", "") or "").strip()
+                        if not media:
+                            continue
+                        for ext in ("png", "svg", "jpg"):
+                            cand = f"wheels/{media}.{ext}"
+                            if cand in names:
+                                gid = f"gdtf:{ft_id}:{media}"
+                                assets[f"{w_name}:{idx}"] = GoboAsset(
+                                    gobo_id=gid,
+                                    name=str(getattr(slot, "name", "") or media),
+                                    data=zf.read(cand),
+                                    ext=ext,
+                                )
+                                break
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        return assets
 
     @staticmethod
     def _read_thumbnail(gdtf_path: Path) -> Optional[bytes]:
