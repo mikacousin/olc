@@ -101,6 +101,7 @@ pip install pygdtf
 git clone https://github.com/mikacousin/olc.git
 cd olc
 meson setup builddir --prefix=/usr/local
+ninja -C builddir
 sudo ninja -C builddir install
 ```
 
