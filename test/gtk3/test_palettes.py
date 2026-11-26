@@ -700,3 +700,344 @@ def test_palettes_tab_modes_lock_and_badges(app_gui: Application) -> None:
     affected = pal_tab.recall_palette(PaletteCategory.COLOR, 1.0, absolute=True)
     assert affected == [2]
     assert app_gui.core.live_state.get_palette_ref(2, "color") is None
+
+
+@pytest.mark.gui
+def test_palette_gobo_tile_tooltip_and_inspector(app_gui: Application) -> None:
+    """Verify gobo thumbnails resolve in tile, tooltip, and bottom Inspector."""
+    import typing
+
+    from olc.devices.channel import ChannelType
+    from olc.devices.device import ChannelRange
+    from olc.devices.fixture import (
+        ChannelDefinition,
+        DmxModeDefinition,
+        FixtureDefinition,
+    )
+    from olc.devices.gobo import GoboAsset
+    from olc.gtk3.palettes import (
+        INSP_COL_GOBO_ID,
+        INSP_COL_HAS_GOBO,
+        INSP_COL_HAS_GOBO_REF,
+        PalettesTab,
+    )
+    from olc.show.palette import Palette
+
+    app_gui.core.action_registry.execute("patch.clear")
+    gobo_def = FixtureDefinition(
+        manufacturer="Test",
+        model="GoboSpot",
+        dmx_modes=[
+            DmxModeDefinition(
+                "Std",
+                [
+                    ChannelDefinition(ChannelType.INTENSITY, 0),
+                    ChannelDefinition(
+                        ChannelType.GOBO_WHEEL,
+                        1,
+                        ranges=[
+                            ChannelRange("Open", ChannelType.GOBO_WHEEL, 0, 85),
+                            ChannelRange(
+                                "Star",
+                                ChannelType.GOBO_WHEEL,
+                                86,
+                                170,
+                                gobo_id="gdtf:star_test",
+                            ),
+                            ChannelRange(
+                                "Breakup",
+                                ChannelType.GOBO_WHEEL,
+                                171,
+                                255,
+                                gobo_id="builtin:breakup",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+    app_gui.core.lightshow.patch.patch_device(
+        device_id=1, fixture_def=gobo_def, universe=1, address=1, mode_name="Std"
+    )
+    png_1x1 = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00"
+        b"\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    app_gui.core.lightshow.gobo_library.add(
+        GoboAsset(gobo_id="gdtf:star_test", name="Star", data=png_1x1)
+    )
+
+    pm = app_gui.core.lightshow.palettes
+    pm.clear()
+    bp1 = Palette(
+        PaletteCategory.BEAM,
+        1.0,
+        "Star Beam",
+        device_values={1: {"gobo": "Star"}},
+    )
+    pr1 = Palette(
+        PaletteCategory.PRESET,
+        1.0,
+        "Star Preset",
+        palette_refs={1: {"gobo": ("beam", 1.0)}},
+    )
+    cp1 = Palette(
+        PaletteCategory.COLOR,
+        1.0,
+        "Red",
+        device_values={1: {"color": "#ff0000"}},
+    )
+    pm.add(bp1)
+    pm.add(pr1)
+    pm.add(cp1)
+
+    app_gui.activate_action("palettes", None)
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+    pal_tab.refresh()
+    process_events()
+
+    class _TooltipStub:
+        def __init__(self) -> None:
+            self.custom: object = None
+
+        def set_custom(self, widget: object) -> None:
+            self.custom = widget
+
+    # 1. Beam palette: tile has resolved gobo, tooltip builds custom widget,
+    # and Inspector populates Gobo columns
+    pal_tab.set_active_category(PaletteCategory.BEAM)
+    child_bp = pal_tab.flowbox.get_child_at_index(0)
+    assert child_bp is not None
+    pal_tab.flowbox.select_child(child_bp)
+    process_events()
+    bp_tile = pal_tab.get_selected_tile(PaletteCategory.BEAM)
+    assert bp_tile is not None
+    assert len(bp_tile.gobos) == 1
+    assert bp_tile.gobos[0].gobo_id == "gdtf:star_test"
+    assert bp_tile.gobos[0].gobo_label == "Star"
+    assert bp_tile.gobos[0].from_ref is False
+
+    tip_bp = _TooltipStub()
+    assert (
+        bp_tile._on_query_tooltip(
+            bp_tile, 0, 0, False, typing.cast(Gtk.Tooltip, tip_bp)
+        )
+        is True
+    )
+    assert tip_bp.custom is not None
+
+    assert len(pal_tab.inspector_store) == 1
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO] is True
+    assert pal_tab.inspector_store[0][INSP_COL_GOBO_ID] == "gdtf:star_test"
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO_REF] is False
+
+    # 2. Preset referencing BP 1: resolves gobo with from_ref=True
+    pal_tab.set_active_category(PaletteCategory.PRESET)
+    child_pr = pal_tab.flowbox.get_child_at_index(0)
+    assert child_pr is not None
+    pal_tab.flowbox.select_child(child_pr)
+    process_events()
+    pr_tile = pal_tab.get_selected_tile(PaletteCategory.PRESET)
+    assert pr_tile is not None
+    assert len(pr_tile.gobos) == 1
+    assert pr_tile.gobos[0].gobo_id == "gdtf:star_test"
+    assert pr_tile.gobos[0].from_ref is True
+
+    assert len(pal_tab.inspector_store) == 1
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO] is True
+    assert pal_tab.inspector_store[0][INSP_COL_GOBO_ID] == "gdtf:star_test"
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO_REF] is True
+
+    # 3. Color palette without gobos: no gobos and tooltip returns False
+    pal_tab.set_active_category(PaletteCategory.COLOR)
+    child_cp = pal_tab.flowbox.get_child_at_index(0)
+    assert child_cp is not None
+    pal_tab.flowbox.select_child(child_cp)
+    process_events()
+    cp_tile = pal_tab.get_selected_tile(PaletteCategory.COLOR)
+    assert cp_tile is not None
+    assert cp_tile.gobos == []
+    tip_cp = _TooltipStub()
+    assert (
+        cp_tile._on_query_tooltip(
+            cp_tile, 0, 0, False, typing.cast(Gtk.Tooltip, tip_cp)
+        )
+        is False
+    )
+
+
+@pytest.mark.gui
+def test_palette_gobo_normalized_float_and_multi_wheel(app_gui: Application) -> None:
+    """Verify normalized 0..1 float gobo values, multi-wheel, and Open filtering."""
+    from olc.devices.channel import ChannelType
+    from olc.devices.device import ChannelRange
+    from olc.devices.fixture import (
+        ChannelDefinition,
+        DmxModeDefinition,
+        FixtureDefinition,
+    )
+    from olc.gtk3.palettes import (
+        INSP_COL_GOBO_ID,
+        INSP_COL_HAS_GOBO,
+        PalettesTab,
+    )
+    from olc.show.palette import Palette
+
+    app_gui.core.action_registry.execute("patch.clear")
+    dual_def = FixtureDefinition(
+        manufacturer="Test",
+        model="DualGoboSpot",
+        dmx_modes=[
+            DmxModeDefinition(
+                "Std",
+                [
+                    ChannelDefinition(ChannelType.INTENSITY, 0),
+                    ChannelDefinition(
+                        ChannelType.GOBO_WHEEL,
+                        1,
+                        label="Gobo1",
+                        ranges=[
+                            ChannelRange(
+                                "Open",
+                                ChannelType.GOBO_WHEEL,
+                                0,
+                                50,
+                                gobo_id="builtin:open",
+                            ),
+                            ChannelRange(
+                                "Star",
+                                ChannelType.GOBO_WHEEL,
+                                51,
+                                150,
+                                gobo_id="builtin:stars",
+                            ),
+                            ChannelRange(
+                                "Tunnel",
+                                ChannelType.GOBO_WHEEL,
+                                151,
+                                255,
+                                gobo_id="builtin:ring",
+                            ),
+                        ],
+                    ),
+                    ChannelDefinition(
+                        ChannelType.GOBO_WHEEL,
+                        2,
+                        label="Gobo2",
+                        ranges=[
+                            ChannelRange(
+                                "Open",
+                                ChannelType.GOBO_WHEEL,
+                                0,
+                                50,
+                                gobo_id="builtin:open",
+                            ),
+                            ChannelRange(
+                                "Breakup",
+                                ChannelType.GOBO_WHEEL,
+                                51,
+                                150,
+                                gobo_id="builtin:breakup",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+    app_gui.core.lightshow.patch.patch_device(
+        device_id=1, fixture_def=dual_def, universe=1, address=1, mode_name="Std"
+    )
+
+    pm = app_gui.core.lightshow.palettes
+    pm.clear()
+    # PR 1: wheel 1 Open (0.0) + wheel 2 Breakup (0.40 -> DMX 102)
+    pm.add(
+        Palette(
+            PaletteCategory.PRESET,
+            1.0,
+            "Wheel2 Only",
+            device_values={1: {"gobo_wheel": 0.0, "gobo2": 0.40}},
+        )
+    )
+    # PR 2: wheel 1 Star (0.40 -> DMX 102)
+    pm.add(
+        Palette(
+            PaletteCategory.PRESET,
+            2.0,
+            "Wheel1 Float",
+            device_values={1: {"gobo_wheel": 0.40}},
+        )
+    )
+    # PR 3: wheel 1 Open (0.0) only -> hidden in Preset
+    pm.add(
+        Palette(
+            PaletteCategory.PRESET,
+            3.0,
+            "Open Preset",
+            device_values={1: {"gobo_wheel": 0.0}},
+        )
+    )
+    # BP 1: explicit Open Beam Palette -> shown
+    pm.add(
+        Palette(
+            PaletteCategory.BEAM,
+            1.0,
+            "Open Beam",
+            device_values={1: {"gobo_wheel": 0.0}},
+        )
+    )
+
+    app_gui.activate_action("palettes", None)
+    process_events()
+    assert app_gui.tabs is not None
+    pal_tab = app_gui.tabs.tabs.get("palettes")
+    assert isinstance(pal_tab, PalettesTab)
+    pal_tab.refresh()
+    process_events()
+
+    pal_tab.set_active_category(PaletteCategory.PRESET)
+    # PR 1
+    c0 = pal_tab.flowbox.get_child_at_index(0)
+    assert c0 is not None
+    pal_tab.flowbox.select_child(c0)
+    process_events()
+    t1 = pal_tab.get_selected_tile(PaletteCategory.PRESET)
+    assert t1 is not None
+    assert [g.gobo_id for g in t1.gobos] == ["builtin:breakup"]
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO] is True
+    assert pal_tab.inspector_store[0][INSP_COL_GOBO_ID] == "builtin:breakup"
+
+    # PR 2
+    c1 = pal_tab.flowbox.get_child_at_index(1)
+    assert c1 is not None
+    pal_tab.flowbox.select_child(c1)
+    process_events()
+    t2 = pal_tab.get_selected_tile(PaletteCategory.PRESET)
+    assert t2 is not None
+    assert [g.gobo_id for g in t2.gobos] == ["builtin:stars"]
+
+    # PR 3 (Open only in Preset -> filtered out)
+    c2 = pal_tab.flowbox.get_child_at_index(2)
+    assert c2 is not None
+    pal_tab.flowbox.select_child(c2)
+    process_events()
+    t3 = pal_tab.get_selected_tile(PaletteCategory.PRESET)
+    assert t3 is not None
+    assert t3.gobos == []
+    assert pal_tab.inspector_store[0][INSP_COL_HAS_GOBO] is False
+
+    # BP 1 (explicit Open Beam Palette -> kept)
+    pal_tab.set_active_category(PaletteCategory.BEAM)
+    cb0 = pal_tab.flowbox.get_child_at_index(0)
+    assert cb0 is not None
+    pal_tab.flowbox.select_child(cb0)
+    process_events()
+    tb1 = pal_tab.get_selected_tile(PaletteCategory.BEAM)
+    assert tb1 is not None
+    assert [g.gobo_id for g in tb1.gobos] == ["builtin:open"]

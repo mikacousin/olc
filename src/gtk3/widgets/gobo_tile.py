@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import math
-from typing import Optional
+from typing import Any, Optional
 
 import cairo
 from gi.repository import Gdk, GdkPixbuf, Gtk
+
+_PIXBUF_CACHE: dict[tuple[str, int], Optional[GdkPixbuf.Pixbuf]] = {}
+_PIXBUF_CACHE_MAX = 256
 
 
 def _load_pixbuf(data: Optional[bytes], size: int) -> Optional[GdkPixbuf.Pixbuf]:
@@ -36,6 +39,24 @@ def _load_pixbuf(data: Optional[bytes], size: int) -> Optional[GdkPixbuf.Pixbuf]
         return pb.scale_simple(size, size, GdkPixbuf.InterpType.BILINEAR)
     except Exception:  # pylint: disable=broad-exception-caught
         return None
+
+
+def get_cached_gobo_pixbuf(
+    gobo_id: str,
+    image_bytes: Optional[bytes],
+    size: int,
+) -> Optional[GdkPixbuf.Pixbuf]:
+    """Return a cached scaled Pixbuf for *gobo_id*, or None if no image bytes."""
+    if not image_bytes:
+        return None
+    key = (gobo_id, int(size))
+    if key in _PIXBUF_CACHE:
+        return _PIXBUF_CACHE[key]
+    pb = _load_pixbuf(image_bytes, int(size))
+    if len(_PIXBUF_CACHE) >= _PIXBUF_CACHE_MAX:
+        _PIXBUF_CACHE.pop(next(iter(_PIXBUF_CACHE)))
+    _PIXBUF_CACHE[key] = pb
+    return pb
 
 
 def _draw_builtin_pattern(
@@ -122,6 +143,47 @@ def _draw_builtin_pattern(
         cr.stroke()
 
 
+def draw_gobo_circle(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+    cr: cairo.Context,
+    cx: float,
+    cy: float,
+    r: float,
+    gobo_id: str,
+    pixbuf: Optional[GdkPixbuf.Pixbuf] = None,
+    *,
+    active: bool = False,
+    has_palette_ref: bool = False,
+) -> None:
+    """Draw a circular gobo aperture with Pixbuf or built-in Cairo pattern."""
+    cr.arc(cx, cy, r, 0, math.tau)
+    cr.set_source_rgb(0.08, 0.09, 0.11)
+    cr.fill()
+
+    cr.save()
+    cr.arc(cx, cy, r * 0.90, 0, math.tau)
+    cr.clip()
+    if pixbuf is not None:
+        pw = pixbuf.get_width()
+        ph = pixbuf.get_height()
+        Gdk.cairo_set_source_pixbuf(cr, pixbuf, cx - pw * 0.5, cy - ph * 0.5)
+        cr.paint()
+    else:
+        _draw_builtin_pattern(cr, gobo_id, cx, cy, r)
+    cr.restore()
+
+    cr.arc(cx, cy, r, 0, math.tau)
+    if active:
+        cr.set_source_rgb(0.32, 0.68, 1.0)
+        cr.set_line_width(2.5)
+    elif has_palette_ref:
+        cr.set_source_rgb(0.20, 0.88, 0.96)
+        cr.set_line_width(1.8)
+    else:
+        cr.set_source_rgb(0.35, 0.37, 0.42)
+        cr.set_line_width(1.2)
+    cr.stroke()
+
+
 class GoboTileWidget(Gtk.DrawingArea):
     """Compact 44x44 circular gobo thumbnail (real PNG Pixbuf or Cairo pattern)."""
 
@@ -136,7 +198,7 @@ class GoboTileWidget(Gtk.DrawingArea):
         self.gobo_id = gobo_id
         self.active = active
         self.tile_size = size
-        self._pixbuf = _load_pixbuf(image_bytes, size - 8)
+        self._pixbuf = get_cached_gobo_pixbuf(gobo_id, image_bytes, max(8, size - 8))
         self.set_size_request(size, size)
         self.connect("draw", self._on_draw)
 
@@ -145,31 +207,50 @@ class GoboTileWidget(Gtk.DrawingArea):
         h = float(self.get_allocated_height())
         cx, cy = w * 0.5, h * 0.5
         r = min(w, h) * 0.44
-
-        # Dark aperture background
-        cr.arc(cx, cy, r, 0, math.tau)
-        cr.set_source_rgb(0.08, 0.09, 0.11)
-        cr.fill()
-
-        cr.save()
-        cr.arc(cx, cy, r * 0.90, 0, math.tau)
-        cr.clip()
-        if self._pixbuf is not None:
-            pw = self._pixbuf.get_width()
-            ph = self._pixbuf.get_height()
-            Gdk.cairo_set_source_pixbuf(cr, self._pixbuf, cx - pw * 0.5, cy - ph * 0.5)
-            cr.paint()
-        else:
-            _draw_builtin_pattern(cr, self.gobo_id, cx, cy, r)
-        cr.restore()
-
-        # Ring border (accent when active)
-        cr.arc(cx, cy, r, 0, math.tau)
-        if self.active:
-            cr.set_source_rgb(0.32, 0.68, 1.0)
-            cr.set_line_width(2.5)
-        else:
-            cr.set_source_rgb(0.35, 0.37, 0.42)
-            cr.set_line_width(1.2)
-        cr.stroke()
+        draw_gobo_circle(cr, cx, cy, r, self.gobo_id, self._pixbuf, active=self.active)
         return False
+
+
+class GoboCellRenderer(Gtk.CellRenderer):
+    """Custom Cairo cell renderer drawing a circular gobo thumbnail."""
+
+    has_gobo: bool
+    gobo_id: str
+    image_bytes: Optional[bytes]
+    has_palette_ref: bool
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.has_gobo = False
+        self.gobo_id = ""
+        self.image_bytes = None
+        self.has_palette_ref = False
+
+    def do_get_size(
+        self,
+        _widget: Gtk.Widget,
+        _cell_area: Gdk.Rectangle | None = None,
+    ) -> tuple[int, int, int, int]:
+        """Return fixed cell size reservation for the gobo thumbnail."""
+        return (0, 0, 26, 22)
+
+    def do_render(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        self,
+        cr: cairo.Context,
+        _widget: Gtk.Widget,
+        _background_area: Gdk.Rectangle,
+        cell_area: Gdk.Rectangle,
+        _flags: Any,  # noqa: ANN401
+    ) -> None:
+        """Draw the circular gobo thumbnail with optional cyan palette-ref ring."""
+        if not self.has_gobo:
+            return
+        cx = float(cell_area.x) + 13.0
+        cy = float(cell_area.y) + float(cell_area.height) * 0.5
+        r = min(10.0, float(cell_area.height) * 0.44)
+        pb = get_cached_gobo_pixbuf(
+            self.gobo_id, self.image_bytes, max(8, int(r * 1.8))
+        )
+        draw_gobo_circle(
+            cr, cx, cy, r, self.gobo_id, pb, has_palette_ref=self.has_palette_ref
+        )

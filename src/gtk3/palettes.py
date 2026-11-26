@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import typing
+from dataclasses import dataclass
 from gettext import gettext as _
 
 import cairo
@@ -25,6 +26,8 @@ from gi.repository import Gdk, GLib, Gtk, Pango, PangoCairo
 
 from olc.actions.palette import format_palette_number
 from olc.define import is_non_nul_float
+from olc.devices.channel import ChannelType
+from olc.devices.gobo import resolve_builtin_gobo
 from olc.gtk3.widgets.channels_table_view import (
     PALETTE_CYAN_HEX,
     ColorSwatchCellRenderer,
@@ -36,6 +39,12 @@ from olc.gtk3.widgets.common import (
     register_system_font_listener,
     rounded_rectangle,
     rounded_rectangle_fill,
+)
+from olc.gtk3.widgets.gobo_tile import (
+    GoboCellRenderer,
+    GoboTileWidget,
+    draw_gobo_circle,
+    get_cached_gobo_pixbuf,
 )
 from olc.gtk3.widgets.group import format_channel_summary
 from olc.show.palette import Palette, PaletteCategory, PaletteMode
@@ -70,6 +79,11 @@ INSP_COL_B = 6
 INSP_COL_HAS_COLOR_REF = 7
 INSP_COL_PARAMS = 8
 INSP_COL_REFS = 9
+INSP_COL_HAS_GOBO = 10
+INSP_COL_GOBO_ID = 11
+INSP_COL_HAS_GOBO_REF = 12
+
+_GOBO_KEYS: frozenset[str] = frozenset({"gobo", "gobo_wheel"})
 
 _COLOR_REF_KEYS: frozenset[str] = frozenset(
     {"color", "colour", "red", "green", "blue", "cyan", "magenta", "yellow"}
@@ -165,6 +179,254 @@ def extract_palette_preview_rgb(
         if rgb is not None:
             return rgb
     return None
+
+
+@dataclass(frozen=True)
+class ResolvedPaletteGobo:
+    """Resolved gobo entry stored in (or referenced by) a Palette or Preset."""
+
+    source_label: str
+    gobo_id: str
+    gobo_label: str
+    image_bytes: bytes | None
+    from_ref: bool = False
+
+
+def _gobo_image_bytes(lightshow: LightShow | None, gobo_id: str) -> bytes | None:
+    if not gobo_id or lightshow is None:
+        return None
+    lib = getattr(lightshow, "gobo_library", None)
+    if lib is None:
+        return None
+    asset = lib.get(gobo_id)
+    return asset.data if asset is not None else None
+
+
+def _is_open_gobo(gobo_id: str, gobo_label: str) -> bool:
+    return gobo_id == "builtin:open" or gobo_label.strip().lower().startswith("open")
+
+
+def _match_gobo_wheel_for_key(
+    key: str,
+    wheels: list[typing.Any],
+) -> typing.Any:  # noqa: ANN401
+    kl = str(key).strip().lower()
+    if kl in _GOBO_KEYS:
+        return wheels[0] if wheels else None
+    for ch in wheels:
+        lbl = str(getattr(ch, "label", "") or "").strip().lower()
+        if lbl and lbl == kl:
+            return ch
+    if kl in ("gobo_select_2", "gobo2") and len(wheels) >= 2:
+        return wheels[1]
+    if kl in ("gobo_select_3", "gobo3") and len(wheels) >= 3:
+        return wheels[2]
+    return None
+
+
+def _is_gobo_param_key(key: str, wheels: list[typing.Any]) -> bool:
+    kl = str(key).strip().lower()
+    if kl in _GOBO_KEYS or kl in (
+        "gobo_select_2",
+        "gobo2",
+        "gobo_select_3",
+        "gobo3",
+    ):
+        return True
+    return any(
+        str(getattr(ch, "label", "") or "").strip().lower() == kl for ch in wheels
+    )
+
+
+def _resolve_gobo_on_channel(
+    gobo_ch: typing.Any,  # noqa: ANN401
+    raw_val: typing.Any,  # noqa: ANN401
+    lightshow: LightShow | None,
+) -> tuple[str, str, bytes | None] | None:
+    if raw_val is None or raw_val == "":
+        return None
+    if gobo_ch is not None and gobo_ch.ranges:
+        matched: tuple[int, typing.Any] | None = None
+        if isinstance(raw_val, str):
+            target = raw_val.strip().lower()
+            for idx, rng in enumerate(gobo_ch.ranges):
+                if rng.label.strip().lower() == target:
+                    matched = (idx, rng)
+                    break
+            if matched is None:
+                for idx, rng in enumerate(gobo_ch.ranges):
+                    if target and target in rng.label.strip().lower():
+                        matched = (idx, rng)
+                        break
+        elif isinstance(raw_val, float) and 0.0 <= raw_val <= 1.0:
+            dmx = round(raw_val * 255.0)
+            for idx, rng in enumerate(gobo_ch.ranges):
+                if rng.contains(dmx):
+                    matched = (idx, rng)
+                    break
+        elif isinstance(raw_val, (int, float)):
+            ival = int(round(float(raw_val)))
+            if 1 <= ival <= len(gobo_ch.ranges) and (
+                len(gobo_ch.ranges) == 1 or ival < gobo_ch.ranges[1].value_min
+            ):
+                matched = (ival - 1, gobo_ch.ranges[ival - 1])
+            else:
+                for idx, rng in enumerate(gobo_ch.ranges):
+                    if rng.contains(ival):
+                        matched = (idx, rng)
+                        break
+        if matched is not None:
+            idx, rng = matched
+            gid = rng.gobo_id or resolve_builtin_gobo(rng.label, idx)
+            return (gid, rng.label, _gobo_image_bytes(lightshow, gid))
+    if isinstance(raw_val, str) and raw_val.strip():
+        label = raw_val.strip()
+        gid = resolve_builtin_gobo(label, 1)
+        return (gid, label, _gobo_image_bytes(lightshow, gid))
+    return None
+
+
+def _iter_gobo_entries_for_values(
+    dev: typing.Any,  # noqa: ANN401
+    vals: typing.Mapping[str, typing.Any],
+    lightshow: LightShow | None,
+) -> list[tuple[str, str, bytes | None]]:
+    wheels = dev.get_channels(ChannelType.GOBO_WHEEL) if dev is not None else []
+    entries: list[tuple[str, str, bytes | None]] = []
+    for k, v in vals.items():
+        if v is None or v == "":
+            continue
+        if not _is_gobo_param_key(str(k), wheels):
+            continue
+        target_ch = _match_gobo_wheel_for_key(str(k), wheels)
+        if target_ch is None and dev is None and str(k).strip().lower() in _GOBO_KEYS:
+            res = _resolve_gobo_on_channel(None, v, lightshow)
+        else:
+            res = _resolve_gobo_on_channel(target_ch, v, lightshow)
+        if res is not None:
+            entries.append(res)
+    return entries
+
+
+def _filter_open_gobos(
+    entries: list[tuple[str, str, bytes | None, bool]],
+    category: PaletteCategory,
+) -> list[tuple[str, str, bytes | None, bool]]:
+    if not entries:
+        return []
+    non_open = [g for g in entries if not _is_open_gobo(g[0], g[1])]
+    if non_open:
+        return non_open
+    if category is PaletteCategory.BEAM:
+        return entries
+    return []
+
+
+def resolve_channel_gobos(
+    lightshow: LightShow | None,
+    palette: Palette,
+    ch: int,
+) -> list[tuple[str, str, bytes | None, bool]]:
+    """Resolve all active ``(gobo_id, label, image_bytes, from_ref)`` for *ch*."""
+    patch = getattr(lightshow, "patch", None) if lightshow is not None else None
+    devices = getattr(patch, "devices", {}) if patch is not None else {}
+    dev = devices.get(int(ch))
+    wheels = dev.get_channels(ChannelType.GOBO_WHEEL) if dev is not None else []
+    entries: list[tuple[str, str, bytes | None, bool]] = []
+
+    dev_vals = palette.device_values.get(int(ch))
+    if isinstance(dev_vals, typing.Mapping):
+        for res in _iter_gobo_entries_for_values(dev, dev_vals, lightshow):
+            entries.append((*res, False))
+
+    refs_map = palette.palette_refs.get(int(ch), {})
+    pal_mgr = getattr(lightshow, "palettes", None) if lightshow is not None else None
+    if isinstance(refs_map, typing.Mapping) and pal_mgr is not None:
+        seen_targets: set[tuple[str, float]] = set()
+        for key, ref_pair in refs_map.items():
+            if not _is_gobo_param_key(str(key), wheels):
+                continue
+            cat_str, num = ref_pair
+            tkey = (str(cat_str).lower(), float(num))
+            if tkey in seen_targets:
+                continue
+            seen_targets.add(tkey)
+            try:
+                target_pal = pal_mgr.get(PaletteCategory(tkey[0]), tkey[1])
+            except ValueError:
+                target_pal = None
+            if target_pal is None:
+                continue
+            type_key = getattr(dev, "type_key", None) if dev is not None else None
+            resolved_vals = target_pal.resolve_device_values(int(ch), type_key)
+            for res in _iter_gobo_entries_for_values(dev, resolved_vals, lightshow):
+                entries.append((*res, True))
+
+    return _filter_open_gobos(entries, palette.category)
+
+
+def resolve_channel_gobo(
+    lightshow: LightShow | None,
+    palette: Palette,
+    ch: int,
+) -> tuple[str, str, bytes | None, bool] | None:
+    """Resolve primary ``(gobo_id, gobo_label, image_bytes, from_ref)`` for *ch*."""
+    gobos = resolve_channel_gobos(lightshow, palette, ch)
+    return gobos[0] if gobos else None
+
+
+def extract_palette_gobos(
+    lightshow: LightShow | None,
+    palette: Palette,
+) -> list[ResolvedPaletteGobo]:
+    """Return resolved gobo entries across channels, by-type, and universal layers."""
+    patch = getattr(lightshow, "patch", None) if lightshow is not None else None
+    devices = getattr(patch, "devices", {}) if patch is not None else {}
+    results: list[ResolvedPaletteGobo] = []
+
+    all_chs = sorted(set(palette.device_values) | set(palette.palette_refs))
+    for ch in all_chs:
+        dev = devices.get(ch)
+        src = (
+            f"Ch {ch} ({dev.label or dev.fixture_name})"
+            if dev is not None
+            else f"Ch {ch}"
+        )
+        for gid, glabel, img, from_ref in resolve_channel_gobos(lightshow, palette, ch):
+            results.append(ResolvedPaletteGobo(src, gid, glabel, img, from_ref))
+
+    for type_key, vals in palette.by_type_values.items():
+        if not isinstance(vals, typing.Mapping):
+            continue
+        sample_dev = next(
+            (d for d in devices.values() if getattr(d, "type_key", None) == type_key),
+            None,
+        )
+        raw_entries = [
+            (*res, False)
+            for res in _iter_gobo_entries_for_values(sample_dev, vals, lightshow)
+        ]
+        src = sample_dev.fixture_name if sample_dev is not None else str(type_key)
+        for gid, glabel, img, from_ref in _filter_open_gobos(
+            raw_entries, palette.category
+        ):
+            results.append(ResolvedPaletteGobo(src, gid, glabel, img, from_ref))
+
+    if isinstance(palette.universal_values, typing.Mapping):
+        raw_entries = [
+            (*res, False)
+            for res in _iter_gobo_entries_for_values(
+                None, palette.universal_values, lightshow
+            )
+        ]
+        for gid, glabel, img, from_ref in _filter_open_gobos(
+            raw_entries, palette.category
+        ):
+            results.append(
+                ResolvedPaletteGobo(_("Universal"), gid, glabel, img, from_ref)
+            )
+
+    return results
 
 
 def _format_palette_param_value(key: str, val: typing.Any) -> str:  # noqa: ANN401
@@ -266,8 +528,13 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         )
         self.accent_rgb = accent_rgb
         self.preview_rgb = extract_palette_preview_rgb(palette)
+        self.gobos: list[ResolvedPaletteGobo] = extract_palette_gobos(
+            tab.lightshow, palette
+        )
 
         self.set_size_request(116, 78)
+        self.set_has_tooltip(True)
+        self.connect("query-tooltip", self._on_query_tooltip)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
         register_system_font_listener(self.queue_draw)
@@ -305,8 +572,56 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
             palette.universal_values
         )
         self.preview_rgb = extract_palette_preview_rgb(palette)
+        self.gobos = extract_palette_gobos(self.tab.lightshow, palette)
         self.rename_entry.set_text(self.name)
         self.queue_draw()
+
+    def _on_query_tooltip(
+        self,
+        _widget: Gtk.Widget,
+        _x: int,
+        _y: int,
+        _keyboard_mode: bool,
+        tooltip: Gtk.Tooltip,
+    ) -> bool:
+        """Show rich tooltip with gobo thumbnails and fixture sources."""
+        if not self.gobos:
+            return False
+
+        grouped: dict[tuple[str, str], tuple[bytes | None, list[str]]] = {}
+        for g in self.gobos:
+            key = (g.gobo_id, g.gobo_label)
+            if key not in grouped:
+                grouped[key] = (g.image_bytes, [])
+            grouped[key][1].append(g.source_label)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.set_border_width(6)
+        items = list(grouped.items())
+        for (gid, glabel), (img, sources) in items[:8]:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.pack_start(GoboTileWidget(gid, img, size=34), False, False, 0)
+            src_txt = ", ".join(sources[:4])
+            if len(sources) > 4:
+                src_txt += f" (+{len(sources) - 4})"
+            lbl = Gtk.Label(xalign=0.0)
+            lbl.set_markup(
+                f"<b>{GLib.markup_escape_text(glabel)}</b>\n"
+                f"<small>{GLib.markup_escape_text(src_txt)}</small>"
+            )
+            row.pack_start(lbl, True, True, 0)
+            box.pack_start(row, False, False, 0)
+
+        if len(items) > 8:
+            more = Gtk.Label(
+                label=_("+{count} more gobos...").format(count=len(items) - 8),
+                xalign=0.0,
+            )
+            box.pack_start(more, False, False, 0)
+
+        box.show_all()
+        tooltip.set_custom(box)
+        return True
 
     def open_rename_popover(self) -> None:
         """Open inline rename popover focused on the current label."""
@@ -516,6 +831,46 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
             cr.move_to(8.0, 30.0)
             PangoCairo.show_layout(cr, name_layout)
 
+        # Deduplicated gobo thumbnails at bottom-right
+        unique_gobos: list[ResolvedPaletteGobo] = []
+        seen_gids: set[str] = set()
+        for g in self.gobos:
+            if g.gobo_id not in seen_gids:
+                seen_gids.add(g.gobo_id)
+                unique_gobos.append(g)
+
+        gobo_strip_w = 0.0
+        if unique_gobos:
+            shown = unique_gobos[:2]
+            extra = len(unique_gobos) - len(shown)
+            r = 8.5
+            cy = height - 12.5
+            for idx, g in enumerate(reversed(shown)):
+                cx = width - 14.0 - idx * 19.0
+                pb = get_cached_gobo_pixbuf(g.gobo_id, g.image_bytes, 16)
+                draw_gobo_circle(
+                    cr,
+                    cx,
+                    cy,
+                    r,
+                    g.gobo_id,
+                    pb,
+                    has_palette_ref=g.from_ref,
+                )
+            gobo_strip_w = 24.0 if len(shown) == 1 else 44.0
+            if extra > 0:
+                extra_txt = f"+{extra}"
+                e_layout = create_pango_layout_for_widget(cr, extra_txt)
+                edesc = create_system_font_description()
+                edesc.set_size(7 * Pango.SCALE)
+                e_layout.set_font_description(edesc)
+                _eink, elog = e_layout.get_pixel_extents()
+                ex = width - gobo_strip_w - elog.width - 4.0
+                cr.set_source_rgb(0.75, 0.80, 0.85)
+                cr.move_to(ex, height - 17.0)
+                PangoCairo.show_layout(cr, e_layout)
+                gobo_strip_w += elog.width + 6.0
+
         # Compact channel preview at bottom
         if self.channels:
             summary = format_channel_summary(self.channels, max_tokens=3)
@@ -534,7 +889,7 @@ class PaletteTileWidget(Gtk.Widget):  # pylint: disable=too-many-instance-attrib
         sdesc.set_weight(Pango.Weight.NORMAL)
         sdesc.set_size(int(8.0 * Pango.SCALE))
         sum_layout.set_font_description(sdesc)
-        sum_layout.set_width(int(max(20.0, width - 16.0) * Pango.SCALE))
+        sum_layout.set_width(int(max(20.0, width - 16.0 - gobo_strip_w) * Pango.SCALE))
         sum_layout.set_ellipsize(Pango.EllipsizeMode.END)
         cr.move_to(8.0, height - 18.0)
         PangoCairo.show_layout(cr, sum_layout)
@@ -792,6 +1147,9 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
             bool,  # INSP_COL_HAS_COLOR_REF
             str,  # INSP_COL_PARAMS
             str,  # INSP_COL_REFS
+            bool,  # INSP_COL_HAS_GOBO
+            str,  # INSP_COL_GOBO_ID
+            bool,  # INSP_COL_HAS_GOBO_REF
         )
 
         self.inspector_view = Gtk.TreeView(model=self.inspector_store)
@@ -824,6 +1182,16 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
             None,
         )
         self.inspector_view.append_column(col_swatch)
+
+        gobo_renderer = GoboCellRenderer()
+        col_gobo = Gtk.TreeViewColumn(_("Gobo"), gobo_renderer)
+        col_gobo.set_min_width(48)
+        col_gobo.set_cell_data_func(
+            typing.cast(Gtk.CellRendererPixbuf, gobo_renderer),
+            self._inspector_gobo_data_func,
+            None,
+        )
+        self.inspector_view.append_column(col_gobo)
 
         self._append_inspector_text_column(
             _("Parameters"), INSP_COL_PARAMS, ellipsize=True, min_width=180
@@ -893,6 +1261,23 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
             cell.has_palette_ref = bool(model[tree_iter][INSP_COL_HAS_COLOR_REF])
             cell.is_manual = False
 
+    def _inspector_gobo_data_func(
+        self,
+        _column: Gtk.TreeViewColumn,
+        cell: Gtk.CellRenderer,
+        model: Gtk.TreeModel,
+        tree_iter: Gtk.TreeIter,
+        _data: object,
+    ) -> None:
+        has_gobo = bool(model[tree_iter][INSP_COL_HAS_GOBO])
+        cell.set_visible(has_gobo)
+        if isinstance(cell, GoboCellRenderer):
+            gid = str(model[tree_iter][INSP_COL_GOBO_ID])
+            cell.has_gobo = has_gobo
+            cell.gobo_id = gid
+            cell.image_bytes = _gobo_image_bytes(self.lightshow, gid)
+            cell.has_palette_ref = bool(model[tree_iter][INSP_COL_HAS_GOBO_REF])
+
     def get_position(self) -> int:
         """Get vertical position of the inspector Paned separator."""
         return self.paned.get_position()
@@ -950,6 +1335,7 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         selected = fb.get_selected_children()
         if not selected:
             return None
+
         widget = selected[0].get_child()
         return widget if isinstance(widget, PaletteTileWidget) else None
 
@@ -960,6 +1346,7 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         tile = self.get_selected_tile(category)
         if tile is None:
             return None
+
         return self.lightshow.palettes.get(tile.category, tile.number)
 
     def _on_category_changed(self, _stack: Gtk.Stack, _param: object) -> None:
@@ -1104,7 +1491,9 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         prefix, _title, _accent = _SPEC_BY_CATEGORY[pal.category]
         num_str = format_palette_number(pal.number)
         title_str = f"{prefix} {num_str}" + (f" \u2014 {pal.text}" if pal.text else "")
-        all_chs = sorted(set(pal.channels) | set(pal.device_values))
+        all_chs = sorted(
+            set(pal.channels) | set(pal.device_values) | set(pal.palette_refs)
+        )
         escaped_title = GLib.markup_escape_text(title_str)
         self.inspector_title_label.set_markup(
             f"<b>{escaped_title}</b>  ({len(all_chs)} ch)"
@@ -1151,6 +1540,10 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
                 else ""
             )
             refs_txt = _format_channel_refs(self.lightshow, refs_map)
+            gobo_res = resolve_channel_gobo(self.lightshow, pal, ch)
+            has_gobo = gobo_res is not None
+            gobo_id = gobo_res[0] if gobo_res is not None else ""
+            has_gobo_ref = gobo_res[3] if gobo_res is not None else False
 
             self.inspector_store.append(
                 [
@@ -1164,6 +1557,9 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
                     has_color_ref,
                     params_txt,
                     refs_txt,
+                    has_gobo,
+                    gobo_id,
+                    has_gobo_ref,
                 ]
             )
 
@@ -1291,7 +1687,9 @@ class PalettesTab(Gtk.Box):  # pylint: disable=too-many-instance-attributes, too
         prefix, _title, _accent = _SPEC_BY_CATEGORY[pal.category]
         num_str = format_palette_number(pal.number)
         title_part = f"{prefix} {num_str}" + (f" \u2014 {pal.text}" if pal.text else "")
-        all_chs = sorted(set(pal.channels) | set(pal.device_values))
+        all_chs = sorted(
+            set(pal.channels) | set(pal.device_values) | set(pal.palette_refs)
+        )
         attrs = sorted(
             {
                 str(k)
