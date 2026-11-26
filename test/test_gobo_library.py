@@ -375,11 +375,9 @@ def test_device_inspector_multi_gobo_wheels_and_eos_gobo2() -> None:
 
 
 def test_import_gdtf_action_registers_gobos_in_library(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
     """ImportGdtfAction registers extracted GDTF wheel PNGs in gobo_library."""
-    import pathlib
-
     from olc.devices.gdtf import HAS_PYGDTF
 
     if not HAS_PYGDTF:
@@ -392,8 +390,53 @@ def test_import_gdtf_action_registers_gobos_in_library(
     if not ghibli.exists():
         pytest.skip("Ghibli GDTF fixture not present in doc/")
 
-    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path))
+    monkeypatch.setenv("OLC_USER_FIXTURES_DIR", str(tmp_path / "fixtures"))
+    monkeypatch.setenv("OLC_USER_GOBOS_DIR", str(tmp_path / "gobos"))
     core = CoreApplication(MagicMock())
     defn = core.action_registry.execute("fixture.import_gdtf", str(ghibli))
     assert defn is not None
     assert len(core.lightshow.gobo_library) > 0
+
+    first_asset = core.lightshow.gobo_library.all()[0]
+    core.lightshow.gobo_library.clear()
+    assert len(core.lightshow.gobo_library) == 0
+
+    reloaded = core.lightshow.gobo_library.get(first_asset.gobo_id)
+    assert reloaded is not None
+    assert reloaded.data == first_asset.data
+    assert first_asset.gobo_id in core.lightshow.gobo_library.to_dict()
+
+
+def test_user_gobo_disk_cache_roundtrip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """save_user_gobo and load_user_gobo persist raw image bytes by gobo_id."""
+    from olc.devices.gobo import (
+        GoboAsset,
+        GoboLibrary,
+        load_user_gobo,
+        save_user_gobo,
+    )
+
+    monkeypatch.setenv("OLC_USER_GOBOS_DIR", str(tmp_path / "gobos"))
+    asset = GoboAsset(
+        gobo_id="gdtf:test-id:WheelSlot1",
+        name="Slot 1",
+        data=b"\x89PNG\r\n\x1a\ntest",
+        ext="png",
+    )
+    saved_path = save_user_gobo(asset)
+    assert saved_path is not None and saved_path.is_file()
+
+    loaded = load_user_gobo("gdtf:test-id:WheelSlot1")
+    assert loaded is not None
+    assert loaded.data == asset.data
+    assert loaded.ext == "png"
+
+    assert load_user_gobo("builtin:open") is None
+
+    lib = GoboLibrary()
+    promoted = lib.get("gdtf:test-id:WheelSlot1")
+    assert promoted is not None
+    assert promoted.data == asset.data
+    assert len(lib) == 1

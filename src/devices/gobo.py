@@ -17,9 +17,14 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import os
 import zlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
+
+import platformdirs
 
 BUILTIN_GOBO_IDS: tuple[str, ...] = (
     "builtin:open",
@@ -132,6 +137,62 @@ class GoboAsset:
         )
 
 
+_VALID_GOBO_EXTS: tuple[str, ...] = ("png", "svg", "jpg", "jpeg")
+
+
+def get_user_gobos_dir() -> Path:
+    """Return the directory path for cached user gobo images (XDG data dir)."""
+    env_dir = os.environ.get("OLC_USER_GOBOS_DIR")
+    if env_dir:
+        return Path(env_dir)
+    return Path(platformdirs.user_data_dir("olc")) / "gobos"
+
+
+def _gobo_cache_stem(gobo_id: str) -> str:
+    """Return a filesystem-safe deterministic filename stem for *gobo_id*."""
+    return hashlib.sha256(gobo_id.encode("utf-8")).hexdigest()[:24]
+
+
+def save_user_gobo(asset: GoboAsset) -> Optional[Path]:
+    """Persist a gobo image asset to the user gobo cache directory."""
+    if not asset.gobo_id or not asset.data:
+        return None
+    ext = (asset.ext or "png").strip().lower().lstrip(".")
+    if ext not in _VALID_GOBO_EXTS:
+        ext = "png"
+    try:
+        gobos_dir = get_user_gobos_dir()
+        gobos_dir.mkdir(parents=True, exist_ok=True)
+        file_path = gobos_dir / f"{_gobo_cache_stem(asset.gobo_id)}.{ext}"
+        file_path.write_bytes(asset.data)
+        return file_path
+    except OSError:
+        return None
+
+
+def load_user_gobo(gobo_id: str) -> Optional[GoboAsset]:
+    """Load a cached gobo image asset from disk by *gobo_id*, or None."""
+    if not gobo_id or gobo_id.startswith("builtin:"):
+        return None
+    try:
+        gobos_dir = get_user_gobos_dir()
+        if not gobos_dir.is_dir():
+            return None
+        stem = _gobo_cache_stem(gobo_id)
+        for ext in _VALID_GOBO_EXTS:
+            cand = gobos_dir / f"{stem}.{ext}"
+            if cand.is_file():
+                return GoboAsset(
+                    gobo_id=gobo_id,
+                    name=gobo_id,
+                    data=cand.read_bytes(),
+                    ext=ext,
+                )
+    except OSError:
+        return None
+    return None
+
+
 class GoboLibrary:
     """Show-level registry of custom gobo images keyed by gobo_id."""
 
@@ -144,8 +205,14 @@ class GoboLibrary:
             self._assets[asset.gobo_id] = asset
 
     def get(self, gobo_id: str) -> Optional[GoboAsset]:
-        """Return GoboAsset for *gobo_id*, or None."""
-        return self._assets.get(gobo_id)
+        """Return GoboAsset for *gobo_id* (checking user disk cache on miss)."""
+        asset = self._assets.get(gobo_id)
+        if asset is not None:
+            return asset
+        cached = load_user_gobo(gobo_id)
+        if cached is not None:
+            self._assets[gobo_id] = cached
+        return cached
 
     def all(self) -> list[GoboAsset]:
         """Return all stored gobo assets."""
