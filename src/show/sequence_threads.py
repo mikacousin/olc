@@ -242,10 +242,20 @@ def apply_arbitrated_output(
                 clear_live_state=clear_live_state,
                 force_assert=force_assert,
             )
+        merged_released: dict[int, set[str]] = {}
+        comp_released = getattr(composed, "released_to_home", None)
+        if comp_released:
+            for dev_id, params in comp_released.items():
+                merged_released.setdefault(dev_id, set()).update(params)
         if released_to_home:
+            for dev_id, params in released_to_home.items():
+                merged_released.setdefault(dev_id, set()).update(params)
+
+        if merged_released:
+            comp_intensities = getattr(composed, "intensities", None)
             changed_home: set[int] = set()
             color_home: set[int] = set()
-            for dev_id, params in released_to_home.items():
+            for dev_id, params in merged_released.items():
                 dev = patch.get_device(dev_id)
                 if dev is None:
                     continue
@@ -257,7 +267,17 @@ def apply_arbitrated_output(
                     elif p_low in ("pan", "tilt"):
                         home_vals[p_low] = 0.5
                     elif p_low == "intensity":
-                        home_vals["intensity"] = 0.0
+                        comp_int = (
+                            float(comp_intensities[dev_id - 1])
+                            if comp_intensities is not None
+                            and 1 <= dev_id <= len(comp_intensities)
+                            else 0.0
+                        )
+                        if (
+                            not _has_user_intensity_override(app, dev_id)
+                            and comp_int <= 0.0
+                        ):
+                            home_vals["intensity"] = 0.0
                     else:
                         home_vals[p_low] = 0.0
                 if home_vals and hasattr(dev, "apply_device_values"):
@@ -553,6 +573,31 @@ def _is_continuous_norm_param(dev: typing.Any, p_lower: str) -> bool:  # noqa: A
                 ch = res[0]
     ranges = getattr(ch, "ranges", None) if ch is not None else None
     return not (isinstance(ranges, list) and ranges)
+
+
+def _build_fade_target_device_values(
+    resolved: typing.Any,  # noqa: ANN401
+    old_device_states: dict[int, dict[str, typing.Any]],
+) -> dict[int, dict[str, typing.Any]]:
+    """Build target device_values including 0.0 intensity for lit missing devices."""
+    raw_dev_values = getattr(resolved, "device_values", None) or {}
+    target: dict[int, dict[str, typing.Any]] = {
+        dev_id: dict(params) for dev_id, params in raw_dev_values.items()
+    }
+    resolved_channels = getattr(resolved, "channels", ())
+    for dev_id, start_state in old_device_states.items():
+        if float(start_state.get("intensity", 0.0)) <= 0.0:
+            continue
+        existing = target.get(dev_id)
+        if existing and "intensity" in {str(k).lower() for k in existing}:
+            continue
+        ch_lvl = (
+            float(resolved_channels[dev_id - 1])
+            if 1 <= dev_id <= len(resolved_channels)
+            else 0.0
+        )
+        target.setdefault(dev_id, {})["intensity"] = ch_lvl
+    return target
 
 
 def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments, too-many-branches
@@ -1241,7 +1286,10 @@ class ThreadGo(threading.Thread):
         lvls = old_levels + diff * factors
 
         # Interpolate multi-parameter device values
-        if resolved.device_values and self.sequence.patch is not None:
+        target_device_values = _build_fade_target_device_values(
+            resolved, self.old_device_states
+        )
+        if target_device_values and self.sequence.patch is not None:
             (
                 ltp_factor,
                 mib_factors,
@@ -1253,7 +1301,7 @@ class ThreadGo(threading.Thread):
             changed = _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
-                resolved.device_values,
+                target_device_values,
                 ltp_factor,
                 mib_factors=mib_factors,
                 mib_parameters=resolved.mib_parameters,
@@ -1552,12 +1600,15 @@ class ThreadGoBack(threading.Thread):
         diff = (next_levels - old_levels) * factor
         lvls = old_levels + diff
 
-        if resolved.device_values and self.sequence.patch is not None:
+        target_device_values = _build_fade_target_device_values(
+            resolved, self.old_device_states
+        )
+        if target_device_values and self.sequence.patch is not None:
             color_changed: set[int] = set()
             changed = _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
-                resolved.device_values,
+                target_device_values,
                 factor,
                 color_changed_out=color_changed,
             )

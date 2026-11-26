@@ -86,6 +86,7 @@ class Dmx:
         self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint16)
         self._old_user_mask = np.zeros(MAX_CHANNELS, dtype=bool)
         self._old_device_colors: dict[int, tuple[int, int, int]] = {}
+        self._composite_driven_devices: set[int] = set()
         self.external_dmx = {}
         # To test outputs
         self.user_outputs = {}
@@ -253,8 +254,9 @@ class Dmx:
                 ):
                     parked_val = park_mgr.get_channel_park_level(dev_id) or 0.0
                     target_norm = float(parked_val)
-                    dev._target_intensity = target_norm
                     dev.set_intensity(target_norm)
+                    dev._target_intensity = target_norm
+                    self._composite_driven_devices.discard(dev_id)
                     continue
                 user_val = float(self.levels["user"][dev_id - 1])
                 comp_val = float(composite[dev_id - 1])
@@ -270,6 +272,10 @@ class Dmx:
                 )
                 if has_eff_int or user_val >= 0.0 or comp_val > 0.0:
                     target_norm = comp_val
+                    self._composite_driven_devices.add(dev_id)
+                elif dev_id in self._composite_driven_devices:
+                    target_norm = 0.0
+                    self._composite_driven_devices.discard(dev_id)
                 else:
                     curr_int = (
                         dev._target_intensity
@@ -277,8 +283,8 @@ class Dmx:
                         else dev.intensity
                     )
                     target_norm = float(curr_int)
-                dev._target_intensity = target_norm
                 dev.set_intensity(max(target_norm * main_val, gm_lvl))
+                dev._target_intensity = target_norm
 
     def on_dmx_received(self, universe: int, data: list[int] | np.ndarray) -> None:
         """Store incoming external DMX-In frame, re-merge HTP, and emit event."""

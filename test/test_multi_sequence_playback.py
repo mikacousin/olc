@@ -216,3 +216,180 @@ def test_real_eos_file_cuelist_on_fader() -> None:
     assert isinstance(fader5, FaderSequence)
     assert fader5.contents is seq2
     assert fader5.exclude_record is True
+
+
+def test_sequence_backward_to_blackout_resets_device_intensity() -> None:
+    """Verify stepping back to blackout/Cue 0 resets physical and virtual dimmers."""
+    from olc.devices.builtin import (  # pylint: disable=import-outside-toplevel
+        create_moving_head_definition,
+        create_rgb_definition,
+    )
+
+    app = _make_app()
+    assert app.backend is not None
+    try:
+        dev10 = app.lightshow.patch.patch_device(
+            10, create_moving_head_definition(), universe=1, address=1
+        )
+        dev11 = app.lightshow.patch.patch_device(
+            11, create_rgb_definition(), universe=1, address=30
+        )
+        app.lightshow.patch.update_numpy_cache_if_dirty()
+
+        main_pb = app.lightshow.main_playback
+        _populate_seq(
+            main_pb,
+            [
+                (1.0, {}, {}),
+                (
+                    2.0,
+                    {10: 1.0, 11: 1.0},
+                    {
+                        10: {"intensity": 1.0, "pan": 45.0},
+                        11: {"intensity": 1.0, "color": "#ff0000"},
+                    },
+                ),
+            ],
+        )
+
+        # Load Cue 2 (lit)
+        main_pb.load_step(2)
+        assert dev10.intensity == pytest.approx(1.0)
+        assert dev11.intensity == pytest.approx(1.0)
+        assert app.backend.dmx.frame[0][4] == 255  # MH dimmer (addr 5 -> idx 4)
+        assert app.backend.dmx.frame[0][29] == 255  # RGB red (addr 30 -> idx 29)
+
+        # Step back to Cue 1 (blackout) via sequence_minus
+        main_pb.sequence_minus()
+        assert dev10.intensity == pytest.approx(0.0)
+        assert dev11.intensity == pytest.approx(0.0)
+        assert app.backend.dmx.frame[0][4] == 0
+        assert app.backend.dmx.frame[0][29] == 0
+
+        # Reload Cue 2, then jump directly to Cue 0
+        main_pb.load_step(2)
+        assert dev10.intensity == pytest.approx(1.0)
+        assert dev11.intensity == pytest.approx(1.0)
+        main_pb.load_step(0)
+        assert dev10.intensity == pytest.approx(0.0)
+        assert dev11.intensity == pytest.approx(0.0)
+        assert app.backend.dmx.frame[0][4] == 0
+        assert app.backend.dmx.frame[0][29] == 0
+    finally:
+        app.stop()
+
+
+@pytest.mark.parametrize("mib_enabled", [False, True])
+def test_thread_goback_fades_device_intensity_to_zero_and_finalizes(
+    mib_enabled: bool,
+) -> None:
+    """Verify ThreadGoBack fades device intensities to 0.0 and finalizes cleanly."""
+    from olc.devices.builtin import (  # pylint: disable=import-outside-toplevel
+        create_moving_head_definition,
+        create_rgb_definition,
+    )
+    from olc.show.sequence_threads import (  # pylint: disable=import-outside-toplevel
+        ThreadGoBack,
+    )
+
+    app = _make_app()
+    assert app.backend is not None
+    try:
+        dev10 = app.lightshow.patch.patch_device(
+            10, create_moving_head_definition(), universe=1, address=1
+        )
+        dev11 = app.lightshow.patch.patch_device(
+            11, create_rgb_definition(), universe=1, address=30
+        )
+        app.lightshow.patch.update_numpy_cache_if_dirty()
+
+        main_pb = app.lightshow.main_playback
+        main_pb.mib_enabled = mib_enabled
+        _populate_seq(
+            main_pb,
+            [
+                (1.0, {}, {}),
+                (
+                    2.0,
+                    {10: 1.0, 11: 1.0},
+                    {
+                        10: {"intensity": 1.0, "pan": 45.0},
+                        11: {"intensity": 1.0, "color": "#ff0000"},
+                    },
+                ),
+            ],
+        )
+
+        # GoBack from Cue 2 to Cue 1 (blackout)
+        main_pb.load_step(2)
+        tgb = ThreadGoBack(main_pb)
+        tgb._capture_start_levels()
+        tgb.update_levels(go_back_time=2000.0, i=1000.0, position=2)
+        assert dev10.intensity == pytest.approx(0.5, abs=0.05)
+        assert dev11.intensity == pytest.approx(0.5, abs=0.05)
+
+        tgb._finalize_goback(1)
+        assert dev10.intensity == pytest.approx(0.0)
+        assert dev11.intensity == pytest.approx(0.0)
+        assert app.backend.dmx.frame[0][4] == 0
+        assert app.backend.dmx.frame[0][29] == 0
+
+        # GoBack from Cue 1 (or Cue 2) to Cue 0
+        main_pb.load_step(2)
+        tgb0 = ThreadGoBack(main_pb)
+        tgb0._capture_start_levels()
+        tgb0.update_levels(go_back_time=2000.0, i=1000.0, position=1)
+        assert dev10.intensity == pytest.approx(0.5, abs=0.05)
+        assert dev11.intensity == pytest.approx(0.5, abs=0.05)
+
+        tgb0._finalize_goback(0)
+        assert dev10.intensity == pytest.approx(0.0)
+        assert dev11.intensity == pytest.approx(0.0)
+        assert app.backend.dmx.frame[0][4] == 0
+        assert app.backend.dmx.frame[0][29] == 0
+    finally:
+        app.stop()
+
+
+def test_sequence_backward_with_intensity_only_in_device_values() -> None:
+    """Verify stepping back updates device intensity even if cue.channels is empty."""
+    from olc.devices.builtin import (  # pylint: disable=import-outside-toplevel
+        create_moving_head_definition,
+        create_rgb_definition,
+    )
+
+    app = _make_app()
+    assert app.backend is not None
+    try:
+        dev10 = app.lightshow.patch.patch_device(
+            10, create_moving_head_definition(), universe=1, address=1
+        )
+        dev11 = app.lightshow.patch.patch_device(
+            11, create_rgb_definition(), universe=1, address=30
+        )
+        app.lightshow.patch.update_numpy_cache_if_dirty()
+
+        main_pb = app.lightshow.main_playback
+        _populate_seq(
+            main_pb,
+            [
+                (1.0, {}, {10: {"intensity": 0.25}, 11: {"intensity": 0.5}}),
+                (2.0, {}, {10: {"intensity": 1.0}, 11: {"intensity": 1.0}}),
+            ],
+        )
+
+        main_pb.load_step(2)
+        assert dev10.intensity == pytest.approx(1.0)
+        assert dev11.intensity == pytest.approx(1.0)
+
+        main_pb.sequence_minus()
+        assert dev10.intensity == pytest.approx(0.25)
+        assert dev11.intensity == pytest.approx(0.5)
+
+        main_pb.sequence_minus()
+        assert dev10.intensity == pytest.approx(0.0)
+        assert dev11.intensity == pytest.approx(0.0)
+        assert app.backend.dmx.frame[0][4] == 0
+        assert app.backend.dmx.frame[0][29] == 0
+    finally:
+        app.stop()

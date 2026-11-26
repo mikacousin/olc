@@ -181,3 +181,28 @@ def test_sequence_playback_options_serialization() -> None:
     assert seq2.release_on_end is True
     assert seq2.release_time == 1.5
     assert parse_playback_priority("super") is PlaybackPriority.SUPER
+
+
+def test_arbitrator_set_sequence_output_reports_released_to_home() -> None:
+    """Verify set_sequence_output reports orphaned params unless owned elsewhere."""
+    arb = PlaybackArbitrator()
+    arb.set_sequence_output(
+        1,
+        {1: 1.0, 2: 0.8},
+        {1: {"intensity": 1.0, "pan": 45.0}, 2: {"intensity": 0.8, "color": "#ff0000"}},
+        cue_number=2.0,
+    )
+    # Seq 2 also owns color on device 2
+    arb.set_sequence_output(
+        2,
+        {2: 0.5},
+        {2: {"color": "#00ff00"}},
+        cue_number=1.0,
+    )
+
+    # Seq 1 steps back to Cue 0 (empty device_values & 0 intensities)
+    out = arb.set_sequence_output(1, {}, {}, cue_number=0.0)
+    assert out.released_to_home[1] == {"intensity", "pan"}
+    # Device 2 color is still owned by Seq 2, so only intensity is orphaned
+    assert out.released_to_home[2] == {"intensity"}
+    assert out.device_values[2] == {"color": "#00ff00"}

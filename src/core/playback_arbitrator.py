@@ -89,6 +89,7 @@ class ArbitratedOutput:
     param_owners: dict[tuple[int, str], tuple[float, float | None]] = field(
         default_factory=dict
     )
+    released_to_home: dict[int, set[str]] = field(default_factory=dict)
 
 
 class PlaybackArbitrator:
@@ -189,7 +190,13 @@ class PlaybackArbitrator:
                             state.intensity_timestamps.pop(ch, None)
                 state.intensities = new_arr
 
+            prev_params: dict[int, set[str]] = {}
             if device_values is not None:
+                prev_params = {
+                    ch: set(params.keys())
+                    for ch, params in state.device_values.items()
+                    if params
+                }
                 new_devs: dict[int, dict[str, typing.Any]] = {}
                 new_ltp: dict[tuple[int, str], int] = {}
                 for ch, params in device_values.items():
@@ -226,7 +233,14 @@ class PlaybackArbitrator:
             ):
                 self.check_off_on_overwritten()
 
-            return self.compose()
+            composed = self.compose()
+            if prev_params:
+                for ch, p_set in prev_params.items():
+                    remaining = set(composed.device_values.get(ch, {}).keys())
+                    orphan = p_set - remaining
+                    if orphan:
+                        composed.released_to_home[ch] = orphan
+            return composed
 
     def set_fader_level(self, seq_index: float, level: float) -> ArbitratedOutput:
         """Update fader multiplier for *seq_index* and recompose."""

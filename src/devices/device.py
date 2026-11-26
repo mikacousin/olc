@@ -517,6 +517,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         else:
             norm_val = max(0.0, min(1.0, float(value)))
         self._intensity = norm_val
+        self._target_intensity = norm_val
         self._apply_intensity()
 
     def set_intensity_8bit(self, value: int) -> None:
@@ -527,12 +528,14 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Set intensity from 16-bit integer [0..65535]."""
         clamped = max(0, min(65535, value))
         self._intensity = clamped / 65535.0
+        self._target_intensity = self._intensity
         self._apply_intensity()
 
     def set_intensity_24bit(self, value: int) -> None:
         """Set intensity from 24-bit integer [0..16777215]."""
         clamped = max(0, min(16777215, value))
         self._intensity = clamped / 16777215.0
+        self._target_intensity = self._intensity
         self._apply_intensity()
 
     def set_intensity_percent(self, percent: float) -> None:
