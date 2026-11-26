@@ -440,3 +440,12 @@ def test_user_gobo_disk_cache_roundtrip(
     assert promoted is not None
     assert promoted.data == asset.data
     assert len(lib) == 1
+
+
+def test_gdtf_attr_map_includes_gobo3_wheel() -> None:
+    """Verify GDTF Gobo3 attributes map to ChannelType.GOBO_WHEEL."""
+    from olc.devices.channel import ChannelType  # pylint: disable=import-outside-toplevel
+    from olc.devices.gdtf import GDTF_ATTRIBUTE_MAP  # pylint: disable=import-outside-toplevel
+
+    assert GDTF_ATTRIBUTE_MAP["Gobo3"] is ChannelType.GOBO_WHEEL
+    assert GDTF_ATTRIBUTE_MAP["Gobo3WheelSpin"] is ChannelType.GOBO_WHEEL

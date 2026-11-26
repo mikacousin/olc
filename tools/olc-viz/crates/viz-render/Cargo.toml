@@ -8,5 +8,6 @@ license.workspace = true
 bytemuck = { version = "1.25.2", features = ["derive"] }
 egui = "0.37.0"
 egui-wgpu = "0.37.0"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 viz-core.workspace = true
 wgpu = "30.0.2"

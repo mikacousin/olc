@@ -3,7 +3,7 @@
 use bytemuck::{Pod, Zeroable};
 use viz_core::FixtureType;
 
-use crate::dmx_eval::ResolvedFixture;
+use crate::dmx_eval::{GoboWheelState, ResolvedFixture};
 use crate::math::{
     add3, cross3, mat4_mul, mat4_mul_vec4, mat4_rot_x, mat4_rot_z, mat4_translation, normalize3,
     orientation_matrix, sub3, Mat4,
@@ -25,6 +25,8 @@ pub struct BeamVertex {
     pub normal: [f32; 3],
     pub color: [f32; 3],
     pub alpha: f32,
+    pub gobo_uv: [f32; 3],  // cos(theta1), sin(theta1), gobo1_layer
+    pub gobo2_uv: [f32; 3], // cos(theta2), sin(theta2), gobo2_layer
 }
 
 fn push_tri(
@@ -222,7 +224,11 @@ fn scale_neg_dir(dir: [f32; 3], s: f32) -> [f32; 3] {
 }
 
 /// Construit les cônes volumétriques additifs pour le brouillard.
-pub fn build_beams_mesh(fixtures: &[ResolvedFixture], fog_density: f32) -> Vec<BeamVertex> {
+pub fn build_beams_mesh(
+    fixtures: &[ResolvedFixture],
+    fog_density: f32,
+    gobo_layer_fn: impl Fn(&GoboWheelState) -> u32,
+) -> Vec<BeamVertex> {
     if fog_density <= 0.005 {
         return Vec::new();
     }
@@ -257,6 +263,10 @@ pub fn build_beams_mesh(fixtures: &[ResolvedFixture], fog_density: f32) -> Vec<B
         let z1 = -(start_offset + cone_len);
         let alpha0 = (f.intensity * fog_density).clamp(0.0, 1.0);
         let alpha1 = 0.0f32;
+        let gobo_layer1 = gobo_layer_fn(&f.gobos[0]) as f32;
+        let (rot1_s, rot1_c) = f.gobos[0].rot_rad.sin_cos();
+        let gobo_layer2 = gobo_layer_fn(&f.gobos[1]) as f32;
+        let (rot2_s, rot2_c) = f.gobos[1].rot_rad.sin_cos();
 
         let step = std::f32::consts::TAU / sides as f32;
         let slope = (r1 - r0) / cone_len;
@@ -276,10 +286,14 @@ pub fn build_beams_mesh(fixtures: &[ResolvedFixture], fog_density: f32) -> Vec<B
             let p01 = xform_point(m, [c0 * r1, s0 * r1, z1]);
             let p11 = xform_point(m, [c1 * r1, s1 * r1, z1]);
 
-            let v00 = BeamVertex { pos: p00, normal: n0, color: f.color, alpha: alpha0 };
-            let v10 = BeamVertex { pos: p10, normal: n1, color: f.color, alpha: alpha0 };
-            let v01 = BeamVertex { pos: p01, normal: n0, color: f.color, alpha: alpha1 };
-            let v11 = BeamVertex { pos: p11, normal: n1, color: f.color, alpha: alpha1 };
+            let uv0 = [c0 * rot1_c - s0 * rot1_s, c0 * rot1_s + s0 * rot1_c, gobo_layer1];
+            let uv1 = [c1 * rot1_c - s1 * rot1_s, c1 * rot1_s + s1 * rot1_c, gobo_layer1];
+            let uv2_0 = [c0 * rot2_c - s0 * rot2_s, c0 * rot2_s + s0 * rot2_c, gobo_layer2];
+            let uv2_1 = [c1 * rot2_c - s1 * rot2_s, c1 * rot2_s + s1 * rot2_c, gobo_layer2];
+            let v00 = BeamVertex { pos: p00, normal: n0, color: f.color, alpha: alpha0, gobo_uv: uv0, gobo2_uv: uv2_0 };
+            let v10 = BeamVertex { pos: p10, normal: n1, color: f.color, alpha: alpha0, gobo_uv: uv1, gobo2_uv: uv2_1 };
+            let v01 = BeamVertex { pos: p01, normal: n0, color: f.color, alpha: alpha1, gobo_uv: uv0, gobo2_uv: uv2_0 };
+            let v11 = BeamVertex { pos: p11, normal: n1, color: f.color, alpha: alpha1, gobo_uv: uv1, gobo2_uv: uv2_1 };
 
             verts.push(v00);
             verts.push(v01);

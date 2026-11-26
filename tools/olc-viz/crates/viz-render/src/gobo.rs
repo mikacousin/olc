@@ -1,8 +1,9 @@
 //! Atlas de masques de gobos (motifs procéduraux intégrés + PNG personnalisés d'OLC).
 
 pub const GOBO_SIZE: u32 = 128;
+pub const GOBO_MIP_LEVELS: u32 = 5;
 pub const BUILTIN_COUNT: u32 = 10;
-pub const MAX_GOBO_LAYERS: u32 = 32;
+pub const MAX_GOBO_LAYERS: u32 = 256;
 
 const BUILTIN_IDS: [&str; 10] = [
     "builtin:open",
@@ -185,6 +186,33 @@ pub fn decode_png_to_gobo_layer(png_bytes: &[u8]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// Génère `GOBO_MIP_LEVELS` niveaux de mipmap (boîte 2×2) pour simuler le flou optique.
+pub fn generate_mipmaps(base: &[u8]) -> Vec<(u32, Vec<u8>)> {
+    let mut levels = Vec::with_capacity(GOBO_MIP_LEVELS as usize);
+    let mut cur_size = GOBO_SIZE;
+    let mut cur = base.to_vec();
+    levels.push((cur_size, cur.clone()));
+    for _ in 1..GOBO_MIP_LEVELS {
+        let next_size = (cur_size / 2).max(1);
+        let mut next = vec![0u8; (next_size * next_size) as usize];
+        for y in 0..next_size {
+            for x in 0..next_size {
+                let sx = x * 2;
+                let sy = y * 2;
+                let idx = |px: u32, py: u32| -> u32 {
+                    cur[(py * cur_size + px) as usize] as u32
+                };
+                let sum = idx(sx, sy) + idx(sx + 1, sy) + idx(sx, sy + 1) + idx(sx + 1, sy + 1);
+                next[(y * next_size + x) as usize] = (sum / 4) as u8;
+            }
+        }
+        levels.push((next_size, next.clone()));
+        cur = next;
+        cur_size = next_size;
+    }
+    levels
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +226,10 @@ mod tests {
             let m = generate_builtin_layer(idx);
             assert_eq!(m.len(), (GOBO_SIZE * GOBO_SIZE) as usize);
             assert!(m.iter().any(|&v| v > 128));
+            let mips = generate_mipmaps(&m);
+            assert_eq!(mips.len(), GOBO_MIP_LEVELS as usize);
+            assert_eq!(mips[0].0, 128);
+            assert_eq!(mips[4].0, 8);
         }
     }
 }

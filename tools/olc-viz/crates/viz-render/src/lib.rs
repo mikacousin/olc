@@ -2,17 +2,23 @@
 
 pub mod camera;
 pub mod dmx_eval;
+pub mod gobo;
 pub mod math;
 pub mod mesh;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
 use viz_core::Stage;
 
 use crate::camera::OrbitCamera;
-use crate::dmx_eval::ResolvedFixture;
-use crate::math::{normalize3, parse_hex_color};
+use crate::dmx_eval::{GoboWheelState, ResolvedFixture};
+use crate::gobo::{
+    decode_png_to_gobo_layer, generate_builtin_layer, generate_mipmaps, resolve_builtin_index,
+    BUILTIN_COUNT, GOBO_MIP_LEVELS, GOBO_SIZE, MAX_GOBO_LAYERS,
+};
+use crate::math::{cross3, normalize3, parse_hex_color};
 use crate::mesh::{build_beams_mesh, build_fixtures_mesh, BeamVertex, FixtureVertex};
 
 pub const MAX_LIGHTS: usize = 64;
@@ -25,6 +31,7 @@ pub struct RenderScene {
     pub fixtures: Arc<Vec<ResolvedFixture>>,
     pub selected_channel: Option<u32>,
     pub aspect: f32,
+    pub gobo_images: Arc<HashMap<String, Vec<u8>>>,
 }
 
 #[repr(C)]
@@ -39,9 +46,12 @@ struct SceneUniform {
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct SpotLightGpu {
-    pos_intensity: [f32; 4], // x, y, z, intensity
-    dir_cos_outer: [f32; 4], // dx, dy, dz, cos(outer_half)
-    color_cos_inner: [f32; 4], // r, g, b, cos(inner_half)
+    pos_intensity: [f32; 4],    // x, y, z, intensity
+    dir_cos_outer: [f32; 4],    // dx, dy, dz, cos(outer_half)
+    color_cos_inner: [f32; 4],  // r, g, b, cos(inner_half)
+    right_gobo: [f32; 4],       // rx, ry, rz, gobo1_layer
+    rot_blur: [f32; 4],         // cos(rot1), sin(rot1), blur_lod, 0
+    gobo2_rot_layer: [f32; 4],  // cos(rot2), sin(rot2), gobo2_layer, 0
 }
 
 const FLOOR_SHADER: &str = r#"
@@ -56,10 +66,15 @@ struct SpotLight {
     pos_intensity: vec4<f32>,
     dir_cos_outer: vec4<f32>,
     color_cos_inner: vec4<f32>,
+    right_gobo: vec4<f32>,
+    rot_blur: vec4<f32>,
+    gobo2_rot_layer: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u_scene: SceneUniform;
 @group(0) @binding(1) var<storage, read> u_lights: array<SpotLight>;
+@group(0) @binding(2) var t_gobos: texture_2d_array<f32>;
+@group(0) @binding(3) var s_gobos: sampler;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -113,7 +128,44 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             let cone = smoothstep(l.dir_cos_outer.w, l.color_cos_inner.w, cos_theta);
             let ndotl = max(dot(-ldir, n), 0.0);
             let atten = 1.0 / (1.0 + 0.035 * dist * dist);
-            let contrib = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * 2.8;
+
+            var gobo_mask = 1.0;
+            let g_layer1 = i32(l.right_gobo.w + 0.5);
+            let g_layer2 = i32(l.gobo2_rot_layer.z + 0.5);
+            let z_proj = dot(ldir, l.dir_cos_outer.xyz);
+            if ((g_layer1 > 0 || g_layer2 > 0) && z_proj > 0.05) {
+                let right0 = l.right_gobo.xyz;
+                let up0 = cross(l.dir_cos_outer.xyz, right0);
+                let cos_o = clamp(l.dir_cos_outer.w, 0.05, 0.999);
+                let tan_half = sqrt(max(1.0 - cos_o * cos_o, 0.0)) / cos_o;
+                let denom = z_proj * max(tan_half, 0.02);
+                let dx = dot(ldir, right0) / denom * 0.5;
+                let dy = dot(ldir, up0) / denom * 0.5;
+                if (g_layer1 > 0) {
+                    let cr1 = l.rot_blur.x;
+                    let sr1 = l.rot_blur.y;
+                    let u1 = dx * cr1 + dy * sr1 + 0.5;
+                    let v1 = dy * cr1 - dx * sr1 + 0.5;
+                    if (u1 >= 0.0 && u1 <= 1.0 && v1 >= 0.0 && v1 <= 1.0) {
+                        gobo_mask = gobo_mask * textureSampleLevel(t_gobos, s_gobos, vec2<f32>(u1, v1), g_layer1, l.rot_blur.z).r;
+                    } else {
+                        gobo_mask = 0.0;
+                    }
+                }
+                if (g_layer2 > 0) {
+                    let cr2 = l.gobo2_rot_layer.x;
+                    let sr2 = l.gobo2_rot_layer.y;
+                    let u2 = dx * cr2 + dy * sr2 + 0.5;
+                    let v2 = dy * cr2 - dx * sr2 + 0.5;
+                    if (u2 >= 0.0 && u2 <= 1.0 && v2 >= 0.0 && v2 <= 1.0) {
+                        gobo_mask = gobo_mask * textureSampleLevel(t_gobos, s_gobos, vec2<f32>(u2, v2), g_layer2, l.rot_blur.z).r;
+                    } else {
+                        gobo_mask = 0.0;
+                    }
+                }
+            }
+
+            let contrib = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * gobo_mask * 2.8;
             accum = accum + contrib * (base * 1.4 + vec3<f32>(0.12));
         }
     }
@@ -175,12 +227,16 @@ struct SceneUniform {
 };
 
 @group(0) @binding(0) var<uniform> u_scene: SceneUniform;
+@group(0) @binding(1) var t_gobos: texture_2d_array<f32>;
+@group(0) @binding(2) var s_gobos: sampler;
 
 struct VsIn {
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) color: vec3<f32>,
     @location(3) alpha: f32,
+    @location(4) gobo_uv: vec3<f32>,
+    @location(5) gobo2_uv: vec3<f32>,
 };
 
 struct VsOut {
@@ -189,6 +245,8 @@ struct VsOut {
     @location(1) normal: vec3<f32>,
     @location(2) color: vec3<f32>,
     @location(3) alpha: f32,
+    @location(4) gobo_uv: vec3<f32>,
+    @location(5) gobo2_uv: vec3<f32>,
 };
 
 @vertex
@@ -199,6 +257,8 @@ fn vs_main(in: VsIn) -> VsOut {
     out.normal = in.normal;
     out.color = in.color;
     out.alpha = in.alpha;
+    out.gobo_uv = in.gobo_uv;
+    out.gobo2_uv = in.gobo2_uv;
     return out;
 }
 
@@ -207,7 +267,22 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let view_dir = normalize(u_scene.cam_eye.xyz - in.world_pos);
     let ndotv = abs(dot(normalize(in.normal), view_dir));
     let edge = pow(ndotv, 1.6);
-    let rgb = in.color * in.alpha * edge * 0.52;
+    var streak = 1.0;
+    let g_layer1 = i32(in.gobo_uv.z + 0.5);
+    let g_layer2 = i32(in.gobo2_uv.z + 0.5);
+    if (g_layer1 > 0 || g_layer2 > 0) {
+        var sample_m = 1.0;
+        if (g_layer1 > 0) {
+            let uv1 = vec2<f32>(0.5 + 0.36 * in.gobo_uv.x, 0.5 + 0.36 * in.gobo_uv.y);
+            sample_m = sample_m * textureSampleLevel(t_gobos, s_gobos, uv1, g_layer1, 1.0).r;
+        }
+        if (g_layer2 > 0) {
+            let uv2 = vec2<f32>(0.5 + 0.36 * in.gobo2_uv.x, 0.5 + 0.36 * in.gobo2_uv.y);
+            sample_m = sample_m * textureSampleLevel(t_gobos, s_gobos, uv2, g_layer2, 1.0).r;
+        }
+        streak = 0.25 + 0.75 * sample_m;
+    }
+    let rgb = in.color * in.alpha * edge * streak * 0.52;
     return vec4<f32>(rgb, 1.0);
 }
 "#;
@@ -263,6 +338,10 @@ struct GpuResources {
     lights_buf: wgpu::Buffer,
     floor_bind_group: wgpu::BindGroup,
     fixture_bind_group: wgpu::BindGroup,
+    beam_bind_group: wgpu::BindGroup,
+    gobo_tex: wgpu::Texture,
+    gobo_layers: HashMap<String, u32>,
+    next_gobo_layer: u32,
     fixture_vbuf: Option<wgpu::Buffer>,
     fixture_vcount: u32,
     beam_vbuf: Option<wgpu::Buffer>,
@@ -288,6 +367,34 @@ impl GpuResources {
             mapped_at_creation: false,
         });
 
+        let gobo_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("viz_gobo_atlas"),
+            size: wgpu::Extent3d {
+                width: GOBO_SIZE,
+                height: GOBO_SIZE,
+                depth_or_array_layers: MAX_GOBO_LAYERS,
+            },
+            mip_level_count: GOBO_MIP_LEVELS,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let gobo_view = gobo_tex.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
+        let gobo_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("viz_gobo_sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            ..Default::default()
+        });
+
         let floor_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("viz_floor_bgl"),
             entries: &[
@@ -311,6 +418,22 @@ impl GpuResources {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
             ],
         });
         let floor_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -324,6 +447,14 @@ impl GpuResources {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: lights_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&gobo_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&gobo_sampler),
                 },
             ],
         });
@@ -454,6 +585,61 @@ impl GpuResources {
             cache: None,
         });
 
+        let beam_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("viz_beam_bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let beam_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("viz_beam_bg"),
+            layout: &beam_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&gobo_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&gobo_sampler),
+                },
+            ],
+        });
+        let beam_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("viz_beam_layout"),
+            bind_group_layouts: &[Some(&beam_bgl)],
+            immediate_size: 0,
+        });
+
         let beam_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("viz_beam_shader"),
             source: wgpu::ShaderSource::Wgsl(BEAM_SHADER.into()),
@@ -482,6 +668,16 @@ impl GpuResources {
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float32,
                 },
+                wgpu::VertexAttribute {
+                    offset: 40,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: 52,
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
             ],
         };
         let additive_blend = wgpu::BlendState {
@@ -498,7 +694,7 @@ impl GpuResources {
         };
         let beam_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("viz_beam_pipeline"),
-            layout: Some(&fixture_layout),
+            layout: Some(&beam_layout),
             vertex: wgpu::VertexState {
                 module: &beam_shader,
                 entry_point: Some("vs_main"),
@@ -605,6 +801,10 @@ impl GpuResources {
             lights_buf,
             floor_bind_group,
             fixture_bind_group,
+            beam_bind_group,
+            gobo_tex,
+            gobo_layers: HashMap::new(),
+            next_gobo_layer: 0,
             fixture_vbuf: None,
             fixture_vcount: 0,
             beam_vbuf: None,
@@ -613,6 +813,70 @@ impl GpuResources {
             depth_view: None,
             rt_size: [0, 0],
             target_format,
+        }
+    }
+
+    fn ensure_builtin_gobos(&mut self, queue: &wgpu::Queue) {
+        if self.next_gobo_layer >= BUILTIN_COUNT {
+            return;
+        }
+        for idx in 0..BUILTIN_COUNT {
+            let data = generate_builtin_layer(idx);
+            self.upload_gobo_layer(queue, idx, &data);
+        }
+        self.next_gobo_layer = BUILTIN_COUNT;
+    }
+
+    fn upload_gobo_layer(&self, queue: &wgpu::Queue, layer: u32, data: &[u8]) {
+        for (mip, (size, mip_data)) in generate_mipmaps(data).into_iter().enumerate() {
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &self.gobo_tex,
+                    mip_level: mip as u32,
+                    origin: wgpu::Origin3d {
+                        x: 0,
+                        y: 0,
+                        z: layer,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &mip_data,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(size),
+                    rows_per_image: Some(size),
+                },
+                wgpu::Extent3d {
+                    width: size,
+                    height: size,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+    }
+
+    fn sync_custom_gobos(&mut self, queue: &wgpu::Queue, images: &HashMap<String, Vec<u8>>) {
+        for (gid, bytes) in images {
+            if self.gobo_layers.contains_key(gid) || self.next_gobo_layer >= MAX_GOBO_LAYERS {
+                continue;
+            }
+            if let Some(mask) = decode_png_to_gobo_layer(bytes) {
+                let layer = self.next_gobo_layer;
+                self.next_gobo_layer += 1;
+                self.upload_gobo_layer(queue, layer, &mask);
+                self.gobo_layers.insert(gid.clone(), layer);
+            }
+        }
+    }
+
+    fn resolve_gobo_layer(&self, g: &GoboWheelState) -> u32 {
+        if let Some(&layer) = self.gobo_layers.get(&g.gobo_id) {
+            return layer;
+        }
+        if g.gobo_id.is_empty() {
+            0
+        } else {
+            resolve_builtin_index(&g.gobo_id, g.slot_index)
         }
     }
 
@@ -702,6 +966,8 @@ impl egui_wgpu::CallbackTrait for StageCallback {
             screen_descriptor.size_in_pixels[0],
             screen_descriptor.size_in_pixels[1],
         );
+        res.ensure_builtin_gobos(queue);
+        res.sync_custom_gobos(queue, &self.scene.gobo_images);
 
         let vp = self.scene.camera.view_proj(self.scene.aspect);
 
@@ -711,12 +977,25 @@ impl egui_wgpu::CallbackTrait for StageCallback {
                 continue;
             }
             let dir = normalize3(f.direction);
+            let up_ref = if dir[2].abs() > 0.98 {
+                [0.0, 1.0, 0.0]
+            } else {
+                [0.0, 0.0, 1.0]
+            };
+            let right = normalize3(cross3(up_ref, [-dir[0], -dir[1], -dir[2]]));
+            let gobo_layer1 = res.resolve_gobo_layer(&f.gobos[0]) as f32;
             let outer = (f.beam_angle_deg * 0.5).to_radians().cos();
             let inner = (f.beam_angle_deg * 0.32).to_radians().cos();
+            let (rs1, rc1) = f.gobos[0].rot_rad.sin_cos();
+            let gobo_layer2 = res.resolve_gobo_layer(&f.gobos[1]) as f32;
+            let (rs2, rc2) = f.gobos[1].rot_rad.sin_cos();
             lights.push(SpotLightGpu {
                 pos_intensity: [f.position[0], f.position[1], f.position[2], f.intensity],
                 dir_cos_outer: [dir[0], dir[1], dir[2], outer],
                 color_cos_inner: [f.color[0], f.color[1], f.color[2], inner],
+                right_gobo: [right[0], right[1], right[2], gobo_layer1],
+                rot_blur: [rc1, rs1, f.gobo_blur_lod, 0.0],
+                gobo2_rot_layer: [rc2, rs2, gobo_layer2, 0.0],
             });
         }
         let light_count = lights.len() as f32;
@@ -760,7 +1039,11 @@ impl egui_wgpu::CallbackTrait for StageCallback {
             }
         }
 
-        let beam_verts = build_beams_mesh(&self.scene.fixtures, self.scene.stage.fog_density);
+        let beam_verts = build_beams_mesh(
+            &self.scene.fixtures,
+            self.scene.stage.fog_density,
+            |g| res.resolve_gobo_layer(g),
+        );
         res.beam_vcount = beam_verts.len() as u32;
         if !beam_verts.is_empty() {
             let bytes = bytemuck::cast_slice(&beam_verts);
@@ -827,7 +1110,7 @@ impl egui_wgpu::CallbackTrait for StageCallback {
             if res.beam_vcount > 0 {
                 if let Some(vbuf) = &res.beam_vbuf {
                     pass.set_pipeline(&res.beam_pipeline);
-                    pass.set_bind_group(0, &res.fixture_bind_group, &[]);
+                    pass.set_bind_group(0, &res.beam_bind_group, &[]);
                     pass.set_vertex_buffer(0, vbuf.slice(..));
                     pass.draw(0..res.beam_vcount, 0..1);
                 }

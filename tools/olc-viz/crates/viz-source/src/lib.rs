@@ -63,6 +63,7 @@ struct Inner {
     patch: Arc<Patch>,
     status: SourceStatus,
     cmd_tx: Option<UnboundedSender<VizCommand>>,
+    gobo_images: Arc<HashMap<String, Vec<u8>>>,
 }
 
 /// État partagé entre le thread de réception et l'UI.
@@ -133,6 +134,28 @@ impl SharedState {
         }
     }
 
+    pub fn gobo_images(&self) -> Arc<HashMap<String, Vec<u8>>> {
+        self.0
+            .read()
+            .map(|s| s.gobo_images.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn has_gobo_image(&self, gobo_id: &str) -> bool {
+        self.0
+            .read()
+            .map(|s| s.gobo_images.contains_key(gobo_id))
+            .unwrap_or(false)
+    }
+
+    pub fn insert_gobo_image(&self, gobo_id: String, bytes: Vec<u8>) {
+        if let Ok(mut s) = self.0.write() {
+            let mut next = (*s.gobo_images).clone();
+            next.insert(gobo_id, bytes);
+            s.gobo_images = Arc::new(next);
+        }
+    }
+
     /// Génère un signal de démonstration (rampes mobiles + patch 3D sur l'univers 1)
     /// pour développer l'UI sans OLC.
     pub fn spawn_demo(&self) -> std::thread::JoinHandle<()> {
@@ -157,13 +180,32 @@ impl SharedState {
                     orientation: Orientation::default(),
                     beam_angle: 22.0,
                     channels: vec![
-                        DmxChannel { channel_type: "intensity".into(), universe: 1, address: 1, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "red".into(), universe: 1, address: 2, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "green".into(), universe: 1, address: 3, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "blue".into(), universe: 1, address: 4, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "pan".into(), universe: 1, address: 5, fine: false, ultra_fine: false, physical_min: Some(-90.0), physical_max: Some(90.0) },
-                        DmxChannel { channel_type: "tilt".into(), universe: 1, address: 6, fine: false, ultra_fine: false, physical_min: Some(0.0), physical_max: Some(75.0) },
+                        DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 1, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "red".into(), label: String::new(), universe: 1, address: 2, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "green".into(), label: String::new(), universe: 1, address: 3, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "blue".into(), label: String::new(), universe: 1, address: 4, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "pan".into(), label: String::new(), universe: 1, address: 5, fine: false, ultra_fine: false, physical_min: Some(-90.0), physical_max: Some(90.0), ranges: vec![] },
+                        DmxChannel { channel_type: "tilt".into(), label: String::new(), universe: 1, address: 6, fine: false, ultra_fine: false, physical_min: Some(0.0), physical_max: Some(75.0), ranges: vec![] },
+                        DmxChannel {
+                            channel_type: "gobo_wheel".into(),
+                            label: "Gobo_Select".into(),
+                            universe: 1,
+                            address: 18,
+                            fine: false,
+                            ultra_fine: false,
+                            physical_min: None,
+                            physical_max: None,
+                            ranges: vec![
+                                viz_core::ChannelRange { label: "Stars".into(), min: 0, max: 63, gobo_id: "builtin:stars".into() },
+                                viz_core::ChannelRange { label: "Radial".into(), min: 64, max: 127, gobo_id: "builtin:radial".into() },
+                                viz_core::ChannelRange { label: "Grid".into(), min: 128, max: 191, gobo_id: "builtin:grid".into() },
+                                viz_core::ChannelRange { label: "Breakup".into(), min: 192, max: 255, gobo_id: "builtin:breakup".into() },
+                            ],
+                        },
+                        DmxChannel { channel_type: "generic".into(), label: "gobo_index/speed".into(), universe: 1, address: 19, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "frost".into(), label: "Frost".into(), universe: 1, address: 20, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
                     ],
+                    static_gobo: String::new(),
                 },
                 Fixture {
                     id: "demo:2".into(),
@@ -179,13 +221,14 @@ impl SharedState {
                     focus_point: Vec3::new(1.0, 0.0, 0.0),
                     orientation: Orientation::default(),
                     beam_angle: 22.0,
+                    static_gobo: String::new(),
                     channels: vec![
-                        DmxChannel { channel_type: "intensity".into(), universe: 1, address: 7, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "red".into(), universe: 1, address: 8, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "green".into(), universe: 1, address: 9, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "blue".into(), universe: 1, address: 10, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "pan".into(), universe: 1, address: 11, fine: false, ultra_fine: false, physical_min: Some(-90.0), physical_max: Some(90.0) },
-                        DmxChannel { channel_type: "tilt".into(), universe: 1, address: 12, fine: false, ultra_fine: false, physical_min: Some(0.0), physical_max: Some(75.0) },
+                        DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 7, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "red".into(), label: String::new(), universe: 1, address: 8, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "green".into(), label: String::new(), universe: 1, address: 9, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "blue".into(), label: String::new(), universe: 1, address: 10, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "pan".into(), label: String::new(), universe: 1, address: 11, fine: false, ultra_fine: false, physical_min: Some(-90.0), physical_max: Some(90.0), ranges: vec![] },
+                        DmxChannel { channel_type: "tilt".into(), label: String::new(), universe: 1, address: 12, fine: false, ultra_fine: false, physical_min: Some(0.0), physical_max: Some(75.0), ranges: vec![] },
                     ],
                 },
                 Fixture {
@@ -202,11 +245,12 @@ impl SharedState {
                     focus_point: Vec3::new(0.0, 0.0, 0.0),
                     orientation: Orientation::default(),
                     beam_angle: 32.0,
+                    static_gobo: String::new(),
                     channels: vec![
-                        DmxChannel { channel_type: "intensity".into(), universe: 1, address: 13, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "red".into(), universe: 1, address: 14, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "green".into(), universe: 1, address: 15, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
-                        DmxChannel { channel_type: "blue".into(), universe: 1, address: 16, fine: false, ultra_fine: false, physical_min: None, physical_max: None },
+                        DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 13, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "red".into(), label: String::new(), universe: 1, address: 14, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "green".into(), label: String::new(), universe: 1, address: 15, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
+                        DmxChannel { channel_type: "blue".into(), label: String::new(), universe: 1, address: 16, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] },
                     ],
                 },
                 Fixture {
@@ -223,7 +267,8 @@ impl SharedState {
                     focus_point: Vec3::new(-2.5, 0.0, 0.0),
                     orientation: Orientation::default(),
                     beam_angle: 28.0,
-                    channels: vec![DmxChannel { channel_type: "intensity".into(), universe: 1, address: 17, fine: false, ultra_fine: false, physical_min: None, physical_max: None }],
+                    static_gobo: "builtin:breakup".into(),
+                    channels: vec![DmxChannel { channel_type: "intensity".into(), label: String::new(), universe: 1, address: 17, fine: false, ultra_fine: false, physical_min: None, physical_max: None, ranges: vec![] }],
                 },
             ],
         };
@@ -257,6 +302,10 @@ impl SharedState {
                 frame[15] = 200;
                 // Douche
                 frame[16] = (140.0 + 110.0 * (t * 0.5).sin().abs()) as u8;
+                // Roue gobo Lyre 1 : cycle lent sur 4 gobos + rotation continue + frost léger
+                frame[17] = (((t * 0.25) as u32 % 4) * 64 + 20) as u8;
+                frame[18] = 175;
+                frame[19] = (30.0 * (t * 0.4).sin().abs()) as u8;
 
                 state.set_universe(1, frame);
                 t += 0.04;
@@ -439,6 +488,8 @@ pub mod zmq {
         #[serde(default = "default_beam_angle")]
         beam_angle: f32,
         #[serde(default)]
+        static_gobo: String,
+        #[serde(default)]
         channels: Vec<DmxChannel>,
     }
 
@@ -491,6 +542,7 @@ pub mod zmq {
                         roll: d.orientation[2],
                     },
                     beam_angle: d.beam_angle,
+                    static_gobo: d.static_gobo,
                     channels: d.channels,
                 }
             })
@@ -538,6 +590,50 @@ pub mod zmq {
             .await
             .ok()
             .flatten()
+    }
+
+    /// Demande les octets PNG d'un gobo personnalisé à OLC.
+    async fn fetch_gobo_image(endpoint: &str, gobo_id: &str) -> Option<Vec<u8>> {
+        use ::zeromq::{ReqSocket, Socket, SocketRecv, SocketSend, ZmqMessage};
+
+        let req_json = serde_json::json!({ "cmd": "get_gobo", "id": gobo_id }).to_string();
+        let attempt = async {
+            let mut req = ReqSocket::new();
+            req.connect(endpoint).await.ok()?;
+            req.send(ZmqMessage::from(req_json)).await.ok()?;
+            let reply = req.recv().await.ok()?;
+            let bytes = reply.get(0)?.to_vec();
+            bytes.starts_with(b"\x89PNG").then_some(bytes)
+        };
+        tokio::time::timeout(Duration::from_secs(2), attempt)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    async fn fetch_missing_gobos(state: &SharedState, endpoint: &str, patch: &Patch) {
+        let mut ids: Vec<String> = Vec::new();
+        for f in &patch.fixtures {
+            if !f.static_gobo.is_empty() && !f.static_gobo.starts_with("builtin:") {
+                ids.push(f.static_gobo.clone());
+            }
+            for ch in &f.channels {
+                for r in &ch.ranges {
+                    if !r.gobo_id.is_empty() && !r.gobo_id.starts_with("builtin:") {
+                        ids.push(r.gobo_id.clone());
+                    }
+                }
+            }
+        }
+        ids.sort();
+        ids.dedup();
+        for gid in ids {
+            if !state.has_gobo_image(&gid) {
+                if let Some(bytes) = fetch_gobo_image(endpoint, &gid).await {
+                    state.insert_gobo_image(gid, bytes);
+                }
+            }
+        }
     }
 
     /// Envoie une commande JSON sur le socket REQ/REP (port `monitor_port + 1`).
@@ -619,6 +715,7 @@ pub mod zmq {
                                     last_patch_try = Some(Instant::now());
                                     if let Some(patch) = fetch_patch(endpoint).await {
                                         patch_seen = Some(patch.version);
+                                        fetch_missing_gobos(state, endpoint, &patch).await;
                                         state.set_patch(patch);
                                     }
                                 }

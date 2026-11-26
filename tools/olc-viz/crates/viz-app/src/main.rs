@@ -30,11 +30,13 @@ struct VizApp {
     local_fog: f32,
     last_patch_version: u64,
     last_cmd_sent: Instant,
+    start_time: Instant,
     focus_preview: Option<(u32, [f32; 3])>,
 }
 
 impl VizApp {
     fn new(source: SharedState, endpoint: String) -> Self {
+        let now = Instant::now();
         Self {
             source,
             selected_universe: 1,
@@ -47,7 +49,8 @@ impl VizApp {
             focus_height_z: 0.0,
             local_fog: 0.35,
             last_patch_version: 0,
-            last_cmd_sent: Instant::now() - Duration::from_secs(1),
+            last_cmd_sent: now - Duration::from_secs(1),
+            start_time: now,
             focus_preview: None,
         }
     }
@@ -221,7 +224,11 @@ impl VizApp {
         let patch = self.source.patch();
         let mut stage = patch.stage.clone();
         stage.fog_density = self.local_fog;
-        let resolved = Arc::new(evaluate_fixtures(&patch, |u| self.source.universe(u)));
+        let resolved = Arc::new(evaluate_fixtures(
+            &patch,
+            self.start_time.elapsed().as_secs_f32(),
+            |u| self.source.universe(u),
+        ));
 
         let avail = ui.available_size();
         let (rect, response) = ui.allocate_exact_size(avail, egui::Sense::click_and_drag());
@@ -329,6 +336,7 @@ impl VizApp {
             fixtures: resolved.clone(),
             selected_channel: self.selected_fixture,
             aspect,
+            gobo_images: self.source.gobo_images(),
         };
         ui.painter().add(paint_callback(rect, scene));
 

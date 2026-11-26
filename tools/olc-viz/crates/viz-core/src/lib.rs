@@ -56,11 +56,23 @@ pub enum FixtureType {
     Generic,
 }
 
+/// Plage discrète d'un canal DMX (roue de gobos, couleur, etc.).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChannelRange {
+    pub label: String,
+    pub min: u8,
+    pub max: u8,
+    #[serde(default)]
+    pub gobo_id: String,
+}
+
 /// Canal DMX individuel d'un projecteur.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DmxChannel {
     #[serde(rename = "type")]
     pub channel_type: String,
+    #[serde(default)]
+    pub label: String,
     pub universe: u16,
     pub address: u16,
     #[serde(default)]
@@ -71,6 +83,8 @@ pub struct DmxChannel {
     pub physical_min: Option<f32>,
     #[serde(default)]
     pub physical_max: Option<f32>,
+    #[serde(default)]
+    pub ranges: Vec<ChannelRange>,
 }
 
 /// Configuration du sol et du brouillard de scène (en mètres, Z-up).
@@ -120,6 +134,8 @@ pub struct Fixture {
     pub orientation: Orientation,
     #[serde(default = "default_beam_angle")]
     pub beam_angle: f32,
+    #[serde(default)]
+    pub static_gobo: String,
     #[serde(default)]
     pub channels: Vec<DmxChannel>,
 }
