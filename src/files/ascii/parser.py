@@ -1273,8 +1273,7 @@ class AsciiParser(ReadFile):
                     )
                 except ValueError:
                     return
-                # Eos/Augment3d X-axis rotation sign is opposite to right-handed Rx
-                orient = (rz, ry, -rx)
+                orient = (rz, ry, rx)
                 target["orientation"] = [orient[0], orient[1], orient[2]]
                 p = target.get("position", (0.0, 0.0, 4.0))
                 target["focus_point"] = list(

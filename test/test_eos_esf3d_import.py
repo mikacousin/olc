@@ -69,7 +69,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     spot5 = show.patch.devices[5]
     assert spot5.channels[0].universe == 2
     assert spot5.channels[0].address == 13
-    assert spot5.orientation == pytest.approx((-45.0, 180.0, -40.0))
+    assert spot5.orientation == pytest.approx((-45.0, 180.0, 40.0))
 
     # Cue 115: Gobo_Index/Speed in Rot mode (279=191): -55 -> CCW, +55 -> CW
     cue115 = next(

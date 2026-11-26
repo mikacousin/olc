@@ -23,8 +23,8 @@ from typing import Any
 
 
 def eos_euler_to_olc(rx: float, ry: float, rz: float) -> tuple[float, float, float]:
-    """Convert Eos Augment3d XYZ Euler degrees to OLC ``(rz, ry, -rx)``."""
-    return (float(rz), float(ry), -float(rx))
+    """Convert Eos Augment3d XYZ Euler degrees to OLC ``(rz, ry, rx)``."""
+    return (float(rz), float(ry), float(rx))
 
 
 def parse_working_a3d_patch(
