@@ -121,6 +121,20 @@ fn extract_wheel_number(label: &str) -> Option<u8> {
     None
 }
 
+const MAX_GOBO_ROT_RAD_PER_SEC: f32 = 8.0;
+const STOP_DEADZONE: f32 = 0.03;
+
+fn eval_bipolar_spin(norm: f32, lo: f32, hi: f32, time_sec: f32) -> f32 {
+    let mid = (lo + hi) * 0.5;
+    let half = ((hi - lo) * 0.5).max(1e-4);
+    let rel = ((norm - mid) / half).clamp(-1.0, 1.0);
+    if rel.abs() < STOP_DEADZONE {
+        0.0
+    } else {
+        time_sec * rel * MAX_GOBO_ROT_RAD_PER_SEC
+    }
+}
+
 fn eval_wheel_rotation(
     f: &Fixture,
     wheel_num: u8,
@@ -145,10 +159,49 @@ fn eval_wheel_rotation(
         }
     }
     let iter = matched_coarse.into_iter().chain(matched_fine);
-    match read_channel_norm(iter, get_universe) {
-        Some((norm, _)) if norm > 0.5 => time_sec * (norm - 0.5) * 4.0,
-        Some((norm, _)) => norm * 2.0 * std::f32::consts::TAU,
-        None => 0.0,
+    let Some((norm, _)) = read_channel_norm(iter, get_universe) else {
+        return 0.0;
+    };
+
+    if let Some(coarse) = matched_coarse {
+        if !coarse.ranges.is_empty() {
+            let dmx = (norm * 255.0).round().clamp(0.0, 255.0) as u8;
+            if let Some(r) = coarse.ranges.iter().find(|r| dmx >= r.min && dmx <= r.max) {
+                let low = r.label.to_ascii_lowercase();
+                let lo = r.min as f32 / 255.0;
+                let hi = r.max as f32 / 255.0;
+                let span = (hi - lo).max(1e-4);
+                if low.contains("stop") || low.contains("no rot") {
+                    return 0.0;
+                }
+                if (low.contains("index") || low.contains("pos"))
+                    && !low.contains("rot")
+                    && !low.contains("spin")
+                    && !low.contains("cw")
+                {
+                    return ((norm - lo) / span).clamp(0.0, 1.0) * std::f32::consts::TAU;
+                }
+                if low.contains("ccw") || low.contains("counter") {
+                    return time_sec
+                        * ((norm - lo) / span).clamp(0.0, 1.0)
+                        * MAX_GOBO_ROT_RAD_PER_SEC;
+                }
+                if low.contains("cw") {
+                    return -time_sec
+                        * ((hi - norm) / span).clamp(0.0, 1.0)
+                        * MAX_GOBO_ROT_RAD_PER_SEC;
+                }
+                if low.contains("rot") || low.contains("spin") {
+                    return eval_bipolar_spin(norm, lo, hi, time_sec);
+                }
+            }
+        }
+    }
+
+    if norm >= 0.5 {
+        eval_bipolar_spin(norm, 0.5, 1.0, time_sec)
+    } else {
+        (norm / 0.5) * std::f32::consts::TAU
     }
 }
 
@@ -661,5 +714,87 @@ mod tests {
         assert!((res[1].color[0] - 1.0).abs() < 1e-4);
         assert!((res[1].color[1] - 0.95).abs() < 1e-4);
         assert!((res[1].color[2] - 0.85).abs() < 1e-4);
+    }
+
+    #[test]
+    fn evaluates_gobo_index_stop_and_bidirectional_cw_ccw_rotation() {
+        use viz_core::ChannelRange;
+
+        let gobo_ranges = vec![
+            ChannelRange { label: "Open".into(), min: 0, max: 9, gobo_id: "builtin:open".into() },
+            ChannelRange { label: "Stardust".into(), min: 20, max: 29, gobo_id: "builtin:stars".into() },
+        ];
+        let pos_ranges = vec![
+            ChannelRange { label: "Gobo1Index".into(), min: 0, max: 127, gobo_id: String::new() },
+            ChannelRange { label: "Gobo1Rotation".into(), min: 128, max: 255, gobo_id: String::new() },
+        ];
+        let pos_fine = DmxChannel {
+            channel_type: "generic".into(),
+            label: "Gobo1Pos".into(),
+            universe: 1,
+            address: 4,
+            fine: true,
+            ultra_fine: false,
+            physical_min: None,
+            physical_max: None,
+            ranges: vec![],
+        };
+        let patch = Patch {
+            version: 1,
+            stage: Stage::default(),
+            fixtures: vec![Fixture {
+                id: "olc:4".into(),
+                channel: Some(4),
+                unit: None,
+                name: "Diablo".into(),
+                fixture_type: FixtureType::MovingHead,
+                gdtf: None,
+                mode: None,
+                address: Some(DmxAddress { universe: 1, channel: 1 }),
+                footprint: Some(4),
+                position: Vec3::new(0.0, 0.0, 4.0),
+                focus_point: Vec3::ZERO,
+                orientation: Orientation::default(),
+                beam_angle: 25.0,
+                static_gobo: String::new(),
+                gel: String::new(),
+                gel_color: String::new(),
+                channels: vec![
+                    ch_simple("intensity", "intens", 1, vec![]),
+                    ch_simple("gobo_wheel", "Gobo1", 2, gobo_ranges),
+                    ch_simple("generic", "Gobo1Pos", 3, pos_ranges),
+                    pos_fine,
+                ],
+            }],
+        };
+
+        let mut frame = [0u8; DMX_CHANNELS];
+        frame[0] = 255;
+        frame[1] = 24; // Stardust
+
+        let set_u16 = |fr: &mut [u8; DMX_CHANNELS], val: u16| {
+            fr[2] = (val >> 8) as u8;
+            fr[3] = (val & 0xff) as u8;
+        };
+
+        // 1. Index (26760 -> norm ~0.408): constant angle regardless of time_sec
+        set_u16(&mut frame, 26760);
+        let idx_t0 = evaluate_fixtures(&patch, 0.0, |u| (u == 1).then_some(frame))[0].gobos[0].rot_rad;
+        let idx_t5 = evaluate_fixtures(&patch, 5.0, |u| (u == 1).then_some(frame))[0].gobos[0].rot_rad;
+        assert!((idx_t0 - idx_t5).abs() < 1e-5);
+
+        // 2. Stop (49152 -> norm 0.75): zero rotation even at t = 5.0
+        set_u16(&mut frame, 49152);
+        let stop_rot = evaluate_fixtures(&patch, 5.0, |u| (u == 1).then_some(frame))[0].gobos[0].rot_rad;
+        assert!(stop_rot.abs() < 1e-5);
+
+        // 3. Cue 114 symmetric values: Ch4=50899 (CCW > 0) and Ch5=47378 (CW < 0)
+        set_u16(&mut frame, 50899);
+        let ccw_rot = evaluate_fixtures(&patch, 2.0, |u| (u == 1).then_some(frame))[0].gobos[0].rot_rad;
+        set_u16(&mut frame, 47378);
+        let cw_rot = evaluate_fixtures(&patch, 2.0, |u| (u == 1).then_some(frame))[0].gobos[0].rot_rad;
+        assert!(ccw_rot > 0.5);
+        assert!(cw_rot < -0.5);
+        assert!((ccw_rot + cw_rot).abs() < 0.5);
     }
 }
