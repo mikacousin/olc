@@ -606,6 +606,8 @@ class Esf3dParser:
         data: dict[str, Any],
     ) -> None:
         cuelist_labels: dict[int, str] = {}
+        cuelist_order: list[int] = []
+        cuelist_start_cues: dict[float, int] = {}
         raw_cues: list[
             tuple[
                 int | None,
@@ -626,12 +628,27 @@ class Esf3dParser:
                 cl_id = item[2]
                 cl_label = str(item[4]) if isinstance(item[4], str) else ""
                 cuelist_labels[cl_id] = cl_label
+                if cl_id not in cuelist_order:
+                    cuelist_order.append(cl_id)
                 seq = data["sequences"].setdefault(
                     cl_id,
                     {"label": cl_label, "mode": "normal", "steps": {}, "cues": {}},
                 )
                 if cl_label:
                     seq["label"] = cl_label
+                continue
+
+            # Playback start-cue record: len == 8, item[2] holds (cue*10000, cl_id)
+            if (
+                len(item) == 8
+                and isinstance(item[2], list)
+                and len(item[2]) >= 4
+                and isinstance(item[2][2], int)
+                and item[2][2] > 0
+                and isinstance(item[2][3], int)
+                and item[2][3] > 0
+            ):
+                cuelist_start_cues[item[2][2] / 10000.0] = item[2][3]
                 continue
 
             # Cue: len == 31, item[2] is ['OBJ', 1, cue_num*10000, label, ...]
@@ -952,7 +969,8 @@ class Esf3dParser:
                 ]
             ],
         ] = {}
-        explicit_nums_in_cl1: set[float] = set()
+        used_nums: dict[int, set[float]] = {}
+        explicit_anchors: list[tuple[float, int]] = []
         for (
             explicit_cl,
             cue_num,
@@ -965,10 +983,12 @@ class Esf3dParser:
                 cues_by_list.setdefault(explicit_cl, []).append(
                     (cue_num, raw_p_by_ch, raw_refs_by_ch, cue_dict, step_dict)
                 )
-                if explicit_cl == 1:
-                    explicit_nums_in_cl1.add(cue_num)
+                used_nums.setdefault(explicit_cl, set()).add(cue_num)
+                explicit_anchors.append((cue_num, explicit_cl))
 
-        fallback_cl = max(cuelist_labels) if len(cuelist_labels) > 1 else 1
+        if not cuelist_order:
+            cuelist_order = [1]
+
         for (
             explicit_cl,
             cue_num,
@@ -977,11 +997,36 @@ class Esf3dParser:
             cue_dict,
             step_dict,
         ) in raw_cues:
-            if explicit_cl is None:
-                target_cl = fallback_cl if cue_num in explicit_nums_in_cl1 else 1
-                cues_by_list.setdefault(target_cl, []).append(
-                    (cue_num, raw_p_by_ch, raw_refs_by_ch, cue_dict, step_dict)
+            if explicit_cl is not None:
+                continue
+            start_cl = cuelist_start_cues.get(cue_num)
+            if start_cl is not None and cue_num not in used_nums.get(start_cl, set()):
+                target_cl = start_cl
+            elif explicit_anchors:
+                candidates = sorted(
+                    explicit_anchors, key=lambda a: abs(a[0] - cue_num)
                 )
+                target_cl = next(
+                    (
+                        a_cl
+                        for _, a_cl in candidates
+                        if cue_num not in used_nums.get(a_cl, set())
+                    ),
+                    candidates[0][1],
+                )
+            else:
+                target_cl = next(
+                    (
+                        cl_id
+                        for cl_id in cuelist_order
+                        if cue_num not in used_nums.get(cl_id, set())
+                    ),
+                    cuelist_order[0],
+                )
+            used_nums.setdefault(target_cl, set()).add(cue_num)
+            cues_by_list.setdefault(target_cl, []).append(
+                (cue_num, raw_p_by_ch, raw_refs_by_ch, cue_dict, step_dict)
+            )
 
         # Evaluate each Cue List in cue-number order while tracking virtual params
         for cl_id, cl_cues in sorted(cues_by_list.items()):

@@ -183,6 +183,52 @@ def test_import_esf3d_routes_cuelists_without_duplication(
     assert sec_115[0].text == "CL2 Cue 115"
 
 
+def test_import_esf3d_routes_none_cuelist_via_start_and_nearest_anchor(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Cues with cue[20][3] == None route via start-cue (len=8) or nearest anchor."""
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    cl3 = ["OBJ", 0, 3, None, "Third List"] + [None] * 22
+    start_cl3 = ["OBJ", 0, ["OBJ", 0, 100000, 3, None], ["OBJ", 0, -4, 3, None]] + [
+        None
+    ] * 4
+    cue115_orig = next(
+        it
+        for it in tree[6:]
+        if isinstance(it, list) and len(it) == 31 and it[2][2] == 1150000
+    )
+    cue10_none = [list(x) if isinstance(x, list) else x for x in cue115_orig]
+    cue10_none[2] = ["OBJ", 1, 100000, "CL3 Start 10", 0, 0.0, 0.0, 0]
+    cue10_none[20] = ["OBJ", 0, None, None, None]
+
+    cue25_none = [list(x) if isinstance(x, list) else x for x in cue115_orig]
+    cue25_none[2] = ["OBJ", 1, 250000, "CL3 Near 25", 0, 0.0, 0.0, 0]
+    cue25_none[20] = ["OBJ", 0, None, None, None]
+
+    cue29_cl3 = [list(x) if isinstance(x, list) else x for x in cue115_orig]
+    cue29_cl3[2] = ["OBJ", 1, 290000, "CL3 Anchor 29", 0, 0.0, 0.0, 0]
+    cue29_cl3[20] = ["OBJ", 0, None, 3, None]
+
+    new_tree = (
+        tree[:6]
+        + [cl3, start_cl3, cue10_none, cue25_none, cue29_cl3]
+        + tree[6:]
+    )
+    esf_path = tmp_path / "none_cuelist.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, new_tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    seq3 = next((seq for seq in show.sequences if seq.index == 3), None)
+    assert seq3 is not None
+    seq3_nums = [s.cue.number for s in seq3.steps if s.cue and s.cue.number > 0]
+    assert seq3_nums == [10.0, 25.0, 29.0]
+
+
 def test_evaluate_discrete_slots_and_point_ranges() -> None:
     """Discrete slots and point sub-ranges snap to home_dmx instead of midpoint."""
     prism = EosParamDef(
