@@ -1017,9 +1017,7 @@ def build_tablet_template() -> TOSCNode:
 
     # Color Temperature CCT Kelvin
     t_color.add_child(
-        create_label(
-            "lbl_cct", 510, 260, 300, 25, "TEMPÉRATURE DE COULEUR (CCT)", size=15
-        )
+        create_label("lbl_cct", 510, 260, 300, 25, "COLOR TEMPERATURE (CCT)", size=15)
     )
     t_color.add_child(
         create_fader(
@@ -1040,7 +1038,7 @@ def build_tablet_template() -> TOSCNode:
             355,
             130,
             45,
-            "3200K (Tungstène)",
+            "3200K (Tungsten)",
             "/olc/selected/color/kelvin/3200",
         )
     )
@@ -1389,7 +1387,7 @@ def build_phone_template() -> TOSCNode:
             "wh_int", 150, 555, 100, 100, "/olc/selected/intensity", COLOR_AMBER_PAUSE
         )
     )
-    t_chan.add_child(create_label("lbl_wh", 140, 660, 120, 25, "INTENSITÉ", size=13))
+    t_chan.add_child(create_label("lbl_wh", 140, 660, 120, 25, "INTENSITY", size=13))
     pager.add_child(t_chan)
 
     # --- TAB 3: Faders (4 Large Faders) ---
@@ -1590,7 +1588,7 @@ def build_phone_template() -> TOSCNode:
     )
 
     t_color.add_child(
-        create_label("lbl_cct", 20, 405, 220, 25, "TEMPÉRATURE KELVIN", size=14)
+        create_label("lbl_cct", 20, 405, 220, 25, "KELVIN TEMPERATURE", size=14)
     )
     t_color.add_child(
         create_fader(

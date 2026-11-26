@@ -1,6 +1,6 @@
-//! Diagnostic sans interface : se connecte à OLC et affiche ce qui arrive.
+//! Headless diagnostic tool: connects to OLC and prints incoming data.
 //!
-//! cargo run -p viz-source --example dump -- [tcp://127.0.0.1:5555] [secondes]
+//! cargo run -p viz-source --example dump -- [tcp://127.0.0.1:5555] [seconds]
 
 use std::time::{Duration, Instant};
 
@@ -15,7 +15,7 @@ fn main() {
 
     let state = SharedState::new();
     zmq::spawn(state.clone(), zmq::ZmqConfig::new(endpoint.clone()));
-    println!("écoute sur {endpoint} pendant {seconds} s…");
+    println!("listening on {endpoint} for {seconds} s…");
 
     let end = Instant::now() + Duration::from_secs(seconds);
     while Instant::now() < end {
@@ -24,18 +24,18 @@ fn main() {
 
     let status = state.status();
     println!(
-        "connecté : {} · {} trames · {:.0} Hz",
+        "connected: {} · {} frames · {:.0} Hz",
         status.connected, status.frames, status.hz
     );
     for u in state.universes() {
         if let Some(frame) = state.universe(u) {
             let active = frame.iter().filter(|&&v| v > 0).count();
-            println!("univers {u} : {active} canaux non nuls");
+            println!("universe {u}: {active} non-zero channels");
         }
     }
     let patch = state.patch();
     println!(
-        "patch v{} : {} projecteurs",
+        "patch v{}: {} fixtures",
         patch.version,
         patch.fixtures.len()
     );

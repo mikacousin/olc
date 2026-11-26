@@ -1,4 +1,4 @@
-//! Maillages procéduraux légers pour représenter les projecteurs sans MVR.
+//! Lightweight procedural meshes representing fixtures without MVR.
 
 use bytemuck::{Pod, Zeroable};
 use viz_core::FixtureType;
@@ -86,7 +86,7 @@ fn push_box(
     push_quad(out, m, p(-1., -1., -1.), p(1., -1., -1.), p(1., -1., 1.), p(-1., -1., 1.), color, emissive);
 }
 
-/// Cylindre le long de l'axe Z local, de `z0` à `z1` (lentille émissive à `z0`).
+/// Cylinder along local Z axis, from `z0` to `z1` (emissive lens at `z0`).
 fn push_cylinder_z(
     out: &mut Vec<FixtureVertex>,
     m: Mat4,
@@ -109,7 +109,7 @@ fn push_cylinder_z(
         let p10 = [c1 * r0, s1 * r0, z0];
         let p01 = [c0 * r1, s0 * r1, z1];
         let p11 = [c1 * r1, s1 * r1, z1];
-        // Paroi latérale
+        // Side wall
         push_quad(out, m, p00, p01, p11, p10, body_color, 0.0);
         // Fond (z1)
         push_tri(out, m, [0.0, 0.0, z1], p01, p11, body_color, 0.0);
@@ -166,17 +166,17 @@ pub fn build_fixtures_mesh(
 
         match f.fixture_type {
             FixtureType::MovingHead => {
-                // Socle fixe + lyre (Pan) + tête (Tilt)
+                // Fixed base + yoke (Pan) + head (Tilt)
                 let base_m = mat4_mul(mat4_translation(f.position), orientation_matrix(f.orientation));
                 push_box(&mut verts, base_m, [0.16, 0.14, 0.06], [0.0, 0.0, 0.22], body_color, 0.0);
 
-                // Étrier tournant en Pan (-pan_deg autour de Z pour correspondre à atan2(lx, ly))
+                // Yoke rotating in Pan (-pan_deg around Z to match atan2(lx, ly))
                 let yoke_m = mat4_mul(base_m, mat4_rot_z(-f.pan_deg.to_radians()));
                 push_box(&mut verts, yoke_m, [0.025, 0.035, 0.14], [0.14, 0.0, 0.08], body_color, 0.0);
                 push_box(&mut verts, yoke_m, [0.025, 0.035, 0.14], [-0.14, 0.0, 0.08], body_color, 0.0);
                 push_box(&mut verts, yoke_m, [0.16, 0.04, 0.025], [0.0, 0.0, 0.17], body_color, 0.0);
 
-                // Tête pivotant en Tilt autour de X
+                // Head tilting around X
                 let head_m = mat4_mul(yoke_m, mat4_rot_x(f.tilt_deg.to_radians()));
                 push_cylinder_z(
                     &mut verts,
@@ -197,7 +197,7 @@ pub fn build_fixtures_mesh(
                 push_box(&mut verts, m, [0.19, 0.06, 0.01], [0.0, 0.0, -0.025], lens_color, lens_emissive);
             }
             _ => {
-                // PAR / PC / Gradateur : corps cylindrique légèrement conique orienté vers focus_point
+                // PAR / PC / Dimmer: slightly tapered cylindrical body aimed at focus_point
                 let m = aim_matrix(f.position, f.direction);
                 let rear = add3(f.position, scale_neg_dir(f.direction, 0.22));
                 let _ = rear;
@@ -223,7 +223,7 @@ fn scale_neg_dir(dir: [f32; 3], s: f32) -> [f32; 3] {
     [-dir[0] * s, -dir[1] * s, -dir[2] * s]
 }
 
-/// Construit les cônes volumétriques additifs pour le brouillard.
+/// Build additive volumetric cones for atmospheric fog.
 pub fn build_beams_mesh(
     fixtures: &[ResolvedFixture],
     fog_density: f32,
@@ -243,7 +243,7 @@ pub fn build_beams_mesh(
         if dir == [0.0, 0.0, 0.0] {
             continue;
         }
-        // Longueur du faisceau jusqu'au sol (z = 0) ou 14 m si pointé vers le haut
+        // Beam length to floor (z = 0) or 14 m if aimed upward
         let raw_len = if dir[2] < -0.05 && f.position[2] > 0.05 {
             (f.position[2] / -dir[2]).clamp(0.5, 22.0)
         } else {

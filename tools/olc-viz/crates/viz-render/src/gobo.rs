@@ -1,4 +1,4 @@
-//! Atlas de masques de gobos (motifs procéduraux intégrés + PNG personnalisés d'OLC).
+//! Gobo mask atlas (built-in procedural patterns + custom PNGs from OLC).
 
 pub const GOBO_SIZE: u32 = 128;
 pub const GOBO_MIP_LEVELS: u32 = 5;
@@ -46,7 +46,7 @@ pub fn resolve_builtin_index(label_or_id: &str, slot_index: usize) -> u32 {
     }
 }
 
-/// Génère un masque `GOBO_SIZE × GOBO_SIZE` en `R8Unorm` pour une couche intégrée `0..10`.
+/// Generate a `GOBO_SIZE × GOBO_SIZE` `R8Unorm` mask for built-in layer `0..10`.
 pub fn generate_builtin_layer(index: u32) -> Vec<u8> {
     let n = GOBO_SIZE as usize;
     let mut buf = vec![0u8; n * n];
@@ -157,7 +157,7 @@ pub fn generate_builtin_layer(index: u32) -> Vec<u8> {
     buf
 }
 
-/// Décode un PNG en masque `GOBO_SIZE × GOBO_SIZE` `R8Unorm` avec découpe circulaire.
+/// Decode a PNG into a `GOBO_SIZE × GOBO_SIZE` `R8Unorm` mask with circular clipping.
 pub fn decode_png_to_gobo_layer(png_bytes: &[u8]) -> Option<Vec<u8>> {
     let img = image::load_from_memory(png_bytes).ok()?;
     let gray = img
@@ -186,7 +186,7 @@ pub fn decode_png_to_gobo_layer(png_bytes: &[u8]) -> Option<Vec<u8>> {
     Some(out)
 }
 
-/// Génère `GOBO_MIP_LEVELS` niveaux de mipmap (boîte 2×2) pour simuler le flou optique.
+/// Generate `GOBO_MIP_LEVELS` mipmap levels (2×2 box filter) to simulate optical blur.
 pub fn generate_mipmaps(base: &[u8]) -> Vec<(u32, Vec<u8>)> {
     let mut levels = Vec::with_capacity(GOBO_MIP_LEVELS as usize);
     let mut cur_size = GOBO_SIZE;

@@ -1,4 +1,4 @@
-//! Utilitaires mathématiques 3D (repère Z-up en mètres, matrices colonne-majeures pour WGSL).
+//! 3D math utilities (Z-up frame in meters, column-major matrices for WGSL).
 
 use viz_core::Orientation;
 
@@ -100,7 +100,7 @@ pub fn mat4_rot_z(rad: f32) -> Mat4 {
     ]
 }
 
-/// Matrice de vue main droite.
+/// Right-handed view matrix.
 pub fn look_at_rh(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> Mat4 {
     let f = normalize3(sub3(target, eye));
     let mut s = cross3(f, up);
@@ -117,7 +117,7 @@ pub fn look_at_rh(eye: [f32; 3], target: [f32; 3], up: [f32; 3]) -> Mat4 {
     ]
 }
 
-/// Matrice de projection perspective main droite pour wgpu (profondeur `[0, 1]`).
+/// Right-handed perspective projection matrix for wgpu (depth `[0, 1]`).
 pub fn perspective_rh(fov_y_rad: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
     let f = 1.0 / (0.5 * fov_y_rad).tan();
     let nf = 1.0 / (near - far);
@@ -129,7 +129,7 @@ pub fn perspective_rh(fov_y_rad: f32, aspect: f32, near: f32, far: f32) -> Mat4 
     ]
 }
 
-/// Inversion générique d'une matrice 4×4 (Gauss-Jordan).
+/// Generic 4×4 matrix inversion (Gauss-Jordan).
 pub fn mat4_invert(m: Mat4) -> Option<Mat4> {
     let mut a = [[0.0f64; 8]; 4];
     for r in 0..4 {
@@ -173,7 +173,7 @@ pub fn mat4_invert(m: Mat4) -> Option<Mat4> {
     Some(out)
 }
 
-/// Projette un point monde vers des coordonnées écran egui dans `rect`.
+/// Project a world point to egui screen coordinates inside `rect`.
 pub fn project_world_to_screen(
     view_proj: Mat4,
     world: [f32; 3],
@@ -193,7 +193,7 @@ pub fn project_world_to_screen(
     Some(egui::pos2(sx, sy))
 }
 
-/// Rotation Euler Z-Y-X (yaw, pitch, roll en degrés) vers matrice 4×4.
+/// Euler Z-Y-X rotation (yaw, pitch, roll in degrees) to 4×4 matrix.
 pub fn orientation_matrix(o: Orientation) -> Mat4 {
     let r_z = mat4_rot_z(o.yaw.to_radians());
     let r_y = mat4_rot_y(o.pitch.to_radians());
@@ -201,7 +201,7 @@ pub fn orientation_matrix(o: Orientation) -> Mat4 {
     mat4_mul(r_z, mat4_mul(r_y, r_x))
 }
 
-/// Direction monde du faisceau d'une lyre (symétrique à `compute_pan_tilt_for_target` d'OLC).
+/// World beam direction of a moving head (symmetric to OLC `compute_pan_tilt_for_target`).
 pub fn forward_pan_tilt(orientation: Orientation, pan_deg: f32, tilt_deg: f32) -> [f32; 3] {
     let p = pan_deg.to_radians();
     let t = tilt_deg.to_radians();
@@ -213,7 +213,7 @@ pub fn forward_pan_tilt(orientation: Orientation, pan_deg: f32, tilt_deg: f32) -
     normalize3([w[0], w[1], w[2]])
 }
 
-/// Parse une couleur hexadécimale `#RRGGBB` en RGB linéaire `[0..1]`.
+/// Parse a `#RRGGBB` hex color into linear RGB `[0..1]`.
 pub fn parse_hex_color(hex: &str) -> [f32; 3] {
     let s = hex.trim().trim_start_matches('#');
     if s.len() >= 6 {

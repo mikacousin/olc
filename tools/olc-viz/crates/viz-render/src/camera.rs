@@ -1,4 +1,4 @@
-//! Caméra orbitale Z-up pour le visualiseur 3D.
+//! Z-up orbital camera for the 3D visualizer.
 
 use crate::math::{
     add3, cross3, look_at_rh, mat4_invert, mat4_mul, mat4_mul_vec4, normalize3, perspective_rh,
@@ -11,7 +11,7 @@ pub struct OrbitCamera {
     pub distance: f32,
     /// Azimut en radians (0 = regarde vers +Y depuis -Y).
     pub yaw: f32,
-    /// Élévation en radians au-dessus de l'horizontale.
+    /// Elevation in radians above the horizontal plane.
     pub pitch: f32,
     pub fov_y_rad: f32,
 }

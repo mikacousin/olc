@@ -1,15 +1,15 @@
-//! Modèle de données partagé : scène, fixtures, patch, vues.
+//! Shared data model: scene, fixtures, patch, views.
 //!
-//! Cette crate ne dépend ni de l'UI, ni du réseau, ni du GPU.
-//! Unités : mètres et degrés partout, conversion uniquement aux frontières
-//! (import MVR en millimètres, export de plans selon l'échelle).
+//! This crate does not depend on UI, networking, or GPU.
+//! Units: meters and degrees everywhere; conversion only at boundaries
+//! (MVR import in millimeters, plan export according to scale).
 
 use serde::{Deserialize, Serialize};
 
-/// Nombre de canaux d'un univers DMX.
+/// Number of channels in a DMX universe.
 pub const DMX_CHANNELS: usize = 512;
 
-/// Une trame DMX complète.
+/// A complete DMX frame.
 pub type DmxFrame = [u8; DMX_CHANNELS];
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl Vec3 {
     }
 }
 
-/// Orientation d'un projecteur (degrés).
+/// Fixture orientation (degrees).
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct Orientation {
     pub yaw: f32,
@@ -35,14 +35,14 @@ pub struct Orientation {
     pub roll: f32,
 }
 
-/// Adresse DMX : univers (à partir de 1) et canal (1..=512).
+/// DMX address: universe (1-based) and channel (1..=512).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DmxAddress {
     pub universe: u16,
     pub channel: u16,
 }
 
-/// Type de projecteur côté OLC.
+/// Fixture type on the OLC side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FixtureType {
@@ -56,7 +56,7 @@ pub enum FixtureType {
     Generic,
 }
 
-/// Plage discrète d'un canal DMX (roue de gobos, couleur, etc.).
+/// Discrete range of a DMX channel (gobo wheel, color, etc.).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ChannelRange {
     pub label: String,
@@ -66,7 +66,7 @@ pub struct ChannelRange {
     pub gobo_id: String,
 }
 
-/// Canal DMX individuel d'un projecteur.
+/// Individual DMX channel of a fixture.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DmxChannel {
     #[serde(rename = "type")]
@@ -87,7 +87,7 @@ pub struct DmxChannel {
     pub ranges: Vec<ChannelRange>,
 }
 
-/// Configuration du sol et du brouillard de scène (en mètres, Z-up).
+/// Stage floor and atmospheric fog configuration (in meters, Z-up).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Stage {
     pub width: f32,
@@ -109,24 +109,24 @@ impl Default for Stage {
     }
 }
 
-/// Un projecteur placé dans la scène.
+/// A fixture placed in the scene.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Fixture {
-    /// Identifiant stable (UUID MVR si importé).
+    /// Stable identifier (MVR UUID if imported).
     pub id: String,
-    /// Numéro de canal côté console.
+    /// Console channel number.
     pub channel: Option<u32>,
-    /// Numéro d'unité (plan de feu).
+    /// Unit number (light plot).
     pub unit: Option<u32>,
     pub name: String,
     #[serde(default)]
     pub fixture_type: FixtureType,
-    /// Référence au fichier GDTF (nom ou empreinte), pas la géométrie.
+    /// GDTF file reference (name or fingerprint), not geometry.
     pub gdtf: Option<String>,
-    /// Mode DMX GDTF utilisé.
+    /// Active GDTF DMX mode.
     pub mode: Option<String>,
     pub address: Option<DmxAddress>,
-    /// Nombre de canaux DMX occupés à partir de `address`.
+    /// Number of DMX channels occupied starting at `address`.
     pub footprint: Option<u16>,
     pub position: Vec3,
     #[serde(default)]
@@ -148,7 +148,7 @@ fn default_beam_angle() -> f32 {
     25.0
 }
 
-/// Patch complet versionné reçu d'OLC (scène + projecteurs).
+/// Complete versioned patch received from OLC (stage + fixtures).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Patch {
     pub version: u64,
@@ -159,29 +159,29 @@ pub struct Patch {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ViewKind {
-    /// Plan de masse (vue de dessus).
+    /// Ground plan (top view).
     Plan,
-    /// Coupe selon un plan.
+    /// Section cut along a plane.
     Section,
-    /// Élévation (vue de face ou de côté, sans coupe).
+    /// Elevation (front or side view, no cut).
     Elevation,
 }
 
-/// Vue sauvegardée : caméra orthographique + paramètres d'export.
+/// Saved view: orthographic camera + export settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct View {
     pub name: String,
     pub kind: ViewKind,
-    /// Point visé et direction de regard.
+    /// Target point and look direction.
     pub origin: Vec3,
     pub direction: Vec3,
-    /// Plan de coupe : profondeur visible devant/derrière l'origine (mètres).
+    /// Clipping planes: visible depth in front of/behind origin (meters).
     pub depth_front: f32,
     pub depth_back: f32,
-    /// Dénominateur de l'échelle (50 pour 1:50).
+    /// Scale denominator (50 for 1:50).
     pub scale: u32,
     pub paper: Paper,
-    /// Calques affichés.
+    /// Visible layers.
     pub layers: Vec<String>,
     pub show_channel: bool,
     pub show_address: bool,
@@ -198,7 +198,7 @@ pub enum Paper {
 }
 
 impl Paper {
-    /// Dimensions en millimètres (paysage).
+    /// Dimensions in millimeters (landscape).
     pub const fn size_mm(self) -> (f32, f32) {
         match self {
             Paper::A4 => (297.0, 210.0),
@@ -211,7 +211,7 @@ impl Paper {
 }
 
 impl View {
-    /// Vue de dessus par défaut au 1:50 sur A3.
+    /// Default top view at 1:50 on A3.
     pub fn plan(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -230,7 +230,7 @@ impl View {
     }
 }
 
-/// Scène complète : ce qui est sauvegardé dans le fichier de projet.
+/// Complete scene: what is saved in the project file.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Scene {
     pub patch: Patch,

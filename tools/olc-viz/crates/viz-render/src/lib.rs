@@ -1,4 +1,4 @@
-//! Rendu 3D (wgpu) : sol éclairé analytiquement, projecteurs procéduraux et caméra orbitale.
+//! 3D rendering (wgpu): analytically lit floor, procedural fixtures, and orbital camera.
 
 pub mod camera;
 pub mod dmx_eval;
@@ -23,7 +23,7 @@ use crate::mesh::{build_beams_mesh, build_fixtures_mesh, BeamVertex, FixtureVert
 
 pub const MAX_LIGHTS: usize = 64;
 
-/// Données transmises au callback `wgpu` pour dessiner une frame.
+/// Data passed to the `wgpu` callback to render a frame.
 #[derive(Clone)]
 pub struct RenderScene {
     pub camera: OrbitCamera,
@@ -1147,7 +1147,7 @@ pub fn init_wgpu(render_state: &egui_wgpu::RenderState) {
         .insert(render_state.target_format);
 }
 
-/// Construit le `egui::PaintCallback` pour afficher la scène 3D dans `rect`.
+/// Build the `egui::PaintCallback` to display the 3D scene in `rect`.
 pub fn paint_callback(rect: egui::Rect, scene: RenderScene) -> egui::PaintCallback {
     egui_wgpu::Callback::new_paint_callback(rect, StageCallback { scene })
 }

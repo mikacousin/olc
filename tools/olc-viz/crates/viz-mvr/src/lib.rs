@@ -1,12 +1,12 @@
-//! Import et export MVR, lecture GDTF.
+//! MVR import/export and GDTF reading.
 //!
-//! Un MVR est une archive zip contenant `GeneralSceneDescription.xml`,
-//! les fichiers GDTF des fixtures et les modèles 3D.
-//! À faire : dépendances `zip` et `quick-xml`.
+//! An MVR is a zip archive containing `GeneralSceneDescription.xml`,
+//! fixture GDTF files, and 3D models.
+//! TODO: `zip` and `quick-xml` dependencies.
 
 use viz_core::Scene;
 
-/// Erreurs d'import MVR.
+/// MVR import errors.
 #[derive(Debug)]
 pub enum MvrError {
     NotImplemented,
@@ -15,14 +15,14 @@ pub enum MvrError {
 impl std::fmt::Display for MvrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MvrError::NotImplemented => write!(f, "import MVR pas encore implémenté"),
+            MvrError::NotImplemented => write!(f, "MVR import not yet implemented"),
         }
     }
 }
 
 impl std::error::Error for MvrError {}
 
-/// Importe un fichier MVR et construit la scène correspondante.
+/// Import an MVR file and build the corresponding scene.
 pub fn import(_path: &std::path::Path) -> Result<Scene, MvrError> {
     Err(MvrError::NotImplemented)
 }

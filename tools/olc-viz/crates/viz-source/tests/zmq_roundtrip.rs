@@ -1,6 +1,6 @@
-//! Test de bout en bout : un faux OLC (PUB pour les niveaux, REP pour le
-//! patch) publie dans le format réel de `engine.py`, le récepteur du
-//! visualiseur doit retrouver niveaux et patch dans l'état partagé.
+//! End-to-end test: a mock OLC (PUB for levels, REP for patch) publishes
+//! in the real `engine.py` format, and the visualizer receiver must reconstruct
+//! levels and patch in shared state.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -86,7 +86,7 @@ fn receives_levels_and_patch_from_olc_format() {
         let mut publisher = PubSocket::new();
         publisher.bind(PUB_ENDPOINT).await.expect("bind pub");
 
-        // Faux serveur de snapshot : répond au patch courant (version 3) et enregistre les commandes.
+        // Mock snapshot server: replies with current patch (version 3) and records commands.
         let mut rep = RepSocket::new();
         rep.bind(REP_ENDPOINT).await.expect("bind rep");
         tokio::spawn(async move {
@@ -106,8 +106,8 @@ fn receives_levels_and_patch_from_olc_format() {
             }
         });
 
-        // Un abonné qui se connecte tard rate les premiers messages :
-        // on republie jusqu'à réception complète ou délai dépassé.
+        // A late-joining subscriber misses initial messages:
+        // keep republishing until fully received or deadline expires.
         let deadline = Instant::now() + Duration::from_secs(10);
         let mut frames: u64 = 0;
         while (state.universe(5).is_none() || state.patch_version() != 3)
@@ -121,7 +121,7 @@ fn receives_levels_and_patch_from_olc_format() {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
 
-        // Univers supprimé côté OLC : payload vide, deleted = true.
+        // Universe removed on OLC side: empty payload, deleted = true.
         let meta = json!({"hz": 44.0, "frames": frames, "protocols": [],
                           "deleted": true, "active_universes": []});
         let mut gone = ZmqMessage::from("universe:5");
@@ -164,7 +164,7 @@ fn receives_levels_and_patch_from_olc_format() {
 
     assert!(
         state.universe(5).is_none(),
-        "l'univers supprimé doit disparaître de l'état"
+        "deleted universe must disappear from state"
     );
 
     let cmds = received_cmds.lock().unwrap();

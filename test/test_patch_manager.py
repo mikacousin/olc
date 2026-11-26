@@ -386,7 +386,7 @@ def test_fixture_exchange_clamping_warning() -> None:
     assert w.clamped_value == pytest.approx(180.0)
     assert w.physical_min == pytest.approx(-180.0)
     assert w.physical_max == pytest.approx(180.0)
-    assert "écrêté à 180" in w.format_message()
+    assert "clamped to 180" in w.format_message()
 
     # 2. Exchange fixture and event emission
     received_events: list[tuple[object, list[FixtureExchangeWarning]]] = []

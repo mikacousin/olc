@@ -80,9 +80,9 @@ impl VizApp {
         let patch = self.source.patch();
         ui.horizontal(|ui| {
             let (color, label) = if status.connected {
-                (egui::Color32::from_rgb(80, 200, 120), "connecté")
+                (egui::Color32::from_rgb(80, 200, 120), "connected")
             } else {
-                (egui::Color32::from_rgb(220, 90, 90), "déconnecté")
+                (egui::Color32::from_rgb(220, 90, 90), "disconnected")
             };
             ui.colored_label(color, label);
             ui.separator();
@@ -92,10 +92,10 @@ impl VizApp {
                 ui.label(format!("{:.0} Hz", status.hz));
                 ui.separator();
             }
-            ui.label(format!("{} trames", status.frames));
+            ui.label(format!("{} frames", status.frames));
             ui.separator();
             ui.label(format!(
-                "patch v{} · {} projecteurs",
+                "patch v{} · {} fixtures",
                 patch.version,
                 patch.fixtures.len()
             ));
@@ -108,24 +108,24 @@ impl VizApp {
 
         if self.view_mode == ViewMode::Stage3D {
             ui.horizontal(|ui| {
-                ui.label("Caméra :");
+                ui.label("Camera:");
                 if ui.button("Iso").clicked() {
                     self.camera = OrbitCamera::iso();
                 }
-                if ui.button("Face").clicked() {
+                if ui.button("Front").clicked() {
                     self.camera = OrbitCamera::front();
                 }
-                if ui.button("Dessus").clicked() {
+                if ui.button("Top").clicked() {
                     self.camera = OrbitCamera::top();
                 }
-                if ui.button("Côté").clicked() {
+                if ui.button("Side").clicked() {
                     self.camera = OrbitCamera::side();
                 }
                 ui.separator();
-                ui.checkbox(&mut self.show_labels, "Étiquettes #id");
+                ui.checkbox(&mut self.show_labels, "Labels #id");
                 ui.separator();
 
-                ui.label("Brouillard :");
+                ui.label("Fog:");
                 let fog_resp = ui.add(
                     egui::Slider::new(&mut self.local_fog, 0.0..=1.0)
                         .fixed_decimals(2)
@@ -160,29 +160,29 @@ impl VizApp {
 
                 ui.separator();
                 ui.toggle_value(&mut self.focus_mode, "Focus 3D")
-                    .on_hover_text("Clic/glisser sur la scène pour viser avec le projecteur sélectionné");
+                    .on_hover_text("Click/drag on stage to aim the selected fixture");
                 if self.focus_mode {
-                    ui.label("Z :");
+                    ui.label("Z:");
                     ui.add(
                         egui::DragValue::new(&mut self.focus_height_z)
                             .speed(0.05)
                             .range(0.0..=4.0)
                             .suffix(" m"),
                     );
-                    if ui.button("Sol").clicked() {
+                    if ui.button("Floor").clicked() {
                         self.focus_height_z = 0.0;
                     }
-                    if ui.button("Visage").clicked() {
+                    if ui.button("Face").clicked() {
                         self.focus_height_z = 1.6;
                     }
                 }
             });
         } else {
             ui.horizontal(|ui| {
-                ui.label("Univers :");
+                ui.label("Universes:");
                 let universes = self.source.universes();
                 if universes.is_empty() {
-                    ui.label("aucun");
+                    ui.label("none");
                 }
                 for u in universes {
                     ui.selectable_value(&mut self.selected_universe, u, u.to_string());
@@ -193,18 +193,18 @@ impl VizApp {
 
     fn fixture_sidebar(&mut self, ui: &mut egui::Ui) {
         let patch = self.source.patch();
-        ui.heading("Projecteurs");
+        ui.heading("Fixtures");
         ui.separator();
         if self.focus_mode && self.selected_fixture.is_none() {
             ui.colored_label(
                 egui::Color32::from_rgb(245, 190, 80),
-                "Sélectionnez un projecteur pour utiliser Focus 3D",
+                "Select a fixture to use Focus 3D",
             );
             ui.separator();
         }
         egui::ScrollArea::vertical().show(ui, |ui| {
             if patch.fixtures.is_empty() {
-                ui.label("Aucun projecteur patché");
+                ui.label("No fixtures patched");
             }
             for f in &patch.fixtures {
                 let id = f.channel;
@@ -235,7 +235,7 @@ impl VizApp {
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.1);
         let vp = self.camera.view_proj(aspect);
 
-        // Interactions 3D : Focus 3D si actif avec un projecteur sélectionné, sinon caméra / sélection
+        // 3D interactions: Focus 3D when active with a selected fixture, otherwise camera / selection
         let focus_target_id = if self.focus_mode {
             self.selected_fixture
         } else {
@@ -364,7 +364,7 @@ impl VizApp {
             }
         }
 
-        // Repère visuel de la cible Focus du projecteur sélectionné
+        // Visual marker for the selected fixture's focus target
         if let Some(sel_id) = self.selected_fixture {
             if let Some(f) = resolved.iter().find(|f| f.channel_id == Some(sel_id)) {
                 let target = match self.focus_preview {
@@ -392,7 +392,7 @@ impl VizApp {
 
     fn levels(&self, ui: &mut egui::Ui) {
         let Some(frame) = self.source.universe(self.selected_universe) else {
-            ui.label("En attente de données…");
+            ui.label("Waiting for data…");
             return;
         };
         let avail = ui.available_width();
@@ -442,7 +442,7 @@ impl eframe::App for VizApp {
         } else {
             egui::CentralPanel::default().show(ui, |ui| self.levels(ui));
         }
-        // Les niveaux arrivent en continu : on redessine à ~30 Hz.
+        // Levels arrive continuously: repaint at ~30 Hz.
         ui.ctx().request_repaint_after(Duration::from_millis(33));
     }
 }
@@ -459,7 +459,7 @@ fn main() -> eframe::Result {
     let state = SharedState::new();
     let label = if demo {
         state.spawn_demo();
-        "démo".to_string()
+        "demo".to_string()
     } else {
         zmq::spawn(state.clone(), zmq::ZmqConfig::new(endpoint.clone()));
         endpoint

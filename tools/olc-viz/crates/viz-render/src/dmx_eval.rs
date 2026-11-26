@@ -1,10 +1,10 @@
-//! Évaluation en temps réel des paramètres optiques d'un projecteur depuis les trames DMX.
+//! Real-time evaluation of fixture optical parameters from DMX frames.
 
 use viz_core::{DmxChannel, DmxFrame, Fixture, FixtureType, Orientation, Patch};
 
 use crate::math::{forward_pan_tilt, normalize3, sub3};
 
-/// État d'une roue de gobo engagée sur un projecteur.
+/// State of an engaged gobo wheel on a fixture.
 #[derive(Debug, Clone, Default)]
 pub struct GoboWheelState {
     pub gobo_id: String,
@@ -12,7 +12,7 @@ pub struct GoboWheelState {
     pub rot_rad: f32,
 }
 
-/// État optique résolu d'un projecteur pour une frame de rendu.
+/// Resolved optical state of a fixture for a render frame.
 #[derive(Debug, Clone)]
 pub struct ResolvedFixture {
     pub channel_id: Option<u32>,
@@ -159,7 +159,7 @@ fn is_slot_open(gobo_id: &str, slot_index: usize) -> bool {
     !gobo_id.contains(':') && crate::gobo::resolve_builtin_index(gobo_id, slot_index) == 0
 }
 
-/// Évalue tous les projecteurs du patch avec les dernières trames DMX reçues.
+/// Evaluate all patched fixtures using the latest received DMX frames.
 pub fn evaluate_fixtures(
     patch: &Patch,
     time_sec: f32,
@@ -177,7 +177,7 @@ fn evaluate_one(
     time_sec: f32,
     get_universe: &impl Fn(u16) -> Option<DmxFrame>,
 ) -> ResolvedFixture {
-    // 1. Intensité (supporte les gradateurs multi-sorties : max des canaux intensity)
+    // 1. Intensity (supports multi-output dimmers: max of intensity channels)
     let mut intensity = 0.0f32;
     let mut has_intensity = false;
     let mut max_intensity = 0.0f32;
@@ -239,7 +239,7 @@ fn evaluate_one(
     } else if !f.gel_color.is_empty() {
         crate::math::parse_hex_color(&f.gel_color)
     } else {
-        // Blanc chaud halogène pour gradateur sans couleur
+        // Warm tungsten halogen white for dimmer without gel/color
         [1.0, 0.95, 0.85]
     };
 
@@ -284,7 +284,7 @@ fn evaluate_one(
         _ => f.beam_angle.clamp(2.0, 120.0),
     };
 
-    // 5. Gobos actifs (jusqu'à 2 roues DMX simultanées ou static_gobo sur projecteur fixe)
+    // 5. Active gobos (up to 2 simultaneous DMX wheels or static_gobo on fixed fixture)
     let mut gobos: [GoboWheelState; 2] = Default::default();
     let mut engaged_count = 0usize;
     let mut seq_idx = 0u8;

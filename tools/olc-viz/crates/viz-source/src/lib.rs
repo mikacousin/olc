@@ -1,9 +1,9 @@
-//! Sources de données du visualiseur : niveaux DMX et patch.
+//! Visualizer data sources: DMX levels and patch.
 //!
-//! L'UI ne dépend que du trait [`DmxSource`]. Aujourd'hui l'implémentation
-//! est alimentée par ZeroMQ ([`zmq`]) ; plus tard, un canal en mémoire
-//! (visualiseur intégré à OLC) ou du sACN (consoles tierces) pourront
-//! l'alimenter sans changer l'UI.
+//! The UI only depends on the [`DmxSource`] trait. Currently the implementation
+//! is fed via ZeroMQ ([`zmq`]); later, an in-memory channel (embedded
+//! visualizer inside OLC) or sACN (third-party consoles) can feed it without
+//! changing the UI.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -12,7 +12,7 @@ use serde::Serialize;
 use tokio::sync::mpsc::UnboundedSender;
 use viz_core::{DmxFrame, Patch, DMX_CHANNELS};
 
-/// Commande envoyée du visualiseur vers OLC (sur `monitor_port + 1`).
+/// Command sent from the visualizer to OLC (on `monitor_port + 1`).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "cmd", rename_all = "snake_case")]
 pub enum VizCommand {
@@ -36,13 +36,13 @@ pub enum VizCommand {
     },
 }
 
-/// Ce que l'UI sait d'une source de données.
+/// What the UI knows about a data source.
 pub trait DmxSource: Send + Sync {
-    /// Dernière trame reçue pour un univers.
+    /// Latest received frame for a universe.
     fn universe(&self, id: u16) -> Option<DmxFrame>;
-    /// Univers pour lesquels au moins une trame a été reçue, triés.
+    /// Sorted list of universes that have received at least one frame.
     fn universes(&self) -> Vec<u16>;
-    /// Patch courant (clone bon marché).
+    /// Current patch (cheap clone).
     fn patch(&self) -> Arc<Patch>;
     fn patch_version(&self) -> u64;
     fn status(&self) -> SourceStatus;
@@ -51,9 +51,9 @@ pub trait DmxSource: Send + Sync {
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct SourceStatus {
     pub connected: bool,
-    /// Nombre total de trames reçues depuis le démarrage.
+    /// Total number of frames received since startup.
     pub frames: u64,
-    /// Fréquence de sortie DMX annoncée par la source (0 si inconnue).
+    /// DMX output rate reported by the source (0 if unknown).
     pub hz: f32,
 }
 
@@ -66,7 +66,7 @@ struct Inner {
     gobo_images: Arc<HashMap<String, Vec<u8>>>,
 }
 
-/// État partagé entre le thread de réception et l'UI.
+/// Shared state between the receiver thread and the UI.
 #[derive(Clone, Default)]
 pub struct SharedState(Arc<RwLock<Inner>>);
 
@@ -88,7 +88,7 @@ impl SharedState {
         }
     }
 
-    /// Ne garde que les univers de la liste (ceux qu'OLC déclare actifs).
+    /// Retain only universes in the given list (those OLC declares active).
     pub fn retain_universes(&self, keep: &[u16]) {
         if let Ok(mut s) = self.0.write() {
             s.universes.retain(|id, _| keep.contains(id));
@@ -125,7 +125,7 @@ impl SharedState {
         }
     }
 
-    /// Envoie une commande vers OLC de façon asynchrone. `false` si aucun transport actif.
+    /// Asynchronously send a command to OLC. `false` if no active transport.
     pub fn send_command(&self, cmd: VizCommand) -> bool {
         let tx = self.0.read().ok().and_then(|s| s.cmd_tx.clone());
         match tx {
@@ -156,8 +156,8 @@ impl SharedState {
         }
     }
 
-    /// Génère un signal de démonstration (rampes mobiles + patch 3D sur l'univers 1)
-    /// pour développer l'UI sans OLC.
+    /// Generate a demo signal (moving heads + 3D patch on universe 1)
+    /// for developing the UI without OLC.
     pub fn spawn_demo(&self) -> std::thread::JoinHandle<()> {
         use viz_core::{DmxAddress, DmxChannel, Fixture, FixtureType, Orientation, Stage, Vec3};
 
@@ -169,7 +169,7 @@ impl SharedState {
                     id: "demo:1".into(),
                     channel: Some(1),
                     unit: Some(1),
-                    name: "Lyre Jardin".into(),
+                    name: "Moving Head SL".into(),
                     fixture_type: FixtureType::MovingHead,
                     gdtf: None,
                     mode: None,
@@ -213,7 +213,7 @@ impl SharedState {
                     id: "demo:2".into(),
                     channel: Some(2),
                     unit: Some(2),
-                    name: "Lyre Cour".into(),
+                    name: "Moving Head SR".into(),
                     fixture_type: FixtureType::MovingHead,
                     gdtf: None,
                     mode: None,
@@ -239,7 +239,7 @@ impl SharedState {
                     id: "demo:3".into(),
                     channel: Some(3),
                     unit: Some(3),
-                    name: "Face Centre".into(),
+                    name: "Front Center".into(),
                     fixture_type: FixtureType::LedPar,
                     gdtf: None,
                     mode: None,
@@ -303,14 +303,14 @@ impl SharedState {
                 frame[9] = 170;
                 frame[10] = (128.0 - 40.0 * t.sin()) as u8;
                 frame[11] = (140.0 + 35.0 * (t * 0.7).cos()) as u8;
-                // Face centre : blanc chaud
+                // Front center: warm white
                 frame[12] = 220;
                 frame[13] = 255;
                 frame[14] = 230;
                 frame[15] = 200;
-                // Douche
+                // Wash
                 frame[16] = (140.0 + 110.0 * (t * 0.5).sin().abs()) as u8;
-                // Roue gobo Lyre 1 : cycle lent sur 4 gobos + rotation continue + frost léger
+                // Moving Head 1 gobo wheel: slow cycle over 4 gobos + continuous rotation + light frost
                 frame[17] = (((t * 0.25) as u32 % 4) * 64 + 20) as u8;
                 frame[18] = 175;
                 frame[19] = (30.0 * (t * 0.4).sin().abs()) as u8;
@@ -351,21 +351,21 @@ impl DmxSource for SharedState {
     }
 }
 
-/// Réception ZeroMQ depuis OLC.
+/// ZeroMQ receiver from OLC.
 ///
-/// **Niveaux DMX** : OLC publie (PUB, `monitor_port`) des messages
-/// multipart `[topic, métadonnées JSON, octets DMX]` :
-/// - topic `universe:<id>`, payload de 512 octets ;
-/// - métadonnées : `hz`, `frames`, `protocols`, `active_universes`, et
-///   `patch_version` (ajouté pour le visualiseur) ;
-/// - un univers supprimé est annoncé avec `deleted: true` et un payload vide ;
-/// - à l'arrêt, un message sur le topic `system` avec `status: "shutdown"`.
+/// **DMX levels**: OLC publishes (PUB, `monitor_port`) multipart messages
+/// `[topic, JSON metadata, DMX bytes]`:
+/// - topic `universe:<id>`, 512-byte payload;
+/// - metadata: `hz`, `frames`, `protocols`, `active_universes`, and
+///   `patch_version` (added for the visualizer);
+/// - a deleted universe is announced with `deleted: true` and an empty payload;
+/// - on shutdown, a message on topic `system` with `status: "shutdown"`.
 ///
-/// **Patch** : OLC ne publie pas le patch en continu. Quand
-/// `patch_version` change dans les métadonnées, le visualiseur demande un
-/// snapshot complet en REQ/REP (port `monitor_port + 1`, requête `patch`,
-/// réponse JSON). Un patch tient en quelques ko et change rarement : un
-/// snapshot complet évite toute logique de deltas et de trous.
+/// **Patch**: OLC does not publish the patch continuously. When
+/// `patch_version` changes in metadata, the visualizer requests a full
+/// snapshot over REQ/REP (port `monitor_port + 1`, request `patch`, JSON
+/// reply). A patch is only a few KB and changes rarely: a full snapshot
+/// avoids any delta or gap logic.
 pub mod zmq {
     use super::*;
     use serde::Deserialize;
@@ -373,19 +373,19 @@ pub mod zmq {
     use tokio::sync::mpsc::{self, UnboundedReceiver};
     use viz_core::{DmxAddress, DmxChannel, Fixture, FixtureType, Orientation, Stage, Vec3};
 
-    /// Port du `monitor_port` utilisé par défaut par l'application OLC.
+    /// Default `monitor_port` endpoint used by the OLC application.
     pub const DEFAULT_ENDPOINT: &str = "tcp://127.0.0.1:5555";
 
     #[derive(Debug, Clone)]
     pub struct ZmqConfig {
-        /// PUB d'OLC (niveaux DMX).
+        /// OLC PUB endpoint (DMX levels).
         pub endpoint: String,
-        /// REP d'OLC (snapshot du patch). `None` désactive la lecture du patch.
+        /// OLC REP endpoint (patch snapshot). `None` disables patch reading.
         pub patch_endpoint: Option<String>,
     }
 
     impl ZmqConfig {
-        /// Le endpoint du patch est déduit : même hôte, port + 1.
+        /// Patch endpoint is inferred: same host, port + 1.
         pub fn new(endpoint: impl Into<String>) -> Self {
             let endpoint = endpoint.into();
             let patch_endpoint = derive_patch_endpoint(&endpoint);
@@ -402,14 +402,14 @@ pub mod zmq {
         }
     }
 
-    /// `tcp://h:5555` devient `tcp://h:5556`.
+    /// `tcp://h:5555` becomes `tcp://h:5556`.
     pub fn derive_patch_endpoint(endpoint: &str) -> Option<String> {
         let (head, port) = endpoint.rsplit_once(':')?;
         let port: u16 = port.parse().ok()?;
         Some(format!("{head}:{}", port.checked_add(1)?))
     }
 
-    /// Métadonnées publiées par OLC avec chaque trame.
+    /// Metadata published by OLC with each frame.
     #[derive(Debug, Clone, PartialEq, Default, Deserialize)]
     pub struct Meta {
         #[serde(default)]
@@ -426,7 +426,7 @@ pub mod zmq {
         pub patch_version: Option<u64>,
     }
 
-    /// Un message décodé.
+    /// A decoded message.
     #[derive(Debug, PartialEq)]
     pub enum Message {
         Frame {
@@ -440,7 +440,7 @@ pub mod zmq {
         Shutdown,
     }
 
-    /// Décode les trois frames d'un message d'OLC.
+    /// Decode the three frames of an OLC message.
     pub fn parse(topic: &[u8], meta: &[u8], data: &[u8]) -> Option<Message> {
         let topic = std::str::from_utf8(topic).ok()?;
         let meta: Meta = serde_json::from_slice(meta).ok()?;
@@ -517,7 +517,7 @@ pub mod zmq {
         (!s.is_empty()).then_some(s)
     }
 
-    /// Décode un snapshot de patch.
+    /// Decode a patch snapshot.
     pub fn parse_patch(bytes: &[u8]) -> Option<Patch> {
         let wire: PatchWire = serde_json::from_slice(bytes).ok()?;
         let fixtures = wire
@@ -568,7 +568,7 @@ pub mod zmq {
         })
     }
 
-    /// Lance le thread de réception ; il se reconnecte seul en cas d'erreur.
+    /// Start the receiver thread; reconnects automatically on error.
     pub fn spawn(state: SharedState, cfg: ZmqConfig) -> std::thread::JoinHandle<()> {
         let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel();
         state.set_command_sender(Some(cmd_tx));
@@ -589,7 +589,7 @@ pub mod zmq {
         })
     }
 
-    /// Demande le snapshot du patch. `None` si OLC ne répond pas en 2 s.
+    /// Request the patch snapshot. `None` if OLC does not reply within 2 s.
     async fn fetch_patch(endpoint: &str) -> Option<Patch> {
         use ::zeromq::{ReqSocket, Socket, SocketRecv, SocketSend, ZmqMessage};
 
@@ -606,7 +606,7 @@ pub mod zmq {
             .flatten()
     }
 
-    /// Demande les octets PNG d'un gobo personnalisé à OLC.
+    /// Request the PNG bytes of a custom gobo from OLC.
     async fn fetch_gobo_image(endpoint: &str, gobo_id: &str) -> Option<Vec<u8>> {
         use ::zeromq::{ReqSocket, Socket, SocketRecv, SocketSend, ZmqMessage};
 
@@ -798,7 +798,7 @@ pub mod zmq {
         fn parse_shutdown() {
             let meta = meta_json(r#", "deleted": true, "status": "shutdown""#);
             assert_eq!(parse(b"system", &meta, b""), Some(Message::Shutdown));
-            // Un message system sans status shutdown est ignoré.
+            // A system message without shutdown status is ignored.
             assert_eq!(parse(b"system", &meta_json(""), b""), None);
         }
 

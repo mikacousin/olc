@@ -1472,14 +1472,18 @@ class PatchChannelsTab(Gtk.Box):
         count = len(warnings)
         preview_lines = [w.format_message() for w in warnings[:6]]
         if count > 6:
-            preview_lines.append(f"... et {count - 6} autre(s) paramètre(s)")
+            preview_lines.append(
+                _("... and {count} more parameter(s)").format(count=count - 6)
+            )
         body = "\n".join(preview_lines)
 
         msg_dialog = Gtk.MessageDialog(
             transient_for=self.window,
             message_type=Gtk.MessageType.WARNING,
             buttons=Gtk.ButtonsType.OK,
-            text=f"Avertissement : {count} valeur(s) dépassent la course mécanique",
+            text=_("Warning: {count} value(s) exceed mechanical range").format(
+                count=count
+            ),
         )
         msg_dialog.format_secondary_text(body)
         msg_dialog.run()

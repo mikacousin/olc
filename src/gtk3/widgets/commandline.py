@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html
 import typing
+from gettext import gettext as _
 
 from gi.repository import GLib, Gtk, Pango
 
@@ -82,7 +83,7 @@ class CommandLineWidget:
         self.park_status_button = Gtk.Button()
         self.park_status_button.get_style_context().add_class("olc-park-status-badge")
         self.park_status_button.set_tooltip_text(
-            "Circuits ou adresses verrouillés en PARK. Cliquer pour déparker tout."
+            _("Channels or addresses locked in PARK. Click to unpark all.")
         )
         self.park_status_button.set_no_show_all(True)
         self.park_status_button.set_visible(False)

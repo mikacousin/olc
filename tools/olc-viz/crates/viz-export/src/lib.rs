@@ -1,16 +1,16 @@
-//! Export des vues en dessins 2D vectoriels : SVG (format pivot), PDF, DXF.
+//! Export views to 2D vector drawings: SVG (pivot format), PDF, DXF.
 //!
-//! À faire : coupe plan/maillage, projection de l'emprise, symboles de
-//! fixtures, annotations, cartouche.
+//! TODO: plan/mesh sectioning, footprint projection, fixture symbols,
+//! annotations, title block.
 
 use viz_core::View;
 
-/// Taille de la zone de dessin en millimètres papier pour une vue.
+/// Drawing area size in paper millimeters for a view.
 pub fn drawing_size_mm(view: &View) -> (f32, f32) {
     view.paper.size_mm()
 }
 
-/// Convertit une longueur réelle (mètres) en millimètres sur le papier.
+/// Convert a real-world length (meters) to millimeters on paper.
 pub fn world_to_paper_mm(meters: f32, scale: u32) -> f32 {
     meters * 1000.0 / scale as f32
 }

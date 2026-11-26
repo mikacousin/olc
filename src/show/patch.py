@@ -173,7 +173,7 @@ class FixtureExchangeWarning:
         param_cap = self.parameter.capitalize()
         return (
             f"{seq_label}: {param_cap} = {self.original_value:g}{unit_str} "
-            f"écrêté à {self.clamped_value:g}{unit_str} "
+            f"clamped to {self.clamped_value:g}{unit_str} "
             f"[{self.physical_min:g}..{self.physical_max:g}{unit_str}]"
         )
 
