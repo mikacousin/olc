@@ -349,6 +349,9 @@ def parse_personalities(
     return personalities
 
 
+_CONTINUOUS_UNITS = ("%", "deg", " d", "hz", "rpm", "sec", " s")
+
+
 def evaluate_eos_param_to_dmx(
     param: EosParamDef,
     user_value: float,
@@ -406,10 +409,18 @@ def evaluate_eos_param_to_dmx(
 
     span = target_sr.user_max - target_sr.user_min
     if abs(span) < 1e-9:
-        t = 0.5
-    else:
-        t = (user_value - target_sr.user_min) / span
-        t = max(0.0, min(1.0, t))
+        return max(0, min(param.max_dmx, target_sr.home_dmx))
+
+    lbl_lower = target_sr.label.lower()
+    if (
+        0.8 <= abs(span) <= 1.2
+        and abs(user_value - round(user_value)) < 1e-4
+        and not any(unit in lbl_lower for unit in _CONTINUOUS_UNITS)
+    ):
+        return max(0, min(param.max_dmx, target_sr.home_dmx))
+
+    t = (user_value - target_sr.user_min) / span
+    t = max(0.0, min(1.0, t))
 
     dmx = int(round(target_sr.dmx_min + t * (target_sr.dmx_max - target_sr.dmx_min)))
     return max(0, min(param.max_dmx, dmx))

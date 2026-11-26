@@ -61,6 +61,34 @@ def _resolve_file_path(file_obj: object) -> pathlib.Path:
     return pathlib.Path(str(file_obj))
 
 
+def _iter_eos_channel_blocks(container: list[Any]) -> list[tuple[list[int], list[Any]]]:
+    """Iterate ``(channels, ch_params_obj)`` blocks in ``cue[22]`` or ``palette[6]``.
+
+    Eos compresses channels that share identical values using a trailing
+    ``clone_count`` followed by ``clone_count`` additional channel numbers:
+    ``ch, 0, ch_obj, clone_count, [clone_ch_1, ...]``.
+    """
+    blocks: list[tuple[list[int], list[Any]]] = []
+    if not isinstance(container, list) or len(container) < 6:
+        return blocks
+    k = 3
+    n = len(container)
+    while k + 3 < n:
+        ch = container[k]
+        ch_obj = container[k + 2]
+        if not isinstance(ch, int) or not isinstance(ch_obj, list):
+            break
+        clone_cnt = container[k + 3] if isinstance(container[k + 3], int) else 0
+        clones = [
+            c
+            for c in container[k + 4 : k + 4 + clone_cnt]
+            if isinstance(c, int) and c > 0
+        ]
+        blocks.append(([ch, *clones], ch_obj))
+        k += 4 + clone_cnt
+    return blocks
+
+
 def _parse_eos_channel_params(
     ch_params_obj: list[Any], channel_num: int
 ) -> dict[int, float]:
@@ -123,12 +151,16 @@ def _decode_channel_values(
     raw_params: dict[int, float],
     personality: EosPersonality | None,
     param_names: dict[int, str],
+    *,
+    virtual_context: dict[int, float] | None = None,
 ) -> tuple[dict[str, Any], float | None]:
     """Convert raw Eos user parameter values into OLC ``device_values`` & intensity."""
     dev_vals: dict[str, Any] = {}
     intensity_val: float | None = None
     rgb: dict[str, float] = {}
     cmy: dict[str, float] = {}
+    eval_ctx = dict(virtual_context) if virtual_context else {}
+    eval_ctx.update(raw_params)
 
     for pid, user_val in raw_params.items():
         pname = param_names.get(pid, "").lower()
@@ -137,7 +169,8 @@ def _decode_channel_values(
         if pid == 1 or pname == "intens":
             norm = max(0.0, min(1.0, user_val / 100.0))
             intensity_val = norm
-            dev_vals["intensity"] = norm
+            if personality is not None and not personality.is_dimmer:
+                dev_vals["intensity"] = norm
             continue
 
         if pdef is not None and pdef.is_virtual:
@@ -146,7 +179,7 @@ def _decode_channel_values(
             continue
 
         if pdef is not None:
-            dmx = evaluate_eos_param_to_dmx(pdef, user_val, raw_params, personality)
+            dmx = evaluate_eos_param_to_dmx(pdef, user_val, eval_ctx, personality)
             if dmx is None:
                 continue
             norm = max(0.0, min(1.0, dmx / float(pdef.max_dmx)))
@@ -156,11 +189,14 @@ def _decode_channel_values(
 
         if pname in _PHYSICAL_PARAM_NAMES:
             olcname = _PHYSICAL_PARAM_NAMES[pname]
-            if pdef is not None:
-                phys_min, phys_max, _ = pdef.physical_bounds()
+            if pname in ("color_temperature", "cto") and user_val > 100.0:
+                dev_vals[olcname] = float(user_val)
             else:
-                phys_min, phys_max = 0.0, 1.0
-            dev_vals[olcname] = phys_min + norm * (phys_max - phys_min)
+                if pdef is not None:
+                    phys_min, phys_max, _ = pdef.physical_bounds()
+                else:
+                    phys_min, phys_max = 0.0, 1.0
+                dev_vals[olcname] = phys_min + norm * (phys_max - phys_min)
         elif pname in ("red", "green", "blue"):
             rgb[pname] = norm
         elif pname in ("cyan", "magenta", "yellow"):
@@ -466,7 +502,15 @@ class Esf3dParser:
         data: dict[str, Any],
     ) -> None:
         cuelist_labels: dict[int, str] = {}
-        cues_by_list: dict[int, list[tuple[float, dict[str, Any], dict[str, Any]]]] = {}
+        raw_cues: list[
+            tuple[
+                int | None,
+                float,
+                dict[int, dict[int, float]],
+                dict[str, Any],
+                dict[str, Any],
+            ]
+        ] = []
 
         for item in items:
             if not isinstance(item, list):
@@ -493,7 +537,7 @@ class Esf3dParser:
                 and isinstance(item[2][2], int)
                 and item[2][2] > 0
             ):
-                cl_id = 1
+                explicit_cl: int | None = None
                 if (
                     len(item) > 20
                     and isinstance(item[20], list)
@@ -501,29 +545,18 @@ class Esf3dParser:
                     and isinstance(item[20][3], int)
                     and item[20][3] > 0
                 ):
-                    cl_id = item[20][3]
+                    explicit_cl = item[20][3]
 
                 cue_num = item[2][2] / 10000.0
                 label = str(item[2][3]) if isinstance(item[2][3], str) else ""
-                cue_channels: dict[int, float] = {}
-                device_values: dict[int, dict[str, Any]] = {}
+                raw_p_by_ch: dict[int, dict[int, float]] = {}
 
-                if isinstance(item[22], list) and len(item[22]) >= 5:
-                    c22 = item[22]
-                    k = 3
-                    while k + 2 < len(c22):
-                        ch = c22[k]
-                        ch_obj = c22[k + 2]
-                        if isinstance(ch, int) and isinstance(ch_obj, list):
-                            raw_p = _parse_eos_channel_params(ch_obj, ch)
-                            dev_vals, int_val = _decode_channel_values(
-                                raw_p, ch_pers.get(ch), param_names
-                            )
-                            if int_val is not None:
-                                cue_channels[ch] = int_val
-                            if dev_vals:
-                                device_values[ch] = dev_vals
-                        k += 3
+                if isinstance(item[22], list):
+                    for channels, ch_obj in _iter_eos_channel_blocks(item[22]):
+                        raw_p = _parse_eos_channel_params(ch_obj, channels[0])
+                        if raw_p:
+                            for ch in channels:
+                                raw_p_by_ch[ch] = raw_p
 
                 t_up, d_up = (
                     _extract_ms_time(item[19][3], self.default_time)
@@ -551,11 +584,11 @@ class Esf3dParser:
                     else (None, None)
                 )
 
-                cue_dict = {
+                cue_dict: dict[str, Any] = {
                     "number": cue_num,
                     "label": label,
-                    "channels": cue_channels,
-                    "device_values": device_values,
+                    "channels": {},
+                    "device_values": {},
                 }
                 step_dict: dict[str, Any] = {
                     "cue": cue_num,
@@ -577,8 +610,8 @@ class Esf3dParser:
                     step_dict["time_beam"] = t_bm
                 if d_bm is not None:
                     step_dict["delay_beam"] = d_bm
-                cues_by_list.setdefault(cl_id, []).append(
-                    (cue_num, cue_dict, step_dict)
+                raw_cues.append(
+                    (explicit_cl, cue_num, raw_p_by_ch, cue_dict, step_dict)
                 )
 
             # Group: len == 4, item[2] header, item[3] channel list
@@ -610,18 +643,14 @@ class Esf3dParser:
             ):
                 pal_num = item[5][2] / 10000.0
                 label = str(item[5][3]) if isinstance(item[5][3], str) else ""
-                p6 = item[6]
                 raw_by_ch: dict[int, dict[int, float]] = {}
                 pal_channels: dict[int, float] = {}
                 pal_dev_vals: dict[int, dict[str, Any]] = {}
 
-                k = 3
-                while k + 2 < len(p6):
-                    ch = p6[k]
-                    ch_obj = p6[k + 2]
-                    if isinstance(ch, int) and isinstance(ch_obj, list):
-                        raw_p = _parse_eos_channel_params(ch_obj, ch)
-                        if raw_p:
+                for channels, ch_obj in _iter_eos_channel_blocks(item[6]):
+                    raw_p = _parse_eos_channel_params(ch_obj, channels[0])
+                    if raw_p:
+                        for ch in channels:
                             raw_by_ch[ch] = raw_p
                             dvals, ival = _decode_channel_values(
                                 raw_p, ch_pers.get(ch), param_names
@@ -630,7 +659,6 @@ class Esf3dParser:
                                 pal_channels[ch] = ival
                             if dvals:
                                 pal_dev_vals[ch] = dvals
-                    k += 3
 
                 if raw_by_ch:
                     cat = _classify_palette_category(raw_by_ch, param_names)
@@ -644,6 +672,36 @@ class Esf3dParser:
                         "device_values": pal_dev_vals,
                     }
 
+        # Route cues into their Cue Lists without collisions
+        cues_by_list: dict[
+            int,
+            list[
+                tuple[
+                    float,
+                    dict[int, dict[int, float]],
+                    dict[str, Any],
+                    dict[str, Any],
+                ]
+            ],
+        ] = {}
+        explicit_nums_in_cl1: set[float] = set()
+        for explicit_cl, cue_num, raw_p_by_ch, cue_dict, step_dict in raw_cues:
+            if explicit_cl is not None:
+                cues_by_list.setdefault(explicit_cl, []).append(
+                    (cue_num, raw_p_by_ch, cue_dict, step_dict)
+                )
+                if explicit_cl == 1:
+                    explicit_nums_in_cl1.add(cue_num)
+
+        fallback_cl = max(cuelist_labels) if len(cuelist_labels) > 1 else 1
+        for explicit_cl, cue_num, raw_p_by_ch, cue_dict, step_dict in raw_cues:
+            if explicit_cl is None:
+                target_cl = fallback_cl if cue_num in explicit_nums_in_cl1 else 1
+                cues_by_list.setdefault(target_cl, []).append(
+                    (cue_num, raw_p_by_ch, cue_dict, step_dict)
+                )
+
+        # Evaluate each Cue List in cue-number order while tracking virtual params
         for cl_id, cl_cues in sorted(cues_by_list.items()):
             seq = data["sequences"].setdefault(
                 cl_id,
@@ -657,6 +715,29 @@ class Esf3dParser:
             if cl_id in cuelist_labels and cuelist_labels[cl_id]:
                 seq["label"] = cuelist_labels[cl_id]
             cl_cues.sort(key=lambda c: c[0])
-            for step_idx, (cue_num, cue_dict, step_dict) in enumerate(cl_cues, 1):
+            tracked_virtuals: dict[int, dict[int, float]] = {}
+
+            for step_idx, (cue_num, raw_p_by_ch, cue_dict, step_dict) in enumerate(
+                cl_cues, 1
+            ):
+                cue_channels: dict[int, float] = {}
+                device_values: dict[int, dict[str, Any]] = {}
+                for ch, raw_p in raw_p_by_ch.items():
+                    pers = ch_pers.get(ch)
+                    ch_virt = tracked_virtuals.setdefault(ch, {})
+                    if pers is not None:
+                        for pid, val in raw_p.items():
+                            pdef = pers.params.get(pid)
+                            if pdef is not None and pdef.is_virtual:
+                                ch_virt[pid] = val
+                    dev_vals, int_val = _decode_channel_values(
+                        raw_p, pers, param_names, virtual_context=ch_virt
+                    )
+                    if int_val is not None:
+                        cue_channels[ch] = int_val
+                    if dev_vals:
+                        device_values[ch] = dev_vals
+                cue_dict["channels"] = cue_channels
+                cue_dict["device_values"] = device_values
                 seq["cues"][cue_num] = cue_dict
                 seq["steps"][step_idx] = step_dict

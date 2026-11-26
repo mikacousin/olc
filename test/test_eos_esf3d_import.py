@@ -22,6 +22,12 @@ import zipfile
 import pytest
 
 from olc.actions.show import _detect_file_type
+from olc.files.eos.personality import (
+    EosParamDef,
+    EosRangeBlock,
+    EosSubRange,
+    evaluate_eos_param_to_dmx,
+)
 from olc.files.eos.wire import decode_showdat, encode_showdat
 from olc.files.file_type import FileType
 from olc.files.import_file import ImportFile
@@ -73,7 +79,16 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert spot5.channels[0].address == 13
     assert spot5.orientation == pytest.approx((-45.0, 180.0, 40.0))
 
-    # Cue 115: Gobo_Index/Speed in Rot mode (279=191): -55 -> CCW, +55 -> CW
+    # Cue 1: Ch 1 cloned to Ch 2 (both at 80%)
+    cue1 = next(
+        s.cue
+        for s in show.main_playback.steps
+        if s.cue is not None and s.cue.number == 1.0
+    )
+    assert cue1.channels[1] == pytest.approx(0.8)
+    assert cue1.channels[2] == pytest.approx(0.8)
+
+    # Cue 115: Gobo_Mode=191 tracked from Cue 110 -> -55=CCW (52155), +55=CW (46148)
     cue115 = next(
         s.cue
         for s in show.main_playback.steps
@@ -86,7 +101,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert (round(val_ch4 * 65535) >> 8) == 203
     assert (round(val_ch5 * 65535) >> 8) == 180
 
-    # Groups & Palettes
+    # Groups & Palettes (including cloned Ch 5)
     grp1 = show.groups.get(1.0)
     assert grp1 is not None
     assert grp1.channels == [4, 5]
@@ -94,6 +109,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     col_pal = show.palettes.get(PaletteCategory.COLOR, 1.0)
     assert col_pal is not None
     assert col_pal.device_values[4]["cyan"] == pytest.approx(1.0)
+    assert col_pal.device_values[5]["cyan"] == pytest.approx(1.0)
 
 
 def test_import_esf3d_routes_cuelists_without_duplication(
@@ -142,3 +158,46 @@ def test_import_esf3d_routes_cuelists_without_duplication(
     sec_115 = [s.cue for s in seq2.steps if s.cue is not None and s.cue.number == 115.0]
     assert len(sec_115) == 1
     assert sec_115[0].text == "CL2 Cue 115"
+
+
+def test_evaluate_discrete_slots_and_point_ranges() -> None:
+    """Discrete slots and point sub-ranges snap to home_dmx instead of midpoint."""
+    prism = EosParamDef(
+        param_id=201,
+        name="Beam_Fx_Select",
+        home_dmx=0,
+        offset=10,
+        num_bytes=1,
+        range_blocks=[
+            EosRangeBlock(
+                None,
+                0.0,
+                0.0,
+                [
+                    EosSubRange("open", 0, 127, 0.5, 1.499999, 0),
+                    EosSubRange("effect", 128, 255, 1.5, 2.4, 191),
+                ],
+            )
+        ],
+    )
+    assert evaluate_eos_param_to_dmx(prism, 1.0, {}) == 0
+
+    ct = EosParamDef(
+        param_id=1719,
+        name="Color_Temperature",
+        home_dmx=0,
+        offset=11,
+        num_bytes=1,
+        range_blocks=[
+            EosRangeBlock(
+                None,
+                0.0,
+                0.0,
+                [
+                    EosSubRange("Off", 0, 5, 1594.0, 1594.0, 0),
+                    EosSubRange("1600-6500", 6, 255, 1600.0, 6500.0, 128),
+                ],
+            )
+        ],
+    )
+    assert evaluate_eos_param_to_dmx(ct, 1594.0, {}) == 0
