@@ -232,19 +232,21 @@ def test_build_snapshot_includes_stage_3d_and_optical_channels() -> None:
     assert d101["orientation"] == [0.0, 0.0, 180.0]
     assert d101["beam_angle"] == 20.0
     assert d101["channels"] == [
-        {"type": "intensity", "universe": 1, "address": 1},
+        {"type": "intensity", "universe": 1, "address": 1, "label": "intensity"},
         {
             "type": "pan",
             "universe": 1,
             "address": 2,
+            "label": "pan",
             "physical_min": -270.0,
             "physical_max": 270.0,
         },
-        {"type": "pan", "universe": 1, "address": 3, "fine": True},
+        {"type": "pan", "universe": 1, "address": 3, "label": "pan", "fine": True},
         {
             "type": "zoom",
             "universe": 1,
             "address": 4,
+            "label": "zoom",
             "physical_min": 10.0,
             "physical_max": 50.0,
         },

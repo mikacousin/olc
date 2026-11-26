@@ -65,6 +65,9 @@ def _channel_row(ch: Any) -> dict[str, Any]:  # noqa: ANN401
         "universe": int(ch.universe),
         "address": int(ch.address),
     }
+    lbl = getattr(ch, "label", "")
+    if lbl:
+        row["label"] = str(lbl)
     if getattr(ch, "fine", False):
         row["fine"] = True
     if getattr(ch, "ultra_fine", False):
