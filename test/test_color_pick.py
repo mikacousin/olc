@@ -708,6 +708,25 @@ def test_gel_library_lookup_and_search() -> None:
     assert rosco_only and all(g.manufacturer == "Rosco" for g in rosco_only)
 
 
+def test_gel_library_sorted_naturally() -> None:
+    """Verify GEL_LIBRARY and filter_gels are sorted by manufacturer then number."""
+    lee_codes = [g.code for g in cp.filter_gels("", manufacturer="Lee")]
+    rosco_codes = [g.code for g in cp.filter_gels("", manufacturer="Rosco")]
+    all_gels = cp.filter_gels("", manufacturer="All")
+
+    assert lee_codes.index("L002") < lee_codes.index("L101") < lee_codes.index("L201")
+    assert (
+        rosco_codes.index("R02")
+        < rosco_codes.index("R21")
+        < rosco_codes.index("R119")
+        < rosco_codes.index("R3202")
+    )
+    keys = [
+        (g.manufacturer.casefold(), int(g.number), g.code.casefold()) for g in all_gels
+    ]
+    assert keys == sorted(keys)
+
+
 def test_evaluate_gel_feasibility_on_profiles() -> None:
     """Verify evaluate_gel_for_profile returns valid ΔE and match level."""
     rgbw_prof = create_rgbw_definition().color_profile

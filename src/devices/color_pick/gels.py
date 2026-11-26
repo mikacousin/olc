@@ -49,113 +49,274 @@ class GelSwatch:  # pylint: disable=too-many-instance-attributes
         return xy_to_srgb(self.cie_x, self.cie_y)
 
 
-GEL_LIBRARY: tuple[GelSwatch, ...] = (
-    # Correction (CTB / CTO / Plus & Minus Green)
-    GelSwatch("L201", "Lee", "201", "Full C.T. Blue", "Correction", 0.246, 0.254, 36.0),
-    GelSwatch("L202", "Lee", "202", "Half C.T. Blue", "Correction", 0.276, 0.289, 55.0),
-    GelSwatch(
-        "L203", "Lee", "203", "Quarter C.T. Blue", "Correction", 0.295, 0.310, 72.0
-    ),
-    GelSwatch(
-        "L204", "Lee", "204", "Full C.T. Orange", "Correction", 0.440, 0.405, 58.0
-    ),
-    GelSwatch(
-        "L205", "Lee", "205", "Half C.T. Orange", "Correction", 0.382, 0.377, 71.0
-    ),
-    GelSwatch(
-        "L206", "Lee", "206", "Quarter C.T. Orange", "Correction", 0.348, 0.355, 81.0
-    ),
-    GelSwatch("L244", "Lee", "244", "Lee Plus Green", "Correction", 0.335, 0.405, 74.0),
-    GelSwatch(
-        "L247", "Lee", "247", "Lee Minus Green", "Correction", 0.345, 0.285, 55.0
-    ),
-    GelSwatch(
-        "R3202", "Rosco", "3202", "Full Blue (CTB)", "Correction", 0.248, 0.256, 36.0
-    ),
-    GelSwatch(
-        "R3407", "Rosco", "3407", "Roscosun CTO", "Correction", 0.438, 0.404, 58.0
-    ),
-    # Warm / Amber / Red / Cosmetic
-    GelSwatch("L002", "Lee", "002", "Rose Pink", "Cosmetic", 0.425, 0.245, 32.0),
-    GelSwatch(
-        "L004", "Lee", "004", "Medium Bastard Amber", "Cosmetic", 0.372, 0.348, 66.0
-    ),
-    GelSwatch("L009", "Lee", "009", "Pale Amber Gold", "Warm", 0.388, 0.382, 74.0),
-    GelSwatch("L017", "Lee", "017", "Surprise Peach", "Warm", 0.448, 0.365, 42.0),
-    GelSwatch("L021", "Lee", "021", "Gold Amber", "Warm", 0.565, 0.405, 31.0),
-    GelSwatch("L026", "Lee", "026", "Bright Red", "Saturated", 0.680, 0.308, 9.5),
-    GelSwatch("L103", "Lee", "103", "Straw", "Warm", 0.368, 0.385, 81.0),
-    GelSwatch("L106", "Lee", "106", "Primary Red", "Saturated", 0.692, 0.302, 9.3),
-    GelSwatch("L128", "Lee", "128", "Bright Pink", "Saturated", 0.450, 0.210, 15.0),
-    GelSwatch("L135", "Lee", "135", "Deep Golden Amber", "Warm", 0.618, 0.375, 19.0),
-    GelSwatch("L152", "Lee", "152", "Pale Gold", "Cosmetic", 0.375, 0.362, 72.0),
-    GelSwatch("L162", "Lee", "162", "Bastard Amber", "Cosmetic", 0.362, 0.352, 78.0),
-    GelSwatch("L164", "Lee", "164", "Flame Red", "Saturated", 0.665, 0.322, 15.0),
-    GelSwatch("R02", "Rosco", "02", "Bastard Amber", "Cosmetic", 0.365, 0.350, 78.0),
-    GelSwatch("R21", "Rosco", "21", "Golden Amber", "Warm", 0.562, 0.406, 32.0),
-    GelSwatch("R26", "Rosco", "26", "Light Red", "Saturated", 0.678, 0.310, 11.0),
-    GelSwatch("R33", "Rosco", "33", "No Color Pink", "Cosmetic", 0.352, 0.322, 68.0),
-    # Cool / Blue / Cyan / Green / Lavender
-    GelSwatch("L068", "Lee", "068", "Sky Blue", "Cool", 0.165, 0.215, 14.0),
-    GelSwatch("L079", "Lee", "079", "Just Blue", "Cool", 0.145, 0.125, 6.5),
-    GelSwatch("L115", "Lee", "115", "Peacock Blue", "Cool", 0.175, 0.345, 32.0),
-    GelSwatch("L116", "Lee", "116", "Medium Blue-Green", "Cool", 0.155, 0.375, 16.0),
-    GelSwatch("L117", "Lee", "117", "Steel Blue", "Cool", 0.245, 0.295, 55.0),
-    GelSwatch("L119", "Lee", "119", "Dark Blue", "Saturated", 0.140, 0.085, 3.1),
-    GelSwatch("L120", "Lee", "120", "Deep Blue", "Saturated", 0.142, 0.062, 1.5),
-    GelSwatch("L124", "Lee", "124", "Dark Green", "Saturated", 0.215, 0.565, 22.0),
-    GelSwatch("L126", "Lee", "126", "Mauve", "Saturated", 0.335, 0.155, 4.5),
-    GelSwatch("L132", "Lee", "132", "Medium Blue", "Cool", 0.148, 0.142, 8.2),
-    GelSwatch("L136", "Lee", "136", "Pale Lavender", "Cosmetic", 0.305, 0.285, 52.0),
-    GelSwatch("L139", "Lee", "139", "Primary Green", "Saturated", 0.225, 0.655, 12.0),
-    GelSwatch("L170", "Lee", "170", "Deep Lavender", "Cool", 0.265, 0.215, 24.0),
-    GelSwatch("L181", "Lee", "181", "Congo Blue", "Saturated", 0.152, 0.048, 0.8),
-    GelSwatch("L195", "Lee", "195", "Zenith Blue", "Saturated", 0.144, 0.068, 2.8),
-    GelSwatch("L728", "Lee", "728", "Steel Green", "Cool", 0.262, 0.338, 48.0),
-    GelSwatch("R68", "Rosco", "68", "Parry Sky Blue", "Cool", 0.168, 0.205, 13.5),
-    GelSwatch("R80", "Rosco", "80", "Primary Blue", "Saturated", 0.146, 0.115, 7.0),
-    GelSwatch("R382", "Rosco", "382", "Congo Blue", "Saturated", 0.154, 0.050, 0.9),
-    # Additional standard theatre Lee & Rosco filters
-    GelSwatch("L101", "Lee", "101", "Yellow", "Warm", 0.480, 0.490, 79.0),
-    GelSwatch("L111", "Lee", "111", "Dark Pink", "Saturated", 0.430, 0.200, 14.0),
-    GelSwatch("L118", "Lee", "118", "Light Blue", "Cool", 0.155, 0.245, 22.0),
-    GelSwatch("L151", "Lee", "151", "Gold Tint", "Cosmetic", 0.365, 0.368, 82.0),
-    GelSwatch("L156", "Lee", "156", "Chocolate", "Cosmetic", 0.415, 0.365, 42.0),
-    GelSwatch("L161", "Lee", "161", "Slate Blue", "Cool", 0.215, 0.275, 41.0),
-    GelSwatch("L174", "Lee", "174", "Dark Steel Blue", "Cool", 0.220, 0.260, 38.0),
-    GelSwatch(
-        "L200", "Lee", "200", "Double C.T. Blue", "Correction", 0.215, 0.210, 18.0
-    ),
-    GelSwatch(
-        "L207",
-        "Lee",
-        "207",
-        "Full C.T. Orange + .3ND",
-        "Correction",
-        0.440,
-        0.405,
-        29.0,
-    ),
-    GelSwatch(
-        "L208",
-        "Lee",
-        "208",
-        "Full C.T. Orange + .6ND",
-        "Correction",
-        0.440,
-        0.405,
-        14.5,
-    ),
-    GelSwatch(
-        "L500", "Lee", "500", "Double New Colour Blue", "Cool", 0.268, 0.280, 52.0
-    ),
-    GelSwatch("R09", "Rosco", "09", "Pale Amber Gold", "Warm", 0.388, 0.382, 74.0),
-    GelSwatch("R36", "Rosco", "36", "Medium Pink", "Cosmetic", 0.410, 0.270, 44.0),
-    GelSwatch("R51", "Rosco", "51", "Surprise Pink", "Cosmetic", 0.335, 0.275, 52.0),
-    GelSwatch("R60", "Rosco", "60", "No Color Blue", "Cool", 0.295, 0.312, 74.0),
-    GelSwatch(
-        "R119", "Rosco", "119", "Light Hamburg Frost", "Correction", 0.313, 0.329, 85.0
-    ),
+def _gel_sort_key(gel: GelSwatch) -> tuple[str, int, str]:
+    """Return natural sort key (manufacturer, numeric gel number, code)."""
+    digits = "".join(ch for ch in gel.number if ch.isdigit())
+    num_val = int(digits) if digits else 0
+    return (gel.manufacturer.casefold(), num_val, gel.code.casefold())
+
+
+GEL_LIBRARY: tuple[GelSwatch, ...] = tuple(
+    sorted(
+        (
+            # Correction (CTB / CTO / Plus & Minus Green)
+            GelSwatch(
+                "L201", "Lee", "201", "Full C.T. Blue", "Correction", 0.246, 0.254, 36.0
+            ),
+            GelSwatch(
+                "L202", "Lee", "202", "Half C.T. Blue", "Correction", 0.276, 0.289, 55.0
+            ),
+            GelSwatch(
+                "L203",
+                "Lee",
+                "203",
+                "Quarter C.T. Blue",
+                "Correction",
+                0.295,
+                0.310,
+                72.0,
+            ),
+            GelSwatch(
+                "L204",
+                "Lee",
+                "204",
+                "Full C.T. Orange",
+                "Correction",
+                0.440,
+                0.405,
+                58.0,
+            ),
+            GelSwatch(
+                "L205",
+                "Lee",
+                "205",
+                "Half C.T. Orange",
+                "Correction",
+                0.382,
+                0.377,
+                71.0,
+            ),
+            GelSwatch(
+                "L206",
+                "Lee",
+                "206",
+                "Quarter C.T. Orange",
+                "Correction",
+                0.348,
+                0.355,
+                81.0,
+            ),
+            GelSwatch(
+                "L244", "Lee", "244", "Lee Plus Green", "Correction", 0.335, 0.405, 74.0
+            ),
+            GelSwatch(
+                "L247",
+                "Lee",
+                "247",
+                "Lee Minus Green",
+                "Correction",
+                0.345,
+                0.285,
+                55.0,
+            ),
+            GelSwatch(
+                "R3202",
+                "Rosco",
+                "3202",
+                "Full Blue (CTB)",
+                "Correction",
+                0.248,
+                0.256,
+                36.0,
+            ),
+            GelSwatch(
+                "R3407",
+                "Rosco",
+                "3407",
+                "Roscosun CTO",
+                "Correction",
+                0.438,
+                0.404,
+                58.0,
+            ),
+            # Warm / Amber / Red / Cosmetic
+            GelSwatch(
+                "L002", "Lee", "002", "Rose Pink", "Cosmetic", 0.425, 0.245, 32.0
+            ),
+            GelSwatch(
+                "L004",
+                "Lee",
+                "004",
+                "Medium Bastard Amber",
+                "Cosmetic",
+                0.372,
+                0.348,
+                66.0,
+            ),
+            GelSwatch(
+                "L009", "Lee", "009", "Pale Amber Gold", "Warm", 0.388, 0.382, 74.0
+            ),
+            GelSwatch(
+                "L017", "Lee", "017", "Surprise Peach", "Warm", 0.448, 0.365, 42.0
+            ),
+            GelSwatch("L021", "Lee", "021", "Gold Amber", "Warm", 0.565, 0.405, 31.0),
+            GelSwatch(
+                "L026", "Lee", "026", "Bright Red", "Saturated", 0.680, 0.308, 9.5
+            ),
+            GelSwatch("L103", "Lee", "103", "Straw", "Warm", 0.368, 0.385, 81.0),
+            GelSwatch(
+                "L106", "Lee", "106", "Primary Red", "Saturated", 0.692, 0.302, 9.3
+            ),
+            GelSwatch(
+                "L128", "Lee", "128", "Bright Pink", "Saturated", 0.450, 0.210, 15.0
+            ),
+            GelSwatch(
+                "L135", "Lee", "135", "Deep Golden Amber", "Warm", 0.618, 0.375, 19.0
+            ),
+            GelSwatch(
+                "L152", "Lee", "152", "Pale Gold", "Cosmetic", 0.375, 0.362, 72.0
+            ),
+            GelSwatch(
+                "L162", "Lee", "162", "Bastard Amber", "Cosmetic", 0.362, 0.352, 78.0
+            ),
+            GelSwatch(
+                "L164", "Lee", "164", "Flame Red", "Saturated", 0.665, 0.322, 15.0
+            ),
+            GelSwatch(
+                "R02", "Rosco", "02", "Bastard Amber", "Cosmetic", 0.365, 0.350, 78.0
+            ),
+            GelSwatch("R21", "Rosco", "21", "Golden Amber", "Warm", 0.562, 0.406, 32.0),
+            GelSwatch(
+                "R26", "Rosco", "26", "Light Red", "Saturated", 0.678, 0.310, 11.0
+            ),
+            GelSwatch(
+                "R33", "Rosco", "33", "No Color Pink", "Cosmetic", 0.352, 0.322, 68.0
+            ),
+            # Cool / Blue / Cyan / Green / Lavender
+            GelSwatch("L068", "Lee", "068", "Sky Blue", "Cool", 0.165, 0.215, 14.0),
+            GelSwatch("L079", "Lee", "079", "Just Blue", "Cool", 0.145, 0.125, 6.5),
+            GelSwatch("L115", "Lee", "115", "Peacock Blue", "Cool", 0.175, 0.345, 32.0),
+            GelSwatch(
+                "L116", "Lee", "116", "Medium Blue-Green", "Cool", 0.155, 0.375, 16.0
+            ),
+            GelSwatch("L117", "Lee", "117", "Steel Blue", "Cool", 0.245, 0.295, 55.0),
+            GelSwatch(
+                "L119", "Lee", "119", "Dark Blue", "Saturated", 0.140, 0.085, 3.1
+            ),
+            GelSwatch(
+                "L120", "Lee", "120", "Deep Blue", "Saturated", 0.142, 0.062, 1.5
+            ),
+            GelSwatch(
+                "L124", "Lee", "124", "Dark Green", "Saturated", 0.215, 0.565, 22.0
+            ),
+            GelSwatch("L126", "Lee", "126", "Mauve", "Saturated", 0.335, 0.155, 4.5),
+            GelSwatch("L132", "Lee", "132", "Medium Blue", "Cool", 0.148, 0.142, 8.2),
+            GelSwatch(
+                "L136", "Lee", "136", "Pale Lavender", "Cosmetic", 0.305, 0.285, 52.0
+            ),
+            GelSwatch(
+                "L139", "Lee", "139", "Primary Green", "Saturated", 0.225, 0.655, 12.0
+            ),
+            GelSwatch(
+                "L170", "Lee", "170", "Deep Lavender", "Cool", 0.265, 0.215, 24.0
+            ),
+            GelSwatch(
+                "L181", "Lee", "181", "Congo Blue", "Saturated", 0.152, 0.048, 0.8
+            ),
+            GelSwatch(
+                "L195", "Lee", "195", "Zenith Blue", "Saturated", 0.144, 0.068, 2.8
+            ),
+            GelSwatch("L728", "Lee", "728", "Steel Green", "Cool", 0.262, 0.338, 48.0),
+            GelSwatch(
+                "R68", "Rosco", "68", "Parry Sky Blue", "Cool", 0.168, 0.205, 13.5
+            ),
+            GelSwatch(
+                "R80", "Rosco", "80", "Primary Blue", "Saturated", 0.146, 0.115, 7.0
+            ),
+            GelSwatch(
+                "R382", "Rosco", "382", "Congo Blue", "Saturated", 0.154, 0.050, 0.9
+            ),
+            # Additional standard theatre Lee & Rosco filters
+            GelSwatch("L101", "Lee", "101", "Yellow", "Warm", 0.480, 0.490, 79.0),
+            GelSwatch(
+                "L111", "Lee", "111", "Dark Pink", "Saturated", 0.430, 0.200, 14.0
+            ),
+            GelSwatch("L118", "Lee", "118", "Light Blue", "Cool", 0.155, 0.245, 22.0),
+            GelSwatch(
+                "L151", "Lee", "151", "Gold Tint", "Cosmetic", 0.365, 0.368, 82.0
+            ),
+            GelSwatch(
+                "L156", "Lee", "156", "Chocolate", "Cosmetic", 0.415, 0.365, 42.0
+            ),
+            GelSwatch("L161", "Lee", "161", "Slate Blue", "Cool", 0.215, 0.275, 41.0),
+            GelSwatch(
+                "L174", "Lee", "174", "Dark Steel Blue", "Cool", 0.220, 0.260, 38.0
+            ),
+            GelSwatch(
+                "L200",
+                "Lee",
+                "200",
+                "Double C.T. Blue",
+                "Correction",
+                0.215,
+                0.210,
+                18.0,
+            ),
+            GelSwatch(
+                "L207",
+                "Lee",
+                "207",
+                "Full C.T. Orange + .3ND",
+                "Correction",
+                0.440,
+                0.405,
+                29.0,
+            ),
+            GelSwatch(
+                "L208",
+                "Lee",
+                "208",
+                "Full C.T. Orange + .6ND",
+                "Correction",
+                0.440,
+                0.405,
+                14.5,
+            ),
+            GelSwatch(
+                "L500",
+                "Lee",
+                "500",
+                "Double New Colour Blue",
+                "Cool",
+                0.268,
+                0.280,
+                52.0,
+            ),
+            GelSwatch(
+                "R09", "Rosco", "09", "Pale Amber Gold", "Warm", 0.388, 0.382, 74.0
+            ),
+            GelSwatch(
+                "R36", "Rosco", "36", "Medium Pink", "Cosmetic", 0.410, 0.270, 44.0
+            ),
+            GelSwatch(
+                "R51", "Rosco", "51", "Surprise Pink", "Cosmetic", 0.335, 0.275, 52.0
+            ),
+            GelSwatch(
+                "R60", "Rosco", "60", "No Color Blue", "Cool", 0.295, 0.312, 74.0
+            ),
+            GelSwatch(
+                "R119",
+                "Rosco",
+                "119",
+                "Light Hamburg Frost",
+                "Correction",
+                0.313,
+                0.329,
+                85.0,
+            ),
+        ),
+        key=_gel_sort_key,
+    )
 )
 
 
