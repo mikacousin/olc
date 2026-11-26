@@ -204,6 +204,16 @@ class ShowResetUserLevelsAction(Action):
         self.execute()
 
 
+def _detect_file_type(path: str) -> FileType:
+    """Determine ``FileType`` from the file extension."""
+    ext = "".join([s for s in pathlib.Path(path).suffixes if " " not in s]).lower()
+    if ext == ".asc":
+        return FileType.ASCII
+    if ext in (".esf3d", ".esf2"):
+        return FileType.ESF3D
+    return FileType.OLC
+
+
 class ShowOpenAction(Action):
     """Action to open and load a show file."""
 
@@ -231,8 +241,7 @@ class ShowOpenAction(Action):
         if not os.path.exists(path):
             raise FileNotFoundError(f"File not found: {path}")
 
-        ext = "".join([s for s in pathlib.Path(path).suffixes if " " not in s]).lower()
-        file_type = FileType.ASCII if ext == ".asc" else FileType.OLC
+        file_type = _detect_file_type(path)
 
         file_path_obj = pathlib.Path(path)
         lightshow = self.app.lightshow
@@ -526,8 +535,7 @@ class ShowImportAction(Action):
         if self._snapshot is None:
             self._snapshot = self._take_snapshot()
 
-        ext = "".join([s for s in pathlib.Path(path).suffixes if " " not in s]).lower()
-        file_type = FileType.ASCII if ext == ".asc" else FileType.OLC
+        file_type = _detect_file_type(path)
 
         file_path_obj = pathlib.Path(path)
         lightshow = self.app.lightshow

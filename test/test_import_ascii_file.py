@@ -10,6 +10,7 @@ gi.require_version("Gtk", "3.0")
 from charset_normalizer import from_bytes  # noqa: E402
 from gi.repository import Gio  # noqa: E402
 
+from olc.files.ascii.parser import AsciiParser  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.show.lightshow import LightShow  # noqa: E402
@@ -45,6 +46,7 @@ def test_import(monkeypatch: pytest.MonkeyPatch) -> None:
     # Synchronous parsing execution
     _success, data, _etag = gfile.load_contents(None)
 
+    assert isinstance(imported.parser, AsciiParser)
     imported.parser.contents = str(from_bytes(data).best())
     imported.parser.parse()
     imported.data.clean()

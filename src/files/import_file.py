@@ -19,6 +19,7 @@ import typing
 
 from olc.dmx_engine.universe_config import Protocol
 from olc.files.ascii.parser import AsciiParser
+from olc.files.eos.parser import Esf3dParser
 from olc.files.file_type import FileType
 from olc.files.import_types import Action
 from olc.files.olc.parser import OlcParser
@@ -74,7 +75,7 @@ class ImportFile:
     file_type: FileType
     data: ParsedData
     actions: dict
-    parser: AsciiParser | OlcParser
+    parser: AsciiParser | OlcParser | Esf3dParser
     window: typing.Any | None
     midi: Midi | None
     settings: typing.Any | None
@@ -122,6 +123,16 @@ class ImportFile:
             else:
                 default_time = 5.0
             self.parser = AsciiParser(
+                typing.cast("olc.files.import_file.ImportFile", self),
+                default_time,
+                importation=importation,
+            )
+        elif self.file_type is FileType.ESF3D:
+            if self.settings:
+                default_time = self.settings.get_double("default-time")
+            else:
+                default_time = 5.0
+            self.parser = Esf3dParser(
                 typing.cast("olc.files.import_file.ImportFile", self),
                 default_time,
                 importation=importation,

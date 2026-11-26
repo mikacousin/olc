@@ -20,3 +20,4 @@ class FileType(Enum):
 
     ASCII = auto()
     OLC = auto()
+    ESF3D = auto()

@@ -407,6 +407,11 @@ class Application(Gtk.Application):
         filter_text.add_pattern("*.[Oo][Ll][Cc]")
         open_dialog.add_filter(filter_text)
         filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("ETC Eos Files"))
+        filter_text.add_pattern("*.[Ee][Ss][Ff]3[Dd]")
+        filter_text.add_pattern("*.[Ee][Ss][Ff]2")
+        open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
         filter_text.set_name(_("All Files"))
         filter_text.add_pattern("*")
         open_dialog.add_filter(filter_text)
@@ -440,8 +445,18 @@ class Application(Gtk.Application):
         filter_text.add_pattern("*.[Aa][Ss][Cc]")
         open_dialog.add_filter(filter_text)
         filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("ETC Eos Files"))
+        filter_text.add_pattern("*.[Ee][Ss][Ff]3[Dd]")
+        filter_text.add_pattern("*.[Ee][Ss][Ff]2")
+        open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
         filter_text.set_name(_("OLC Files"))
         filter_text.add_pattern("*.[Oo][Ll][Cc]")
+        open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("ETC Eos Files"))
+        filter_text.add_pattern("*.[Ee][Ss][Ff]3[Dd]")
+        filter_text.add_pattern("*.[Ee][Ss][Ff]2")
         open_dialog.add_filter(filter_text)
         filter_text = Gtk.FileFilter()
         filter_text.set_name(_("All Files"))
@@ -461,6 +476,8 @@ class Application(Gtk.Application):
             ).lower()
             if extension == ".asc":
                 file_type = FileType.ASCII
+            elif extension in (".esf3d", ".esf2"):
+                file_type = FileType.ESF3D
             elif extension == ".olc":
                 file_type = FileType.OLC
             else:
