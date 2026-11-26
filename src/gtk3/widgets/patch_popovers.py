@@ -147,7 +147,10 @@ class FixtureSelectionPopover(Gtk.Popover):
             child.destroy()
         self._row_keys.clear()
 
-        matches: list[FixtureDefinition] = self._library.search(query)
+        matches: list[FixtureDefinition] = sorted(
+            self._library.search(query),
+            key=lambda d: (d.manufacturer.casefold(), d.model.casefold()),
+        )
         for fdef in matches[:50]:
             row = Gtk.ListBoxRow()
             key = f"{fdef.manufacturer}:{fdef.model}"

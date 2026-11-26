@@ -694,3 +694,63 @@ def test_patch_channels_tab_minimum_width_is_compact(app_gui: Application) -> No
 
     min_w, _nat_w = patch_tab.get_preferred_width()
     assert min_w <= 500
+
+
+def test_add_device_and_exchange_dialogs_sort_fixtures(app_gui: Application) -> None:
+    """Verify AddDeviceDialog and FixtureExchangeDialog sort fixtures alphabetically."""
+    from olc.devices.channel import ChannelType
+    from olc.devices.fixture import (
+        ChannelDefinition,
+        DmxModeDefinition,
+        FixtureDefinition,
+        FixtureLibrary,
+    )
+    from olc.gtk3.dialogs.patch_device import AddDeviceDialog, FixtureExchangeDialog
+
+    lib = FixtureLibrary()
+    for mfg, model in [
+        ("Zebra", "Spot"),
+        ("Generic", "Dimmer"),
+        ("martin", "MAC"),
+        ("Ayrton", "Ghibli"),
+    ]:
+        lib.register(
+            FixtureDefinition(
+                manufacturer=mfg,
+                model=model,
+                dmx_modes=[
+                    DmxModeDefinition(
+                        "Std", [ChannelDefinition(ChannelType.INTENSITY, 0)]
+                    )
+                ],
+            )
+        )
+
+    add_dlg = AddDeviceDialog(
+        parent=app_gui.window,
+        patch=app_gui.core.lightshow.patch,
+        library=lib,
+    )
+    add_model = add_dlg.profile_combo.get_model()
+    assert add_model is not None
+    add_entries = [row[0] for row in add_model]
+    assert add_entries == [
+        "Ayrton:Ghibli",
+        "Generic:Dimmer",
+        "martin:MAC",
+        "Zebra:Spot",
+    ]
+    assert add_dlg.profile_combo.get_active_text() == "Generic:Dimmer"
+    add_dlg.destroy()
+
+    ex_dlg = FixtureExchangeDialog(
+        parent=app_gui.window,
+        patch=app_gui.core.lightshow.patch,
+        library=lib,
+        device_id=1,
+    )
+    ex_model = ex_dlg.profile_combo.get_model()
+    assert ex_model is not None
+    ex_entries = [row[0] for row in ex_model]
+    assert ex_entries == ["Ayrton:Ghibli", "Generic:Dimmer", "martin:MAC", "Zebra:Spot"]
+    ex_dlg.destroy()

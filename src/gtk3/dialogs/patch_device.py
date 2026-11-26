@@ -86,9 +86,13 @@ class AddDeviceDialog(Gtk.Dialog):
         # Fixture profile
         grid.attach(Gtk.Label(label="Fixture Profile:", xalign=0), 0, 2, 1, 1)
         self.profile_combo = Gtk.ComboBoxText()
-        for key in self.library.keys():
+        sorted_keys = sorted(self.library.keys(), key=str.casefold)
+        for key in sorted_keys:
             self.profile_combo.append_text(key)
-        self.profile_combo.set_active(0)
+        if "Generic:Dimmer" in sorted_keys:
+            self.profile_combo.set_active(sorted_keys.index("Generic:Dimmer"))
+        elif sorted_keys:
+            self.profile_combo.set_active(0)
         self.profile_combo.connect("changed", self._on_profile_changed)
         grid.attach(self.profile_combo, 1, 2, 1, 1)
 
@@ -237,9 +241,11 @@ class FixtureExchangeDialog(Gtk.Dialog):
         # New Fixture Profile
         grid.attach(Gtk.Label(label="New Profile:", xalign=0), 0, 1, 1, 1)
         self.profile_combo = Gtk.ComboBoxText()
-        for key in self.library.keys():
+        sorted_keys = sorted(self.library.keys(), key=str.casefold)
+        for key in sorted_keys:
             self.profile_combo.append_text(key)
-        self.profile_combo.set_active(0)
+        if sorted_keys:
+            self.profile_combo.set_active(0)
         self.profile_combo.connect("changed", self._on_profile_changed)
         grid.attach(self.profile_combo, 1, 1, 1, 1)
 
