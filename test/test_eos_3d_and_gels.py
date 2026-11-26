@@ -96,8 +96,14 @@ def test_eos_ascii_imports_3d_position_orientation_beam_and_gels(
             "   Text Face PC",
             "   $$TextGel L203",
             "   $$Position -3.0 -5.0 8.0",
-            "   $$Orientation 30 0 0",
+            "   $$Orientation -30 0 0",
             "   $$Data BeamAngle 40",
+            "$Patch 3 0 11 1",
+            "   $$Position 1.78 1.76 0.1",
+            "   $$Orientation 40 180 -45.39",
+            "$Patch 4 0 12 1",
+            "   $$Position 1.5 0.0 6.75",
+            "   $$Orientation -27 0 90",
             "EndData",
         ]
     )
@@ -126,3 +132,18 @@ def test_eos_ascii_imports_3d_position_orientation_beam_and_gels(
     assert dev2.beam_angle == pytest.approx(40.0)
     assert dev2.gel == "L203"
     assert dev2.effective_gel_color == resolve_gel_hex("L203")
+
+    # Floor fixture at (+1.78, +1.76, 0.1) aimed upward and inward toward (0, 0)
+    dev3 = ls.patch.get_device(3)
+    assert dev3 is not None
+    assert dev3.orientation == pytest.approx((-45.39, 180.0, -40.0))
+    assert dev3.focus_point[0] < 1.78
+    assert dev3.focus_point[1] < 1.76
+    assert dev3.focus_point[2] > 0.1
+
+    # Overhead ring fixture at (+1.5, 0.0, 6.75) aimed downward and inward toward (0, 0)
+    dev4 = ls.patch.get_device(4)
+    assert dev4 is not None
+    assert dev4.orientation == pytest.approx((90.0, 0.0, 27.0))
+    assert dev4.focus_point[0] < 1.5
+    assert dev4.focus_point[2] == pytest.approx(0.0)
