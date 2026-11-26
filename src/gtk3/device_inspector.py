@@ -447,16 +447,6 @@ class DeviceInspectorWidget(Gtk.Box):
         self.gobo_flowbox.set_column_spacing(4)
         self.gobo_flowbox.set_row_spacing(4)
 
-        self.gobo_scroll = Gtk.ScrolledWindow()
-        self.gobo_scroll.set_halign(Gtk.Align.START)
-        self.gobo_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.gobo_scroll.set_min_content_height(84)
-        self.gobo_scroll.set_max_content_height(175)
-        self.gobo_scroll.set_max_content_width(360)
-        self.gobo_scroll.set_propagate_natural_width(True)
-        self.gobo_scroll.set_propagate_natural_height(True)
-        self.gobo_scroll.add(self.gobo_flowbox)
-
         self.gobo_combo = Gtk.ComboBoxText()
         self.gobo_combo.set_no_show_all(True)
         self.gobo_combo.set_visible(False)
@@ -476,7 +466,7 @@ class DeviceInspectorWidget(Gtk.Box):
         self.prism_scale.connect("value-changed", self._on_prism_scale_changed)
         gobo_box.pack_start(self.gobos_header_label, False, False, 0)
         gobo_box.pack_start(self.gobo_wheel_box, False, False, 0)
-        gobo_box.pack_start(self.gobo_scroll, False, False, 0)
+        gobo_box.pack_start(self.gobo_flowbox, False, False, 0)
         gobo_box.pack_start(self.gobo_combo, False, False, 0)
         gobo_box.pack_start(self.gobo_value_label, False, False, 0)
         gobo_box.pack_start(self.gobo_scale, False, False, 0)
@@ -1476,9 +1466,9 @@ class DeviceInspectorWidget(Gtk.Box):
                 _get_gobo_btn_css(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )
             btn.connect("toggled", self._on_gobo_wheel_selected, idx)
+            btn.show()
             self._gobo_wheel_buttons.append(btn)
             self.gobo_wheel_box.pack_start(btn, False, False, 0)
-        self.gobo_wheel_box.show_all()
         self.gobo_wheel_box.set_visible(True)
 
     def _refresh_gobo_grid(self, lead: LightingDevice | None) -> None:

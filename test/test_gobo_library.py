@@ -252,12 +252,8 @@ def test_device_inspector_gobo_grid_scroll_and_cache() -> None:
     assert isinstance(inspector.position_page, Gtk.ScrolledWindow)
     assert isinstance(inspector.color_page, Gtk.ScrolledWindow)
     assert isinstance(inspector.beam_page, Gtk.ScrolledWindow)
-    assert isinstance(inspector.gobo_scroll, Gtk.ScrolledWindow)
     assert inspector.gobo_flowbox.get_max_children_per_line() == 5
     assert inspector.gobo_flowbox.get_halign() == Gtk.Align.START
-    assert inspector.gobo_scroll.get_halign() == Gtk.Align.START
-    assert inspector.gobo_scroll.get_max_content_width() <= 380
-    assert inspector.gobo_scroll.get_max_content_height() <= 180
 
     inspector.set_selected_channels([11])
     inspector.stack.set_visible_child_name("beam")
@@ -268,7 +264,8 @@ def test_device_inspector_gobo_grid_scroll_and_cache() -> None:
 
     min_w, _nat_w = inspector.get_preferred_width()
     assert min_w <= 420
-    assert inspector.gobo_scroll.get_allocation().width <= 400
+    assert inspector.gobo_flowbox.get_allocation().width <= 420
+    assert inspector.gobo_flowbox.get_allocation().height >= 140
     assert inspector.gobo_combo.get_visible() is True
 
     first_children = list(inspector.gobo_flowbox.get_children())
@@ -344,11 +341,15 @@ def test_device_inspector_multi_gobo_wheels_and_eos_gobo2() -> None:
     win.show_all()
 
     inspector.set_selected_channels([20])
-    while Gtk.events_pending():
-        Gtk.main_iteration()
+    inspector.stack.set_visible_child_name("beam")
+    for _ in range(5):
+        while Gtk.events_pending():
+            Gtk.main_iteration()
 
     assert inspector.gobo_wheel_box.get_visible() is True
     assert len(inspector._gobo_wheel_buttons) == 2
+    assert all(b.get_visible() for b in inspector._gobo_wheel_buttons)
+    assert inspector.gobo_wheel_box.get_allocation().height > 10
     assert len(inspector.gobo_flowbox.get_children()) == 2
 
     # Switch to Gobo2 wheel and click "W2 Bars"
