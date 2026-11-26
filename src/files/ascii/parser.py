@@ -43,6 +43,11 @@ from olc.files.ascii.eos_effects import (
     parse_effect_data_value,
     record_eos_effect_line,
 )
+from olc.files.ascii.gdtf_matcher import (
+    GdtfMatchResult,
+    MatchStatus,
+    match_eos_personality,
+)
 from olc.files.read import ReadFile
 from olc.show.curve import LimitCurve
 from olc.show.fader import LEGACY_FADER_TYPE_GROUP, FaderType
@@ -138,6 +143,7 @@ class AsciiParser(ReadFile):
         importation: bool = True,
     ) -> None:
         super().__init__(imported, window=imported.window, importation=importation)
+        self._imported = imported
         self.lightshow = imported.lightshow
         self.data = imported.data.data
         self.default_time = default_time
@@ -186,6 +192,8 @@ class AsciiParser(ReadFile):
         self.channel_personality: dict[int, int] = {}
         self._registered_fdefs: dict[tuple[str, str], dict[str, typing.Any]] = {}
         self._pers_fdef_info: dict[int, tuple[dict[str, typing.Any], str]] = {}
+        self._gdtf_matches: dict[int, GdtfMatchResult] = {}
+        self._active_gdtf_offset_maps: dict[int, dict[int, typing.Any]] = {}
         self._palette_raw_params: dict[
             tuple[str, float], dict[int, dict[int, float]]
         ] = {}
@@ -1071,6 +1079,20 @@ class AsciiParser(ReadFile):
         ):
             pers["channels"][-1]["slot_list"][-1]["gobo_id"] = self.args[0].strip()
 
+    def _resolve_gdtf_match(self, pers_id: int) -> GdtfMatchResult | None:
+        """Compute and cache local GDTF match result for *pers_id*."""
+        if pers_id in self._gdtf_matches:
+            return self._gdtf_matches[pers_id]
+        pers = self.personalities.get(pers_id)
+        if pers is None or is_dimmer_personality(pers, self.param_types):
+            return None
+        lib = getattr(self.lightshow, "fixture_library", None)
+        res = match_eos_personality(pers_id, pers, self.param_types, lib)
+        if res is not None:
+            self._gdtf_matches[pers_id] = res
+            self.data.setdefault("gdtf_matches", {})[pers_id] = res.to_summary_dict()
+        return res
+
     def _register_personality_definition(
         self, pers_id: int
     ) -> tuple[dict[str, typing.Any], str] | None:
@@ -1080,6 +1102,30 @@ class AsciiParser(ReadFile):
         pers = self.personalities.get(pers_id)
         if pers is None or is_dimmer_personality(pers, self.param_types):
             return None
+
+        match = self._resolve_gdtf_match(pers_id)
+        actions = getattr(self._imported, "actions", {})
+        use_gdtf = bool(actions.get("use_gdtf_matches", True))
+        overrides = actions.get("gdtf_overrides", {})
+        override = overrides.get(pers_id, overrides.get(str(pers_id), "auto"))
+        if (
+            use_gdtf
+            and override != "eos"
+            and match is not None
+            and match.status in (MatchStatus.COMPATIBLE, MatchStatus.WARNING)
+            and match.gdtf_definition is not None
+            and match.gdtf_mode is not None
+        ):
+            fdef_dict = match.gdtf_definition.to_dict()
+            key = (fdef_dict["manufacturer"].lower(), fdef_dict["model"].lower())
+            if key not in self._registered_fdefs:
+                self._registered_fdefs[key] = fdef_dict
+                self.data.setdefault("fixture_definitions", []).append(fdef_dict)
+            existing = self._registered_fdefs[key]
+            result = (existing, str(match.gdtf_mode.name))
+            self._active_gdtf_offset_maps[pers_id] = match.offset_channel_map
+            self._pers_fdef_info[pers_id] = result
+            return result
 
         fdef_dict = build_fixture_definition(pers_id, pers, self.param_types)
         if fdef_dict is None:
@@ -1920,8 +1966,13 @@ class AsciiParser(ReadFile):
             if store_resolved_key is not None and merged:
                 self._palette_raw_params.setdefault(store_resolved_key, {})[ch] = merged
 
+            gdtf_map = (
+                self._active_gdtf_offset_maps.get(pers_id)
+                if pers_id is not None
+                else None
+            )
             dev_vals, intensity_val = decode_eos_cue_params(
-                list(merged.items()), pers, self.param_types
+                list(merged.items()), pers, self.param_types, gdtf_offset_map=gdtf_map
             )
             if ref_intensity is not None and intensity_val is None:
                 intensity_val = ref_intensity

@@ -112,6 +112,8 @@ class ImportFile:
             "independents": Action.REPLACE,
             "faders": Action.REPLACE,
             "midi": Action.REPLACE,
+            "use_gdtf_matches": True,
+            "gdtf_overrides": {},
         }
 
         if self.file_type is FileType.ASCII:

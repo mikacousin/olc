@@ -544,6 +544,8 @@ def decode_eos_cue_params(
     raw_params: list[tuple[int, float]],
     pers: dict[str, typing.Any] | None,
     param_types: dict[int, str],
+    *,
+    gdtf_offset_map: dict[int, typing.Any] | None = None,
 ) -> tuple[dict[str, typing.Any], float | None]:
     """Convert Eos $$Param pairs into OLC cue device_values and optional intensity."""
     chan_by_param: dict[int, dict[str, typing.Any]] = {}
@@ -563,12 +565,24 @@ def decode_eos_cue_params(
         max_raw = 65535.0 if (num_bytes == 2 or raw_val > 255.0) else 255.0
         norm = max(0.0, min(1.0, raw_val / max_raw))
 
+        gdtf_ch = None
+        if gdtf_offset_map is not None and pc is not None:
+            off_c = int(pc.get("offset_coarse", 0))
+            if off_c >= 1:
+                gdtf_ch = gdtf_offset_map.get(off_c - 1)
+
         if p_name == "intens":
             intensity_val = norm
             dev_vals["intensity"] = norm
         elif p_name in _PHYSICAL_PARAM_NAMES:
             olcname = _PHYSICAL_PARAM_NAMES[p_name]
-            if pc is not None:
+            if gdtf_ch is not None and (
+                float(getattr(gdtf_ch, "physical_min", 0.0)),
+                float(getattr(gdtf_ch, "physical_max", 1.0)),
+            ) != (0.0, 1.0):
+                phys_min = float(gdtf_ch.physical_min)
+                phys_max = float(gdtf_ch.physical_max)
+            elif pc is not None:
                 phys_min, phys_max = _resolve_channel_physical_bounds(pc)
             else:
                 phys_min, phys_max = 0.0, 1.0
@@ -585,7 +599,8 @@ def decode_eos_cue_params(
                 if not isinstance(existing, (int, float)) or norm > float(existing):
                     dev_vals[key] = norm
             elif p_name and (pc is not None or p_name in EOS_GENERIC_PARAM_NAMES):
-                dev_vals[p_name] = norm
+                g_lbl = str(getattr(gdtf_ch, "label", "") or "").strip().lower()
+                dev_vals[g_lbl or p_name] = norm
 
     if rgb:
         r = round(rgb.get("red", 0.0) * 255)

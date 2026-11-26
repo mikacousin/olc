@@ -234,6 +234,20 @@ class ParsedData:
         for fdef_dict in fdefs:
             if isinstance(fdef_dict, dict):
                 fdef = FixtureDefinition.from_dict(fdef_dict)
+                existing = None
+                try:
+                    existing = self.lightshow.fixture_library.get(
+                        fdef.manufacturer, fdef.model
+                    )
+                except KeyError:
+                    existing = None
+                if (
+                    existing is not None
+                    and not getattr(existing, "is_builtin", False)
+                    and getattr(existing, "gdtf_id", "")
+                    and not getattr(fdef, "gdtf_id", "")
+                ):
+                    continue
                 self.lightshow.fixture_library.register(fdef)
 
     def import_patch(self) -> None:
@@ -258,6 +272,12 @@ class ParsedData:
                     if fdef is not None and fdef.color_profile is not None:
                         device.color_profile = fdef.color_profile
                 self.lightshow.patch.restore_device(device)
+                if hasattr(self.lightshow, "gobo_library"):
+                    for ch in getattr(device, "channels", ()):
+                        for r in getattr(ch, "ranges", ()):
+                            gid = str(getattr(r, "gobo_id", "") or "").strip()
+                            if gid and not gid.startswith("builtin:"):
+                                self.lightshow.gobo_library.get(gid)
                 imported_dev_ids.add(int(dev_id))
             self.lightshow.patch.invalidate_cache()
 

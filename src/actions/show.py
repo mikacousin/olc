@@ -540,6 +540,15 @@ class ShowImportAction(Action):
             settings=getattr(self.app, "settings", None),
             importation=True,
         )
+        if self.options:
+            if "use_gdtf_matches" in self.options:
+                imported.actions["use_gdtf_matches"] = bool(
+                    self.options["use_gdtf_matches"]
+                )
+            if isinstance(self.options.get("gdtf_overrides"), dict):
+                imported.actions["gdtf_overrides"] = dict(
+                    self.options["gdtf_overrides"]
+                )
         imported.parse_sync(auto_import=False)
         _apply_import_options(imported, self.options)
 
