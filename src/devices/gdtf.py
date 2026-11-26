@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -135,11 +136,43 @@ def _attr_to_channel_type(attr: str) -> ChannelType:
     return GDTF_ATTRIBUTE_MAP.get(attr, ChannelType.GENERIC)
 
 
-def _infer_fixture_type(name: str, description: str = "") -> FixtureType:
-    text = (name + " " + description).lower()
+_COLOR_MIX_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.RED,
+        ChannelType.GREEN,
+        ChannelType.BLUE,
+        ChannelType.WHITE,
+        ChannelType.AMBER,
+        ChannelType.CYAN,
+        ChannelType.MAGENTA,
+        ChannelType.YELLOW,
+    }
+)
+
+
+def _infer_fixture_type(
+    name: str,
+    description: str = "",
+    dmx_modes: Optional[list[DmxModeDefinition]] = None,
+) -> FixtureType:
+    ctypes = (
+        {ch.channel_type for m in dmx_modes for ch in m.channel_defs}
+        if dmx_modes
+        else set()
+    )
+    if ChannelType.PAN in ctypes or ChannelType.TILT in ctypes:
+        return FixtureType.MOVING_HEAD
+
+    text = f"{name} {description}".lower()
     for keyword, ftype in _FIXTURE_TYPE_KEYWORDS:
-        if keyword in text:
+        if re.search(rf"\b{re.escape(keyword)}\b", text):
             return ftype
+
+    if ctypes:
+        if ctypes <= {ChannelType.INTENSITY}:
+            return FixtureType.DIMMER
+        if ctypes & _COLOR_MIX_CHANNEL_TYPES:
+            return FixtureType.LED_PAR
     return FixtureType.GENERIC
 
 
@@ -270,12 +303,13 @@ class GdtfImporter:
         gdtf_obj: Any,  # noqa: ANN401
         thumbnail: Optional[bytes],
     ) -> FixtureDefinition:
+        dmx_modes = [self._adapt_mode(m) for m in getattr(gdtf_obj, "dmx_modes", [])]
+
         fixture_type = _infer_fixture_type(
             getattr(gdtf_obj, "name", None) or "",
             getattr(gdtf_obj, "description", None) or "",
+            dmx_modes=dmx_modes,
         )
-
-        dmx_modes = [self._adapt_mode(m) for m in getattr(gdtf_obj, "dmx_modes", [])]
 
         color_profile: Optional[FixtureColorProfile] = None
         try:

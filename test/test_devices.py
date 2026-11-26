@@ -1580,3 +1580,72 @@ def test_channel_definition_multibyte_defaults_and_highlight() -> None:
     assert ch_int.value == 255
     ch_int.reset()
     assert ch_int.value == 0
+
+
+def test_gdtf_infer_fixture_type_from_dmx_and_word_boundaries() -> None:
+    """Verify _infer_fixture_type uses Pan/Tilt, word boundaries, and DMX fallbacks."""
+    from olc.devices.gdtf import _infer_fixture_type
+
+    pan_mode = DmxModeDefinition(
+        name="Std",
+        channel_defs=[
+            ChannelDefinition(ChannelType.PAN, 0),
+            ChannelDefinition(ChannelType.TILT, 1),
+        ],
+    )
+    assert (
+        _infer_fixture_type("Diablo", "Classical 3 Series", [pan_mode])
+        is FixtureType.MOVING_HEAD
+    )
+
+    # Word boundary: 'Separate' must not match 'par'
+    ctrl_mode = DmxModeDefinition(
+        name="Ctrl",
+        channel_defs=[ChannelDefinition(ChannelType.GENERIC, 0)],
+    )
+    assert (
+        _infer_fixture_type("Separate control", "", [ctrl_mode]) is FixtureType.GENERIC
+    )
+
+    # DMX fallbacks when text has no keyword
+    dim_mode = DmxModeDefinition(
+        name="1ch",
+        channel_defs=[ChannelDefinition(ChannelType.INTENSITY, 0)],
+    )
+    assert _infer_fixture_type("Channel Box", "", [dim_mode]) is FixtureType.DIMMER
+
+    rgb_mode = DmxModeDefinition(
+        name="3ch",
+        channel_defs=[
+            ChannelDefinition(ChannelType.RED, 0),
+            ChannelDefinition(ChannelType.GREEN, 1),
+            ChannelDefinition(ChannelType.BLUE, 2),
+        ],
+    )
+    assert _infer_fixture_type("Color Brick", "", [rgb_mode]) is FixtureType.LED_PAR
+
+
+def test_gdtf_doc_moving_heads_inferred_as_moving_head() -> None:
+    """Real moving-head GDTFs (T1, Ghibli, Diablo, Arianne) infer MOVING_HEAD."""
+    if not HAS_PYGDTF:
+        pytest.skip("pygdtf not installed")
+    doc_dir = DATA_DIR.parent.parent / "doc"
+    gdtf_files = [
+        doc_dir
+        / (
+            "Robe_Lighting@Robin_T1_Profile@"
+            "2026-07-20_Color_Control_channel_update_2.gdtf"
+        ),
+        doc_dir / "Ayrton@Diablo@V2.61_Add_Emitter_Dimmer.gdtf",
+        doc_dir / "Ayrton@Ghibli@V2.41_Add_Emitter_Dimmer.gdtf",
+        doc_dir
+        / "Robe_Lighting@Robin_Arianne_6@2026-09-25_Control_channel_update.gdtf",
+    ]
+    existing = [p for p in gdtf_files if p.exists()]
+    if not existing:
+        pytest.skip("No doc/*.gdtf files present")
+
+    importer = GdtfImporter()
+    for path in existing:
+        defn = importer.load(path)
+        assert defn.fixture_type is FixtureType.MOVING_HEAD, path.name
