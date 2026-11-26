@@ -1074,6 +1074,218 @@ def test_gdtf_24bit_adaptation() -> None:
     assert cd.ultra_fine_offset == 2
 
 
+def test_gdtf_16bit_multifunction_range_scaling() -> None:
+    importer = GdtfImporter()
+    color_ch = {
+        "attribute": "Color1",
+        "offset": [18, 19],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "Color1 1",
+                        "attribute": "Color1",
+                        "dmx_from": 0,
+                        "dmx_to": 7167,
+                        "default": 0,
+                    },
+                    {
+                        "name": "Color1 Index",
+                        "attribute": "Color1",
+                        "dmx_from": 7168,
+                        "dmx_to": 32767,
+                        "default": 7168,
+                    },
+                    {
+                        "name": "Rainbow",
+                        "attribute": "Color1WheelSpin",
+                        "dmx_from": 32768,
+                        "dmx_to": 65535,
+                        "default": 48640,
+                    },
+                ]
+            }
+        ],
+    }
+    gobo_pos_ch = {
+        "attribute": "Gobo1Pos",
+        "offset": [29, 30],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "Gobo1Index",
+                        "attribute": "Gobo1Pos",
+                        "dmx_from": 0,
+                        "dmx_to": 32512,
+                        "default": 0,
+                    },
+                    {
+                        "name": "Gobo1Rotation",
+                        "attribute": "Gobo1PosRotate",
+                        "dmx_from": 32513,
+                        "dmx_to": 65535,
+                        "default": 48640,
+                    },
+                ]
+            }
+        ],
+    }
+
+    cd_color = importer._adapt_channel(color_ch)
+    assert cd_color is not None
+    assert [(r.value_min, r.value_max, r.snap_value) for r in cd_color.ranges] == [
+        (0, 27, 0),
+        (28, 127, 28),
+        (128, 255, 190),
+    ]
+
+    cd_gobo = importer._adapt_channel(gobo_pos_ch)
+    assert cd_gobo is not None
+    assert [(r.value_min, r.value_max, r.snap_value) for r in cd_gobo.ranges] == [
+        (0, 127, 0),
+        (128, 255, 190),
+    ]
+
+    fix_def = FixtureDefinition(
+        "Test",
+        "16bitMulti",
+        dmx_modes=[DmxModeDefinition("Std", channel_defs=[cd_color, cd_gobo])],
+    )
+    dev = fix_def.instantiate(fixture_id=1, label="F1", universe=1, address=1)
+    assert len(dev.channels) == 4
+
+
+def test_gdtf_24bit_multifunction_range_scaling() -> None:
+    importer = GdtfImporter()
+    gdtf_channel = {
+        "attribute": "Focus1",
+        "offset": [1, 2, 3],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "FocusNear",
+                        "attribute": "Focus1",
+                        "dmx_from": 0,
+                        "dmx_to": 8388607,
+                        "default": 0,
+                    },
+                    {
+                        "name": "FocusFar",
+                        "attribute": "Focus1",
+                        "dmx_from": 8388608,
+                        "dmx_to": 16777215,
+                        "default": 12582912,
+                    },
+                ]
+            }
+        ],
+    }
+    cd = importer._adapt_channel(gdtf_channel)
+    assert cd is not None
+    assert [(r.value_min, r.value_max, r.snap_value) for r in cd.ranges] == [
+        (0, 127, 0),
+        (128, 255, 192),
+    ]
+    fix_def = FixtureDefinition(
+        "Test",
+        "24bitMulti",
+        dmx_modes=[DmxModeDefinition("Std", channel_defs=[cd])],
+    )
+    dev = fix_def.instantiate(fixture_id=1, label="F1", universe=1, address=1)
+    assert len(dev.channels) == 3
+
+
+def test_gdtf_overlapping_mode_dependent_ranges() -> None:
+    importer = GdtfImporter()
+    ch_16 = {
+        "attribute": "Gobo1Pos",
+        "offset": [1, 2],
+        "default": 32768,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "GoboPosIndex",
+                        "attribute": "Gobo1Pos",
+                        "dmx_from": 0,
+                        "dmx_to": 65535,
+                        "default": 32768,
+                    },
+                    {
+                        "name": "goboStepRotation",
+                        "attribute": "Gobo1PosRotate",
+                        "dmx_from": 0,
+                        "dmx_to": 65535,
+                        "default": 32768,
+                    },
+                    {
+                        "name": "GoboShakeIndex",
+                        "attribute": "Gobo1Pos",
+                        "dmx_from": 0,
+                        "dmx_to": 65535,
+                        "default": 32768,
+                    },
+                ]
+            }
+        ],
+    }
+    ch_8 = {
+        "attribute": "Gobo1Pos",
+        "offset": [3],
+        "default": 128,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "name": "GoboPosIndex",
+                        "attribute": "Gobo1Pos",
+                        "dmx_from": 0,
+                        "dmx_to": 255,
+                        "default": 128,
+                    },
+                    {
+                        "name": "goboStepRotation",
+                        "attribute": "Gobo1PosRotate",
+                        "dmx_from": 0,
+                        "dmx_to": 255,
+                        "default": 128,
+                    },
+                    {
+                        "name": "GoboShakeIndex",
+                        "attribute": "Gobo1Pos",
+                        "dmx_from": 0,
+                        "dmx_to": 255,
+                        "default": 128,
+                    },
+                ]
+            }
+        ],
+    }
+    cd_16 = importer._adapt_channel(ch_16)
+    cd_8 = importer._adapt_channel(ch_8)
+    assert cd_16 is not None
+    assert cd_8 is not None
+    assert len(cd_16.ranges) == 1
+    assert cd_16.ranges[0].label == "GoboPosIndex"
+    assert (cd_16.ranges[0].value_min, cd_16.ranges[0].value_max) == (0, 255)
+    assert len(cd_8.ranges) == 1
+    assert cd_8.ranges[0].label == "GoboPosIndex"
+    assert (cd_8.ranges[0].value_min, cd_8.ranges[0].value_max) == (0, 255)
+
+    fix_def = FixtureDefinition(
+        "Test",
+        "OverlapModes",
+        dmx_modes=[DmxModeDefinition("Std", channel_defs=[cd_16, cd_8])],
+    )
+    dev = fix_def.instantiate(fixture_id=1, label="F1", universe=1, address=1)
+    assert len(dev.channels) == 3
+
+
 def test_substep_accumulation_8bit_vs_float() -> None:
     """Verify micro-stepping (0.05 deg) accumulates in float on 8-bit fixtures."""
     mode = DmxModeDefinition(

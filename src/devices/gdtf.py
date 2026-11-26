@@ -147,6 +147,59 @@ def _resolve_physical_bounds(
     return def_min, def_max, def_unit
 
 
+def _resolve_bit_shift(functions: list[dict[str, Any]]) -> int:
+    """Determine bit shift needed to downscale GDTF channel functions to 8-bit."""
+    max_val = 0
+    for cf in functions:
+        for key in ("dmx_from", "dmx_to", "default"):
+            val = cf.get(key)
+            if isinstance(val, int) and val > max_val:
+                max_val = val
+    if max_val > 0xFFFFFF:
+        return 24
+    if max_val > 0xFFFF:
+        return 16
+    if max_val > 0xFF:
+        return 8
+    return 0
+
+
+def _normalize_ranges(ranges: list[ChannelRange]) -> list[ChannelRange]:
+    """Sort and clamp overlapping ChannelRanges so coarse 8-bit bounds are disjoint."""
+    if len(ranges) <= 1:
+        return ranges
+    sorted_ranges = sorted(ranges, key=lambda r: (r.value_min, r.value_max))
+    normalized: list[ChannelRange] = []
+    prev_hi = -1
+    for r in sorted_ranges:
+        lo = r.value_min
+        hi = r.value_max
+        if lo <= prev_hi:
+            lo = prev_hi + 1
+        if lo > hi:
+            continue
+        snap = max(lo, min(hi, r.snap_value)) if r.snap_value is not None else None
+        if lo != r.value_min or hi != r.value_max or snap != r.snap_value:
+            normalized.append(
+                ChannelRange(
+                    label=r.label,
+                    channel_type=r.channel_type,
+                    value_min=lo,
+                    value_max=hi,
+                    snap_value=snap,
+                    description=r.description,
+                    physical_min=r.physical_min,
+                    physical_max=r.physical_max,
+                    physical_unit=r.physical_unit,
+                    gobo_id=r.gobo_id,
+                )
+            )
+        else:
+            normalized.append(r)
+        prev_hi = hi
+    return normalized
+
+
 class GdtfImporter:
     """Imports GDTF archives and creates FixtureDefinition instances."""
 
@@ -284,7 +337,13 @@ class GdtfImporter:
                 physical_unit=phys_unit,
             )
 
-        ranges = [r for r in map(self._adapt_function, real_functions) if r is not None]
+        bit_shift = _resolve_bit_shift(real_functions)
+        raw_ranges = [
+            r
+            for cf in real_functions
+            if (r := self._adapt_function(cf, bit_shift)) is not None
+        ]
+        ranges = _normalize_ranges(raw_ranges)
         if not ranges:
             return None
 
@@ -306,15 +365,25 @@ class GdtfImporter:
             physical_unit=phys_unit,
         )
 
-    def _adapt_function(self, cf: dict[str, Any]) -> Optional[ChannelRange]:
+    def _adapt_function(
+        self, cf: dict[str, Any], bit_shift: int = 0
+    ) -> Optional[ChannelRange]:
         attr = cf.get("attribute", "NoFeature")
         if attr in ("NoFeature", ""):
             return None
 
         name = cf.get("name") or attr
-        dmx_from = cf.get("dmx_from", 0)
-        dmx_to = cf.get("dmx_to", 255)
-        default = cf.get("default", dmx_from)
+        raw_from = int(cf.get("dmx_from", 0))
+        raw_to = int(cf.get("dmx_to", (256 << bit_shift) - 1))
+        raw_default = cf.get("default")
+        dmx_from = max(0, min(255, raw_from >> bit_shift))
+        dmx_to = max(0, min(255, raw_to >> bit_shift))
+        lo, hi = (dmx_from, dmx_to) if dmx_from <= dmx_to else (dmx_to, dmx_from)
+        snap = (
+            max(lo, min(hi, raw_default >> bit_shift))
+            if isinstance(raw_default, int)
+            else lo
+        )
         ch_type = _attr_to_channel_type(attr)
 
         p_from = cf.get("physical_from")
@@ -329,9 +398,9 @@ class GdtfImporter:
         return ChannelRange(
             label=name,
             channel_type=ch_type,
-            value_min=min(dmx_from, dmx_to),
-            value_max=max(dmx_from, dmx_to),
-            snap_value=default,
+            value_min=lo,
+            value_max=hi,
+            snap_value=snap,
             description=", ".join(snap_names) if snap_names else name,
             physical_min=phys_min,
             physical_max=phys_max,
