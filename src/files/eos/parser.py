@@ -169,6 +169,7 @@ def _parse_eos_channel_params(
     ch_params_obj: list[Any],
     channel_num: int,
     refs_out: dict[int, tuple[str, float]] | None = None,
+    part_out: list[int] | None = None,
 ) -> dict[int, float]:
     """Parse Eos cue/palette mixed complex+flat parameter list for a channel.
 
@@ -199,6 +200,13 @@ def _parse_eos_channel_params(
             v_node: list[Any] | None = None
             if len(val_obj) >= 3 and isinstance(val_obj[2], list):
                 v2 = val_obj[2]
+                if (
+                    part_out is not None
+                    and len(v2) > 4
+                    and isinstance(v2[4], int)
+                    and v2[4] > 1
+                ):
+                    part_out.append(v2[4])
                 if len(v2) > 10 and isinstance(v2[10], list):
                     v_node = v2[10]
                 elif len(v2) >= 3 and isinstance(v2[2], list):
@@ -468,16 +476,135 @@ def _classify_palette_category(
 
 
 def _extract_ms_time(
-    obj: object, default_sec: float = 0.0
+    obj: object,
+    default_sec: float = 0.0,
+    *,
+    explicit_only: bool = False,
 ) -> tuple[float | None, float | None]:
     """Extract ``(time_sec, delay_sec)`` from a cue timing ``OBJ``."""
     if not isinstance(obj, list) or len(obj) < 4:
         return None, None
     t_ms = obj[2]
     d_ms = obj[3]
+    if explicit_only:
+        t_explicit = len(obj) <= 5 or obj[5] is None
+        d_explicit = len(obj) > 4 and obj[4] is None
+        t_sec = (
+            float(t_ms) / 1000.0
+            if t_explicit and isinstance(t_ms, (int, float))
+            else None
+        )
+        d_sec = (
+            float(d_ms) / 1000.0
+            if d_explicit and isinstance(d_ms, (int, float))
+            else None
+        )
+        return t_sec, d_sec
     t_sec = float(t_ms) / 1000.0 if isinstance(t_ms, (int, float)) else default_sec
     d_sec = float(d_ms) / 1000.0 if isinstance(d_ms, (int, float)) else 0.0
     return t_sec, d_sec
+
+
+def _parse_cue_discrete_times(cue24: object) -> dict[int, dict[str, float]]:
+    """Extract per-channel discrete fade/delay times from ``cue[24]``."""
+    result: dict[int, dict[str, float]] = {}
+    if not isinstance(cue24, list):
+        return result
+    for channels, ch_obj in _iter_eos_channel_blocks(cue24):
+        chosen: tuple[float, float] | None = None
+        i = 3
+        n = len(ch_obj)
+        while i + 1 < n:
+            tok = ch_obj[i]
+            if (
+                isinstance(tok, list)
+                and len(tok) >= 3
+                and tok[0] == "OBJ"
+                and tok[1] == 1
+            ):
+                break
+            t_obj = ch_obj[i + 1]
+            if isinstance(tok, int) and isinstance(t_obj, list):
+                t_ms = (
+                    t_obj[2][2]
+                    if len(t_obj) > 2
+                    and isinstance(t_obj[2], list)
+                    and len(t_obj[2]) > 2
+                    and isinstance(t_obj[2][2], (int, float))
+                    else None
+                )
+                if t_ms is not None:
+                    d_ms = (
+                        t_obj[3][2]
+                        if len(t_obj) > 3
+                        and isinstance(t_obj[3], list)
+                        and len(t_obj[3]) > 2
+                        and isinstance(t_obj[3][2], (int, float))
+                        else 0.0
+                    )
+                    pair = (float(d_ms) / 1000.0, float(t_ms) / 1000.0)
+                    if tok == 1:
+                        chosen = pair
+                        break
+                    if chosen is None:
+                        chosen = pair
+                i += 2
+            else:
+                i += 1
+        if chosen is not None:
+            delay_s, time_s = chosen
+            for ch in channels:
+                result[ch] = {"delay": delay_s, "time": time_s}
+    return result
+
+
+def _parse_cue_part_timings(
+    cue25: object, default_time: float
+) -> dict[int, dict[str, float]]:
+    """Extract per-part ``(delay, time)`` for Parts > 1 from ``cue[25]``."""
+    timings: dict[int, dict[str, float]] = {}
+    if (
+        not isinstance(cue25, list)
+        or len(cue25) < 5
+        or not isinstance(cue25[2], int)
+        or cue25[2] <= 1
+    ):
+        return timings
+    i = 3
+    n = len(cue25)
+    while i + 1 < n:
+        part_num = cue25[i]
+        part_obj = cue25[i + 1]
+        if (
+            isinstance(part_num, int)
+            and part_num > 1
+            and isinstance(part_obj, list)
+            and len(part_obj) > 8
+            and isinstance(part_obj[8], list)
+            and len(part_obj[8]) > 3
+        ):
+            t_up, d_up = _extract_ms_time(part_obj[8][3], default_time)
+            timings[part_num] = {
+                "delay": d_up if d_up is not None else 0.0,
+                "time": t_up if t_up is not None else default_time,
+            }
+        i += 2
+    return timings
+
+
+def _parse_cue_hang_sec(cue21: object) -> float | None:
+    """Extract Hang/Follow time in seconds from ``cue[21]`` if enabled."""
+    if (
+        isinstance(cue21, list)
+        and len(cue21) >= 4
+        and isinstance(cue21[2], int)
+        and cue21[2] >= 1
+        and isinstance(cue21[3], list)
+        and len(cue21[3]) >= 4
+        and isinstance(cue21[3][3], (int, float))
+    ):
+        return float(cue21[3][3]) / 1000.0
+    return None
 
 
 class Esf3dParser:
@@ -799,18 +926,25 @@ class Esf3dParser:
                 label = str(item[2][3]) if isinstance(item[2][3], str) else ""
                 raw_p_by_ch: dict[int, dict[int, float]] = {}
                 raw_refs_by_ch: dict[int, dict[int, tuple[str, float]]] = {}
+                ch_parts: dict[int, int] = {}
 
                 if isinstance(item[22], list):
                     for channels, ch_obj in _iter_eos_channel_blocks(item[22]):
                         ch_refs: dict[int, tuple[str, float]] = {}
+                        parts_seen: list[int] = []
                         raw_p = _parse_eos_channel_params(
-                            ch_obj, channels[0], refs_out=ch_refs
+                            ch_obj,
+                            channels[0],
+                            refs_out=ch_refs,
+                            part_out=parts_seen,
                         )
                         if raw_p:
                             for ch in channels:
                                 raw_p_by_ch[ch] = raw_p
                                 if ch_refs:
                                     raw_refs_by_ch[ch] = ch_refs
+                                if parts_seen:
+                                    ch_parts[ch] = parts_seen[0]
 
                 t_up, d_up = (
                     _extract_ms_time(item[19][3], self.default_time)
@@ -823,17 +957,17 @@ class Esf3dParser:
                     else (t_up, d_up)
                 )
                 t_pos, d_pos = (
-                    _extract_ms_time(item[19][5])
+                    _extract_ms_time(item[19][5], explicit_only=True)
                     if isinstance(item[19], list) and len(item[19]) > 5
                     else (None, None)
                 )
                 t_col, d_col = (
-                    _extract_ms_time(item[19][6])
+                    _extract_ms_time(item[19][6], explicit_only=True)
                     if isinstance(item[19], list) and len(item[19]) > 6
                     else (None, None)
                 )
                 t_bm, d_bm = (
-                    _extract_ms_time(item[19][7])
+                    _extract_ms_time(item[19][7], explicit_only=True)
                     if isinstance(item[19], list) and len(item[19]) > 7
                     else (None, None)
                 )
@@ -871,6 +1005,22 @@ class Esf3dParser:
                     step_dict["time_beam"] = t_bm
                 if d_bm is not None:
                     step_dict["delay_beam"] = d_bm
+
+                ch_times: dict[int, dict[str, float]] = {}
+                part_timings = _parse_cue_part_timings(item[25], self.default_time)
+                if part_timings and ch_parts:
+                    for ch, pnum in ch_parts.items():
+                        if pnum in part_timings:
+                            ch_times[ch] = dict(part_timings[pnum])
+                discrete_times = _parse_cue_discrete_times(item[24])
+                if discrete_times:
+                    ch_times.update(discrete_times)
+                if ch_times:
+                    step_dict["channel_time"] = ch_times
+
+                hang_sec = _parse_cue_hang_sec(item[21])
+                if hang_sec is not None:
+                    step_dict["_hang_after"] = hang_sec
                 raw_cues.append(
                     (
                         explicit_cl,
@@ -1245,6 +1395,7 @@ class Esf3dParser:
             cl_cues.sort(key=lambda c: c[0])
             tracked_virtuals: dict[int, dict[int, float]] = {}
             active_effects: dict[float, tuple[list[int], float, float]] = {}
+            pending_wait: float | None = None
 
             for step_idx, (
                 cue_num,
@@ -1253,6 +1404,10 @@ class Esf3dParser:
                 cue_dict,
                 step_dict,
             ) in enumerate(cl_cues, 1):
+                hang_after = step_dict.pop("_hang_after", None)
+                if pending_wait is not None:
+                    step_dict["wait"] = pending_wait
+                pending_wait = hang_after
                 cue_channels: dict[int, float] = {}
                 device_values: dict[int, dict[str, Any]] = {}
                 palette_refs: dict[int, dict[str, tuple[str, float]]] = {}

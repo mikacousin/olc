@@ -707,3 +707,122 @@ def test_import_esf3d_personality_uses_embedded_spd_blob(
     assert fdef.color_profile is not None
     assert fdef.color_profile.has_spectral_filters is True
     assert len(fdef.color_profile.source_spectrum) == 81
+
+
+def test_eos_separate_timings_ifcb_discrete_parts_and_hang(
+    tmp_path: pathlib.Path,
+) -> None:
+    """IFCB explicit/inherited flags, cue[24] discrete, cue[25] Parts, cue[21] Hang."""
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    cues = [
+        it
+        for it in tree[6:]
+        if isinstance(it, list)
+        and len(it) == 31
+        and isinstance(it[2], list)
+        and len(it[2]) >= 4
+        and isinstance(it[2][2], int)
+    ]
+    cue1 = next(c for c in cues if c[2][2] == 10000)
+    cue2 = next(c for c in cues if c[2][2] > 10000)
+
+    # Cue 1: up=5s, focus=2s explicit (flag None), color=inherited (flag 0),
+    #        color delay=1.5s explicit (flag None), beam=0s explicit (flag None)
+    cue1[19] = [
+        "OBJ",
+        0,
+        5,
+        ["OBJ", 0, 5000, 0, 0, None],
+        ["OBJ", 0, 5000, 0, 0, 0],
+        ["OBJ", 0, 2000, 0, 0, None],
+        ["OBJ", 0, 5000, 1500, None, 0],
+        ["OBJ", 0, 0, 0, 0, None],
+    ]
+    # Part 2 = 3s on channel 2 (tagged in val_obj[2][4] = 2)
+    cue1[25] = [
+        "OBJ",
+        0,
+        2,
+        1,
+        ["OBJ", 0, 100, 0, None, None, None, None, cue1[19], ["OBJ", 1, 1]],
+        2,
+        [
+            "OBJ",
+            0,
+            100,
+            0,
+            None,
+            None,
+            None,
+            None,
+            ["OBJ", 0, 5, ["OBJ", 0, 3000, 0, 0, None]],
+            ["OBJ", 1, 2],
+        ],
+    ]
+    cue1[22] = [
+        "OBJ",
+        0,
+        1,
+        2,
+        0,
+        [
+            "OBJ",
+            0,
+            1,
+            1,
+            [
+                "OBJ",
+                0,
+                ["OBJ", 0, None, None, 2, None, 2, None, None, None, ["OBJ", 0, 50]],
+            ],
+            0,
+            ["OBJ", 1, 2, 0, 0],
+        ],
+        0,
+    ]
+    # Discrete time 12s + delay 1s on ch 4 cloned to ch 5 (overrides any part)
+    cue1[24] = [
+        "OBJ",
+        0,
+        2,
+        4,
+        0,
+        [
+            "OBJ",
+            0,
+            1,
+            1,
+            ["OBJ", 0, ["OBJ", 0, 12000], ["OBJ", 0, 1000]],
+            0,
+            ["OBJ", 1, 4, 0, 0],
+        ],
+        1,
+        5,
+    ]
+    # Hang 0.2s after Cue 1 -> Cue 2 gets wait=0.2
+    cue1[21] = ["OBJ", 0, 1, ["OBJ", 0, 1, 200, 0, 1, 0, None, 0, 0, 0]]
+    cue2[21] = ["OBJ", 0, 0]
+
+    esf_path = tmp_path / "timings.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+    steps = {s.cue.number: s for s in show.main_playback.steps if s.cue is not None}
+    st1 = steps[1.0]
+    st2 = steps[cue2[2][2] / 10000.0]
+
+    assert st1.time_position == pytest.approx(2.0)
+    assert st1.delay_position is None
+    assert st1.time_color is None
+    assert st1.delay_color == pytest.approx(1.5)
+    assert st1.time_beam == pytest.approx(0.0)
+    assert st1.delay_beam is None
+    assert st1.channel_time[2].time == pytest.approx(3.0)
+    assert st1.channel_time[4].time == pytest.approx(12.0)
+    assert st1.channel_time[4].delay == pytest.approx(1.0)
+    assert st1.channel_time[5].time == pytest.approx(12.0)
+    assert st2.wait == pytest.approx(0.2)
