@@ -26,6 +26,7 @@ struct VizApp {
     selected_fixture: Option<u32>,
     show_labels: bool,
     show_scenery: bool,
+    local_stage_enabled: bool,
     focus_mode: bool,
     focus_height_z: f32,
     local_fog: f32,
@@ -47,6 +48,7 @@ impl VizApp {
             selected_fixture: None,
             show_labels: true,
             show_scenery: true,
+            local_stage_enabled: true,
             focus_mode: false,
             focus_height_z: 0.0,
             local_fog: 0.35,
@@ -66,6 +68,7 @@ impl VizApp {
         if patch.version != self.last_patch_version {
             self.last_patch_version = patch.version;
             self.local_fog = patch.stage.fog_density;
+            self.local_stage_enabled = patch.stage.enabled;
             self.focus_preview = None;
         }
     }
@@ -126,6 +129,20 @@ impl VizApp {
                 ui.separator();
                 ui.checkbox(&mut self.show_labels, "Labels #id");
                 ui.checkbox(&mut self.show_scenery, "Scenery");
+                if ui.checkbox(&mut self.local_stage_enabled, "Stage").changed() {
+                    self.send_throttled(
+                        VizCommand::SetStage {
+                            enabled: Some(self.local_stage_enabled),
+                            width: None,
+                            depth: None,
+                            color: None,
+                            grid_spacing: None,
+                            fog_density: None,
+                            commit: true,
+                        },
+                        true,
+                    );
+                }
                 ui.separator();
 
                 ui.label("Fog:");
@@ -137,6 +154,7 @@ impl VizApp {
                 if fog_resp.changed() {
                     self.send_throttled(
                         VizCommand::SetStage {
+                            enabled: None,
                             width: None,
                             depth: None,
                             color: None,
@@ -150,6 +168,7 @@ impl VizApp {
                 if fog_resp.drag_stopped() || (fog_resp.lost_focus() && fog_resp.changed()) {
                     self.send_throttled(
                         VizCommand::SetStage {
+                            enabled: None,
                             width: None,
                             depth: None,
                             color: None,
@@ -227,6 +246,7 @@ impl VizApp {
         let patch = self.source.patch();
         let mut stage = patch.stage.clone();
         stage.fog_density = self.local_fog;
+        stage.enabled = self.local_stage_enabled;
         let resolved = Arc::new(evaluate_fixtures(
             &patch,
             self.start_time.elapsed().as_secs_f32(),

@@ -535,6 +535,12 @@ class ParsedData:
             from olc.show.lightshow import StageConfig  # pylint: disable=import-outside-toplevel
 
             self.lightshow.stage = StageConfig.from_dict(stage_data)
+            app = getattr(self.lightshow, "app", None)
+            if app is not None:
+                if hasattr(app, "publish_patch"):
+                    app.publish_patch()
+                if hasattr(app, "emit"):
+                    app.emit("stage.changed", self.lightshow.stage.to_dict())
 
     def import_scenery(self) -> None:
         """Load imported 3D scenery meshes into lightshow.scenery."""

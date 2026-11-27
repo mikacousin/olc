@@ -43,6 +43,7 @@ _DEFAULT_STAGE: dict[str, Any] = {
     "color": "#222226",
     "grid_spacing": 1.0,
     "fog_density": 0.35,
+    "enabled": True,
 }
 
 

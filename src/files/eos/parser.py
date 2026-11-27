@@ -45,6 +45,7 @@ from olc.files.ascii.eos_effects import (
 from olc.files.eos.a3d import (
     eos_euler_to_olc,
     parse_working_a3d_patch,
+    parse_working_a3d_scene_info,
     parse_working_a3d_scenery,
 )
 from olc.files.eos.gdtf_enrich import (
@@ -760,6 +761,7 @@ class Esf3dParser:
         _header, tree = decode_showdat(showdat_bytes)
         a3d_patch = parse_working_a3d_patch(a3d_bytes)
         a3d_scenery = parse_working_a3d_scenery(a3d_bytes)
+        a3d_stage = parse_working_a3d_scene_info(a3d_bytes)
 
         tree3 = tree[3] if len(tree) > 3 else []
         param_names = parse_param_types(tree3)
@@ -772,6 +774,8 @@ class Esf3dParser:
         data = self.imported.data.data
         if a3d_scenery:
             data["scenery"] = a3d_scenery
+        if a3d_stage:
+            data["stage"] = a3d_stage
         fixture_library = getattr(self.imported.lightshow, "fixture_library", None)
         actions = getattr(self.imported, "actions", {})
         fdef_by_guid: dict[str, dict[str, Any]] = {}

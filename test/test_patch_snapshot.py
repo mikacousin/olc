@@ -215,6 +215,7 @@ def test_build_snapshot_includes_stage_3d_and_optical_channels() -> None:
         "color": "#1a1a1f",
         "grid_spacing": 0.5,
         "fog_density": 0.6,
+        "enabled": True,
     }
 
     d5, d101 = snap["devices"]

@@ -83,6 +83,7 @@ class StageConfig:
     color: str = "#222226"
     grid_spacing: float = 1.0
     fog_density: float = 0.35
+    enabled: bool = True
 
     def to_dict(self) -> dict[str, typing.Any]:
         """Serialize stage configuration to a dictionary."""
@@ -92,6 +93,7 @@ class StageConfig:
             "color": str(self.color),
             "grid_spacing": max(0.0, float(self.grid_spacing)),
             "fog_density": max(0.0, min(1.0, float(self.fog_density))),
+            "enabled": bool(self.enabled),
         }
 
     @classmethod
@@ -103,6 +105,7 @@ class StageConfig:
             color=str(data.get("color", "#222226")),
             grid_spacing=max(0.0, float(data.get("grid_spacing", 1.0))),
             fog_density=max(0.0, min(1.0, float(data.get("fog_density", 0.35)))),
+            enabled=bool(data.get("enabled", True)),
         )
 
 

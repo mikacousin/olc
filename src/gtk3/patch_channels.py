@@ -1888,6 +1888,9 @@ class PatchChannelsTab(Gtk.Box):
         )
         grid = Gtk.Grid(column_spacing=8, row_spacing=8, margin=12)
 
+        enabled_switch = Gtk.Switch(halign=Gtk.Align.START)
+        enabled_switch.set_active(bool(getattr(stage, "enabled", True)))
+
         width_spin = Gtk.SpinButton.new_with_range(1.0, 100.0, 0.5)
         width_spin.set_digits(1)
         width_spin.set_value(stage.width)
@@ -1909,7 +1912,23 @@ class PatchChannelsTab(Gtk.Box):
         fog_scale.set_value(stage.fog_density)
         fog_scale.set_hexpand(True)
 
+        floor_widgets: tuple[Gtk.Widget, ...] = (
+            width_spin,
+            depth_spin,
+            grid_spin,
+            color_btn,
+        )
+
+        def _sync_floor_sensitivity(*_args: object) -> None:
+            active = enabled_switch.get_active()
+            for w in floor_widgets:
+                w.set_sensitive(active)
+
+        enabled_switch.connect("notify::active", _sync_floor_sensitivity)
+        _sync_floor_sensitivity()
+
         rows: list[tuple[str, Gtk.Widget]] = [
+            (_("Show Stage"), enabled_switch),
             (_("Width (m)"), width_spin),
             (_("Depth (m)"), depth_spin),
             (_("Grid Spacing (m)"), grid_spin),
@@ -1920,22 +1939,55 @@ class PatchChannelsTab(Gtk.Box):
             grid.attach(Gtk.Label(label=lbl, xalign=0.0), 0, idx, 1, 1)
             grid.attach(widget, 1, idx, 1, 1)
 
-        dialog.get_content_area().add(grid)
-        dialog.show_all()
-        resp = dialog.run()
-        if resp == Gtk.ResponseType.OK:
-            chosen = color_btn.get_rgba()
-            hex_color = (
-                f"#{round(chosen.red * 255):02x}"
-                f"{round(chosen.green * 255):02x}"
-                f"{round(chosen.blue * 255):02x}"
-            )
-            self.app.core.action_registry.execute(
-                "stage.update",
-                width=width_spin.get_value(),
-                depth=depth_spin.get_value(),
-                grid_spacing=grid_spin.get_value(),
-                color=hex_color,
-                fog_density=fog_scale.get_value(),
-            )
-        dialog.destroy()
+        syncing = False
+
+        def _apply_external_stage(payload: dict[str, Any]) -> bool:
+            nonlocal syncing
+            syncing = True
+            try:
+                if "enabled" in payload:
+                    enabled_switch.set_active(bool(payload["enabled"]))
+                if "width" in payload:
+                    width_spin.set_value(float(payload["width"]))
+                if "depth" in payload:
+                    depth_spin.set_value(float(payload["depth"]))
+                if "grid_spacing" in payload:
+                    grid_spin.set_value(float(payload["grid_spacing"]))
+                if "color" in payload:
+                    ext_rgba = Gdk.RGBA()
+                    if ext_rgba.parse(str(payload["color"])):
+                        color_btn.set_rgba(ext_rgba)
+                if "fog_density" in payload:
+                    fog_scale.set_value(float(payload["fog_density"]))
+            finally:
+                syncing = False
+            return False
+
+        def _on_stage_changed(payload: dict[str, Any]) -> None:
+            if not syncing and isinstance(payload, dict):
+                GLib.idle_add(_apply_external_stage, dict(payload))
+
+        self.app.core.subscribe("stage.changed", _on_stage_changed)
+        try:
+            dialog.get_content_area().add(grid)
+            dialog.show_all()
+            resp = dialog.run()
+            if resp == Gtk.ResponseType.OK:
+                chosen = color_btn.get_rgba()
+                hex_color = (
+                    f"#{round(chosen.red * 255):02x}"
+                    f"{round(chosen.green * 255):02x}"
+                    f"{round(chosen.blue * 255):02x}"
+                )
+                self.app.core.action_registry.execute(
+                    "stage.update",
+                    enabled=enabled_switch.get_active(),
+                    width=width_spin.get_value(),
+                    depth=depth_spin.get_value(),
+                    grid_spacing=grid_spin.get_value(),
+                    color=hex_color,
+                    fog_density=fog_scale.get_value(),
+                )
+        finally:
+            self.app.core.unsubscribe("stage.changed", _on_stage_changed)
+            dialog.destroy()

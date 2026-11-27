@@ -433,7 +433,14 @@ class CoreApplication(EventDispatcher):
         if cmd == "set_stage":
             kwargs: dict[str, typing.Any] = {
                 k: payload[k]
-                for k in ("width", "depth", "color", "grid_spacing", "fog_density")
+                for k in (
+                    "enabled",
+                    "width",
+                    "depth",
+                    "color",
+                    "grid_spacing",
+                    "fog_density",
+                )
                 if k in payload
             }
             commit = bool(payload.get("commit", True))

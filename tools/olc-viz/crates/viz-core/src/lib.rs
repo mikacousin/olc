@@ -93,6 +93,10 @@ pub struct DmxChannel {
     pub ranges: Vec<ChannelRange>,
 }
 
+fn default_stage_enabled() -> bool {
+    true
+}
+
 /// Stage floor and atmospheric fog configuration (in meters, Z-up).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Stage {
@@ -101,6 +105,8 @@ pub struct Stage {
     pub color: String,
     pub grid_spacing: f32,
     pub fog_density: f32,
+    #[serde(default = "default_stage_enabled")]
+    pub enabled: bool,
 }
 
 impl Default for Stage {
@@ -111,6 +117,7 @@ impl Default for Stage {
             color: "#222226".to_string(),
             grid_spacing: 1.0,
             fog_density: 0.35,
+            enabled: true,
         }
     }
 }
@@ -158,6 +165,44 @@ fn default_scenery_color() -> [f32; 3] {
     [0.45, 0.45, 0.48]
 }
 
+fn default_roughness() -> f32 {
+    0.5
+}
+
+fn default_opacity() -> f32 {
+    1.0
+}
+
+/// Optional PBR material properties for Augment3d scenery meshes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneryMaterial {
+    #[serde(default = "default_scenery_color")]
+    pub base_color: [f32; 3],
+    #[serde(default)]
+    pub metallic: f32,
+    #[serde(default = "default_roughness")]
+    pub roughness: f32,
+    #[serde(default)]
+    pub emissive: [f32; 3],
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default)]
+    pub transparent: bool,
+}
+
+impl Default for SceneryMaterial {
+    fn default() -> Self {
+        Self {
+            base_color: default_scenery_color(),
+            metallic: 0.0,
+            roughness: 0.5,
+            emissive: [0.0, 0.0, 0.0],
+            opacity: 1.0,
+            transparent: false,
+        }
+    }
+}
+
 /// One 3D scenery mesh (wall, truss, prop) imported from Augment3d.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SceneryMesh {
@@ -165,6 +210,8 @@ pub struct SceneryMesh {
     pub name: String,
     #[serde(default = "default_scenery_color")]
     pub color: [f32; 3],
+    #[serde(default)]
+    pub material: Option<SceneryMaterial>,
     #[serde(default)]
     pub vertices: Vec<[f32; 3]>,
     #[serde(default)]

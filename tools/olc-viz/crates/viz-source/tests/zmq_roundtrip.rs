@@ -22,7 +22,8 @@ fn patch_json(version: u64) -> String {
             "depth": 12.0,
             "color": "#111215",
             "grid_spacing": 0.5,
-            "fog_density": 0.55
+            "fog_density": 0.55,
+            "enabled": false
         },
         "devices": [
             {"id": 101, "label": "Face jardin", "manufacturer": "Robe",
@@ -153,6 +154,7 @@ fn receives_levels_and_patch_from_olc_format() {
     assert_eq!(patch.version, 3);
     assert_eq!(patch.stage.width, 16.0);
     assert_eq!(patch.stage.fog_density, 0.55);
+    assert!(!patch.stage.enabled);
     assert_eq!(patch.fixtures.len(), 2);
     assert_eq!(patch.fixtures[0].channel, Some(101));
     assert_eq!(patch.fixtures[0].fixture_type, FixtureType::MovingHead);

@@ -1428,3 +1428,258 @@ def test_eos_patch_proportion_curves_and_multipart_fixture(
     assert len(int_chs) == 2
     d604.set_intensity(0.5)
     assert all(c.value in (127, 128) for c in int_chs)
+
+
+def test_eos_a3d_pbr_materials_and_stage_extraction(tmp_path: pathlib.Path) -> None:
+    """Test PBR extraction from resource_database/GLB, Ground->StageConfig, walls."""
+    import io
+    import json as _json
+    import struct
+    import zipfile
+
+    from olc.files.eos.a3d import (
+        parse_working_a3d_scene_info,
+        parse_working_a3d_scenery,
+    )
+
+    # Build minimal GLB with 1 triangle, TEXCOORD_0, and pbrMetallicRoughness
+    pos_bytes = struct.pack("<9f", 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+    uv_bytes = struct.pack("<6f", 0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+    bin_chunk = pos_bytes + uv_bytes
+    while len(bin_chunk) % 4:
+        bin_chunk += b"\x00"
+
+    gltf = {
+        "asset": {"version": "2.0"},
+        "buffers": [{"byteLength": len(bin_chunk)}],
+        "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": len(pos_bytes)},
+            {"buffer": 0, "byteOffset": len(pos_bytes), "byteLength": len(uv_bytes)},
+        ],
+        "accessors": [
+            {
+                "bufferView": 0,
+                "componentType": 5126,
+                "count": 3,
+                "type": "VEC3",
+            },
+            {
+                "bufferView": 1,
+                "componentType": 5126,
+                "count": 3,
+                "type": "VEC2",
+            },
+        ],
+        "materials": [
+            {
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": [0.9, 0.1, 0.2, 1.0],
+                    "metallicFactor": 0.75,
+                    "roughnessFactor": 0.25,
+                },
+                "emissiveFactor": [0.1, 0.0, 0.0],
+            }
+        ],
+        "meshes": [
+            {
+                "primitives": [
+                    {
+                        "attributes": {"POSITION": 0, "TEXCOORD_0": 1},
+                        "material": 0,
+                    }
+                ]
+            }
+        ],
+    }
+    json_bytes = _json.dumps(gltf).encode("utf-8")
+    while len(json_bytes) % 4:
+        json_bytes += b" "
+    total_len = 12 + 8 + len(json_bytes) + 8 + len(bin_chunk)
+    glb = (
+        struct.pack("<4sII", b"glTF", 2, total_len)
+        + struct.pack("<II", len(json_bytes), 0x4E4F534A)
+        + json_bytes
+        + struct.pack("<II", len(bin_chunk), 0x004E4942)
+        + bin_chunk
+    )
+
+    a3d_buf = io.BytesIO()
+    with zipfile.ZipFile(a3d_buf, "w", zipfile.ZIP_DEFLATED) as azf:
+        azf.writestr("Resources/Panel.glb", glb)
+        azf.writestr(
+            "resource_database.json",
+            _json.dumps(
+                {
+                    "items": [
+                        {
+                            "obj": {
+                                "uid": "{aaaa1111-1111-1111-1111-111111111111}",
+                                "path": "Resources/Panel.glb",
+                            }
+                        },
+                        {
+                            "obj": {
+                                "uid": "{bbbb2222-2222-2222-2222-222222222222}",
+                                "base_color": {"x": 0.2, "y": 0.4, "z": 0.6},
+                                "metallic": 0.8,
+                                "smoothness": 0.2,
+                                "emissive": {"x": 0.05, "y": 0.1, "z": 0.0},
+                                "opacity": 0.6,
+                                "transparent": True,
+                            }
+                        },
+                        {
+                            "obj": {
+                                "uid": "{cccc3333-3333-3333-3333-333333333333}",
+                                "base_color": {"x": 0.2, "y": 0.3, "z": 0.4},
+                                "metallic": 0.0,
+                                "smoothness": 0.5,
+                            }
+                        },
+                    ]
+                }
+            ),
+        )
+        azf.writestr(
+            "Scene/Primitive.json",
+            _json.dumps(
+                {
+                    "items": [
+                        {
+                            "obj": {
+                                "name": "Ground",
+                                "material_uids": [
+                                    "{cccc3333-3333-3333-3333-333333333333}"
+                                ],
+                                "local_bounds": {
+                                    "center": {"x": 0, "y": 0, "z": 0},
+                                    "size": {"x": 25.0, "y": 15.0, "z": 0.0001},
+                                },
+                                "world": {
+                                    "pos": {"x": 0, "y": 0, "z": 0},
+                                    "quat": {"w": 1, "x": 0, "y": 0, "z": 0},
+                                    "scale": {"x": 2.0, "y": 2.0, "z": 1.0},
+                                },
+                            }
+                        },
+                        {
+                            "obj": {
+                                "name": "Ground",
+                                "local_bounds": {
+                                    "center": {"x": 0, "y": 0, "z": 0},
+                                    "size": {"x": 4.0, "y": 4.0, "z": 0.0001},
+                                },
+                                "world": {
+                                    "pos": {"x": 0, "y": 5, "z": 2},
+                                    "quat": {"w": 0.7071, "x": 0, "y": -0.7071, "z": 0},
+                                    "scale": {"x": 1.0, "y": 1.0, "z": 1.0},
+                                },
+                            }
+                        },
+                        {
+                            "obj": {
+                                "name": "PBR Wall",
+                                "model_uid": "{aaaa1111-1111-1111-1111-111111111111}",
+                                "material_uids": [
+                                    "{bbbb2222-2222-2222-2222-222222222222}"
+                                ],
+                                "world": {
+                                    "pos": {"x": 0, "y": 0, "z": 0},
+                                    "quat": {"w": 1, "x": 0, "y": 0, "z": 0},
+                                    "scale": {"x": 1, "y": 1, "z": 1},
+                                },
+                            }
+                        },
+                        {
+                            "obj": {
+                                "name": "GLB Fallback Panel",
+                                "model_uid": "{aaaa1111-1111-1111-1111-111111111111}",
+                                "world": {
+                                    "pos": {"x": 2, "y": 0, "z": 0},
+                                    "quat": {"w": 1, "x": 0, "y": 0, "z": 0},
+                                    "scale": {"x": 1, "y": 1, "z": 1},
+                                },
+                            }
+                        },
+                    ]
+                }
+            ),
+        )
+
+    a3d_bytes = a3d_buf.getvalue()
+    stage_info = parse_working_a3d_scene_info(a3d_bytes)
+    assert stage_info["width"] == pytest.approx(50.0)
+    assert stage_info["depth"] == pytest.approx(30.0)
+    assert stage_info["color"] == "#334c66"
+    assert stage_info["enabled"] is True
+
+    scenery = parse_working_a3d_scenery(a3d_bytes)
+    # Horizontal Ground skipped; rotated Ground panel + 2 GLB panels kept
+    assert [s["name"] for s in scenery] == [
+        "Ground",
+        "PBR Wall",
+        "GLB Fallback Panel",
+    ]
+    pbr_mat = scenery[1]["material"]
+    assert pbr_mat["base_color"] == pytest.approx([0.2, 0.4, 0.6])
+    assert pbr_mat["metallic"] == pytest.approx(0.8)
+    assert pbr_mat["roughness"] == pytest.approx(0.8)
+    assert pbr_mat["emissive"] == pytest.approx([0.05, 0.1, 0.0])
+    assert pbr_mat["opacity"] == pytest.approx(0.6)
+    assert pbr_mat["transparent"] is True
+    assert scenery[1]["uvs"] == [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
+
+    glb_mat = scenery[2]["material"]
+    assert glb_mat["base_color"] == pytest.approx([0.9, 0.1, 0.2])
+    assert glb_mat["metallic"] == pytest.approx(0.75)
+    assert glb_mat["roughness"] == pytest.approx(0.25)
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        showdat = zf.read("showdat.dat")
+    esf_path = tmp_path / "stage_pbr_sample.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", showdat)
+        zf.writestr("working.a3d", a3d_bytes)
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+    assert show.stage.width == pytest.approx(50.0)
+    assert show.stage.depth == pytest.approx(30.0)
+    assert show.stage.color == "#334c66"
+    assert show.stage.enabled is True
+
+
+def test_stage_enabled_toggle_action_undo_and_viz_ipc() -> None:
+    """Test StageConfig.enabled, stage.update, Undo/Redo, and olc-viz set_stage IPC."""
+    import json as _json
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.dmx_engine.patch_snapshot import build_snapshot
+    from olc.show.lightshow import StageConfig
+
+    cfg = StageConfig.from_dict({"width": 16.0})
+    assert cfg.enabled is True
+    assert StageConfig.from_dict({"enabled": False}).enabled is False
+
+    app = CoreApplication(MagicMock())
+    assert app.lightshow.stage.enabled is True
+
+    app.action_registry.execute("stage.update", enabled=False)
+    assert app.lightshow.stage.enabled is False
+
+    app.history.undo()
+    assert app.lightshow.stage.enabled is True
+
+    app.history.redo()
+    assert app.lightshow.stage.enabled is False
+
+    res = app._handle_viz_command(  # pylint: disable=protected-access
+        {"cmd": "set_stage", "enabled": True, "commit": True}
+    )
+    assert isinstance(res, dict) and res["ok"] is True
+    assert res["stage"]["enabled"] is True
+    assert app.lightshow.stage.enabled is True
+
+    snap = _json.loads(build_snapshot([], 1, stage=app.lightshow.stage).decode("utf-8"))
+    assert snap["stage"]["enabled"] is True

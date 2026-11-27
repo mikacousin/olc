@@ -1187,6 +1187,7 @@ class StageUpdateAction(Action):
         color: str | None = None,
         grid_spacing: float | None = None,
         fog_density: float | None = None,
+        enabled: bool | None = None,
         commit: bool = True,
     ) -> None:
         """Configure stage fields to update."""
@@ -1197,6 +1198,7 @@ class StageUpdateAction(Action):
             ("color", color),
             ("grid_spacing", grid_spacing),
             ("fog_density", fog_density),
+            ("enabled", enabled),
         ):
             if val is not None:
                 self._updates[key] = val

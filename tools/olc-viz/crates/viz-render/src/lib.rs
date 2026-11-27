@@ -42,6 +42,8 @@ struct SceneryVertex {
     pos: [f32; 3],
     normal: [f32; 3],
     color: [f32; 3],
+    emissive: [f32; 3],
+    pbr: [f32; 3], // metallic, roughness, opacity
 }
 
 #[repr(C)]
@@ -210,6 +212,8 @@ struct VsIn {
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) color: vec3<f32>,
+    @location(3) emissive: vec3<f32>,
+    @location(4) pbr: vec3<f32>,
 };
 
 struct VsOut {
@@ -217,6 +221,8 @@ struct VsOut {
     @location(0) world_pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) color: vec3<f32>,
+    @location(3) emissive: vec3<f32>,
+    @location(4) pbr: vec3<f32>,
 };
 
 @vertex
@@ -226,14 +232,24 @@ fn vs_main(in: VsIn) -> VsOut {
     out.world_pos = in.pos;
     out.normal = in.normal;
     out.color = in.color;
+    out.emissive = in.emissive;
+    out.pbr = in.pbr;
     return out;
 }
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let base = in.color;
+    let metallic = clamp(in.pbr.x, 0.0, 1.0);
+    let roughness = clamp(in.pbr.y, 0.04, 1.0);
+    let opacity = clamp(in.pbr.z, 0.0, 1.0);
     let n = normalize(in.normal);
-    var accum = base * 0.28;
+    let view_dir = normalize(u_scene.cam_eye.xyz - in.world_pos);
+    let diffuse_albedo = base * (1.0 - metallic);
+    let f0 = mix(vec3<f32>(0.04), base, metallic);
+    let spec_pow = mix(96.0, 4.0, roughness * roughness);
+    let spec_norm = (spec_pow + 8.0) / 25.13274;
+    var accum = diffuse_albedo * 0.28 + in.emissive;
     let count = u32(u_scene.stage_color_count.w);
     for (var i = 0u; i < count; i = i + 1u) {
         let l = u_lights[i];
@@ -282,12 +298,16 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
                 }
             }
 
-            let contrib = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * gobo_mask * 2.5;
-            accum = accum + contrib * (base * 1.4 + vec3<f32>(0.10));
+            let half_vec = normalize(view_dir - ldir);
+            let ndoth = max(abs(dot(n, half_vec)), 0.0);
+            let fresnel = f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - max(dot(half_vec, view_dir), 0.0), 5.0);
+            let spec = fresnel * pow(ndoth, spec_pow) * spec_norm * 0.35;
+            let light_rad = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * gobo_mask * 2.5;
+            accum = accum + light_rad * (diffuse_albedo * 1.4 + spec + vec3<f32>(0.08 * (1.0 - metallic)));
         }
     }
     let mapped = accum / (accum + vec3<f32>(1.0));
-    return vec4<f32>(mapped, 1.0);
+    return vec4<f32>(mapped, opacity);
 }
 "#;
 
@@ -668,6 +688,16 @@ impl GpuResources {
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 },
+                wgpu::VertexAttribute {
+                    offset: 36,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: 48,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
             ],
         };
         let scenery_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -684,7 +714,7 @@ impl GpuResources {
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: target_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
@@ -1204,7 +1234,22 @@ impl egui_wgpu::CallbackTrait for StageCallback {
         if scenery_key != res.last_scenery_key {
             res.last_scenery_key = scenery_key;
             let mut s_verts = Vec::new();
-            for mesh in self.scene.scenery.iter() {
+            let mut ordered: Vec<&viz_core::SceneryMesh> =
+                self.scene.scenery.iter().collect();
+            ordered.sort_by_key(|m| {
+                m.material
+                    .as_ref()
+                    .is_some_and(|mat| mat.transparent || mat.opacity < 0.999)
+            });
+            for mesh in ordered {
+                let (color, emissive, pbr) = match &mesh.material {
+                    Some(mat) => (
+                        mat.base_color,
+                        mat.emissive,
+                        [mat.metallic, mat.roughness, mat.opacity],
+                    ),
+                    None => (mesh.color, [0.0, 0.0, 0.0], [0.0, 0.5, 1.0]),
+                };
                 for tri in mesh.indices.chunks_exact(3) {
                     for &idx in tri {
                         let i = idx as usize;
@@ -1213,7 +1258,9 @@ impl egui_wgpu::CallbackTrait for StageCallback {
                             s_verts.push(SceneryVertex {
                                 pos,
                                 normal,
-                                color: mesh.color,
+                                color,
+                                emissive,
+                                pbr,
                             });
                         }
                     }
@@ -1316,9 +1363,11 @@ impl egui_wgpu::CallbackTrait for StageCallback {
                 multiview_mask: None,
             });
 
-            pass.set_pipeline(&res.floor_pipeline);
-            pass.set_bind_group(0, &res.floor_bind_group, &[]);
-            pass.draw(0..6, 0..1);
+            if self.scene.stage.enabled {
+                pass.set_pipeline(&res.floor_pipeline);
+                pass.set_bind_group(0, &res.floor_bind_group, &[]);
+                pass.draw(0..6, 0..1);
+            }
 
             if self.scene.show_scenery && res.scenery_vcount > 0 {
                 if let Some(vbuf) = &res.scenery_vbuf {

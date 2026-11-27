@@ -236,15 +236,21 @@ def _collect_mesh_node_transforms(gltf: dict[str, Any]) -> dict[int, list[_Mat4]
     return mesh_mats
 
 
-def _decode_glb_mesh(
+def _decode_glb_mesh_data(
     glb_bytes: bytes,
-) -> tuple[list[_Vec3], list[_Vec3], list[int]]:
-    """Decode a glTF 2.0 binary (``.glb``) into ``(vertices, normals, indices)``."""
+) -> tuple[
+    list[_Vec3],
+    list[_Vec3],
+    list[int],
+    list[tuple[float, float]],
+    dict[str, Any] | None,
+]:
+    """Decode a glTF 2.0 binary into ``(vertices, normals, indices, uvs, pbr)``."""
     if len(glb_bytes) < 12 or glb_bytes[:4] != _GLB_MAGIC:
-        return [], [], []
+        return [], [], [], [], None
     _magic, version, total_len = struct.unpack_from("<4sII", glb_bytes, 0)
     if version != 2 or total_len > len(glb_bytes):
-        return [], [], []
+        return [], [], [], [], None
 
     offset = 12
     gltf: dict[str, Any] | None = None
@@ -260,21 +266,24 @@ def _decode_glb_mesh(
                 if isinstance(loaded, dict):
                     gltf = loaded
             except (UnicodeDecodeError, json.JSONDecodeError):
-                return [], [], []
+                return [], [], [], [], None
         elif chunk_type == _GLB_CHUNK_BIN and not bin_data:
             bin_data = chunk_bytes
 
     if gltf is None:
-        return [], [], []
+        return [], [], [], [], None
 
     meshes = gltf.get("meshes", [])
     if not isinstance(meshes, list) or not meshes:
-        return [], [], []
+        return [], [], [], [], None
 
+    gltf_mats = gltf.get("materials", [])
     mesh_mats = _collect_mesh_node_transforms(gltf)
     all_verts: list[_Vec3] = []
     all_norms: list[_Vec3] = []
     all_indices: list[int] = []
+    all_uvs: list[tuple[float, float]] = []
+    fallback_pbr: dict[str, Any] | None = None
 
     for m_idx, mesh in enumerate(meshes):
         if not isinstance(mesh, dict):
@@ -299,6 +308,44 @@ def _decode_glb_mesh(
             else:
                 norm_list = []
 
+            uv_list: list[tuple[float, float]] = []
+            if "TEXCOORD_0" in attrs:
+                uv_raw = _read_accessor(gltf, bin_data, int(attrs["TEXCOORD_0"]))
+                if len(uv_raw) == len(pos_list):
+                    uv_list = [(round(u[0], 4), round(u[1], 4)) for u in uv_raw]
+
+            if (
+                fallback_pbr is None
+                and "material" in prim
+                and isinstance(gltf_mats, list)
+            ):
+                mat_idx = int(prim["material"])
+                if 0 <= mat_idx < len(gltf_mats) and isinstance(
+                    gltf_mats[mat_idx], dict
+                ):
+                    gm = gltf_mats[mat_idx]
+                    pbr = gm.get("pbrMetallicRoughness", {})
+                    if isinstance(pbr, dict):
+                        bcf = pbr.get("baseColorFactor", [0.8, 0.8, 0.8, 1.0])
+                        ef = gm.get("emissiveFactor", [0.0, 0.0, 0.0])
+                        op = float(bcf[3]) if len(bcf) > 3 else 1.0
+                        met_f = float(pbr.get("metallicFactor", 0.0))
+                        rgh_f = float(pbr.get("roughnessFactor", 0.5))
+                        fallback_pbr = {
+                            "base_color": [
+                                round(max(0.0, min(1.0, float(bcf[c]))), 4)
+                                for c in range(3)
+                            ],
+                            "metallic": round(max(0.0, min(1.0, met_f)), 4),
+                            "roughness": round(max(0.0, min(1.0, rgh_f)), 4),
+                            "emissive": [
+                                round(max(0.0, min(1.0, float(ef[c]))), 4)
+                                for c in range(3)
+                            ],
+                            "opacity": round(max(0.0, min(1.0, op)), 4),
+                            "transparent": gm.get("alphaMode") == "BLEND" or op < 0.999,
+                        }
+
             if "indices" in prim and prim["indices"] is not None:
                 idx_raw = _read_accessor(gltf, bin_data, int(prim["indices"]))
                 prim_indices = [int(v[0]) for v in idx_raw]
@@ -317,9 +364,21 @@ def _decode_glb_mesh(
                 for n in norm_list:
                     nx, ny, nz = _xform_normal(mat, n)
                     all_norms.append((nx, -nz, ny))
+                if uv_list:
+                    all_uvs.extend(uv_list)
                 all_indices.extend(base_v + idx for idx in prim_indices)
 
-    return all_verts, all_norms, all_indices
+    if len(all_uvs) != len(all_verts):
+        all_uvs = []
+    return all_verts, all_norms, all_indices, all_uvs, fallback_pbr
+
+
+def _decode_glb_mesh(
+    glb_bytes: bytes,
+) -> tuple[list[_Vec3], list[_Vec3], list[int]]:
+    """Decode a glTF 2.0 binary (``.glb``) into ``(vertices, normals, indices)``."""
+    verts, norms, indices, _uvs, _pbr = _decode_glb_mesh_data(glb_bytes)
+    return verts, norms, indices
 
 
 def _box_mesh(center: _Vec3, size: _Vec3) -> tuple[list[_Vec3], list[_Vec3], list[int]]:
@@ -437,6 +496,181 @@ def _transform_world(
     return out_v, out_n
 
 
+def _rgb_to_hex(rgb: list[float]) -> str:
+    r = max(0, min(255, round(float(rgb[0]) * 255.0)))
+    g = max(0, min(255, round(float(rgb[1]) * 255.0)))
+    b = max(0, min(255, round(float(rgb[2]) * 255.0)))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _is_horizontal_ground(
+    name: str, world: dict[str, Any], lb_size: dict[str, Any]
+) -> bool:
+    if name.lower() != "ground":
+        return False
+    pos_z = float(world.get("pos", {}).get("z", 0.0))
+    sc_z = float(world.get("scale", {}).get("z", 1.0))
+    sz_z = float(lb_size.get("z", 0.0)) if isinstance(lb_size, dict) else 0.0
+    if abs(pos_z) >= 0.05 or sz_z * sc_z >= 0.01:
+        return False
+    quat = world.get("quat")
+    if isinstance(quat, dict) and ("x" in quat or "y" in quat):
+        return (
+            abs(float(quat.get("x", 0.0))) < 0.05
+            and abs(float(quat.get("y", 0.0))) < 0.05
+        )
+    eulers = world.get("eulers")
+    if isinstance(eulers, dict):
+        return (
+            abs(float(eulers.get("x", 0.0))) < 1.0
+            and abs(float(eulers.get("y", 0.0))) < 1.0
+        )
+    return True
+
+
+def _extract_pbr_from_obj(
+    obj: dict[str, Any], names: set[str]
+) -> dict[str, Any] | None:
+    bc = obj.get("base_color")
+    base_color: list[float] | None = None
+    if isinstance(bc, dict) and all(k in bc for k in ("x", "y", "z")):
+        base_color = [
+            round(max(0.0, min(1.0, float(bc["x"]))), 4),
+            round(max(0.0, min(1.0, float(bc["y"]))), 4),
+            round(max(0.0, min(1.0, float(bc["z"]))), 4),
+        ]
+    elif "color" in obj:
+        base_color = _parse_argb_hex(str(obj.get("color", "")))
+
+    has_pbr = any(
+        k in obj
+        for k in ("base_color", "metallic", "smoothness", "emissive", "opacity")
+    )
+    if not has_pbr or base_color is None:
+        return None
+
+    metallic = round(max(0.0, min(1.0, float(obj.get("metallic", 0.0)))), 4)
+    smoothness = max(0.0, min(1.0, float(obj.get("smoothness", 0.5))))
+    roughness = round(1.0 - smoothness, 4)
+
+    em = obj.get("emissive")
+    if isinstance(em, dict) and all(k in em for k in ("x", "y", "z")):
+        emissive = [
+            round(max(0.0, min(1.0, float(em["x"]))), 4),
+            round(max(0.0, min(1.0, float(em["y"]))), 4),
+            round(max(0.0, min(1.0, float(em["z"]))), 4),
+        ]
+    else:
+        emissive = [0.0, 0.0, 0.0]
+
+    raw_opacity = float(obj.get("opacity", 1.0))
+    opacity = 1.0 if raw_opacity < 0.0 else round(max(0.0, min(1.0, raw_opacity)), 4)
+    transparent = bool(obj.get("transparent", False)) or opacity < 0.999
+
+    mat: dict[str, Any] = {
+        "base_color": base_color,
+        "metallic": metallic,
+        "roughness": roughness,
+        "emissive": emissive,
+        "opacity": opacity,
+        "transparent": transparent,
+    }
+    channels = obj.get("channels")
+    if isinstance(channels, dict):
+        for ch_val in channels.values():
+            tex = str(ch_val or "").strip()
+            if tex and tex in names:
+                mat["texture"] = tex
+                break
+    return mat
+
+
+def _load_a3d_resources(
+    azf: zipfile.ZipFile, names: set[str]
+) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
+    model_paths: dict[str, str] = {}
+    materials: dict[str, dict[str, Any]] = {}
+    for json_name in ("resource_database.json", "Scene/Material Library.json"):
+        if json_name not in names:
+            continue
+        payload = json.loads(azf.read(json_name).decode("utf-8"))
+        for item in payload.get("items", []):
+            obj = item.get("obj") if isinstance(item, dict) else None
+            if not isinstance(obj, dict):
+                continue
+            uid = str(obj.get("uid", "")).strip().lower()
+            if not uid:
+                continue
+            path = str(obj.get("path", "")).strip()
+            if path.lower().endswith(".glb") and path in names:
+                model_paths[uid] = path
+            pbr = _extract_pbr_from_obj(obj, names)
+            if pbr is not None and uid not in materials:
+                materials[uid] = pbr
+    return model_paths, materials
+
+
+def parse_working_a3d_scene_info(a3d_bytes: bytes) -> dict[str, Any]:
+    """Extract StageConfig fields (``width``, ``depth``, ``color``, ``enabled``)."""
+    if not a3d_bytes:
+        return {}
+    try:
+        with zipfile.ZipFile(io.BytesIO(a3d_bytes)) as azf:
+            names = set(azf.namelist())
+            _model_paths, materials = _load_a3d_resources(azf, names)
+            if "Scene/Primitive.json" not in names:
+                return {}
+            payload = json.loads(azf.read("Scene/Primitive.json").decode("utf-8"))
+            for entry in payload.get("items", []):
+                obj = entry.get("obj") if isinstance(entry, dict) else None
+                if not isinstance(obj, dict):
+                    continue
+                name = str(obj.get("name", "")).strip()
+                world = obj.get("world") or obj.get("local") or {}
+                lb = obj.get("local_bounds", {})
+                lb_size = lb.get("size", {}) if isinstance(lb, dict) else {}
+                if not isinstance(world, dict) or not _is_horizontal_ground(
+                    name, world, lb_size
+                ):
+                    continue
+                sc = world.get("scale", {})
+                sz_src = (
+                    lb_size
+                    if isinstance(lb_size, dict) and lb_size
+                    else obj.get("size", {})
+                )
+                sx = float(sc.get("x", 1.0)) if isinstance(sc, dict) else 1.0
+                sy = float(sc.get("y", 1.0)) if isinstance(sc, dict) else 1.0
+                is_sz = isinstance(sz_src, dict)
+                wx = float(sz_src.get("x", 0.0)) * abs(sx) if is_sz else 0.0
+                wy = float(sz_src.get("y", 0.0)) * abs(sy) if is_sz else 0.0
+                if wx <= 0.0 or wy <= 0.0:
+                    continue
+
+                rgb: list[float] | None = None
+                mat_uids = obj.get("material_uids")
+                if isinstance(mat_uids, list):
+                    for mu in mat_uids:
+                        mat = materials.get(str(mu).strip().lower())
+                        if mat is not None:
+                            rgb = mat["base_color"]
+                            break
+                if rgb is None:
+                    rgb = _parse_argb_hex(str(obj.get("color", "")))
+
+                info: dict[str, Any] = {
+                    "width": round(max(1.0, min(100.0, wx)), 2),
+                    "depth": round(max(1.0, min(100.0, wy)), 2),
+                    "enabled": True,
+                }
+                if rgb is not None:
+                    info["color"] = _rgb_to_hex(rgb)
+                return info
+            return {}
+    except (zipfile.BadZipFile, json.JSONDecodeError, UnicodeDecodeError, KeyError):
+        return {}
+
+
 def parse_working_a3d_scenery(
     a3d_bytes: bytes, max_triangles: int = 80000
 ) -> list[dict[str, Any]]:
@@ -446,29 +680,18 @@ def parse_working_a3d_scenery(
     try:
         with zipfile.ZipFile(io.BytesIO(a3d_bytes)) as azf:
             names = set(azf.namelist())
-            model_paths: dict[str, str] = {}
-            materials: dict[str, list[float]] = {}
-            if "resource_database.json" in names:
-                rdb = json.loads(azf.read("resource_database.json").decode("utf-8"))
-                for item in rdb.get("items", []):
-                    obj = item.get("obj") if isinstance(item, dict) else None
-                    if not isinstance(obj, dict):
-                        continue
-                    uid = str(obj.get("uid", "")).strip().lower()
-                    if not uid:
-                        continue
-                    path = str(obj.get("path", "")).strip()
-                    if path.lower().endswith(".glb") and path in names:
-                        model_paths[uid] = path
-                    bc = obj.get("base_color")
-                    if isinstance(bc, dict) and all(k in bc for k in ("x", "y", "z")):
-                        materials[uid] = [
-                            round(max(0.0, min(1.0, float(bc["x"]))), 4),
-                            round(max(0.0, min(1.0, float(bc["y"]))), 4),
-                            round(max(0.0, min(1.0, float(bc["z"]))), 4),
-                        ]
+            model_paths, materials = _load_a3d_resources(azf, names)
 
-            glb_cache: dict[str, tuple[list[_Vec3], list[_Vec3], list[int]]] = {}
+            glb_cache: dict[
+                str,
+                tuple[
+                    list[_Vec3],
+                    list[_Vec3],
+                    list[int],
+                    list[tuple[float, float]],
+                    dict[str, Any] | None,
+                ],
+            ] = {}
             scenery: list[dict[str, Any]] = []
             tri_budget = 0
 
@@ -491,25 +714,20 @@ def parse_working_a3d_scenery(
                     lb = obj.get("local_bounds", {})
                     lb_center = lb.get("center", {}) if isinstance(lb, dict) else {}
                     lb_size = lb.get("size", {}) if isinstance(lb, dict) else {}
-                    pos_z = float(world.get("pos", {}).get("z", 0.0))
-                    sc_z = float(world.get("scale", {}).get("z", 1.0))
-                    sz_z = float(lb_size.get("z", 0.0))
-                    if (
-                        name.lower() == "ground"
-                        and abs(pos_z) < 0.05
-                        and sz_z * sc_z < 0.01
-                    ):
+                    if _is_horizontal_ground(name, world, lb_size):
                         continue
 
                     m_uid = str(obj.get("model_uid") or "").strip().lower()
                     verts: list[_Vec3] = []
                     norms: list[_Vec3] = []
                     indices: list[int] = []
+                    uvs: list[tuple[float, float]] = []
+                    glb_pbr: dict[str, Any] | None = None
                     if m_uid in model_paths:
                         gpath = model_paths[m_uid]
                         if gpath not in glb_cache:
-                            glb_cache[gpath] = _decode_glb_mesh(azf.read(gpath))
-                        verts, norms, indices = glb_cache[gpath]
+                            glb_cache[gpath] = _decode_glb_mesh_data(azf.read(gpath))
+                        verts, norms, indices, uvs, glb_pbr = glb_cache[gpath]
                     elif isinstance(lb_size, dict) and lb_size:
                         verts, norms, indices = _box_mesh(
                             (
@@ -520,7 +738,7 @@ def parse_working_a3d_scenery(
                             (
                                 float(lb_size.get("x", 0.0)),
                                 float(lb_size.get("y", 0.0)),
-                                sz_z,
+                                float(lb_size.get("z", 0.0)),
                             ),
                         )
 
@@ -528,31 +746,43 @@ def parse_working_a3d_scenery(
                     if tri_count == 0 or tri_budget + tri_count > max_triangles:
                         continue
 
-                    color: list[float] | None = None
+                    mat_dict: dict[str, Any] | None = None
                     mat_uids = obj.get("material_uids")
                     if isinstance(mat_uids, list):
                         for mu in mat_uids:
-                            col = materials.get(str(mu).strip().lower())
-                            if col is not None:
-                                color = col
+                            found = materials.get(str(mu).strip().lower())
+                            if found is not None:
+                                mat_dict = dict(found)
                                 break
-                    if color is None:
-                        color = _parse_argb_hex(str(obj.get("color", ""))) or [
+                    if mat_dict is None and glb_pbr is not None:
+                        mat_dict = dict(glb_pbr)
+                    if mat_dict is None:
+                        base_rgb = _parse_argb_hex(str(obj.get("color", ""))) or [
                             0.45,
                             0.45,
                             0.48,
                         ]
+                        mat_dict = {
+                            "base_color": base_rgb,
+                            "metallic": 0.0,
+                            "roughness": 0.5,
+                            "emissive": [0.0, 0.0, 0.0],
+                            "opacity": 1.0,
+                            "transparent": False,
+                        }
 
                     out_v, out_n = _transform_world(world, verts, norms)
-                    scenery.append(
-                        {
-                            "name": name,
-                            "color": color,
-                            "vertices": out_v,
-                            "normals": out_n,
-                            "indices": indices,
-                        }
-                    )
+                    item_dict: dict[str, Any] = {
+                        "name": name,
+                        "color": mat_dict["base_color"],
+                        "material": mat_dict,
+                        "vertices": out_v,
+                        "normals": out_n,
+                        "indices": indices,
+                    }
+                    if uvs:
+                        item_dict["uvs"] = [list(u) for u in uvs]
+                    scenery.append(item_dict)
                     tri_budget += tri_count
 
             return scenery
