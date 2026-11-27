@@ -223,3 +223,40 @@ def test_effect_tap_tempo_action() -> None:
     assert res2 == pytest.approx(120.0)
     eff1 = app.lightshow.effects.get(1.0)
     assert eff1 is not None and eff1.bpm == pytest.approx(120.0)
+
+
+def test_effect_update_envelope_modes_and_trail_with_undo() -> None:
+    """Test effect.update for entry_mode, exit_mode, and trail (with undo/redo)."""
+    from olc.show.effect import EffectEnvelopeMode
+
+    app = _make_app()
+    app.action_registry.execute("effect.create", 1.0, template_id="circle")
+    eff = app.lightshow.effects.get(1.0)
+    assert eff is not None
+    assert eff.entry_mode == EffectEnvelopeMode.FADE_BY_SIZE
+    assert eff.exit_mode == EffectEnvelopeMode.FADE_BY_SIZE
+
+    app.action_registry.execute(
+        "effect.update",
+        1.0,
+        entry_mode=EffectEnvelopeMode.IMMEDIATE,
+        exit_mode="fade_by_size_and_rate",
+        trail=25.0,
+    )
+    assert eff.entry_mode == EffectEnvelopeMode.IMMEDIATE
+    assert eff.exit_mode == EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE
+    assert all(ly.duty_cycle == pytest.approx(0.25) for ly in eff.layers)
+
+    app.history.undo()
+    eff_undo = app.lightshow.effects.get(1.0)
+    assert eff_undo is not None
+    assert eff_undo.entry_mode == EffectEnvelopeMode.FADE_BY_SIZE
+    assert eff_undo.exit_mode == EffectEnvelopeMode.FADE_BY_SIZE
+    assert all(ly.duty_cycle == pytest.approx(0.5) for ly in eff_undo.layers)
+
+    app.history.redo()
+    eff_redo = app.lightshow.effects.get(1.0)
+    assert eff_redo is not None
+    assert eff_redo.entry_mode == EffectEnvelopeMode.IMMEDIATE
+    assert eff_redo.exit_mode == EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE
+    assert all(ly.duty_cycle == pytest.approx(0.25) for ly in eff_redo.layers)

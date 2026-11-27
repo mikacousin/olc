@@ -40,6 +40,7 @@ from olc.show.effect import (
     BUILTIN_EFFECT_TEMPLATES,
     DistributeDirection,
     EffectDefinition,
+    EffectEnvelopeMode,
     EffectLayer,
     EffectMode,
     WaveformType,
@@ -65,6 +66,12 @@ EFFECT_PARAMETERS: tuple[str, ...] = (
 WAVEFORM_NAMES: tuple[str, ...] = tuple(w.value for w in WaveformType)
 MODE_NAMES: tuple[str, ...] = tuple(m.value for m in EffectMode)
 DIRECTION_NAMES: tuple[str, ...] = tuple(d.value for d in DistributeDirection)
+ENVELOPE_MODE_LABELS: tuple[tuple[str, str], ...] = (
+    (EffectEnvelopeMode.IMMEDIATE.value, "Immediate"),
+    (EffectEnvelopeMode.FADE_BY_SIZE.value, "Fade Size"),
+    (EffectEnvelopeMode.FADE_BY_RATE.value, "Fade Rate"),
+    (EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE.value, "Size & Rate"),
+)
 
 _LAYER_COLORS: tuple[tuple[float, float, float], ...] = (
     (0.85, 0.35, 0.95),  # Magenta
@@ -787,6 +794,37 @@ class EffectsTab(Gtk.Box):
         self.size_master_combo.connect("changed", self._on_global_prop_changed)
         grid.attach(self.size_master_combo, 3, 6, 1, 1)
 
+        # Row 7: Entry & Exit Modes
+        grid.attach(Gtk.Label(label=_("Entry:"), halign=Gtk.Align.END), 0, 7, 1, 1)
+        self.entry_mode_combo = Gtk.ComboBoxText()
+        for mode_id, mode_label in ENVELOPE_MODE_LABELS:
+            self.entry_mode_combo.append(mode_id, _(mode_label))
+        self.entry_mode_combo.set_active_id(EffectEnvelopeMode.FADE_BY_SIZE.value)
+        self.entry_mode_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.entry_mode_combo, 1, 7, 1, 1)
+
+        grid.attach(Gtk.Label(label=_("Exit:"), halign=Gtk.Align.END), 2, 7, 1, 1)
+        self.exit_mode_combo = Gtk.ComboBoxText()
+        for mode_id, mode_label in ENVELOPE_MODE_LABELS:
+            self.exit_mode_combo.append(mode_id, _(mode_label))
+        self.exit_mode_combo.set_active_id(EffectEnvelopeMode.FADE_BY_SIZE.value)
+        self.exit_mode_combo.connect("changed", self._on_global_prop_changed)
+        grid.attach(self.exit_mode_combo, 3, 7, 1, 1)
+
+        # Row 8: Global Trail (%)
+        grid.attach(Gtk.Label(label=_("Trail (%):"), halign=Gtk.Align.END), 0, 8, 1, 1)
+        self.trail_spin = Gtk.SpinButton.new_with_range(1.0, 100.0, 5.0)
+        self.trail_spin.set_digits(0)
+        self.trail_spin.set_width_chars(4)
+        self.trail_spin.set_tooltip_text(
+            _(
+                "Syncs Duty% across all layers "
+                "(use the Duty% column for per-layer control)"
+            )
+        )
+        self.trail_spin.connect("value-changed", self._on_trail_changed)
+        grid.attach(self.trail_spin, 1, 8, 1, 1)
+
         top_hbox.pack_start(grid, False, False, 0)
 
         # Visualizer alongside properties
@@ -1041,11 +1079,14 @@ class EffectsTab(Gtk.Box):
             self.speed_mult_combo,
             self.rate_master_combo,
             self.size_master_combo,
+            self.entry_mode_combo,
+            self.exit_mode_combo,
             self.btn_add_layer,
             self.btn_remove_layer,
             self.layer_tree,
         ):
             widget.set_sensitive(has_eff)
+        self.trail_spin.set_sensitive(has_eff and eff is not None and bool(eff.layers))
 
         self._updating_ui = True
         try:
@@ -1089,6 +1130,12 @@ class EffectsTab(Gtk.Box):
             self.size_master_combo.set_active_id(
                 str(eff.size_master) if eff.size_master is not None else "none"
             )
+            self.entry_mode_combo.set_active_id(eff.entry_mode.value)
+            self.exit_mode_combo.set_active_id(eff.exit_mode.value)
+            if eff.layers:
+                self.trail_spin.set_value(
+                    round(float(eff.layers[0].duty_cycle) * 100.0)
+                )
 
             for idx, layer in enumerate(eff.layers):
                 self.layer_store.append(
@@ -1295,10 +1342,20 @@ class EffectsTab(Gtk.Box):
         rm_id = self.rate_master_combo.get_active_id() or "none"
         sz_id = self.size_master_combo.get_active_id() or "none"
         mult_str = self.speed_mult_combo.get_active_id() or "1.0"
+        entry_id = (
+            self.entry_mode_combo.get_active_id()
+            or EffectEnvelopeMode.FADE_BY_SIZE.value
+        )
+        exit_id = (
+            self.exit_mode_combo.get_active_id()
+            or EffectEnvelopeMode.FADE_BY_SIZE.value
+        )
         self.app.core.action_registry.execute(
             "effect.update",
             eff.number,
             direction=DistributeDirection(dir_id),
+            entry_mode=EffectEnvelopeMode(entry_id),
+            exit_mode=EffectEnvelopeMode(exit_id),
             groups=int(self.groups_spin.get_value_as_int()),
             blocks=int(self.blocks_spin.get_value_as_int()),
             wings=int(self.wings_spin.get_value_as_int()),
@@ -1311,6 +1368,17 @@ class EffectsTab(Gtk.Box):
             size_master=int(sz_id) if sz_id != "none" else None,
         )
         self.preview_area.queue_draw()
+
+    def _on_trail_changed(self, spin: Gtk.SpinButton) -> None:
+        if self._updating_ui:
+            return
+        eff = self.get_selected_effect()
+        if eff is None or not eff.layers:
+            return
+        self.app.core.action_registry.execute(
+            "effect.update", eff.number, trail=float(spin.get_value())
+        )
+        self.refresh()
 
     def _on_layer_combo_edited(
         self,

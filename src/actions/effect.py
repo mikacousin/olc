@@ -281,9 +281,15 @@ class EffectUpdateAction(Action):
             new_size = float(self.changes["size"])
             for layer in eff.layers:
                 layer.size = new_size
+        if "trail" in self.changes and self.changes["trail"] is not None:
+            new_duty = max(0.01, min(1.0, float(self.changes["trail"]) / 100.0))
+            for layer in eff.layers:
+                layer.duty_cycle = new_duty
         for key in (
             "label",
             "direction",
+            "entry_mode",
+            "exit_mode",
             "groups",
             "blocks",
             "wings",

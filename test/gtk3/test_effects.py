@@ -160,7 +160,7 @@ def test_effects_tab_editing_layers_and_global_properties(
     eff = fx_tab.create_effect(1.0, template_id="circle")
     assert len(eff.layers) == 2
 
-    # Edit label, groups, blocks, wings, direction, axis via UI controls
+    # Edit global properties, entry/exit modes, and trail via UI controls
     fx_tab.label_entry.set_text("Arena Circle")
     fx_tab.label_entry.activate()
     fx_tab.direction_combo.set_active_id(DistributeDirection.BOUNCE.value)
@@ -168,6 +168,9 @@ def test_effects_tab_editing_layers_and_global_properties(
     fx_tab.blocks_spin.set_value(2)
     fx_tab.wings_spin.set_value(2)
     fx_tab.axis_spin.set_value(45.0)
+    fx_tab.entry_mode_combo.set_active_id("immediate")
+    fx_tab.exit_mode_combo.set_active_id("fade_by_rate")
+    fx_tab.trail_spin.set_value(30.0)
     process_events()
 
     updated = ls.effects.get(1.0)
@@ -178,6 +181,9 @@ def test_effects_tab_editing_layers_and_global_properties(
     assert updated.blocks == 2
     assert updated.wings == 2
     assert updated.axis_deg == pytest.approx(45.0)
+    assert updated.entry_mode.value == "immediate"
+    assert updated.exit_mode.value == "fade_by_rate"
+    assert all(ly.duty_cycle == pytest.approx(0.30) for ly in updated.layers)
 
     # Add and remove a layer
     fx_tab.add_layer("zoom")
