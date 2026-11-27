@@ -390,9 +390,7 @@ def convert_eos_effect(
         abs_result = _convert_absolute(raw, params[0])
         if len(params) > 1 and abs_result.get("layers"):
             base_layer = abs_result["layers"][0]
-            abs_result["layers"] = [
-                {**base_layer, "parameter": p} for p in params
-            ]
+            abs_result["layers"] = [{**base_layer, "parameter": p} for p in params]
         result.update(abs_result)
         return _finalize_eos_effect_dict(result, raw)
 

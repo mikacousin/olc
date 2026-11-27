@@ -184,27 +184,15 @@ fn eval_shutter_strobe(
                 0.5
             };
 
-            if low.contains("rand") {
-                let freq = resolve_freq_hz(
-                    t,
-                    r.physical_min,
-                    r.physical_max,
-                    ch.physical_min,
-                    ch.physical_max,
-                );
+            if low.contains("rand") || low.contains("rnd") {
+                let freq = resolve_freq_hz(t, r.physical_min, r.physical_max, None, None);
                 let step = (time_sec.max(0.0) * freq).floor() as u64;
                 let h = splitmix64(step ^ fixture_seed.wrapping_mul(0x9E37_79B9));
                 return if (h & 0xFF) < 64 { 1.0 } else { 0.0 };
             }
 
             if low.contains("pulse") || low.contains("ramp") {
-                let freq = resolve_freq_hz(
-                    t,
-                    r.physical_min,
-                    r.physical_max,
-                    ch.physical_min,
-                    ch.physical_max,
-                );
+                let freq = resolve_freq_hz(t, r.physical_min, r.physical_max, None, None);
                 let phase = (time_sec.max(0.0) * freq).fract();
                 if low.contains("close") {
                     return 1.0 - phase;
@@ -226,13 +214,7 @@ fn eval_shutter_strobe(
                 || low.contains("hz")
                 || low.contains("burst")
             {
-                let freq = resolve_freq_hz(
-                    t,
-                    r.physical_min,
-                    r.physical_max,
-                    ch.physical_min,
-                    ch.physical_max,
-                );
+                let freq = resolve_freq_hz(t, r.physical_min, r.physical_max, None, None);
                 let phase = (time_sec.max(0.0) * freq).fract();
                 return if phase < STROBE_DUTY_CYCLE { 1.0 } else { 0.0 };
             }
@@ -241,7 +223,7 @@ fn eval_shutter_strobe(
         }
     }
 
-    if dmx_val == 0 {
+    if dmx_val == 0 || ch.default_value == Some(dmx_val) || ch.default_value.unwrap_or(0) > 0 {
         return 1.0;
     }
     let t = dmx_val as f32 / 255.0;
@@ -568,80 +550,53 @@ mod tests {
                 channels: vec![
                     DmxChannel {
                         channel_type: "intensity".into(),
-                        label: String::new(),
                         universe: 1,
                         address: 1,
-                        fine: false,
-                        ultra_fine: false,
-                        physical_min: None,
-                        physical_max: None,
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "red".into(),
-                        label: String::new(),
                         universe: 1,
                         address: 2,
-                        fine: false,
-                        ultra_fine: false,
-                        physical_min: None,
-                        physical_max: None,
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "pan".into(),
-                        label: String::new(),
                         universe: 1,
                         address: 3,
-                        fine: false,
-                        ultra_fine: false,
                         physical_min: Some(-270.0),
                         physical_max: Some(270.0),
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "tilt".into(),
-                        label: String::new(),
                         universe: 1,
                         address: 4,
-                        fine: false,
-                        ultra_fine: false,
                         physical_min: Some(-135.0),
                         physical_max: Some(135.0),
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "zoom".into(),
-                        label: String::new(),
                         universe: 1,
                         address: 5,
-                        fine: false,
-                        ultra_fine: false,
                         physical_min: Some(10.0),
                         physical_max: Some(50.0),
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "generic".into(),
                         label: "gobo_index/speed".into(),
                         universe: 1,
                         address: 6,
-                        fine: false,
-                        ultra_fine: false,
-                        physical_min: None,
-                        physical_max: None,
-                        ranges: vec![],
+                        ..Default::default()
                     },
                     DmxChannel {
                         channel_type: "frost".into(),
                         label: "Frost".into(),
                         universe: 1,
                         address: 7,
-                        fine: false,
-                        ultra_fine: false,
-                        physical_min: None,
-                        physical_max: None,
-                        ranges: vec![],
+                        ..Default::default()
                     },
                 ],
             }],
@@ -672,11 +627,8 @@ mod tests {
             label: label.into(),
             universe: 1,
             address: addr,
-            fine: false,
-            ultra_fine: false,
-            physical_min: None,
-            physical_max: None,
             ranges,
+            ..Default::default()
         }
     }
 
@@ -861,10 +813,7 @@ mod tests {
             universe: 1,
             address: 4,
             fine: true,
-            ultra_fine: false,
-            physical_min: None,
-            physical_max: None,
-            ranges: vec![],
+            ..Default::default()
         };
         let patch = Patch {
             version: 1,
@@ -1064,11 +1013,9 @@ mod tests {
                         label: "Strobe".into(),
                         universe: 1,
                         address: 2,
-                        fine: false,
-                        ultra_fine: false,
                         physical_min: Some(1.0),
                         physical_max: Some(10.0),
-                        ranges: vec![],
+                        ..Default::default()
                     },
                 ],
             }],
@@ -1088,5 +1035,108 @@ mod tests {
         let off = evaluate_fixtures(&patch, 0.06, |u| (u == 1).then_some(frame))[0].intensity;
         assert!((on - 1.0).abs() < 1e-5);
         assert!(off.abs() < 1e-5);
+    }
+
+    #[test]
+    fn evaluates_shutter_without_ranges_respects_nonzero_home_and_rnd_label() {
+        use viz_core::ChannelRange;
+
+        let patch = Patch {
+            version: 1,
+            stage: Stage::default(),
+            fixtures: vec![
+                Fixture {
+                    id: "olc:20".into(),
+                    channel: Some(20),
+                    unit: None,
+                    name: "NoRange Home 255".into(),
+                    fixture_type: FixtureType::MovingHead,
+                    gdtf: None,
+                    mode: None,
+                    address: Some(DmxAddress { universe: 1, channel: 1 }),
+                    footprint: Some(2),
+                    position: Vec3::new(0.0, 0.0, 4.0),
+                    focus_point: Vec3::ZERO,
+                    orientation: Orientation::default(),
+                    beam_angle: 25.0,
+                    static_gobo: String::new(),
+                    gel: String::new(),
+                    gel_color: String::new(),
+                    channels: vec![
+                        ch_simple("intensity", "Intens", 1, vec![]),
+                        DmxChannel {
+                            channel_type: "strobe".into(),
+                            label: "Shutter_Strobe".into(),
+                            universe: 1,
+                            address: 2,
+                            default_value: Some(255),
+                            ..Default::default()
+                        },
+                    ],
+                },
+                Fixture {
+                    id: "olc:21".into(),
+                    channel: Some(21),
+                    unit: None,
+                    name: "Eos Rnd Plus".into(),
+                    fixture_type: FixtureType::MovingHead,
+                    gdtf: None,
+                    mode: None,
+                    address: Some(DmxAddress { universe: 1, channel: 3 }),
+                    footprint: Some(2),
+                    position: Vec3::new(0.0, 0.0, 4.0),
+                    focus_point: Vec3::ZERO,
+                    orientation: Orientation::default(),
+                    beam_angle: 25.0,
+                    static_gobo: String::new(),
+                    gel: String::new(),
+                    gel_color: String::new(),
+                    channels: vec![
+                        ch_simple("intensity", "Intens", 3, vec![]),
+                        DmxChannel {
+                            channel_type: "strobe".into(),
+                            label: "Shutter_Strobe".into(),
+                            universe: 1,
+                            address: 4,
+                            physical_min: Some(201.0),
+                            physical_max: Some(240.0),
+                            ranges: vec![ChannelRange {
+                                label: "Rnd +".into(),
+                                min: 121,
+                                max: 160,
+                                ..Default::default()
+                            }],
+                            ..Default::default()
+                        },
+                    ],
+                },
+            ],
+        };
+
+        let mut frame = [0u8; DMX_CHANNELS];
+        frame[0] = 255;
+        frame[1] = 255; // Home = Open
+        frame[2] = 255;
+        frame[3] = 140; // Rnd +
+
+        // Fixture 20 stays open (1.0) across all timestamps
+        for t in [0.01, 0.06, 0.25, 0.77] {
+            let i0 = evaluate_fixtures(&patch, t, |u| (u == 1).then_some(frame))[0].intensity;
+            assert!((i0 - 1.0).abs() < 1e-5);
+        }
+
+        // Fixture 21 ("Rnd +") produces both ON and OFF frames
+        let mut saw_on = false;
+        let mut saw_off = false;
+        for step in 0..40 {
+            let t = step as f32 * 0.13;
+            let i1 = evaluate_fixtures(&patch, t, |u| (u == 1).then_some(frame))[1].intensity;
+            if i1 > 0.5 {
+                saw_on = true;
+            } else {
+                saw_off = true;
+            }
+        }
+        assert!(saw_on && saw_off);
     }
 }

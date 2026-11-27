@@ -136,9 +136,7 @@ def _extract_effect_step_token(st: list[Any]) -> str:
             return f"PR {num:g}"
         if ref_kind == 3:
             cat_id = ref_obj[3]
-            prefix = (
-                _REF_CAT_TO_PREFIX.get(cat_id) if isinstance(cat_id, int) else None
-            )
+            prefix = _REF_CAT_TO_PREFIX.get(cat_id) if isinstance(cat_id, int) else None
             if prefix is not None:
                 return f"{prefix} {num:g}"
     val = st[3] if len(st) > 3 and isinstance(st[3], (int, float)) else 0.0
@@ -1118,9 +1116,7 @@ class Esf3dParser:
                                 )
                             si += 2
                         is_stepbased = "||ch" in label.lower() or (
-                            len(item[24]) > 2
-                            and item[24][2] == 2
-                            and not has_pal_ref
+                            len(item[24]) > 2 and item[24][2] == 2 and not has_pal_ref
                         )
                         raw_eff["eos_type"] = (
                             EOS_TYPE_STEPBASED if is_stepbased else EOS_TYPE_ABSOLUTE

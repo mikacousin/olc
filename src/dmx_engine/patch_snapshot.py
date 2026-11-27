@@ -72,6 +72,9 @@ def _channel_row(ch: Any) -> dict[str, Any]:  # noqa: ANN401
         row["fine"] = True
     if getattr(ch, "ultra_fine", False):
         row["ultra_fine"] = True
+    def_val = getattr(ch, "default_value", None)
+    if def_val is not None and (int(def_val) & 0xFF) != 0:
+        row["default_value"] = int(def_val) & 0xFF
     pmin = getattr(ch, "physical_min", None)
     pmax = getattr(ch, "physical_max", None)
     if pmin is not None and pmax is not None and (pmin, pmax) != (0.0, 1.0):

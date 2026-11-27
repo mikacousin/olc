@@ -71,7 +71,7 @@ pub struct ChannelRange {
 }
 
 /// Individual DMX channel of a fixture.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DmxChannel {
     #[serde(rename = "type")]
     pub channel_type: String,
@@ -83,6 +83,8 @@ pub struct DmxChannel {
     pub fine: bool,
     #[serde(default)]
     pub ultra_fine: bool,
+    #[serde(default)]
+    pub default_value: Option<u8>,
     #[serde(default)]
     pub physical_min: Option<f32>,
     #[serde(default)]
