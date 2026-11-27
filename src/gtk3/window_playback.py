@@ -118,6 +118,7 @@ def _empty_playback_row(
         "",
         None,
         False,
+        "",
     ]
 
 
@@ -197,6 +198,7 @@ class MainPlaybackView(Gtk.Notebook):
             str,
             str,
             bool,
+            str,
         )
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(step_filter_func1, self)
@@ -259,6 +261,7 @@ class MainPlaybackView(Gtk.Notebook):
             (16, "Flags", 65),
             (17, "Total", 65),
             (18, "Link", 65),
+            (22, "Curve", 75),
             (19, "Notes", 160),
         ]
         for display_idx, (store_idx, column_title, default_width) in enumerate(columns):
@@ -346,7 +349,11 @@ class MainPlaybackView(Gtk.Notebook):
         steps = main_seq.steps
         if step_idx < 0 or step_idx >= len(steps):
             return False
-        text = format_step_tooltip(steps[step_idx], col.get_title() or "")
+        text = format_step_tooltip(
+            steps[step_idx],
+            col.get_title() or "",
+            lightshow=self.app.core.lightshow,
+        )
         if not text:
             return False
         tooltip.set_text(text)
@@ -414,6 +421,8 @@ class MainPlaybackView(Gtk.Notebook):
                     suffix = f" ×{loops}" if loops > 0 else ""
                     link_parts.append(f"→ Q{link_cue:g}{suffix}")
                 link_text = " ".join(link_parts)
+                step_cid = int(getattr(step_obj, "curve_id", 0))
+                curve_text = f"C{step_cid}" if step_cid > 0 else ""
                 notes_text = cue.notes if cue is not None else ""
                 self.cues_liststore1.append(
                     [
@@ -439,6 +448,7 @@ class MainPlaybackView(Gtk.Notebook):
                         notes_text,
                         fx_color,
                         fx_color is not None,
+                        curve_text,
                     ]
                 )
         if main_seq.last == 1:

@@ -54,7 +54,11 @@ __all__ = [
 ]
 
 
-def format_step_tooltip(step_obj: Step, title: str) -> str | None:
+def format_step_tooltip(
+    step_obj: Step,
+    title: str,
+    lightshow: typing.Any = None,  # noqa: ANN401
+) -> str | None:
     """Return detailed tooltip text for a step column, or None if not applicable."""
     if title == "Channel Time" and step_obj.channel_time:
         lines = []
@@ -88,6 +92,31 @@ def format_step_tooltip(step_obj: Step, title: str) -> str | None:
             names.append("Assert (A)")
         if names:
             return ", ".join(names)
+
+    if title == "Link":
+        parts: list[str] = []
+        if cue is not None and cue.execute_preset is not None:
+            parts.append(f"Preset P{cue.execute_preset:g}")
+        link_cue = getattr(step_obj, "link_cue", None)
+        if link_cue is not None:
+            loops = int(getattr(step_obj, "loop_count", 0))
+            loop_txt = "∞" if loops == 0 else str(loops)
+            suffix = "" if loops == 1 else "s"
+            parts.append(f"Link → Cue {link_cue:g} ({loop_txt} loop{suffix})")
+        if parts:
+            return "\n".join(parts)
+
+    if title == "Curve":
+        cid = int(getattr(step_obj, "curve_id", 0))
+        if cid > 0:
+            curves = getattr(lightshow, "curves", None) if lightshow else None
+            curve = (
+                curves.get_curve(cid)
+                if curves is not None and hasattr(curves, "get_curve")
+                else None
+            )
+            c_name = getattr(curve, "name", "") if curve is not None else ""
+            return f"Curve C{cid}: {c_name}" if c_name else f"Curve C{cid}"
 
     if title == "Notes" and cue is not None and cue.notes:
         return cue.notes
@@ -1016,7 +1045,11 @@ class SequenceTab(Gtk.Grid):
         step_idx = int(self.liststore2[path][0])
         if step_idx < 0 or step_idx >= len(sequence.steps):
             return False
-        text = format_step_tooltip(sequence.steps[step_idx], col.get_title() or "")
+        text = format_step_tooltip(
+            sequence.steps[step_idx],
+            col.get_title() or "",
+            lightshow=self.lightshow,
+        )
         if not text:
             return False
         tooltip.set_text(text)

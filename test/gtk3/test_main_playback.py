@@ -51,6 +51,7 @@ def test_main_playback_enriched_columns_and_live_updates(app_gui: Application) -
         "Flags",
         "Total",
         "Link",
+        "Curve",
         "Notes",
     ]
     assert [c.get_title() for c in playback.treeview1.get_columns()] == expected_titles
@@ -89,6 +90,8 @@ def test_main_playback_enriched_columns_and_live_updates(app_gui: Application) -
     app_gui.core.action_registry.execute("cue.set_int_block", 1.0, True, 1)
     app_gui.core.action_registry.execute("cue.set_assert", 1.0, True, 1)
     app_gui.core.action_registry.execute("cue.set_notes", 1.0, "Blackout on beat", 1)
+    app_gui.core.action_registry.execute("step.set_link", 1.0, 1, 1.0, 2)
+    app_gui.core.action_registry.execute("step.set_curve", 1.0, 1, 1)
     process_events()
 
     # Rows 0 and 1 are sentinels, row 2 is step 0, row 3 is step 1
@@ -100,16 +103,19 @@ def test_main_playback_enriched_columns_and_live_updates(app_gui: Application) -
     assert row[15] == "FX 3"
     assert row[16] == "B IB A"
     assert row[17] == "6"
-    assert row[18] == "P7"
+    assert row[18] == "P7 → Q1 ×2"
     assert row[19] == "Blackout on beat"
     assert row[21] is True
+    assert row[22] == "C1"
 
-    # Tooltips helper covers Pos, Flags, and Notes
+    # Tooltips helper covers Pos, Flags, Link, Curve, and Notes
     assert format_step_tooltip(step, "Pos") == "Pos — Delay: 2  Time: 4"
     assert (
         format_step_tooltip(step, "Flags")
         == "Block (B), Intensity Block (IB), Assert (A)"
     )
+    assert format_step_tooltip(step, "Link") == "Preset P7\nLink → Cue 1 (2 loops)"
+    assert format_step_tooltip(step, "Curve", app_gui.core.lightshow) is not None
     assert format_step_tooltip(step, "Notes") == "Blackout on beat"
 
     # Real-time IFCB and Total countdown during crossfade (position 0 -> step 1)
