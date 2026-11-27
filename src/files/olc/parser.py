@@ -51,6 +51,8 @@ class OlcParser(ReadFile):
         self.data["fixture_definitions"] = contents.get("fixture_definitions") or []
         self.data["gobo_library"] = contents.get("gobo_library") or {}
         self.data["devices"] = contents.get("devices") or {}
+        self.data["patch"] = contents.get("patch") or {}
+        self.data["patch_meta"] = contents.get("patch_meta") or {}
         self.data["show_metadata"] = contents.get("show_metadata") or {}
         self.data["stage"] = contents.get("stage") or {}
         self.data["sequences"] = contents.get("sequences") or {}

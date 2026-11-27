@@ -129,13 +129,17 @@ class AddDeviceDialog(Gtk.Dialog):
         self.curve_spin.set_value(0)
         grid.attach(self.curve_spin, 1, 6, 1, 1)
 
+        self.unpatched_check = Gtk.CheckButton(label="Unpatched (no DMX address)")
+        self.unpatched_check.connect("toggled", self._on_unpatched_toggled)
+        grid.attach(self.unpatched_check, 0, 7, 2, 1)
+
         self.force_check = Gtk.CheckButton(label="Force overwrite on address collision")
         self.force_check.connect("toggled", self._update_collision_preview)
-        grid.attach(self.force_check, 0, 7, 2, 1)
+        grid.attach(self.force_check, 0, 8, 2, 1)
 
         # Collision status label
         self.collision_label = Gtk.Label(label="", xalign=0)
-        grid.attach(self.collision_label, 0, 8, 2, 1)
+        grid.attach(self.collision_label, 0, 9, 2, 1)
 
     def _get_selected_definition(self) -> Optional[FixtureDefinition]:
         key = self.profile_combo.get_active_text()
@@ -155,7 +159,22 @@ class AddDeviceDialog(Gtk.Dialog):
         self._populate_modes()
         self._update_collision_preview()
 
+    def _on_unpatched_toggled(self, _widget: Gtk.Widget) -> None:
+        is_unpatched = self.unpatched_check.get_active()
+        self.universe_spin.set_sensitive(not is_unpatched)
+        self.address_spin.set_sensitive(not is_unpatched)
+        self.force_check.set_sensitive(not is_unpatched)
+        self._update_collision_preview()
+
     def _update_collision_preview(self, *_args: object) -> None:
+        if getattr(self, "unpatched_check", None) is not None and (
+            self.unpatched_check.get_active()
+        ):
+            self.collision_label.set_markup(
+                "<span foreground='#88AAFF'>Unpatched (no DMX address)</span>"
+            )
+            self.set_response_sensitive(Gtk.ResponseType.OK, True)
+            return
         fdef = self._get_selected_definition()
         if fdef is None:
             self.collision_label.set_text("")
@@ -187,13 +206,14 @@ class AddDeviceDialog(Gtk.Dialog):
 
     def get_values(self) -> dict[str, Any]:
         """Return user-configured device patch parameters."""
+        is_unpatched = self.unpatched_check.get_active()
         return {
             "device_id": int(self.id_spin.get_value()),
             "label": self.label_entry.get_text().strip(),
             "fixture_key": self.profile_combo.get_active_text() or "Generic:Dimmer",
             "mode_name": self.mode_combo.get_active_text(),
-            "universe": int(self.universe_spin.get_value()),
-            "address": int(self.address_spin.get_value()),
+            "universe": 0 if is_unpatched else int(self.universe_spin.get_value()),
+            "address": 0 if is_unpatched else int(self.address_spin.get_value()),
             "curve_id": int(self.curve_spin.get_value()),
             "force": self.force_check.get_active(),
         }

@@ -283,37 +283,85 @@ class ParsedData:
             self.lightshow.patch.invalidate_cache()
 
         for channel, values in self.data["patch"].items():
-            if int(channel) in imported_dev_ids:
+            ch_id = int(channel)
+            if ch_id in imported_dev_ids:
                 continue
-            for out in values:
-                output = out["output"]
-                universe = out["universe"]
-                curve_nb = out.get("curve", 0)
-                self.lightshow.patch.add_output(channel, output, universe, curve_nb)
-                if (label := out.get("label")) and (
-                    dev_obj := self.lightshow.patch.devices.get(int(channel))
-                ) is not None:
-                    dev_obj.label = str(label)
-            if (meta := self.data.get("patch_meta", {}).get(int(channel))) and (
-                dev_obj := self.lightshow.patch.devices.get(int(channel))
+            valid_outs = [o for o in values if int(o.get("output", 0)) > 0]
+            if valid_outs:
+                for out in valid_outs:
+                    output = out["output"]
+                    universe = out["universe"]
+                    curve_nb = out.get("curve", 0)
+                    self.lightshow.patch.add_output(ch_id, output, universe, curve_nb)
+                    if (label := out.get("label")) and (
+                        dev_obj := self.lightshow.patch.devices.get(ch_id)
+                    ) is not None:
+                        dev_obj.label = str(label)
+            else:
+                from olc.devices.device import FixtureType
+
+                first_label = next(
+                    (str(o.get("label")) for o in values if o.get("label")),
+                    f"Dimmer {ch_id}",
+                )
+                first_curve = next(
+                    (int(o.get("curve", 0)) for o in values if o.get("curve")), 0
+                )
+                dim_dev = LightingDevice(
+                    fixture_id=ch_id,
+                    label=first_label,
+                    manufacturer="Generic",
+                    model="Dimmer",
+                    fixture_type=FixtureType.DIMMER,
+                    channels=[],
+                )
+                if first_curve > 0:
+                    dim_dev.set_curve_id(first_curve)
+                self.lightshow.patch.restore_device(dim_dev)
+
+            if (meta := self.data.get("patch_meta", {}).get(ch_id)) and (
+                dev_obj := self.lightshow.patch.devices.get(ch_id)
             ) is not None:
-                if "position" in meta:
-                    p = meta["position"]
-                    dev_obj.position = (float(p[0]), float(p[1]), float(p[2]))
-                if "orientation" in meta:
-                    o = meta["orientation"]
-                    dev_obj.orientation = (float(o[0]), float(o[1]), float(o[2]))
-                if "focus_point" in meta:
-                    fp = meta["focus_point"]
-                    dev_obj.focus_point = (float(fp[0]), float(fp[1]), float(fp[2]))
-                if "beam_angle" in meta:
-                    dev_obj.beam_angle = max(1.0, min(180.0, float(meta["beam_angle"])))
-                if "gel" in meta:
-                    dev_obj.gel = str(meta["gel"])
-                if "gel_color" in meta:
-                    dev_obj.gel_color = str(meta["gel_color"])
-                if "notes" in meta:
-                    dev_obj.notes = str(meta["notes"])
+                self._apply_patch_meta_to_device(dev_obj, meta)
+
+        for ch_key, meta in (self.data.get("patch_meta") or {}).items():
+            ch_id = int(ch_key)
+            if not isinstance(meta, dict) or ch_id in self.lightshow.patch.devices:
+                continue
+            from olc.devices.device import FixtureType
+
+            dim_dev = LightingDevice(
+                fixture_id=ch_id,
+                label=str(meta.get("label") or f"Dimmer {ch_id}"),
+                manufacturer="Generic",
+                model="Dimmer",
+                fixture_type=FixtureType.DIMMER,
+                channels=[],
+            )
+            self._apply_patch_meta_to_device(dim_dev, meta)
+            self.lightshow.patch.restore_device(dim_dev)
+
+    @staticmethod
+    def _apply_patch_meta_to_device(
+        dev_obj: LightingDevice, meta: dict[typing.Any, typing.Any]
+    ) -> None:
+        if "position" in meta:
+            p = meta["position"]
+            dev_obj.position = (float(p[0]), float(p[1]), float(p[2]))
+        if "orientation" in meta:
+            o = meta["orientation"]
+            dev_obj.orientation = (float(o[0]), float(o[1]), float(o[2]))
+        if "focus_point" in meta:
+            fp = meta["focus_point"]
+            dev_obj.focus_point = (float(fp[0]), float(fp[1]), float(fp[2]))
+        if "beam_angle" in meta:
+            dev_obj.beam_angle = max(1.0, min(180.0, float(meta["beam_angle"])))
+        if "gel" in meta:
+            dev_obj.gel = str(meta["gel"])
+        if "gel_color" in meta:
+            dev_obj.gel_color = str(meta["gel_color"])
+        if "notes" in meta:
+            dev_obj.notes = str(meta["notes"])
 
     def _normalize_channels_dict(
         self, channels: dict[typing.Any, typing.Any] | None

@@ -530,6 +530,23 @@ class AsciiWriter(WriteFile):
                 i += 1
         if patch != "":
             self.stream.write(bytes(f"PATCH 1{patch}\n", "ascii"))
+        for channel, dev in self.lightshow.patch.devices.items():
+            if dev.channels:
+                continue
+            self.stream.write(bytes(f"$Patch {channel} 0 0 1\n", "ascii"))
+            if dev.label:
+                self.stream.write(bytes(f"   $$Text {dev.label}\n", "utf8"))
+            if dev.gel:
+                self.stream.write(bytes(f"   $$TextGel {dev.gel}\n", "utf8"))
+            if tuple(dev.position) != (0.0, 0.0, 4.0):
+                px, py, pz = dev.position
+                self.stream.write(
+                    bytes(
+                        f"   $$Position {self._float_to_str(px)} "
+                        f"{self._float_to_str(py)} {self._float_to_str(pz)}\n",
+                        "ascii",
+                    )
+                )
         self.stream.write(bytes("\n", "ascii"))
 
     def _independents(self) -> None:

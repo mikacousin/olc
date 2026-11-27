@@ -343,15 +343,26 @@ class PatchDeviceAction(Action):
         self.old_device_dict = old_dev.to_dict() if old_dev else None
 
         if self.fixture_def is not None:
-            patch.patch_device(
-                device_id=self.device_id,
-                fixture_def=self.fixture_def,
-                universe=self.universe,
-                address=self.address,
-                mode_name=self.mode_name,
-                label=self.label,
-                force=self.force,
-            )
+            if self.address <= 0 or self.universe <= 0:
+                dev = self.fixture_def.instantiate(
+                    fixture_id=self.device_id,
+                    label=self.label or f"{self.fixture_def.model} {self.device_id}",
+                    universe=1,
+                    address=1,
+                    mode_name=self.mode_name,
+                )
+                dev.channels = []
+                patch.restore_device(dev)
+            else:
+                patch.patch_device(
+                    device_id=self.device_id,
+                    fixture_def=self.fixture_def,
+                    universe=self.universe,
+                    address=self.address,
+                    mode_name=self.mode_name,
+                    label=self.label,
+                    force=self.force,
+                )
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
 
@@ -370,9 +381,14 @@ class PatchDeviceAction(Action):
     def get_history_details(self) -> str:
         """Return patched channel, model, and DMX address."""
         model = self.fixture_def.model if self.fixture_def is not None else ""
+        addr_txt = (
+            "Unpatched"
+            if self.address <= 0 or self.universe <= 0
+            else f"{self.universe}/{self.address}"
+        )
         if model:
-            return f"Ch {self.device_id} ({model}) → {self.universe}/{self.address}"
-        return f"Ch {self.device_id} → {self.universe}/{self.address}"
+            return f"Ch {self.device_id} ({model}) → {addr_txt}"
+        return f"Ch {self.device_id} → {addr_txt}"
 
 
 class PatchUnpatchDeviceAction(Action):
@@ -650,6 +666,16 @@ class PatchMoveDeviceAddressAction(Action):
         dev = patch.get_device(self.device_id)
         if dev is None:
             raise ValueError(f"Device {self.device_id} is not patched.")
+        if self.address == 0 or self.universe == 0:
+            self._old_device_dict = dev.to_dict()
+            self._overwritten_devices = {}
+            moved = LightingDevice.from_dict(self._old_device_dict)
+            moved.channels = []
+            patch.unpatch_device(self.device_id)
+            patch.restore_device(moved)
+            self.app.lightshow.set_modified()
+            self.app.emit("patch.changed")
+            return
         if self.address < 1 or self.address > 512:
             raise ValueError(
                 f"DMX address must be between 1 and 512, got {self.address}"

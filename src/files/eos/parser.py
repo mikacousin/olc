@@ -1033,6 +1033,11 @@ class Esf3dParser:
                 else:
                     data["devices"][ch] = dev_dict
             elif has_dmx:
+                existing_shell = data["devices"].get(ch)
+                if isinstance(existing_shell, dict) and not existing_shell.get(
+                    "channels"
+                ):
+                    data["devices"].pop(ch, None)
                 data["patch"].setdefault(ch, []).append(
                     {
                         "output": dmx_addr,
@@ -1056,14 +1061,18 @@ class Esf3dParser:
                 if meta:
                     data.setdefault("patch_meta", {})[ch] = meta
             elif (
-                label
-                or notes
-                or gel_str
-                or has_transform
-                or beam_angle is not None
-                or curve_id > 0
-                or (pending_props is not None and ch in pending_props)
-            ) and ch not in data["devices"]:
+                (
+                    label
+                    or notes
+                    or gel_str
+                    or has_transform
+                    or beam_angle is not None
+                    or curve_id > 0
+                    or (pending_props is not None and ch in pending_props)
+                )
+                and ch not in data["devices"]
+                and ch not in data["patch"]
+            ):
                 from olc.devices.device import FixtureType, LightingDevice
 
                 dim_dev = LightingDevice(

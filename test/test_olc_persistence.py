@@ -1220,3 +1220,104 @@ def test_olc_persistence_step_link_loop_and_curve(tmp_path: pathlib.Path) -> Non
     assert re_step.link_cue == pytest.approx(1.0)
     assert re_step.loop_count == 3
     assert re_step.curve_id == 15
+
+
+def test_olc_persistence_unpatched_devices_and_clear_address(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip, legacy patch/patch_meta, add/clear address."""
+    import gzip
+
+    from olc.devices.builtin import (
+        create_dimmer_definition,
+        create_moving_head_definition,
+    )
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # 1. Create unpatched device directly via patch.device(..., universe=0, address=0)
+    fdef = create_moving_head_definition()
+    app.action_registry.execute("patch.device", 20, fdef, 0, 0, label="Tour Spot 20")
+    d20 = app.lightshow.patch.get_device(20)
+    assert d20 is not None
+    assert d20.channels == []
+    assert app.lightshow.patch.is_patched(20) is False
+    d20.notes = "US Truss"
+    d20.gel = "L201"
+    d20.set_curve_id(3)
+    d20.position = (1.5, -2.0, 6.0)
+
+    # 2. Patch a dimmer at 1/10, then clear its DMX address via (0, 0) + Undo/Redo
+    app.action_registry.execute(
+        "patch.device",
+        21,
+        create_dimmer_definition(),
+        1,
+        10,
+        label="Front Wash 21",
+    )
+    d21 = app.lightshow.patch.get_device(21)
+    assert d21 is not None
+    d21.notes = "Keep me"
+    app.action_registry.execute("patch.move_device_address", 21, 0, 0)
+    d21_cleared = app.lightshow.patch.get_device(21)
+    assert d21_cleared is not None
+    assert d21_cleared.channels == []
+    assert d21_cleared.label == "Front Wash 21"
+    assert d21_cleared.notes == "Keep me"
+
+    app.history.undo()
+    d21_restored = app.lightshow.patch.get_device(21)
+    assert d21_restored is not None and len(d21_restored.channels) == 1
+    assert d21_restored.channels[0].address == 10
+    app.history.redo()
+    d21_recleared = app.lightshow.patch.get_device(21)
+    assert d21_recleared is not None and d21_recleared.channels == []
+
+    # 3. .olc save & open preserves both unpatched devices
+    save_path = tmp_path / "unpatched_show.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    r20 = app2.lightshow.patch.get_device(20)
+    r21 = app2.lightshow.patch.get_device(21)
+    assert r20 is not None and r20.channels == []
+    assert r20.label == "Tour Spot 20"
+    assert r20.notes == "US Truss"
+    assert r20.gel == "L201"
+    assert r20.curve_id == 3
+    assert r20.position == pytest.approx((1.5, -2.0, 6.0))
+    assert r21 is not None and r21.channels == []
+    assert r21.label == "Front Wash 21"
+    assert r21.notes == "Keep me"
+
+    # 4. Legacy .olc with patch output=0 and orphan patch_meta
+    legacy_path = tmp_path / "legacy_unpatched.olc"
+    legacy_payload = {
+        "application": "olc",
+        "version": "0.8.5.beta",
+        "patch": {
+            "31": [{"output": 0, "universe": 1, "curve": 2, "label": "Legacy 31"}]
+        },
+        "patch_meta": {
+            "31": {"notes": "Note 31", "gel": "L202"},
+            "32": {"label": "Orphan 32", "position": [2.0, 1.0, 5.0]},
+        },
+    }
+    with gzip.open(legacy_path, "wt", encoding="utf-8") as gz:
+        json.dump(legacy_payload, gz)
+
+    app3 = CoreApplication(settings)
+    app3.action_registry.execute("show.open", str(legacy_path))
+    r31 = app3.lightshow.patch.get_device(31)
+    r32 = app3.lightshow.patch.get_device(32)
+    assert r31 is not None and r31.channels == []
+    assert r31.label == "Legacy 31"
+    assert r31.curve_id == 2
+    assert r31.notes == "Note 31"
+    assert r31.gel == "L202"
+    assert r32 is not None and r32.channels == []
+    assert r32.label == "Orphan 32"
+    assert r32.position == pytest.approx((2.0, 1.0, 5.0))

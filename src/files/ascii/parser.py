@@ -1198,7 +1198,9 @@ class AsciiParser(ReadFile):
 
         if dmx_addr == 0:
             if pers is None or is_dimmer_personality(pers, self.param_types):
-                if channel not in self.data.get("devices", {}):
+                if channel not in self.data.get(
+                    "devices", {}
+                ) and channel not in self.data.get("patch", {}):
                     self.data.setdefault("devices", {})[channel] = {
                         "fixture_id": channel,
                         "label": f"Dimmer {channel}",
@@ -1207,7 +1209,7 @@ class AsciiParser(ReadFile):
                         "fixture_type": "dimmer",
                         "channels": [],
                     }
-            else:
+            elif channel not in self.data.get("devices", {}):
                 registered = self._register_personality_definition(pers_id)
                 if registered is not None:
                     fdef_dict, mode_name = registered
@@ -1217,6 +1219,9 @@ class AsciiParser(ReadFile):
                     if device_dict is not None:
                         self.data.setdefault("devices", {})[channel] = device_dict
         elif pers is None or is_dimmer_personality(pers, self.param_types):
+            existing_shell = self.data.get("devices", {}).get(channel)
+            if isinstance(existing_shell, dict) and not existing_shell.get("channels"):
+                self.data["devices"].pop(channel, None)
             univ_index = (dmx_addr - 1) // 512
             if univ_index < NB_UNIVERSES:
                 univ = UNIVERSES[univ_index]

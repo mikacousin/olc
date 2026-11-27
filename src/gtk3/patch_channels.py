@@ -1315,6 +1315,10 @@ class PatchChannelsTab(Gtk.Box):
             else (self.patch.universes[0] if self.patch.universes else 1)
         )
 
+        if is_patched and new_text.strip() in ("", "-", "0"):
+            self._apply_move_address(raw_id, 0, 0)
+            return
+
         parsed = self._parse_universe_address(new_text, default_univ)
         if parsed is None:
             return
