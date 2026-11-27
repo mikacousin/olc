@@ -29,6 +29,8 @@ from olc.core.tracking import (
 )
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
+from olc.gtk3.widgets.curve import get_curve_display_name
+from olc.gtk3.widgets.curve_popover import CurveSelectionPopover
 from olc.gtk3.widgets.seq_channels_view import SeqChannelsView
 from olc.show.sequence import Sequence
 
@@ -443,6 +445,13 @@ class SequenceTab(Gtk.Grid):
             str,
             str,
             str,
+            str,
+        )
+        self.link_column: Gtk.TreeViewColumn | None = None
+        self.curve_column: Gtk.TreeViewColumn | None = None
+        self._active_curve_step: tuple[float, int] | None = None
+        self.step_curve_popover = CurveSelectionPopover(
+            self.lightshow, self._on_step_curve_selected
         )
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
@@ -450,6 +459,7 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.connect("cursor-changed", self.on_cue_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
         self.treeview2.connect("query-tooltip", self._on_treeview2_query_tooltip)
+        self.treeview2.connect("button-press-event", self._on_treeview2_button_press)
 
         column_specs: list[tuple[str, int, typing.Callable[..., None] | None]] = [
             ("Step", 0, None),
@@ -468,6 +478,7 @@ class SequenceTab(Gtk.Grid):
             ("Flags", 15, None),
             ("Total", 16, None),
             ("Link", 17, None),
+            ("Curve", 19, None),
             ("Notes", 18, self.notes_edited),
         ]
         for view_idx, (column_title, model_idx, edit_cb) in enumerate(column_specs):
@@ -488,6 +499,10 @@ class SequenceTab(Gtk.Grid):
             elif model_idx == 12:
                 column.add_attribute(renderer, "foreground", 13)
                 column.add_attribute(renderer, "foreground-set", 14)
+            elif model_idx == 17:
+                self.link_column = column
+            elif model_idx == 19:
+                self.curve_column = column
             elif model_idx == 18:
                 column.set_min_width(150)
                 column.set_resizable(True)
@@ -1096,11 +1111,27 @@ class SequenceTab(Gtk.Grid):
         fx_text, fx_color = self._format_step_fx_status(sequence, step)
         flags_text = self._format_cue_flags(cue)
         total_str = time_to_string(step_obj.total_time)
-        link_str = (
-            f"P{cue.execute_preset:g}"
-            if cue is not None and cue.execute_preset is not None
-            else ""
-        )
+        link_parts: list[str] = []
+        if cue is not None and cue.execute_preset is not None:
+            link_parts.append(f"P{cue.execute_preset:g}")
+        link_cue = getattr(step_obj, "link_cue", None)
+        if link_cue is not None:
+            loop_cnt = int(getattr(step_obj, "loop_count", 0))
+            suffix = f" ×{loop_cnt}" if loop_cnt > 0 else ""
+            link_parts.append(f"→ Q{link_cue:g}{suffix}")
+        link_str = " / ".join(link_parts)
+
+        step_cid = int(getattr(step_obj, "curve_id", 0))
+        if step_cid > 0:
+            c_obj = self.lightshow.curves.get_curve(step_cid)
+            curve_str = (
+                get_curve_display_name(c_obj)
+                if c_obj is not None
+                else f"Curve #{step_cid}"
+            )
+        else:
+            curve_str = ""
+
         notes_str = cue.notes if cue is not None else ""
         self.liststore2.insert(
             step - 1,
@@ -1124,8 +1155,152 @@ class SequenceTab(Gtk.Grid):
                 total_str,
                 link_str,
                 notes_str,
+                curve_str,
             ],
         )
+
+    def _get_cell_pointing_rect(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> Gdk.Rectangle:
+        rect = treeview.get_cell_area(path, col)
+        rx, ry = treeview.convert_bin_window_to_widget_coords(rect.x, rect.y)
+        out = Gdk.Rectangle()
+        out.x = rx
+        out.y = ry
+        out.width = rect.width
+        out.height = rect.height
+        return out
+
+    def _on_treeview2_button_press(
+        self, treeview: Gtk.TreeView, event: Gdk.EventButton
+    ) -> bool:
+        if event.button != 1:
+            return False
+        path_info = treeview.get_path_at_pos(int(event.x), int(event.y))
+        if not path_info:
+            return False
+        path, col, _cx, _cy = path_info
+        if path is None or col is None:
+            return False
+        seq = self.get_selected_sequence()
+        if seq is None:
+            return False
+        step_idx = path.get_indices()[0] + 1
+        if not (0 <= step_idx < len(seq.steps)):
+            return False
+        step_obj = seq.steps[step_idx]
+        if col == self.curve_column:
+            self._active_curve_step = (seq.index, step_idx)
+            rect = self._get_cell_pointing_rect(treeview, path, col)
+            self.step_curve_popover.open_for_curve(
+                int(getattr(step_obj, "curve_id", 0)),
+                relative_to=treeview,
+                pointing_to=rect,
+            )
+            return True
+        if col == self.link_column:
+            self._open_link_popover(treeview, path, col, seq, step_idx, step_obj)
+            return True
+        return False
+
+    def _on_step_curve_selected(self, curve_id: int) -> None:
+        if self._active_curve_step is None:
+            return
+        seq_idx, step_idx = self._active_curve_step
+        self.app.core.action_registry.execute(
+            "step.set_curve", seq_idx, step_idx, curve_id
+        )
+        self.refresh()
+        seq = self.get_selected_sequence()
+        engine = getattr(self.app.core, "playback_engine", None)
+        is_main = (
+            engine.is_main_sequence(seq.index)
+            if (seq is not None and engine is not None)
+            else (seq is self.lightshow.main_playback)
+        )
+        if is_main and seq is not None and seq.position + 1 == step_idx:
+            self.window.playback.update_xfade_display(step_idx - 1)
+
+    def _open_link_popover(
+        self,
+        treeview: Gtk.TreeView,
+        path: Gtk.TreePath,
+        col: Gtk.TreeViewColumn,
+        seq: Sequence,
+        step_idx: int,
+        step_obj: Step,
+    ) -> None:
+        popover = Gtk.Popover()
+        popover.set_relative_to(treeview)
+        popover.set_pointing_to(self._get_cell_pointing_rect(treeview, path, col))
+        popover.set_position(Gtk.PositionType.BOTTOM)
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        vbox.set_border_width(8)
+
+        combo = Gtk.ComboBoxText()
+        combo.append("", "None")
+        cur_link = getattr(step_obj, "link_cue", None)
+        active_id = ""
+        for idx in range(1, len(seq.steps)):
+            cue = seq.steps[idx].cue
+            if cue is None or cue.number == 0.0:
+                continue
+            cid = f"{cue.number:g}"
+            combo.append(cid, f"Q{cid}")
+            if cur_link is not None and abs(float(cue.number) - float(cur_link)) < 1e-4:
+                active_id = cid
+        combo.set_active_id(active_id)
+        vbox.add(combo)
+
+        loop_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        loop_row.pack_start(Gtk.Label(label="Loops (0 = ∞)"), False, False, 0)
+        spin_loops = Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                value=int(getattr(step_obj, "loop_count", 0)),
+                lower=0,
+                upper=99,
+                step_increment=1,
+                page_increment=5,
+                page_size=0,
+            )
+        )
+        spin_loops.set_digits(0)
+        loop_row.pack_end(spin_loops, False, False, 0)
+        vbox.add(loop_row)
+
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        btn_apply = Gtk.Button(label="Apply")
+        btn_clear = Gtk.Button(label="Clear")
+
+        def _apply(_btn: Gtk.Button) -> None:
+            sel = combo.get_active_id()
+            target_cue = float(sel) if sel else None
+            self.app.core.action_registry.execute(
+                "step.set_link",
+                seq.index,
+                step_idx,
+                target_cue,
+                int(spin_loops.get_value()),
+            )
+            popover.popdown()
+            self.refresh()
+
+        def _clear(_btn: Gtk.Button) -> None:
+            self.app.core.action_registry.execute(
+                "step.set_link", seq.index, step_idx, None, 0
+            )
+            popover.popdown()
+            self.refresh()
+
+        btn_apply.connect("clicked", _apply)
+        btn_clear.connect("clicked", _clear)
+        btn_row.pack_start(btn_apply, True, True, 0)
+        btn_row.pack_start(btn_clear, True, True, 0)
+        vbox.add(btn_row)
+
+        vbox.show_all()
+        popover.add(vbox)
+        popover.popup()
 
     def populate_liststore(self, step: int) -> None:
         """Populate liststore with steps

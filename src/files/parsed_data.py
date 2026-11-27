@@ -584,6 +584,7 @@ class ParsedData:
                 channel_time[channel] = ChannelTime(
                     times.get("delay", 0.0), times.get("time", 0.0)
                 )
+        raw_link = values.get("link_cue")
         return Step(
             sequence,
             cue,
@@ -600,6 +601,9 @@ class ParsedData:
             delay_color=values.get("delay_color"),
             time_beam=values.get("time_beam"),
             delay_beam=values.get("delay_beam"),
+            link_cue=float(raw_link) if raw_link is not None else None,
+            loop_count=max(0, int(values.get("loop_count", 0))),
+            curve_id=max(0, int(values.get("curve_id", 0))),
         )
 
     @staticmethod
@@ -645,6 +649,13 @@ class ParsedData:
             step.time_beam = values["time_beam"]
         if "delay_beam" in values:
             step.delay_beam = values["delay_beam"]
+        if "link_cue" in values:
+            raw_link = values["link_cue"]
+            step.link_cue = float(raw_link) if raw_link is not None else None
+        if "loop_count" in values:
+            step.loop_count = max(0, int(values["loop_count"]))
+        if "curve_id" in values:
+            step.curve_id = max(0, int(values["curve_id"]))
 
     def import_presets(self) -> None:
         """Import legacy standalone cues (`sequence == 0`) as Presets."""

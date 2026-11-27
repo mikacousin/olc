@@ -198,10 +198,16 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
         cue_step = seq.steps[pos].cue
         number_step = cue_step.number if cue_step is not None else 0.0
         text_step = seq.steps[pos].text
-        if pos + 1 < len(seq.steps):
-            cue_next = seq.steps[pos + 1].cue
+        raw_next = (
+            seq.resolve_next_step_index(pos, consume_loop=False)
+            if hasattr(seq, "resolve_next_step_index")
+            else pos + 1
+        )
+        next_idx = raw_next if isinstance(raw_next, int) else pos + 1
+        if 0 <= next_idx < len(seq.steps):
+            cue_next = seq.steps[next_idx].cue
             number_next = cue_next.number if cue_next is not None else 0.0
-            text_next = seq.steps[pos + 1].text
+            text_next = seq.steps[next_idx].text
             subtitle = (
                 f"Cue : {number_step} {text_step} - "
                 f"Next Cue : {number_next} {text_next}"
@@ -324,6 +330,9 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                         )
                         self.app.window.playback.sequential.total_time = (
                             step_obj.total_time
+                        )
+                        self.app.window.playback.sequential.curve_id = int(
+                            getattr(step_obj, "curve_id", 0)
                         )
                         self.app.window.playback.sequential.queue_draw()
 
@@ -515,6 +524,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             seq.delay_in = feedback.get("next_delay_in", 0.0)
             seq.delay_out = feedback.get("next_delay_out", 0.0)
             seq.wait = feedback.get("next_wait", 0.0)
+            seq.curve_id = int(feedback.get("next_curve_id", 0))
             seq.channel_time = feedback.get("next_channel_time", False)
             seq.position_a = 0
             seq.position_b = 0
@@ -579,6 +589,9 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
                 self.app.window.playback.sequential.delay_in = step_obj.delay_in
                 self.app.window.playback.sequential.delay_out = step_obj.delay_out
                 self.app.window.playback.sequential.wait = step_obj.wait
+                self.app.window.playback.sequential.curve_id = int(
+                    getattr(step_obj, "curve_id", 0)
+                )
                 self.app.window.playback.sequential.channel_time = step_obj.channel_time
             self.app.window.playback.sequential.position_a = 0
             self.app.window.playback.sequential.position_b = 0
@@ -639,6 +652,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             seq.delay_in = data["delay_in"]
             seq.delay_out = data["delay_out"]
             seq.wait = data["wait"]
+            seq.curve_id = int(data.get("curve_id", 0))
             seq.channel_time = data["channel_time"]
             seq.position_a = 0
             seq.position_b = 0
@@ -663,6 +677,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             playback.sequential.delay_in = data["delay_in"]
             playback.sequential.delay_out = data["delay_out"]
             playback.sequential.wait = data["wait"]
+            playback.sequential.curve_id = int(data.get("curve_id", 0))
             playback.sequential.channel_time = data["channel_time"]
             playback.sequential.position_a = 0
             playback.sequential.position_b = 0
@@ -690,6 +705,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             playback.sequential.delay_in = data["delay_in"]
             playback.sequential.delay_out = data["delay_out"]
             playback.sequential.wait = data["wait"]
+            playback.sequential.curve_id = int(data.get("curve_id", 0))
             playback.sequential.channel_time = data["channel_time"]
             playback.sequential.position_a = 0
             playback.sequential.position_b = 0
@@ -719,6 +735,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             playback.sequential.delay_in = 0
             playback.sequential.delay_out = 0
             playback.sequential.wait = 0
+            playback.sequential.curve_id = 0
             playback.sequential.channel_time = {}
             playback.sequential.position_a = 0
             playback.sequential.position_b = 0
@@ -809,6 +826,7 @@ class PlaybackBridgeHandler(BaseEventBridgeHandler):
             playback.sequential.delay_out = data["delay_out"]
             playback.sequential.wait = data["wait"]
             playback.sequential.total_time = data["total_time"]
+            playback.sequential.curve_id = int(data.get("curve_id", 0))
             playback.sequential.channel_time = data["channel_time"]
             playback.sequential.position_a = 0
             playback.sequential.position_b = 0

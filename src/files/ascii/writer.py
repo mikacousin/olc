@@ -167,6 +167,16 @@ class AsciiWriter(WriteFile):
             self._ascii_text(step.text)
             self.stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
             self._write_cue_metadata(step.cue)
+            if (link_val := getattr(step, "link_cue", None)) is not None:
+                self.stream.write(
+                    bytes(f"LINK {self._float_to_str(float(link_val))}\n", "ascii")
+                )
+                if getattr(step, "loop_count", 0) > 0:
+                    self.stream.write(
+                        bytes(f"$$LOOP {int(step.loop_count)}\n", "ascii")
+                    )
+            if getattr(step, "curve_id", 0) > 0:
+                self.stream.write(bytes(f"$$CURVE {int(step.curve_id)}\n", "ascii"))
             self._save_channels(step.cue.channels)
             self._save_effect_refs(step.cue.effect_refs)
             self.stream.write(bytes("\n", "ascii"))

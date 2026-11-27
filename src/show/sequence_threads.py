@@ -747,20 +747,42 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
     return changed_devices
 
 
-def _next_step(sequence: Sequence) -> int:
+def _apply_step_curve(
+    lightshow: typing.Any,  # noqa: ANN401
+    curve_id: int,
+    factor: float,
+) -> float:
+    """Transform a linear fade progress *factor* in [0, 1] by *curve_id*."""
+    clamped = max(0.0, min(1.0, float(factor)))
+    if curve_id <= 0 or lightshow is None:
+        return clamped
+    curves = getattr(lightshow, "curves", None)
+    if curves is None or not hasattr(curves, "get_curve"):
+        return clamped
+    curve = curves.get_curve(int(curve_id))
+    if curve is None:
+        return clamped
+    try:
+        return max(0.0, min(1.0, float(curve.evaluate_normalized(clamped))))
+    except NotImplementedError:
+        idx = max(0, min(255, round(clamped * 255.0)))
+        return max(0.0, min(1.0, float(curve.values_array[idx]) / 255.0))
+
+
+def _next_step(sequence: Sequence, target_step: int | None = None) -> int:
     """Next Step after Go
 
     Args:
         sequence: Main Playback
+        target_step: Step index that just became active on stage.
 
     Returns:
-        Step
+        Upcoming step index
     """
-    next_step = sequence.position + 1
-    # If there is a next step
-    if next_step < sequence.last - 1:
-        sequence.position += 1
-        next_step += 1
+    active_idx = target_step if target_step is not None else sequence.position + 1
+    if active_idx < sequence.last - 1:
+        sequence.position = active_idx
+        next_step = sequence.resolve_next_step_index(active_idx, consume_loop=False)
     # If no next step, go to beginning
     else:
         sequence.position = 0
@@ -789,6 +811,7 @@ def _next_step(sequence: Sequence) -> int:
                 "delay_out": sequence.steps[next_step].delay_out,
                 "wait": sequence.steps[next_step].wait,
                 "channel_time": sequence.steps[next_step].channel_time,
+                "curve_id": int(getattr(sequence.steps[next_step], "curve_id", 0)),
             },
         )
     return next_step
@@ -826,7 +849,15 @@ class ThreadGo(threading.Thread):
         # To save channels levels when user sends Go
         self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = {}
-        next_step = self.sequence.position + 1
+        if goto:
+            self.target_step = self.sequence.position + 1
+        else:
+            self.target_step = self.sequence.resolve_next_step_index(
+                self.sequence.position, consume_loop=True
+            )
+        if not 0 <= self.target_step < len(self.sequence.steps):
+            self.target_step = 1 if len(self.sequence.steps) > 1 else 0
+        next_step = self.target_step
         if override_time is not None:
             self.total_time = override_time * 1000.0
             self.time_in = override_time * 1000.0
@@ -895,7 +926,7 @@ class ThreadGo(threading.Thread):
             self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = _capture_device_states(self.sequence.patch)
 
-        next_step_idx = self.sequence.position + 1
+        next_step_idx = self.target_step
         if 0 <= next_step_idx < len(self.sequence.steps):
             step = self.sequence.steps[next_step_idx]
             resolved = TrackingEngine.resolve_step_state(
@@ -941,10 +972,9 @@ class ThreadGo(threading.Thread):
 
     def _finalize_go(self) -> None:
         """Finish load cue after sequence transition"""
-        if self.sequence.position < self.sequence.last - 1:
-            target_step_idx = self.sequence.position + 1
-        else:
-            target_step_idx = 0
+        target_step_idx = (
+            self.target_step if 0 <= self.target_step < self.sequence.last else 0
+        )
 
         # Resolve full sequential state via TrackingEngine
         resolved = TrackingEngine.resolve_step_state(
@@ -1016,7 +1046,7 @@ class ThreadGo(threading.Thread):
             self._sync_dmx_levels()
 
         self.sequence.update_channels()
-        next_step = _next_step(self.sequence)
+        next_step = _next_step(self.sequence, target_step=target_step_idx)
 
         _notify_runner(self.sequence, "active", fade_progress=0.0, fade_remaining=0.0)
 
@@ -1113,8 +1143,7 @@ class ThreadGo(threading.Thread):
         Args:
             i: Time spent
         """
-        next_step = self.sequence.position + 1
-        step = self.sequence.steps[next_step]
+        step = self.sequence.steps[self.target_step]
 
         lvls = self._calculate_transitions_go(i, step)
         self._apply_channel_times_go(lvls, i, step)
@@ -1176,17 +1205,33 @@ class ThreadGo(threading.Thread):
             }
             explicit_families: set[str] = set()
         else:
-            ltp_factor = _window_factor(step.delay_in, step.time_in)
-            default_out_factor = _window_factor(step.delay_out, step.time_out)
+            curve_id = int(getattr(step, "curve_id", 0))
+            lightshow = getattr(self.sequence, "lightshow", None)
+            ltp_factor = _apply_step_curve(
+                lightshow, curve_id, _window_factor(step.delay_in, step.time_in)
+            )
+            default_out_factor = _apply_step_curve(
+                lightshow, curve_id, _window_factor(step.delay_out, step.time_out)
+            )
             family_factors = {
-                "position": _window_factor(
-                    step.effective_delay_position, step.effective_time_position
+                "position": _apply_step_curve(
+                    lightshow,
+                    curve_id,
+                    _window_factor(
+                        step.effective_delay_position, step.effective_time_position
+                    ),
                 ),
-                "color": _window_factor(
-                    step.effective_delay_color, step.effective_time_color
+                "color": _apply_step_curve(
+                    lightshow,
+                    curve_id,
+                    _window_factor(
+                        step.effective_delay_color, step.effective_time_color
+                    ),
                 ),
-                "beam": _window_factor(
-                    step.effective_delay_beam, step.effective_time_beam
+                "beam": _apply_step_curve(
+                    lightshow,
+                    curve_id,
+                    _window_factor(step.effective_delay_beam, step.effective_time_beam),
                 ),
             }
             explicit_families = {
@@ -1248,10 +1293,9 @@ class ThreadGo(threading.Thread):
     ) -> np.ndarray:
         """Calculate channels levels transitions for Go"""
         old_levels = self.old_channels_levels.astype(np.float64)
-        next_step_idx = self.sequence.position + 1
         resolved = TrackingEngine.resolve_step_state(
             self.sequence,
-            next_step_idx,
+            self.target_step,
             tracking_mode=self.sequence.tracking_mode,
             patch=self.sequence.patch,
         )
@@ -1269,15 +1313,21 @@ class ThreadGo(threading.Thread):
             delay_out = step.delay_out * 1000
 
         # Precompute progression factors
-        factor_in = (
+        curve_id = int(getattr(step, "curve_id", 0))
+        lightshow = getattr(self.sequence, "lightshow", None)
+        factor_in = _apply_step_curve(
+            lightshow,
+            curve_id,
             max(0.0, min(1.0, (i - delay_in - self.wait) / time_in))
             if time_in > 0
-            else (1.0 if (i - delay_in - self.wait) >= 0 else 0.0)
+            else (1.0 if (i - delay_in - self.wait) >= 0 else 0.0),
         )
-        factor_out = (
+        factor_out = _apply_step_curve(
+            lightshow,
+            curve_id,
             max(0.0, min(1.0, (i - delay_out - self.wait) / time_out))
             if time_out > 0
-            else (1.0 if (i - delay_out - self.wait) >= 0 else 0.0)
+            else (1.0 if (i - delay_out - self.wait) >= 0 else 0.0),
         )
 
         # Vectorized calculation for In, Out and Stationary channels
@@ -1319,10 +1369,9 @@ class ThreadGo(threading.Thread):
         if not step.channel_time or self.override_time is not None:
             return
         old_levels = self.old_channels_levels.astype(np.float64)
-        next_step_idx = self.sequence.position + 1
         resolved = TrackingEngine.resolve_step_state(
             self.sequence,
-            next_step_idx,
+            self.target_step,
             tracking_mode=self.sequence.tracking_mode,
             patch=self.sequence.patch,
         )
@@ -1500,6 +1549,9 @@ class ThreadGoBack(threading.Thread):
                     "wait": self.sequence.steps[prev_step + 1].wait,
                     "total_time": self.sequence.steps[prev_step + 1].total_time,
                     "channel_time": self.sequence.steps[prev_step + 1].channel_time,
+                    "curve_id": int(
+                        getattr(self.sequence.steps[prev_step + 1], "curve_id", 0)
+                    ),
                 },
             )
 
@@ -1596,7 +1648,17 @@ class ThreadGoBack(threading.Thread):
         )
         old_levels = self.old_channels_levels.astype(np.float64)
         next_levels = resolved.channels.astype(np.float64)
-        factor = i / go_back_time if go_back_time > 0 else 1.0
+        raw_factor = i / go_back_time if go_back_time > 0 else 1.0
+        cur_step = (
+            self.sequence.steps[position]
+            if 0 <= position < len(self.sequence.steps)
+            else None
+        )
+        factor = _apply_step_curve(
+            getattr(self.sequence, "lightshow", None),
+            int(getattr(cur_step, "curve_id", 0)) if cur_step is not None else 0,
+            raw_factor,
+        )
         diff = (next_levels - old_levels) * factor
         lvls = old_levels + diff
 

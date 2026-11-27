@@ -965,3 +965,111 @@ class SequenceSetPlaybackOptionsAction(Action):
             else self.sequence_index
         )
         return f"Seq {idx}"
+
+
+class StepSetLinkAction(Action):
+    """Action to set link_cue and loop_count on a sequence step."""
+
+    name = "step.set_link"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.step_index: int = 0
+        self.link_cue: float | None = None
+        self.loop_count: int = 0
+        self._old_link_cue: float | None = None
+        self._old_loop_count: int = 0
+
+    def configure(
+        self,
+        sequence_index: float,
+        step_index: int,
+        link_cue: float | None,
+        loop_count: int = 0,
+    ) -> None:
+        """Configure target sequence, step index, link_cue, and loop_count."""
+        self.sequence_index = float(sequence_index)
+        self.step_index = int(step_index)
+        self.link_cue = float(link_cue) if link_cue is not None else None
+        self.loop_count = max(0, int(loop_count))
+
+    def _apply(self, link_cue: float | None, loop_count: int) -> bool:
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None or not (0 <= self.step_index < len(seq.steps)):
+            return False
+        step = seq.steps[self.step_index]
+        step.link_cue = link_cue
+        step.loop_count = max(0, int(loop_count))
+        seq._loop_counters.pop(self.step_index, None)  # pylint: disable=protected-access
+        self.app.lightshow.set_modified()
+        self.app.emit("step.updated", self.sequence_index, self.step_index)
+        self.app.emit("sequence.changed", seq)
+        return True
+
+    def execute(self) -> bool:
+        """Save previous link/loop and apply new values."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None or not (0 <= self.step_index < len(seq.steps)):
+            self.can_undo = False
+            return False
+        step = seq.steps[self.step_index]
+        self._old_link_cue = getattr(step, "link_cue", None)
+        self._old_loop_count = int(getattr(step, "loop_count", 0))
+        return self._apply(self.link_cue, self.loop_count)
+
+    def undo(self) -> None:
+        """Restore previous link/loop."""
+        self._apply(self._old_link_cue, self._old_loop_count)
+
+    def redo(self) -> None:
+        """Re-apply updated link/loop."""
+        self._apply(self.link_cue, self.loop_count)
+
+
+class StepSetCurveAction(Action):
+    """Action to assign a fade curve_id to a sequence step."""
+
+    name = "step.set_curve"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.sequence_index: float = 1.0
+        self.step_index: int = 0
+        self.curve_id: int = 0
+        self._old_curve_id: int = 0
+
+    def configure(self, sequence_index: float, step_index: int, curve_id: int) -> None:
+        """Configure target sequence, step index, and curve_id."""
+        self.sequence_index = float(sequence_index)
+        self.step_index = int(step_index)
+        self.curve_id = max(0, int(curve_id))
+
+    def _apply(self, curve_id: int) -> bool:
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None or not (0 <= self.step_index < len(seq.steps)):
+            return False
+        seq.steps[self.step_index].curve_id = max(0, int(curve_id))
+        self.app.lightshow.set_modified()
+        self.app.emit("step.updated", self.sequence_index, self.step_index)
+        self.app.emit("sequence.changed", seq)
+        return True
+
+    def execute(self) -> bool:
+        """Save previous curve_id and apply new curve_id."""
+        seq = _resolve_sequence(self.app.lightshow, self.sequence_index)
+        if seq is None or not (0 <= self.step_index < len(seq.steps)):
+            self.can_undo = False
+            return False
+        self._old_curve_id = int(getattr(seq.steps[self.step_index], "curve_id", 0))
+        return self._apply(self.curve_id)
+
+    def undo(self) -> None:
+        """Restore previous curve_id."""
+        self._apply(self._old_curve_id)
+
+    def redo(self) -> None:
+        """Re-apply updated curve_id."""
+        self._apply(self.curve_id)

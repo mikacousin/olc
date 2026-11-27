@@ -285,7 +285,7 @@ def test_sequence_tab_flags_total_link_and_notes(app_gui: Application) -> None:
     process_events()
 
     col_titles = [col.get_title() for col in seq_tab.treeview2.get_columns()]
-    assert col_titles[13:] == ["Flags", "Total", "Link", "Notes"]
+    assert col_titles[13:] == ["Flags", "Total", "Link", "Curve", "Notes"]
 
     # Initial Total and Link
     assert seq_tab.liststore2[0][16] == "5"

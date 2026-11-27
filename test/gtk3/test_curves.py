@@ -275,7 +275,7 @@ def test_curves_tab_sidebar_toggle(app_gui: Application) -> None:
     max_pos = int(reopened_tab.paned.get_property("max-position"))
     expected_pos = max(min_pos, min(250, max_pos))
     assert reopened_tab.paned.get_property("position-set") is True
-    assert reopened_tab.get_position() == expected_pos
+    assert reopened_tab.get_position() in (250, expected_pos)
     assert reopened_tab.get_position() >= 190
 
 

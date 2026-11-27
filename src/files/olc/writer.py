@@ -177,6 +177,18 @@ class OlcWriter(WriteFile):
                     ] = {"delay": times.delay, "time": times.time}
             if step.text:
                 self.data["sequences"][seq_index]["steps"][index]["label"] = step.text
+            if (link_val := getattr(step, "link_cue", None)) is not None:
+                self.data["sequences"][seq_index]["steps"][index]["link_cue"] = float(
+                    link_val
+                )
+            if getattr(step, "loop_count", 0) > 0:
+                self.data["sequences"][seq_index]["steps"][index]["loop_count"] = int(
+                    step.loop_count
+                )
+            if getattr(step, "curve_id", 0) > 0:
+                self.data["sequences"][seq_index]["steps"][index]["curve_id"] = int(
+                    step.curve_id
+                )
             cue_dict = self._build_cue_dict(step.cue)
             self.data["sequences"][seq_index]["cues"][step.cue.number] = cue_dict
 

@@ -2968,3 +2968,53 @@ def test_eos_ascii_proportion_and_preheat_curves(tmp_path: object) -> None:
     assert curve.evaluate_normalized(0.0) == pytest.approx(0.10, abs=0.02)
     assert curve.evaluate_normalized(0.5) == pytest.approx(0.40, abs=0.02)
     assert curve.evaluate_normalized(1.0) == pytest.approx(0.80, abs=0.02)
+
+
+def test_ascii_round_trip_cue_link_loop_and_curve(tmp_path: object) -> None:
+    """Verify ASCII import/export round-trip for LINK, $$LOOP, and $$CURVE."""
+    import pathlib
+
+    from olc.files.ascii.writer import AsciiWriter
+
+    assert isinstance(tmp_path, pathlib.Path)
+    asc = tmp_path / "cue_link_curve.asc"
+    asc.write_text(
+        "\n".join(
+            [
+                "IDENT 3:0",
+                "MANUFACTURER ETC",
+                "CONSOLE Eos",
+                "$Curve 7",
+                "   $$CurvePoint 0 0",
+                "   $$CurvePoint 50 90",
+                "   $$CurvePoint 100 100",
+                "$CueList 1",
+                "Cue 1 1",
+                "   Up 2",
+                "   Chan 1 @ 50",
+                "Cue 2 1",
+                "   Up 3",
+                "   Link 1",
+                "   $$Loop 4",
+                "   $$Curve 7",
+                "   Chan 1 @ 0",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+    ls = LightShow()
+    ImportFile(ls, Gio.File.new_for_path(str(asc)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    step2 = ls.main_playback.steps[2]
+    assert step2.link_cue == pytest.approx(1.0)
+    assert step2.loop_count == 4
+    assert step2.curve_id == 7
+
+    rt_path = tmp_path / "cue_link_curve_rt.asc"
+    AsciiWriter(rt_path, ls).write()
+    rt_text = rt_path.read_text(encoding="utf-8")
+    assert "LINK 1\n" in rt_text
+    assert "$$LOOP 4\n" in rt_text
+    assert "$$CURVE 7\n" in rt_text

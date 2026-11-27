@@ -125,9 +125,14 @@ class PlaybackStepNavigateAction(Action):
 
         pos = main_playback.position
         step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
+        raw_next = main_playback.resolve_next_step_index(pos, consume_loop=False)
+        next_idx = raw_next if isinstance(raw_next, int) else pos + 1
         next_step = (
-            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
+            main_playback.steps[next_idx]
+            if 0 <= next_idx < len(main_playback.steps)
+            else None
         )
+        raw_curve = getattr(next_step, "curve_id", 0) if next_step else 0
 
         return {
             "active": False,
@@ -141,6 +146,7 @@ class PlaybackStepNavigateAction(Action):
             "next_delay_in": next_step.delay_in if next_step else 0.0,
             "next_delay_out": next_step.delay_out if next_step else 0.0,
             "next_wait": next_step.wait if next_step else 0.0,
+            "next_curve_id": raw_curve if isinstance(raw_curve, int) else 0,
             "next_channel_time": next_step.channel_time if next_step else False,
             "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
             "cue_text": step.text if step else "",

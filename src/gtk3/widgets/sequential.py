@@ -58,6 +58,7 @@ class SequentialWidget(Gtk.Widget):
         self.delay_in = 0.0
         self.delay_out = 0.0
         self.wait = 0.0
+        self.curve_id: int = 0
         self.channel_time: dict[typing.Any, typing.Any] = {}
         self.sync_from_sequence(self._get_main_sequence(), redraw=False)
 
@@ -91,6 +92,7 @@ class SequentialWidget(Gtk.Widget):
             self.delay_in = step.delay_in
             self.delay_out = step.delay_out
             self.wait = step.wait
+            self.curve_id = int(getattr(step, "curve_id", 0))
             self.channel_time = step.channel_time
         else:
             self.total_time = 5.0
@@ -99,6 +101,7 @@ class SequentialWidget(Gtk.Widget):
             self.delay_in = 0.0
             self.delay_out = 0.0
             self.wait = 0.0
+            self.curve_id = 0
             self.channel_time = {}
         self.position_a = 0
         self.position_b = 0
@@ -174,6 +177,20 @@ class SequentialWidget(Gtk.Widget):
         )
 
         self._draw_times_number(cr, allocation, inter, time_max, time_min)
+        if self.curve_id > 0:
+            curve = self._get_active_curve()
+            if curve is not None:
+                c_name = getattr(curve, "name", "") or f"C{self.curve_id}"
+                cr.set_source_rgb(0.45, 0.85, 0.55)
+                draw_cached_numeric_text(
+                    cr,
+                    allocation.width - 10,
+                    16,
+                    f"C{self.curve_id}: {c_name}",
+                    10,
+                    weight=Pango.Weight.BOLD,
+                    anchor=TextAnchor.BASELINE_RIGHT,
+                )
 
         return False
 
@@ -439,6 +456,58 @@ class SequentialWidget(Gtk.Widget):
         angle = math.atan2(end_y - start_y, end_x - start_x)
         return start_x, start_y, end_x, end_y, angle
 
+    def _get_active_curve(self) -> typing.Any:  # noqa: ANN401
+        """Return the Curve object for self.curve_id if > 0 and present."""
+        if self.curve_id <= 0 or self.lightshow is None:
+            return None
+        curves = getattr(self.lightshow, "curves", None)
+        if curves is None or not hasattr(curves, "get_curve"):
+            return None
+        return curves.get_curve(self.curve_id)
+
+    def _eval_curve(self, t: float) -> float:
+        """Evaluate normalized curve progress in [0.0, 1.0]."""
+        tc = max(0.0, min(1.0, float(t)))
+        curve = self._get_active_curve()
+        if curve is None:
+            return tc
+        try:
+            return max(0.0, min(1.0, float(curve.evaluate_normalized(tc))))
+        except NotImplementedError:
+            idx = max(0, min(255, round(tc * 255.0)))
+            return max(0.0, min(1.0, float(curve.values_array[idx]) / 255.0))
+
+    def _draw_curved_ramp(
+        self,
+        cr: cairo.Context,
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+    ) -> float:
+        """Draw linear or curved ramp and return final tangent angle."""
+        if self._get_active_curve() is None:
+            cr.move_to(start_x, start_y)
+            cr.line_to(end_x, end_y)
+            cr.stroke()
+            return math.atan2(end_y - start_y, end_x - start_x)
+
+        steps = 48
+        dx = end_x - start_x
+        dy = end_y - start_y
+        cr.move_to(start_x, start_y + self._eval_curve(0.0) * dy)
+        prev_x, prev_y = start_x, start_y + self._eval_curve(0.0) * dy
+        last_x, last_y = prev_x, prev_y
+        for idx in range(1, steps + 1):
+            t = idx / float(steps)
+            px = start_x + t * dx
+            py = start_y + self._eval_curve(t) * dy
+            cr.line_to(px, py)
+            prev_x, prev_y = last_x, last_y
+            last_x, last_y = px, py
+        cr.stroke()
+        return math.atan2(last_y - prev_y, last_x - prev_x)
+
     def _draw_out_line(
         self,
         cr: cairo.Context,
@@ -450,9 +519,7 @@ class SequentialWidget(Gtk.Widget):
     ) -> None:
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.set_line_width(3)
-        cr.move_to(start_x, start_y)
-        cr.line_to(end_x, end_y)
-        cr.stroke()
+        angle = self._draw_curved_ramp(cr, start_x, start_y, end_x, end_y)
 
         cr.move_to(end_x, 24)
         cr.line_to(end_x, allocation.height)
@@ -460,7 +527,6 @@ class SequentialWidget(Gtk.Widget):
         cr.stroke()
         cr.set_dash([])
 
-        angle = math.atan2(end_y - start_y, end_x - start_x)
         self._draw_arrow(cr, end_x, end_y, angle)
 
     def _draw_in_line(
@@ -474,9 +540,7 @@ class SequentialWidget(Gtk.Widget):
     ) -> None:
         cr.set_source_rgb(0.9, 0.5, 0.5)
         cr.set_line_width(3)
-        cr.move_to(start_x, start_y)
-        cr.line_to(end_x, end_y)
-        cr.stroke()
+        angle = self._draw_curved_ramp(cr, start_x, start_y, end_x, end_y)
 
         cr.move_to(end_x, 24)
         cr.line_to(end_x, allocation.height)
@@ -484,7 +548,6 @@ class SequentialWidget(Gtk.Widget):
         cr.stroke()
         cr.set_dash([])
 
-        angle = math.atan2(end_y - start_y, end_x - start_x)
         self._draw_arrow(cr, end_x, end_y, angle)
 
     def _draw_arrow(
@@ -511,21 +574,21 @@ class SequentialWidget(Gtk.Widget):
         start_y: float,
         end_x: float,
         end_y: float,
-        angle: float,
+        _angle: float,
     ) -> None:
         x1 = start_x + self.position_a - wait_x - (inter * self.delay_out)
         if (not wait_x or self.position_a > wait_x) and (
             not self.delay_out or self.position_a > (inter * self.delay_out) + wait_x
         ):
-            y1 = start_y + (
-                (self.position_a - wait_x - (inter * self.delay_out)) * math.tan(angle)
-            )
+            span = end_x - start_x
+            t = (x1 - start_x) / span if span > 1e-6 else 1.0
+            y1 = start_y + self._eval_curve(t) * (end_y - start_y)
         else:
             y1 = start_y
 
         if x1 > end_x:
             x1 = end_x
-            y1 = end_y
+            y1 = start_y + self._eval_curve(1.0) * (end_y - start_y)
 
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.arc(x1, y1, 8, 0, 2 * math.pi)
@@ -545,21 +608,21 @@ class SequentialWidget(Gtk.Widget):
         start_y: float,
         end_x: float,
         end_y: float,
-        angle: float,
+        _angle: float,
     ) -> None:
         x1 = start_x + self.position_b - wait_x - (inter * self.delay_in)
         if (not wait_x or self.position_b > wait_x) and (
             not self.delay_in or self.position_b > ((inter * self.delay_in) + wait_x)
         ):
-            y1 = start_y + (
-                (self.position_b - wait_x - (inter * self.delay_in)) * math.tan(angle)
-            )
+            span = end_x - start_x
+            t = (x1 - start_x) / span if span > 1e-6 else 1.0
+            y1 = start_y + self._eval_curve(t) * (end_y - start_y)
         else:
             y1 = start_y
 
         if x1 > end_x:
             x1 = end_x
-            y1 = end_y
+            y1 = start_y + self._eval_curve(1.0) * (end_y - start_y)
 
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.arc(x1, y1, 8, 0, 2 * math.pi)

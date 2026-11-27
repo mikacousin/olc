@@ -683,6 +683,21 @@ class AsciiParser(ReadFile):
             cue["is_int_block"] = True
         elif self.keyword == "$$assert":
             cue["is_assert"] = True
+        elif self.keyword == "link" and self.args:
+            try:
+                step["link_cue"] = float(self.args[0])
+            except ValueError:
+                pass
+        elif self.keyword == "$$loop" and self.args:
+            try:
+                step["loop_count"] = max(0, int(float(self.args[0])))
+            except ValueError:
+                pass
+        elif self.keyword == "$$curve" and self.args:
+            try:
+                step["curve_id"] = max(0, int(float(self.args[0])))
+            except ValueError:
+                pass
         elif self.keyword == "$$cuenotes" and self.args:
             note_text = html.unescape(self.args[0])
             if cue.get("notes"):

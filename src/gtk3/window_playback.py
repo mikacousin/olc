@@ -405,11 +405,15 @@ class MainPlaybackView(Gtk.Notebook):
                 )
                 flags_text = SequenceTab._format_cue_flags(cue)  # pylint: disable=protected-access
                 total_text = SequenceTab._format_family_time(step_obj.total_time)  # pylint: disable=protected-access
-                link_text = (
-                    f"P{cue.execute_preset:g}"
-                    if cue is not None and cue.execute_preset is not None
-                    else ""
-                )
+                link_parts: list[str] = []
+                if cue is not None and cue.execute_preset is not None:
+                    link_parts.append(f"P{cue.execute_preset:g}")
+                link_cue = getattr(step_obj, "link_cue", None)
+                if link_cue is not None:
+                    loops = int(getattr(step_obj, "loop_count", 0))
+                    suffix = f" ×{loops}" if loops > 0 else ""
+                    link_parts.append(f"→ Q{link_cue:g}{suffix}")
+                link_text = " ".join(link_parts)
                 notes_text = cue.notes if cue is not None else ""
                 self.cues_liststore1.append(
                     [
@@ -707,5 +711,6 @@ class MainPlaybackView(Gtk.Notebook):
         self.sequential.delay_in = next_step.delay_in
         self.sequential.delay_out = next_step.delay_out
         self.sequential.wait = next_step.wait
+        self.sequential.curve_id = int(getattr(next_step, "curve_id", 0))
         self.sequential.channel_time = next_step.channel_time
         self.sequential.queue_draw()

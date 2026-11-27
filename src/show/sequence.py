@@ -91,6 +91,7 @@ class Sequence:
         self.release_on_end: bool = False
         self.release_time: float = 0.0
         self._cached_next_levels: tuple[typing.Any, list[int]] | None = None
+        self._loop_counters: dict[int, int] = {}
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -531,6 +532,38 @@ class Sequence:
         if position >= 0:
             self.load_step(position)
 
+    def resolve_next_step_index(
+        self,
+        active_pos: int,
+        *,
+        consume_loop: bool = False,
+    ) -> int:
+        """Resolve next step index from *active_pos*, honoring link/loop."""
+        if 0 <= active_pos < len(self.steps):
+            step = self.steps[active_pos]
+            link_cue = getattr(step, "link_cue", None)
+            if link_cue is not None:
+                target_idx = next(
+                    (
+                        idx
+                        for idx in range(1, max(1, self.last - 1))
+                        if (c := self.steps[idx].cue) is not None
+                        and abs(float(c.number) - float(link_cue)) < 1e-4
+                    ),
+                    None,
+                )
+                if target_idx is not None:
+                    loop_limit = int(getattr(step, "loop_count", 0))
+                    used = self._loop_counters.get(active_pos, 0)
+                    if loop_limit == 0 or used < loop_limit:
+                        if consume_loop and loop_limit > 0:
+                            self._loop_counters[active_pos] = used + 1
+                        return target_idx
+                    if consume_loop:
+                        self._loop_counters[active_pos] = 0
+        nxt = active_pos + 1
+        return nxt if nxt < self.last else 1
+
     def goto(self, keystring: str, override_time: Optional[float] = None) -> None:
         """Jump to cue number
 
@@ -539,6 +572,7 @@ class Sequence:
             override_time: Optional override fade time in seconds (0 = instant load)
         """
         old_pos = self.position
+        self._loop_counters.clear()
 
         if not keystring:
             return
@@ -599,14 +633,20 @@ class Sequence:
                                 if override_time is not None
                                 else self.steps[next_step].channel_time
                             ),
+                            "curve_id": (
+                                0
+                                if override_time is not None
+                                else int(getattr(self.steps[next_step], "curve_id", 0))
+                            ),
                         },
                     )
 
                 if override_time is not None and override_time <= 0.0:
                     self.stop()
                     self.load_step(i)
-                    self.position = i - 1
-                    next_after = _next_step(typing.cast(typing.Any, self))
+                    next_after = _next_step(
+                        typing.cast(typing.Any, self), target_step=i
+                    )
                     if is_main and self.app is not None:
                         self.app.emit(
                             "playback.transition_completed",
@@ -635,21 +675,26 @@ class Sequence:
         # If Go is active, go to next cue
         if self.stop():
             # Launch another Go
-            position = self.position
-            position += 1
-            if position < self.last - 1:
-                self.position += 1
+            landed = (
+                getattr(self.thread, "target_step", self.position + 1)
+                if self.thread is not None
+                else self.position + 1
+            )
+            if landed < self.last - 1:
+                self.position = landed
+                position = landed
             else:
                 self.position = 0
                 position = 0
             self.on_go = False
 
+            next_idx = self.resolve_next_step_index(position, consume_loop=False)
             # Set main window's subtitle
             subtitle = (
                 f"Cue : {get_cue(self.steps[position]).number} "
                 f"{self.steps[position].text} - Next Cue : "
-                f"{get_cue(self.steps[position + 1]).number} "
-                f"{self.steps[position + 1].text}"
+                f"{get_cue(self.steps[next_idx]).number} "
+                f"{self.steps[next_idx].text}"
             )
 
             # Emit event for GUI (GuiEventBridge)
@@ -659,20 +704,27 @@ class Sequence:
                     {
                         "position": position,
                         "subtitle": subtitle,
-                        "total_time": self.steps[position + 1].total_time,
-                        "time_in": self.steps[position + 1].time_in,
-                        "time_out": self.steps[position + 1].time_out,
-                        "delay_in": self.steps[position + 1].delay_in,
-                        "delay_out": self.steps[position + 1].delay_out,
-                        "wait": self.steps[position + 1].wait,
-                        "channel_time": self.steps[position + 1].channel_time,
+                        "total_time": self.steps[next_idx].total_time,
+                        "time_in": self.steps[next_idx].time_in,
+                        "time_out": self.steps[next_idx].time_out,
+                        "delay_in": self.steps[next_idx].delay_in,
+                        "delay_out": self.steps[next_idx].delay_out,
+                        "wait": self.steps[next_idx].wait,
+                        "channel_time": self.steps[next_idx].channel_time,
+                        "curve_id": int(getattr(self.steps[next_idx], "curve_id", 0)),
                     },
                 )
 
             self.do_go(None, override_time=override_time)
 
         else:
-            if not goto and self.last > 2 and self.position >= self.last - 2:
+            peek_next = self.resolve_next_step_index(self.position, consume_loop=False)
+            if (
+                not goto
+                and self.last > 2
+                and self.position >= self.last - 2
+                and peek_next >= self.last - 1
+            ):
                 if self.release_on_end:
                     self.release()
                     return

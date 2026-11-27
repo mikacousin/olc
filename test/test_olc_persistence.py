@@ -1191,3 +1191,32 @@ def test_olc_persistence_device_notes_and_pan_tilt_options(
     assert r_dev.is_pan_inverted is True
     assert r_dev.is_tilt_inverted is False
     assert r_dev.swap_pan_tilt is True
+
+
+def test_olc_persistence_step_link_loop_and_curve(tmp_path: pathlib.Path) -> None:
+    """Verify .olc round-trip preserves Step link_cue, loop_count, and curve_id."""
+    from olc.show.cue import Cue
+    from olc.show.curve import SegmentsCurve
+    from olc.show.step import Step
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    curve = SegmentsCurve()
+    curve.set_points([(0, 0), (128, 220), (255, 255)])
+    app.lightshow.curves.curves[15] = curve
+
+    seq = app.lightshow.main_playback
+    seq.add_step(Step(1, Cue(1, 1.0, {1: 1.0})))
+    seq.add_step(
+        Step(1, Cue(1, 2.0, {1: 0.0}), link_cue=1.0, loop_count=3, curve_id=15)
+    )
+
+    save_path = tmp_path / "step_link_curve.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    re_step = app2.lightshow.main_playback.steps[2]
+    assert re_step.link_cue == pytest.approx(1.0)
+    assert re_step.loop_count == 3
+    assert re_step.curve_id == 15

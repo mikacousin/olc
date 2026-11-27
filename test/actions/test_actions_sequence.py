@@ -262,3 +262,112 @@ def test_step_update_channel_time_action_and_undo_redo() -> None:
     assert 5 in step.channel_time
     assert step.channel_time[5].delay == 1.0
     assert step.channel_time[5].time == 3.0
+
+
+def test_step_link_loop_and_curve_actions_and_engine() -> None:
+    """Test step.set_link, step.set_curve, _next_step loops, and _apply_step_curve."""
+    import pytest
+
+    from olc.show.cue import Cue
+    from olc.show.curve import SegmentsCurve
+    from olc.show.sequence_threads import ThreadGo, _apply_step_curve
+    from olc.show.step import Step
+
+    app = CoreApplication(MagicMock())
+    seq = app.lightshow.main_playback
+    for num in (1.0, 2.0, 3.0, 4.0):
+        cue = Cue(1, num, {1: num * 0.2})
+        seq.insert_step(seq.last - 1, Step(1, cue, time_in=1.0, time_out=1.0))
+
+    step_updated_events: list[tuple[float, int]] = []
+    app.subscribe(
+        "step.updated",
+        lambda seq_idx, step_idx: step_updated_events.append((seq_idx, step_idx)),
+    )
+
+    # 1. step.set_link + Undo/Redo + step.updated emission
+    app.action_registry.execute("step.set_link", 1.0, 3, 1.0, 2)
+    assert seq.steps[3].link_cue == 1.0
+    assert seq.steps[3].loop_count == 2
+    assert (1.0, 3) in step_updated_events
+
+    app.history.undo()
+    assert seq.steps[3].link_cue is None
+    assert seq.steps[3].loop_count == 0
+
+    app.history.redo()
+    assert seq.steps[3].link_cue == 1.0
+    assert seq.steps[3].loop_count == 2
+
+    # Go from step 3 twice -> lands on step 1 (Q1); 3rd Go -> step 4 (Q4)
+    seq.position = 3
+    t1 = ThreadGo(False, seq)
+    assert t1.target_step == 1
+    t1._finalize_go()  # pylint: disable=protected-access
+    assert seq.position == 1
+
+    seq.position = 3
+    t2 = ThreadGo(False, seq)
+    assert t2.target_step == 1
+    t2._finalize_go()  # pylint: disable=protected-access
+    assert seq.position == 1
+
+    seq.position = 3
+    t3 = ThreadGo(False, seq)
+    assert t3.target_step == 4
+    t3._finalize_go()  # pylint: disable=protected-access
+    assert seq.position == 4
+
+    # Link on the last cue (step 4 -> Q1) is honored instead of wrapping/releasing
+    app.action_registry.execute("step.set_link", 1.0, 4, 1.0, 0)
+    t4 = ThreadGo(False, seq)
+    assert t4.target_step == 1
+    t4._finalize_go()  # pylint: disable=protected-access
+    assert seq.position == 1
+
+    # 2. step.set_curve + Undo/Redo + _apply_step_curve
+    curve = SegmentsCurve()
+    curve.set_points([(0, 0), (128, 200), (255, 255)])
+    app.lightshow.curves.curves[10] = curve
+
+    app.action_registry.execute("step.set_curve", 1.0, 2, 10)
+    assert seq.steps[2].curve_id == 10
+    assert _apply_step_curve(app.lightshow, 10, 0.5) == pytest.approx(
+        curve.evaluate_normalized(0.5)
+    )
+
+    app.history.undo()
+    assert seq.steps[2].curve_id == 0
+    assert _apply_step_curve(app.lightshow, 0, 0.5) == pytest.approx(0.5)
+
+
+def test_playback_seq_plus_minus_emit_next_curve_id() -> None:
+    """Seq+ and Seq- feedback must include next_curve_id for the upcoming cue."""
+    from olc.show.cue import Cue
+    from olc.show.step import Step
+
+    app = CoreApplication(MagicMock())
+    seq = app.lightshow.main_playback
+    for num, cid in ((1.0, 0), (2.0, 10), (3.0, 0)):
+        cue = Cue(1, num, {1: 0.5})
+        seq.insert_step(
+            seq.last - 1, Step(1, cue, time_in=1.0, time_out=1.0, curve_id=cid)
+        )
+
+    plus_events: list[dict[str, object]] = []
+    minus_events: list[dict[str, object]] = []
+    app.subscribe("playback.sequence_plus_triggered", plus_events.append)
+    app.subscribe("playback.sequence_minus_triggered", minus_events.append)
+
+    seq.position = 0
+    app.action_registry.execute("playback.sequence_plus")
+    assert seq.position == 1
+    assert plus_events[-1]["next_curve_id"] == 10
+
+    app.action_registry.execute("playback.sequence_plus")
+    assert seq.position == 2
+    assert plus_events[-1]["next_curve_id"] == 0
+
+    app.action_registry.execute("playback.sequence_minus")
+    assert seq.position == 1
+    assert minus_events[-1]["next_curve_id"] == 10

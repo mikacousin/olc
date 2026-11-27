@@ -79,6 +79,9 @@ class Step:
         delay_color: Optional[float] = None,
         time_beam: Optional[float] = None,
         delay_beam: Optional[float] = None,
+        link_cue: Optional[float] = None,
+        loop_count: int = 0,
+        curve_id: int = 0,
     ) -> None:
         self.sequence = sequence
         self.cue = cue
@@ -97,6 +100,11 @@ class Step:
         self.delay_color = delay_color
         self.time_beam = time_beam
         self.delay_beam = delay_beam
+        self.link_cue: Optional[float] = (
+            float(link_cue) if link_cue is not None else None
+        )
+        self.loop_count: int = max(0, int(loop_count))
+        self.curve_id: int = max(0, int(curve_id))
 
         self.update_total_time()
 
