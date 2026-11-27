@@ -662,3 +662,118 @@ def apply_eos_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
                 swapped = True
         if swapped:
             dev["swap_pan_tilt"] = not bool(dev.get("swap_pan_tilt", False))
+
+
+def _eval_raw_curve_dict(curve_dict: dict[str, typing.Any], x: float) -> float:
+    """Evaluate a serialized curve dictionary at normalized x in [0.0, 1.0]."""
+    xc = max(0.0, min(1.0, float(x)))
+    ctype = curve_dict.get("type")
+    if ctype == "LimitCurve":
+        lim = float(curve_dict.get("limit", 255))
+        lim_norm = lim if 0.0 <= lim <= 1.0 and isinstance(lim, float) else lim / 255.0
+        return xc * max(0.0, min(1.0, lim_norm))
+    pts = curve_dict.get("points") or []
+    if not pts:
+        return xc
+    is_norm = bool(curve_dict.get("normalized")) or any(
+        isinstance(p[0], float) and 0.0 < p[0] < 1.0 for p in pts
+    )
+    scale = 1.0 if is_norm else 255.0
+    xs = [max(0.0, min(1.0, float(p[0]) / scale)) for p in pts]
+    ys = [max(0.0, min(1.0, float(p[1]) / scale)) for p in pts]
+    if ctype == "SteppedCurve":
+        val = ys[0]
+        for px, py in zip(xs, ys, strict=False):
+            if xc >= px:
+                val = py
+            else:
+                break
+        return val
+    # Linear interpolation (SegmentsCurve / InterpolateCurve)
+    if xc <= xs[0]:
+        return ys[0]
+    if xc >= xs[-1]:
+        return ys[-1]
+    for i in range(len(xs) - 1):
+        if xs[i] <= xc <= xs[i + 1]:
+            dx = xs[i + 1] - xs[i]
+            t = (xc - xs[i]) / dx if dx > 1e-9 else 0.0
+            return ys[i] + (ys[i + 1] - ys[i]) * t
+    return xc
+
+
+def ensure_proportion_preheat_curve(
+    curves_dict: dict[int, typing.Any],
+    *,
+    base_curve_id: int = 0,
+    proportion_pct: float = 100.0,
+    preheat_pct: float = 0.0,
+    cache: dict[tuple[int, int, int], int] | None = None,
+) -> int:
+    """Create or reuse a curve encoding Eos Proportion (0-200%) & Preheat (0-100%)."""
+    prop = max(0.0, min(200.0, float(proportion_pct)))
+    pre = max(0.0, min(100.0, float(preheat_pct)))
+    base_cid = int(base_curve_id)
+    if abs(prop - 100.0) < 1e-3 and pre < 1e-3:
+        return base_cid
+
+    cache_key = (base_cid, round(prop * 10), round(pre * 10))
+    if cache is not None and cache_key in cache:
+        return cache[cache_key]
+
+    cid = 1000
+    while cid in curves_dict:
+        cid += 1
+
+    parts: list[str] = []
+    if abs(prop - 100.0) >= 1e-3:
+        parts.append(f"Prop {prop:g}%")
+    if pre >= 1e-3:
+        parts.append(f"Pre {pre:g}%")
+    label = " / ".join(parts)
+    if base_cid > 0:
+        label = f"{label} (C{base_cid})"
+
+    if base_cid == 0 and pre < 1e-3 and prop <= 100.0:
+        curves_dict[cid] = {
+            "type": "LimitCurve",
+            "label": label,
+            "limit": max(0, min(255, round((prop / 100.0) * 255.0))),
+        }
+    else:
+        prop_f = prop / 100.0
+        pre_f = pre / 100.0
+        base_dict = curves_dict.get(base_cid) if base_cid > 0 else None
+        if isinstance(base_dict, dict):
+            pts = [
+                (
+                    i / 64.0,
+                    max(
+                        pre_f,
+                        _eval_raw_curve_dict(base_dict, min(1.0, (i / 64.0) * prop_f)),
+                    ),
+                )
+                for i in range(65)
+            ]
+        else:
+            xs = [0.0, 1.0]
+            if 1e-6 < pre_f < prop_f:
+                xs.append(min(1.0, pre_f / prop_f))
+            if prop_f > 1.0 + 1e-6:
+                xs.append(1.0 / prop_f)
+            by_slot: dict[int, tuple[float, float]] = {}
+            for x in sorted(xs):
+                y = max(pre_f, min(1.0, x * prop_f))
+                by_slot[int(round(x * 255.0))] = (x, y)
+            pts = [by_slot[k] for k in sorted(by_slot)]
+
+        curves_dict[cid] = {
+            "type": "SegmentsCurve",
+            "label": label,
+            "points": pts,
+            "normalized": True,
+        }
+
+    if cache is not None:
+        cache[cache_key] = cid
+    return cid

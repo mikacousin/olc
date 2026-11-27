@@ -2926,3 +2926,45 @@ def test_sequence_1_default_empty_and_ascii_label_roundtrip(
     rt_empty = tmp_path / "eos_unnamed_rt.asc"
     AsciiWriter(rt_empty, ls_unnamed).write()
     assert "$SEQUENCE 1 0\n\n" in rt_empty.read_text(encoding="utf-8")
+
+
+def test_eos_ascii_proportion_and_preheat_curves(tmp_path: object) -> None:
+    """Eos $$Proportion and $$Preheat convert into deduplicated transfer curves."""
+    import pathlib
+
+    from olc.show.curve import SegmentsCurve
+
+    assert isinstance(tmp_path, pathlib.Path)
+
+    asc = tmp_path / "eos_prop_preheat.asc"
+    asc.write_text(
+        "\n".join(
+            [
+                "IDENT 3:0",
+                "MANUFACTURER ETC",
+                "CONSOLE Eos",
+                "$Patch 1 1 1 100",
+                "   $$Proportion 80",
+                "   $$Preheat 10",
+                "$Patch 2 1 2 100",
+                "   $$Proportion 80",
+                "   $$Preheat 10",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+    show = LightShow()
+    ImportFile(show, Gio.File.new_for_path(str(asc)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+    d1 = show.patch.get_device(1)
+    d2 = show.patch.get_device(2)
+    assert d1 is not None and d2 is not None
+    assert d1.curve_id >= 1000
+    assert d1.curve_id == d2.curve_id
+    curve = show.curves.get_curve(d1.curve_id)
+    assert isinstance(curve, SegmentsCurve)
+    assert curve.evaluate_normalized(0.0) == pytest.approx(0.10, abs=0.02)
+    assert curve.evaluate_normalized(0.5) == pytest.approx(0.40, abs=0.02)
+    assert curve.evaluate_normalized(1.0) == pytest.approx(0.80, abs=0.02)

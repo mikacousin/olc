@@ -36,6 +36,7 @@ from olc.files.ascii.eos_devices import (
     build_device_from_definition,
     build_fixture_definition,
     decode_eos_cue_params,
+    ensure_proportion_preheat_curve,
     eos_param_id_to_olc_key,
     is_dimmer_personality,
     parse_eos_param_token,
@@ -219,6 +220,7 @@ class AsciiParser(ReadFile):
         self._cue_execute_subs: dict[tuple[int, float], float] = {}
         self._eos_automark: bool | None = None
         self._current_resource: dict[str, typing.Any] | None = None
+        self._patch_shaping: dict[int, tuple[float, float]] = {}
         self.current = {
             "step": 0,
             "cue": 0.0,
@@ -256,6 +258,7 @@ class AsciiParser(ReadFile):
                 if not loop:
                     break
         self._finalize_personalities()
+        self._finalize_patch_shaping()
         self._finalize_effects()
         self._finalize_unmounted_subs()
         self._resolve_palettes_and_refs()
@@ -1244,6 +1247,20 @@ class AsciiParser(ReadFile):
                         break
         elif self.keyword == "$$options" and dev is not None and self.args:
             self._apply_patch_options(dev, "".join(self.args).lower())
+        elif self.keyword == "$$proportion" and self.args:
+            try:
+                prop_val = max(0.0, min(200.0, float(self.args[0])))
+            except ValueError:
+                return
+            _prev_prop, prev_pre = self._patch_shaping.get(ch, (100.0, 0.0))
+            self._patch_shaping[ch] = (prop_val, prev_pre)
+        elif self.keyword == "$$preheat" and self.args:
+            try:
+                pre_val = max(0.0, min(100.0, float(self.args[0])))
+            except ValueError:
+                return
+            prev_prop, _prev_pre = self._patch_shaping.get(ch, (100.0, 0.0))
+            self._patch_shaping[ch] = (prev_prop, pre_val)
         elif self.keyword == "$$position" and len(self.args) >= 3:
             target = self._get_patch_meta_target(ch, dev)
             if target is not None:
@@ -1316,6 +1333,36 @@ class AsciiParser(ReadFile):
     def _apply_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
         """Apply Eos $$Options flags (P=flip pan, T=flip tilt, S=swap pan/tilt)."""
         apply_eos_patch_options(dev, flags)
+
+    def _finalize_patch_shaping(self) -> None:
+        """Convert Eos $$Proportion and $$Preheat patch rules into OLC curves."""
+        if not self._patch_shaping:
+            return
+        cache: dict[tuple[int, int, int], int] = {}
+        curves_dict = self.data.setdefault("curves", {})
+        for ch_id, (prop_pct, pre_pct) in self._patch_shaping.items():
+            if abs(prop_pct - 100.0) < 1e-3 and pre_pct < 1e-3:
+                continue
+            if ch_id in self.data["devices"]:
+                dev_d = self.data["devices"][ch_id]
+                base_cid = int(dev_d.get("curve_id", 0))
+                dev_d["curve_id"] = ensure_proportion_preheat_curve(
+                    curves_dict,
+                    base_curve_id=base_cid,
+                    proportion_pct=prop_pct,
+                    preheat_pct=pre_pct,
+                    cache=cache,
+                )
+            elif ch_id in self.data["patch"]:
+                for out_d in self.data["patch"][ch_id]:
+                    base_cid = int(out_d.get("curve", 0))
+                    out_d["curve"] = ensure_proportion_preheat_curve(
+                        curves_dict,
+                        base_curve_id=base_cid,
+                        proportion_pct=prop_pct,
+                        preheat_pct=pre_pct,
+                        cache=cache,
+                    )
 
     def _new_curve(self) -> None:
         if not self.args:

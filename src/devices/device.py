@@ -601,18 +601,39 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             ):
                 raw_24 = round(self._intensity * 16777215.0)
                 val_24 = curve.get_level_24bit(raw_24) if curve else raw_24
-                coarse_ch.set_value((val_24 >> 16) & 0xFF)
-                fine_ch.set_value((val_24 >> 8) & 0xFF)
-                ultra_fine_ch.set_value(val_24 & 0xFF)
+                c_b, f_b, u_b = (
+                    (val_24 >> 16) & 0xFF,
+                    (val_24 >> 8) & 0xFF,
+                    val_24 & 0xFF,
+                )
+                for ch in self.channels:
+                    if ch.channel_type is ChannelType.INTENSITY:
+                        if ch.ultra_fine:
+                            ch.set_value(u_b)
+                        elif ch.fine:
+                            ch.set_value(f_b)
+                        else:
+                            ch.set_value(c_b)
             elif fine_ch is not None and coarse_ch is not None:
                 raw_16 = round(self._intensity * 65535.0)
                 val_16 = curve.get_level_16bit(raw_16) if curve else raw_16
-                coarse_ch.set_value((val_16 >> 8) & 0xFF)
-                fine_ch.set_value(val_16 & 0xFF)
+                c_b, f_b = (val_16 >> 8) & 0xFF, val_16 & 0xFF
+                for ch in self.channels:
+                    if ch.channel_type is ChannelType.INTENSITY:
+                        if ch.fine:
+                            ch.set_value(f_b)
+                        elif not ch.ultra_fine:
+                            ch.set_value(c_b)
             elif coarse_ch is not None:
                 raw_8 = round(self._intensity * 255.0)
                 val_8 = curve.get_level(raw_8) if curve else raw_8
-                coarse_ch.set_value(val_8)
+                for ch in self.channels:
+                    if (
+                        ch.channel_type is ChannelType.INTENSITY
+                        and not ch.fine
+                        and not ch.ultra_fine
+                    ):
+                        ch.set_value(val_8)
         elif self.uses_virtual_dimmer:
             self._apply_virtual_dimmer(curve=curve)
 
@@ -1108,6 +1129,18 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._param_last_raw[channel_type] = self._write_resolution_channels(
             coarse_ch, fine_ch, ultra_fine_ch, clamped_norm
         )
+        for ch in self.channels:
+            if ch.channel_type == channel_type:
+                if (
+                    ch.ultra_fine
+                    and ultra_fine_ch is not None
+                    and ch.label == ultra_fine_ch.label
+                ):
+                    ch.set_value(ultra_fine_ch.value)
+                elif ch.fine and fine_ch is not None and ch.label == fine_ch.label:
+                    ch.set_value(fine_ch.value)
+                elif not ch.fine and not ch.ultra_fine and ch.label == coarse_ch.label:
+                    ch.set_value(coarse_ch.value)
         if channel_type in COLOR_CHANNEL_TYPES:
             self._base_emitters[channel_type] = clamped_norm
             self._update_target_from_emitters()

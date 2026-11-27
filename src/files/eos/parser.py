@@ -30,6 +30,7 @@ from olc.files.ascii.eos_devices import (
     EOS_GENERIC_PARAM_NAMES,
     EOS_PARAM_TO_CHANNEL_TYPE,
     apply_eos_patch_options,
+    ensure_proportion_preheat_curve,
 )
 from olc.files.ascii.eos_effects import (
     EOS_TYPE_ABSOLUTE,
@@ -798,12 +799,14 @@ class Esf3dParser:
         self._parse_metadata(tree, data)
 
         # Parse Patch (tree[5])
+        pending_props: dict[int, float] = {}
         ch_personalities = self._parse_patch(
             tree[5] if len(tree) > 5 else [],
             personalities,
             fdef_by_guid,
             a3d_patch,
             data,
+            pending_props=pending_props,
         )
 
         # Parse Cues, Groups, Palettes from tree[6:]
@@ -814,6 +817,30 @@ class Esf3dParser:
             param_categories,
             data,
         )
+
+        # Resolve Proportion curves after tree[6:] curves are populated
+        if pending_props:
+            prop_cache: dict[tuple[int, int, int], int] = {}
+            curves_dict = data.setdefault("curves", {})
+            for ch_id, prop_pct in pending_props.items():
+                if ch_id in data["devices"]:
+                    dev_d = data["devices"][ch_id]
+                    base_cid = int(dev_d.get("curve_id", 0))
+                    dev_d["curve_id"] = ensure_proportion_preheat_curve(
+                        curves_dict,
+                        base_curve_id=base_cid,
+                        proportion_pct=prop_pct,
+                        cache=prop_cache,
+                    )
+                elif ch_id in data["patch"]:
+                    for out_d in data["patch"][ch_id]:
+                        base_cid = int(out_d.get("curve", 0))
+                        out_d["curve"] = ensure_proportion_preheat_curve(
+                            curves_dict,
+                            base_curve_id=base_cid,
+                            proportion_pct=prop_pct,
+                            cache=prop_cache,
+                        )
 
         self.imported.data.clean()
         if auto_import:
@@ -843,6 +870,8 @@ class Esf3dParser:
         fdef_by_guid: dict[str, dict[str, Any]],
         a3d_patch: dict[int, dict[str, tuple[float, float, float]]],
         data: dict[str, Any],
+        *,
+        pending_props: dict[int, float] | None = None,
     ) -> dict[int, EosPersonality]:
         ch_pers: dict[int, EosPersonality] = {}
         if not isinstance(tree5, list):
@@ -888,6 +917,14 @@ class Esf3dParser:
                 if len(item) > 27 and isinstance(item[27], int) and item[27] > 0
                 else 0
             )
+            if (
+                pending_props is not None
+                and len(item) > 13
+                and isinstance(item[13], (int, float))
+                and 0.0 <= float(item[13]) <= 200.0
+                and abs(float(item[13]) - 100.0) > 1e-3
+            ):
+                pending_props[ch] = float(item[13])
             opts_mask = (
                 item[15]
                 if len(item) > 15 and isinstance(item[15], int) and item[15] > 0
@@ -971,7 +1008,23 @@ class Esf3dParser:
                 dev_dict.pop("base_emitters", None)
                 if opt_flags:
                     apply_eos_patch_options(dev_dict, opt_flags)
-                data["devices"][ch] = dev_dict
+                existing_dev = data["devices"].get(ch)
+                if isinstance(existing_dev, dict):
+                    existing_chs = existing_dev.setdefault("channels", [])
+                    seen_addrs = {
+                        (int(c.get("universe", 0)), int(c.get("address", 0)))
+                        for c in existing_chs
+                    }
+                    for new_ch in dev_dict.get("channels", []):
+                        addr_key = (
+                            int(new_ch.get("universe", 0)),
+                            int(new_ch.get("address", 0)),
+                        )
+                        if addr_key not in seen_addrs:
+                            existing_chs.append(new_ch)
+                            seen_addrs.add(addr_key)
+                else:
+                    data["devices"][ch] = dev_dict
             else:
                 data["patch"].setdefault(ch, []).append(
                     {

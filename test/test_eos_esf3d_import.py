@@ -1258,6 +1258,7 @@ def test_eos_patch_advanced_options_curve_invert_swap_notes(
         rec[5] = guid
         rec[6] = addr
         rec[7] = addr
+        rec[13] = 100
         rec[15] = opts
         rec[27] = curve_id * 10000 if curve_id else 0
         rec[56] = text1
@@ -1343,3 +1344,87 @@ def test_eos_patch_advanced_options_curve_invert_swap_notes(
     assert d502.is_pan_inverted is True
     assert d503.is_tilt_inverted is True
     assert d504.swap_pan_tilt is True
+
+
+def test_eos_patch_proportion_curves_and_multipart_fixture(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Import Proportion (item[13]) as curves with dedup, and merge multi-part."""
+    from olc.show.curve import LimitCurve, SegmentsCurve
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    pers_guid = next(
+        it[2][2]
+        for it in tree[2]
+        if isinstance(it, list)
+        and len(it) >= 19
+        and isinstance(it[2], list)
+        and len(it[2]) > 6
+        and it[2][6] == "Spot_16bit_Anon"
+    )
+    dim_guid = next(
+        it[5]
+        for it in tree[5]
+        if isinstance(it, list) and len(it) >= 40 and isinstance(it[5], str)
+    )
+
+    def _rec(
+        ch: int, label: str, guid: str, addr: int, prop: int = 100
+    ) -> list[object]:
+        rec: list[object] = ["OBJ"] + [0] * 74
+        rec[3] = ch
+        rec[4] = label
+        rec[5] = guid
+        rec[6] = addr
+        rec[7] = addr
+        rec[13] = prop
+        return rec
+
+    tree[5].extend(
+        [
+            _rec(601, "Dim 80A", dim_guid, 150, prop=80),
+            _rec(602, "Dim 80B", dim_guid, 151, prop=80),
+            _rec(603, "Dim 150", dim_guid, 152, prop=150),
+            _rec(604, "Multi Spot", pers_guid, 300, prop=100),
+            _rec(604, "Multi Spot", pers_guid, 320, prop=100),
+        ]
+    )
+
+    esf_path = tmp_path / "prop_multipart.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    # Proportion 80% -> LimitCurve, deduplicated between Ch 601 and Ch 602
+    d601 = show.patch.get_device(601)
+    d602 = show.patch.get_device(602)
+    assert d601 is not None and d602 is not None
+    assert d601.curve_id >= 1000
+    assert d601.curve_id == d602.curve_id
+    c_80 = show.curves.get_curve(d601.curve_id)
+    assert isinstance(c_80, LimitCurve)
+    assert c_80.evaluate_normalized(0.5) == pytest.approx(0.4, abs=0.01)
+
+    # Proportion 150% -> SegmentsCurve clamping at 1.0 above 66.7%
+    d603 = show.patch.get_device(603)
+    assert d603 is not None
+    c_150 = show.curves.get_curve(d603.curve_id)
+    assert isinstance(c_150, SegmentsCurve)
+    assert c_150.evaluate_normalized(0.5) == pytest.approx(0.75, abs=0.02)
+    assert c_150.evaluate_normalized(0.8) == pytest.approx(1.0, abs=0.01)
+
+    # Multi-part fixture Ch 604 -> 2 parts merged, both DMX intensity channels updated
+    d604 = show.patch.get_device(604)
+    assert d604 is not None
+    int_chs = [
+        c
+        for c in d604.channels
+        if c.channel_type is ChannelType.INTENSITY and not c.fine and not c.ultra_fine
+    ]
+    assert len(int_chs) == 2
+    d604.set_intensity(0.5)
+    assert all(c.value in (127, 128) for c in int_chs)
