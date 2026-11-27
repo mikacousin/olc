@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import gi
+import pytest
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
@@ -29,6 +30,8 @@ from olc.show.palette import Palette, PaletteCategory  # noqa: E402
 from olc.show.sequence import Sequence  # noqa: E402
 from olc.show.step import Step  # noqa: E402
 from test.gtk3.conftest import process_events  # noqa: E402
+
+pytestmark = pytest.mark.gui
 
 
 def test_playbacks_tab_and_vc_three_strip_buttons(app_gui: Application) -> None:

@@ -52,6 +52,8 @@ from olc.gtk3.fixture_library import (  # noqa: E402
 from test.conftest import DATA_DIR  # noqa: E402 # isort: skip
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip
 
+pytestmark = pytest.mark.gui
+
 
 def test_fixture_library_tab_opens_and_inspects_builtin(app_gui: Application) -> None:
     """Test opening Fixtures tab and verifying read-only state for built-ins."""

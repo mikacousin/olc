@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from olc.core.playback_arbitrator import PlaybackPriority
 from olc.gtk3.application import Application
 from olc.gtk3.fader import FaderTab
@@ -25,6 +27,8 @@ from olc.show.fader import FaderSequence, FaderType
 from olc.show.sequence import Sequence
 from olc.show.step import Step
 from test.gtk3.conftest import process_events
+
+pytestmark = pytest.mark.gui
 
 
 def test_gtk3_multi_sequence_fader_edit_vc_and_sequence_tab(

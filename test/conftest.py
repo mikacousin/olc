@@ -40,6 +40,7 @@ except ImportError:
 import pytest  # noqa: E402
 
 DATA_DIR = pathlib.Path(__file__).parent / "data"
+_GTK3_TEST_DIR = pathlib.Path(__file__).parent / "gtk3"
 
 
 @pytest.fixture
@@ -58,6 +59,20 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+def pytest_ignore_collect(
+    collection_path: pathlib.Path, config: pytest.Config
+) -> bool | None:
+    """Ignore GTK3 test collection when --run-gui is not set."""
+    if config.getoption("--run-gui"):
+        return None
+    if (
+        collection_path == _GTK3_TEST_DIR
+        or _GTK3_TEST_DIR in collection_path.parents
+    ):
+        return True
+    return None
+
+
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
@@ -70,7 +85,8 @@ def pytest_collection_modifyitems(
         reason="GUI behavioral tests require the --run-gui option to run."
     )
     for item in items:
-        if "gui" in item.keywords:
+        item_path = pathlib.Path(str(item.path))
+        if "gui" in item.keywords or _GTK3_TEST_DIR in item_path.parents:
             item.add_marker(skip_gui)
 
 

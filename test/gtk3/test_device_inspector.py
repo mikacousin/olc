@@ -36,6 +36,8 @@ from olc.gtk3.widgets.color_picker import ConsoleColorPicker  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order
 
+pytestmark = pytest.mark.gui
+
 
 def test_inspector_heterogeneous_selection_and_ifcb_counts() -> None:
     """Test IFCB scope counts [M/N], Lead Fixture navigation, and disparity."""
