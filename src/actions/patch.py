@@ -658,6 +658,32 @@ class PatchMoveDeviceAddressAction(Action):
             raise ValueError(f"Universe {self.universe} is not configured.")
 
         footprint = dev.channel_count()
+        instantiated_channels: list[typing.Any] | None = None
+        if footprint == 0:
+            from olc.devices.builtin import create_dimmer_definition
+
+            fdef = None
+            if (
+                dev.fixture_type is not FixtureType.DIMMER
+                and dev.manufacturer
+                and dev.model
+                and hasattr(self.app.lightshow, "fixture_library")
+            ):
+                fdef = self.app.lightshow.fixture_library.get_by_key(
+                    f"{dev.manufacturer}:{dev.model}"
+                )
+            if fdef is None:
+                fdef = create_dimmer_definition()
+            inst = fdef.instantiate(
+                fixture_id=self.device_id,
+                label=dev.label,
+                universe=self.universe,
+                address=self.address,
+                mode_name=dev.mode_name or None,
+            )
+            instantiated_channels = inst.channels
+            footprint = len(instantiated_channels)
+
         if footprint > 0 and self.address + footprint - 1 > 512:
             raise ValueError(
                 f"Device footprint ({footprint}) exceeds DMX 512 "
@@ -694,9 +720,14 @@ class PatchMoveDeviceAddressAction(Action):
                 patch.unpatch_address(c_univ, c_addr)
 
         moved = LightingDevice.from_dict(self._old_device_dict)
-        for idx, ch in enumerate(moved.channels):
-            ch.universe = self.universe
-            ch.address = self.address + idx
+        if instantiated_channels is not None:
+            moved.channels = instantiated_channels
+            if moved.curve_id > 0:
+                moved.set_curve_id(moved.curve_id)
+        else:
+            for idx, ch in enumerate(moved.channels):
+                ch.universe = self.universe
+                ch.address = self.address + idx
 
         patch.unpatch_device(self.device_id)
         patch.restore_device(moved)

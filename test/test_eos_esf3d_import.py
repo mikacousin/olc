@@ -1683,3 +1683,141 @@ def test_stage_enabled_toggle_action_undo_and_viz_ipc() -> None:
 
     snap = _json.loads(build_snapshot([], 1, stage=app.lightshow.stage).decode("utf-8"))
     assert snap["stage"]["enabled"] is True
+
+
+def test_eos_esf3d_imports_unpatched_channels_and_allows_readdressing(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Unpatched Eos channels (addr=0) keep labels, gels, notes, 3D, and re-address."""
+    from unittest.mock import MagicMock
+
+    from olc.core.app import CoreApplication
+    from olc.devices.channel import ChannelType
+    from olc.files.eos.wire import encode_showdat
+    from olc.files.olc.writer import OlcWriter
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    pers_guid = next(
+        it[2][2]
+        for it in tree[2]
+        if isinstance(it, list)
+        and len(it) >= 19
+        and isinstance(it[2], list)
+        and len(it[2]) > 6
+        and it[2][6] == "Spot_16bit_Anon"
+    )
+    dim_guid = next(
+        it[5]
+        for it in tree[5]
+        if isinstance(it, list) and len(it) >= 40 and isinstance(it[5], str)
+    )
+
+    def _rec(
+        ch: int,
+        label: str,
+        guid: str,
+        addr: int,
+        *,
+        gel: str = "",
+        notes: str = "",
+        pos: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> list[object]:
+        rec: list[object] = ["OBJ"] + [0] * 74
+        rec[3] = ch
+        rec[4] = label
+        rec[5] = guid
+        rec[6] = addr
+        rec[7] = addr
+        rec[19] = gel
+        rec[56] = notes
+        rec[66] = [
+            "OBJ",
+            1,
+            pos[0],
+            pos[1],
+            pos[2],
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+        ]
+        return rec
+
+    tree[5].extend(
+        [
+            _rec(
+                701,
+                "Front 1",
+                dim_guid,
+                0,
+                gel="L201",
+                notes="Spare front",
+                pos=(1.0, -2.0, 5.0),
+            ),
+            _rec(
+                702,
+                "Spot Tour",
+                pers_guid,
+                0,
+                notes="FOH truss",
+                pos=(0.0, 0.0, 7.0),
+            ),
+        ]
+    )
+
+    esf_path = tmp_path / "unpatched_tour.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    app = CoreApplication(MagicMock())
+    show = app.lightshow
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    d701 = show.patch.get_device(701)
+    d702 = show.patch.get_device(702)
+    assert d701 is not None and d702 is not None
+    assert d701.label == "Front 1"
+    assert d701.gel == "L201"
+    assert d701.notes == "Spare front"
+    assert d701.position == pytest.approx((1.0, -2.0, 5.0))
+    assert d701.channels == []
+    assert show.patch.is_patched(701) is False
+
+    assert d702.label == "Spot Tour"
+    assert d702.notes == "FOH truss"
+    assert d702.position == pytest.approx((0.0, 0.0, 7.0))
+    assert d702.channels == []
+    assert d702.model == "Spot_16bit_Anon"
+
+    # Re-addressing on arrival preserves metadata and supports Undo/Redo
+    app.action_registry.execute("patch.move_device_address", 701, 1, 15)
+    d701_patched = show.patch.get_device(701)
+    assert d701_patched is not None
+    assert len(d701_patched.channels) == 1
+    assert d701_patched.channels[0].universe == 1
+    assert d701_patched.channels[0].address == 15
+    assert d701_patched.label == "Front 1"
+    assert d701_patched.gel == "L201"
+    assert d701_patched.notes == "Spare front"
+
+    app.history.undo()
+    d701_undo = show.patch.get_device(701)
+    assert d701_undo is not None and d701_undo.channels == []
+
+    # .olc round-trip preserves unpatched devices
+    olc_path = tmp_path / "unpatched_roundtrip.olc"
+    writer = OlcWriter(olc_path, show)
+    writer.export()
+    writer.write()
+
+    reloaded = LightShow()
+    ImportFile(reloaded, olc_path, FileType.OLC).parse_sync()
+    r702 = reloaded.patch.get_device(702)
+    assert r702 is not None
+    assert r702.label == "Spot Tour"
+    assert r702.channels == []
+    assert any(c.channel_type is ChannelType.INTENSITY for c in d701_patched.channels)

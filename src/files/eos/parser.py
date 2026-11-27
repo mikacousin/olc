@@ -893,14 +893,15 @@ class Esf3dParser:
             ch = item[3]
             guid = item[5] if isinstance(item[5], str) else ""
             addr_start = item[6] if isinstance(item[6], int) else 0
-            if addr_start <= 0:
-                continue
-
-            univ_idx = (addr_start - 1) // 512
-            if univ_idx < 0 or univ_idx >= NB_UNIVERSES:
-                continue
-            universe = UNIVERSES[univ_idx]
-            dmx_addr = ((addr_start - 1) % 512) + 1
+            has_dmx = addr_start > 0
+            universe = 0
+            dmx_addr = 0
+            if has_dmx:
+                univ_idx = (addr_start - 1) // 512
+                if univ_idx < 0 or univ_idx >= NB_UNIVERSES:
+                    continue
+                universe = UNIVERSES[univ_idx]
+                dmx_addr = ((addr_start - 1) % 512) + 1
 
             label = ""
             notes = ""
@@ -991,9 +992,11 @@ class Esf3dParser:
                 dev = fdef.instantiate(
                     fixture_id=ch,
                     label=label or f"{fdef.model} {ch}",
-                    universe=universe,
-                    address=dmx_addr,
+                    universe=universe if has_dmx else 1,
+                    address=dmx_addr if has_dmx else 1,
                 )
+                if not has_dmx:
+                    dev.channels = []
                 dev.position = position
                 dev.orientation = orientation
                 dev.focus_point = focus_point
@@ -1029,7 +1032,7 @@ class Esf3dParser:
                             seen_addrs.add(addr_key)
                 else:
                     data["devices"][ch] = dev_dict
-            else:
+            elif has_dmx:
                 data["patch"].setdefault(ch, []).append(
                     {
                         "output": dmx_addr,
@@ -1052,6 +1055,35 @@ class Esf3dParser:
                     meta["notes"] = notes
                 if meta:
                     data.setdefault("patch_meta", {})[ch] = meta
+            elif (
+                label
+                or notes
+                or gel_str
+                or has_transform
+                or beam_angle is not None
+                or curve_id > 0
+                or (pending_props is not None and ch in pending_props)
+            ) and ch not in data["devices"]:
+                from olc.devices.device import FixtureType, LightingDevice
+
+                dim_dev = LightingDevice(
+                    fixture_id=ch,
+                    label=label or f"Dimmer {ch}",
+                    manufacturer="Generic",
+                    model="Dimmer",
+                    fixture_type=FixtureType.DIMMER,
+                    channels=[],
+                    position=position,
+                    orientation=orientation,
+                    focus_point=focus_point,
+                    beam_angle=beam_angle if beam_angle is not None else 25.0,
+                    gel=gel_str,
+                    gel_color=gel_hex,
+                    notes=notes,
+                )
+                if curve_id > 0:
+                    dim_dev.set_curve_id(curve_id)
+                data["devices"][ch] = dim_dev.to_dict()
 
         return ch_pers
 

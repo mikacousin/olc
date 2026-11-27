@@ -40,7 +40,10 @@ fn patch_json(version: u64) -> String {
              ]},
             {"id": 5, "label": "Dim 5", "manufacturer": "Generic", "model": "Dimmer",
              "fixture_type": "dimmer",
-             "universe": 1, "address": 5, "footprint": 1}
+             "universe": 1, "address": 5, "footprint": 1},
+            {"id": 6, "label": "Touring Spare", "manufacturer": "Generic", "model": "Dimmer",
+             "fixture_type": "dimmer",
+             "universe": 0, "address": 0, "footprint": 0, "channels": []}
         ]
     })
     .to_string()
@@ -155,7 +158,9 @@ fn receives_levels_and_patch_from_olc_format() {
     assert_eq!(patch.stage.width, 16.0);
     assert_eq!(patch.stage.fog_density, 0.55);
     assert!(!patch.stage.enabled);
-    assert_eq!(patch.fixtures.len(), 2);
+    assert_eq!(patch.fixtures.len(), 3);
+    assert!(patch.fixtures[2].address.is_none());
+    assert!(patch.fixtures[2].channels.is_empty());
     assert_eq!(patch.fixtures[0].channel, Some(101));
     assert_eq!(patch.fixtures[0].fixture_type, FixtureType::MovingHead);
     assert_eq!(patch.fixtures[0].position.z, 5.0);

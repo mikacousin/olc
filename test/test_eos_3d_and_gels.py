@@ -126,3 +126,55 @@ def test_eos_ascii_imports_3d_position_orientation_beam_and_gels(
     assert dev2.beam_angle == pytest.approx(40.0)
     assert dev2.gel == "L203"
     assert dev2.effective_gel_color == resolve_gel_hex("L203")
+
+
+def test_ascii_import_unpatched_channels_preserve_metadata(
+    tmp_path: Path,
+) -> None:
+    """ASCII $Patch with address 0 keeps labels, gels, and 3D coordinates."""
+    asc = "\n".join(
+        [
+            "Ident 3:0",
+            "Manufacturer ETC",
+            "Console Eos",
+            "$ParamType 1 1 Intens",
+            "$ParamType 2 2 Pan",
+            "$Personality 10",
+            "   $$Manuf TourBrand",
+            "   $$Model MovingTour",
+            "   $$Footprint 2",
+            "   $$PersChan 1 1 1 0 0 100 0.0 100.0",
+            "   $$PersChan 2 2 2 0 32768 100 -270.0 270.0",
+            "$Patch 11 0 0 1",
+            "   $$Text Wash Left",
+            "   $$TextGel L201",
+            "   $$Position -2.0 3.0 5.5",
+            "$Patch 12 10 0 1",
+            "   $$Text Spot Spare",
+            "   $$Position 1.5 -1.0 6.5",
+            "EndData",
+        ]
+    )
+    asc_file = tmp_path / "eos_unpatched.asc"
+    asc_file.write_text(asc, encoding="ascii")
+
+    ls = LightShow()
+    ImportFile(ls, Gio.File.new_for_path(str(asc_file)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+
+    d11 = ls.patch.get_device(11)
+    assert d11 is not None
+    assert d11.label == "Wash Left"
+    assert d11.gel == "L201"
+    assert d11.position == pytest.approx((-2.0, 3.0, 5.5))
+    assert d11.channels == []
+    assert ls.patch.is_patched(11) is False
+
+    d12 = ls.patch.get_device(12)
+    assert d12 is not None
+    assert d12.label == "Spot Spare"
+    assert d12.manufacturer == "TourBrand"
+    assert d12.model == "MovingTour"
+    assert d12.position == pytest.approx((1.5, -1.0, 6.5))
+    assert d12.channels == []

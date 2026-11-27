@@ -495,22 +495,32 @@ def build_device_from_definition(
     mode_name: str | None = None,
 ) -> dict[str, typing.Any] | None:
     """Instantiate a LightingDevice dict from *fdef_dict* and a patch address."""
-    univ_index = (dmx_addr - 1) // 512
-    if univ_index < 0 or univ_index >= NB_UNIVERSES:
-        return None
-    universe = UNIVERSES[univ_index]
-    base_address = dmx_addr - (512 * univ_index)
-
     fdef = FixtureDefinition.from_dict(fdef_dict)
-    device = fdef.instantiate(
-        fixture_id=channel,
-        label=f"{fdef.model} {channel}",
-        universe=universe,
-        address=base_address,
-        mode_name=mode_name,
-    )
-    if not device.channels:
-        return None
+    if dmx_addr <= 0:
+        device = fdef.instantiate(
+            fixture_id=channel,
+            label=f"{fdef.model} {channel}",
+            universe=1,
+            address=1,
+            mode_name=mode_name,
+        )
+        device.channels = []
+    else:
+        univ_index = (dmx_addr - 1) // 512
+        if univ_index < 0 or univ_index >= NB_UNIVERSES:
+            return None
+        universe = UNIVERSES[univ_index]
+        base_address = dmx_addr - (512 * univ_index)
+
+        device = fdef.instantiate(
+            fixture_id=channel,
+            label=f"{fdef.model} {channel}",
+            universe=universe,
+            address=base_address,
+            mode_name=mode_name,
+        )
+        if not device.channels:
+            return None
 
     device.set_curve_id(curve_id)
     device_dict = device.to_dict()

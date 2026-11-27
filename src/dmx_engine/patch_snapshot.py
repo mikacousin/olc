@@ -108,9 +108,16 @@ def _channel_row(ch: Any) -> dict[str, Any]:  # noqa: ANN401
 
 def _device_row(device: Any) -> dict[str, Any]:  # noqa: ANN401
     """Describe one LightingDevice for the snapshot."""
-    universe = device.universe
-    addresses = [ch.address for ch in device.channels if ch.universe == universe]
-    footprint = (max(addresses) - min(addresses) + 1) if addresses else 0
+    channels = list(getattr(device, "channels", []))
+    if channels:
+        universe = device.universe
+        address = device.address
+        addresses = [ch.address for ch in channels if ch.universe == universe]
+        footprint = (max(addresses) - min(addresses) + 1) if addresses else 0
+    else:
+        universe = 0
+        address = 0
+        footprint = 0
     return {
         "id": device.fixture_id,
         "label": device.label,
@@ -120,7 +127,7 @@ def _device_row(device: Any) -> dict[str, Any]:  # noqa: ANN401
         "gdtf": device.gdtf_id,
         "fixture_type": _enum_value(getattr(device, "fixture_type", None), "generic"),
         "universe": universe,
-        "address": device.address,
+        "address": address,
         "footprint": footprint,
         "position": _vec3_list(getattr(device, "position", None), (0.0, 0.0, 4.0)),
         "focus_point": _vec3_list(
@@ -136,7 +143,7 @@ def _device_row(device: Any) -> dict[str, Any]:  # noqa: ANN401
             getattr(device, "effective_gel_color", "")
             or getattr(device, "gel_color", "")
         ),
-        "channels": [_channel_row(ch) for ch in getattr(device, "channels", [])],
+        "channels": [_channel_row(ch) for ch in channels],
     }
 
 

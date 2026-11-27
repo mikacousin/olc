@@ -1186,7 +1186,7 @@ class AsciiParser(ReadFile):
         # args[3] in Eos $Patch is address_mode (1=port/offset, 0=edmx), not curve_id.
         curve_id = 0
 
-        if channel > MAX_CHANNELS or dmx_addr < 1:
+        if channel < 1 or channel > MAX_CHANNELS or dmx_addr < 0:
             self.state = State.NO_PRIMARY
             return
 
@@ -1196,7 +1196,27 @@ class AsciiParser(ReadFile):
         self.current["utext_active"] = False
         pers = self.personalities.get(pers_id)
 
-        if pers is None or is_dimmer_personality(pers, self.param_types):
+        if dmx_addr == 0:
+            if pers is None or is_dimmer_personality(pers, self.param_types):
+                if channel not in self.data.get("devices", {}):
+                    self.data.setdefault("devices", {})[channel] = {
+                        "fixture_id": channel,
+                        "label": f"Dimmer {channel}",
+                        "manufacturer": "Generic",
+                        "model": "Dimmer",
+                        "fixture_type": "dimmer",
+                        "channels": [],
+                    }
+            else:
+                registered = self._register_personality_definition(pers_id)
+                if registered is not None:
+                    fdef_dict, mode_name = registered
+                    device_dict = build_device_from_definition(
+                        channel, 0, curve_id, fdef_dict, mode_name=mode_name
+                    )
+                    if device_dict is not None:
+                        self.data.setdefault("devices", {})[channel] = device_dict
+        elif pers is None or is_dimmer_personality(pers, self.param_types):
             univ_index = (dmx_addr - 1) // 512
             if univ_index < NB_UNIVERSES:
                 univ = UNIVERSES[univ_index]

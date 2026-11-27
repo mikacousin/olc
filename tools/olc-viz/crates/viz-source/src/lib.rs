@@ -553,7 +553,7 @@ pub mod zmq {
                     fixture_type: d.fixture_type,
                     gdtf: non_empty(d.gdtf),
                     mode: non_empty(d.mode),
-                    address: Some(DmxAddress {
+                    address: (d.universe > 0 && d.address > 0).then_some(DmxAddress {
                         universe: d.universe,
                         channel: d.address,
                     }),

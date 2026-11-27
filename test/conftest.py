@@ -65,10 +65,7 @@ def pytest_ignore_collect(
     """Ignore GTK3 test collection when --run-gui is not set."""
     if config.getoption("--run-gui"):
         return None
-    if (
-        collection_path == _GTK3_TEST_DIR
-        or _GTK3_TEST_DIR in collection_path.parents
-    ):
+    if collection_path == _GTK3_TEST_DIR or _GTK3_TEST_DIR in collection_path.parents:
         return True
     return None
 

@@ -253,6 +253,37 @@ def test_build_snapshot_includes_stage_3d_and_optical_channels() -> None:
         },
     ]
 
+    unpatched = LightingDevice(
+        fixture_id=200,
+        label="Touring Spare",
+        fixture_type=FixtureType.DIMMER,
+        channels=[],
+        position=(1.0, 2.0, 4.5),
+    )
+    snap2 = json.loads(build_snapshot([unpatched], version=4, stage=stage))
+    assert snap2["devices"] == [
+        {
+            "id": 200,
+            "label": "Touring Spare",
+            "manufacturer": "",
+            "model": "",
+            "mode": "",
+            "gdtf": "",
+            "fixture_type": "dimmer",
+            "universe": 0,
+            "address": 0,
+            "footprint": 0,
+            "position": [1.0, 2.0, 4.5],
+            "focus_point": [0.0, 0.0, 0.0],
+            "orientation": [0.0, 0.0, 0.0],
+            "beam_angle": 25.0,
+            "static_gobo": "",
+            "gel": "",
+            "gel_color": "",
+            "channels": [],
+        }
+    ]
+
 
 def test_set_focus_and_set_stage_commands_over_zmq_and_undo() -> None:
     """REQ commands set_focus (fixed + moving head IK) & set_stage update CoreApp."""
