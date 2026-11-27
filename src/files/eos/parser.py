@@ -40,6 +40,11 @@ from olc.files.ascii.eos_effects import (
     new_eos_effect,
 )
 from olc.files.eos.a3d import eos_euler_to_olc, parse_working_a3d_patch
+from olc.files.eos.gdtf_enrich import (
+    enrich_fixture_from_gdtf,
+    match_eos_fixture_definition,
+    should_use_gdtf_for_personality,
+)
 from olc.files.eos.personality import (
     EosPersonality,
     build_olc_fixture_definition,
@@ -483,14 +488,30 @@ class Esf3dParser:
             tree[2] if len(tree) > 2 else [], param_names
         )
 
-        # Register FixtureDefinitions directly from tree[2] (no GDTF switch needed)
+        # Register FixtureDefinitions from tree[2], optionally enriched via local GDTF
         data = self.imported.data.data
+        fixture_library = getattr(self.imported.lightshow, "fixture_library", None)
+        actions = getattr(self.imported, "actions", {})
         fdef_by_guid: dict[str, dict[str, Any]] = {}
-        for guid, pers in personalities.items():
-            if not pers.is_dimmer:
-                fdef_dict = build_olc_fixture_definition(pers).to_dict()
-                fdef_by_guid[guid] = fdef_dict
-                data["fixture_definitions"].append(fdef_dict)
+        pers_id = 0
+        for guid, pers in sorted(personalities.items()):
+            if pers.is_dimmer:
+                continue
+            pers_id += 1
+            eos_fdef = build_olc_fixture_definition(pers)
+            match = match_eos_fixture_definition(pers_id, eos_fdef, fixture_library)
+            data.setdefault("gdtf_matches", {})[pers_id] = match.to_summary_dict()
+            if (
+                should_use_gdtf_for_personality(pers_id, match, actions)
+                and match.gdtf_definition is not None
+                and match.gdtf_mode is not None
+            ):
+                eos_fdef = enrich_fixture_from_gdtf(
+                    eos_fdef, match.gdtf_definition, match.gdtf_mode
+                )
+            fdef_dict = eos_fdef.to_dict()
+            fdef_by_guid[guid] = fdef_dict
+            data["fixture_definitions"].append(fdef_dict)
 
         # Parse Show Metadata
         self._parse_metadata(tree, data)

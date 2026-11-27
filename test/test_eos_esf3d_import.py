@@ -22,6 +22,13 @@ import zipfile
 import pytest
 
 from olc.actions.show import _detect_file_type
+from olc.devices.channel import ChannelRange, ChannelType
+from olc.devices.device import FixtureType
+from olc.devices.fixture import (
+    ChannelDefinition,
+    DmxModeDefinition,
+    FixtureDefinition,
+)
 from olc.files.eos.personality import (
     EosParamDef,
     EosRangeBlock,
@@ -324,3 +331,111 @@ def test_evaluate_discrete_slots_and_point_ranges() -> None:
         ],
     )
     assert evaluate_eos_param_to_dmx(ct, 1594.0, {}) == 0
+
+
+def _make_anon_spot_gdtf() -> FixtureDefinition:
+    """Build a synthetic local GDTF matching AnonLights Spot_16bit_Anon (12ch)."""
+    mode = DmxModeDefinition(
+        name="12ch Standard",
+        channel_defs=[
+            ChannelDefinition(ChannelType.PAN, offset=0, fine_offset=1, label="Pan"),
+            ChannelDefinition(ChannelType.TILT, offset=2, fine_offset=3, label="Tilt"),
+            ChannelDefinition(
+                ChannelType.INTENSITY,
+                offset=4,
+                fine_offset=5,
+                label="Dimmer",
+                highlight_value=65535,
+            ),
+            ChannelDefinition(ChannelType.CYAN, offset=6, label="Cyan"),
+            ChannelDefinition(ChannelType.MAGENTA, offset=7, label="Magenta"),
+            ChannelDefinition(ChannelType.YELLOW, offset=8, label="Yellow"),
+            ChannelDefinition(
+                ChannelType.GOBO_WHEEL,
+                offset=9,
+                label="Gobo1",
+                ranges=[
+                    ChannelRange("Open", ChannelType.GOBO_WHEEL, 0, 9),
+                    ChannelRange(
+                        "Star",
+                        ChannelType.GOBO_WHEEL,
+                        10,
+                        77,
+                        snap_value=40,
+                        description="Star gobo",
+                        gobo_id="gdtf:star",
+                    ),
+                ],
+            ),
+            ChannelDefinition(
+                ChannelType.GENERIC,
+                offset=10,
+                fine_offset=11,
+                label="GoboRot",
+            ),
+        ],
+    )
+    return FixtureDefinition(
+        manufacturer="AnonLights",
+        model="Spot_16bit_Anon",
+        fixture_type=FixtureType.MOVING_HEAD,
+        dmx_modes=[mode],
+        gdtf_id="gdtf-anon-spot-12ch",
+        is_builtin=False,
+    )
+
+
+def test_import_esf3d_gdtf_enrichment_enabled() -> None:
+    """Local GDTF enriches gobos/gdtf_id while preserving Eos DMX and Cue values."""
+    show = LightShow()
+    show.fixture_library.register(_make_anon_spot_gdtf())
+
+    imp = ImportFile(show, DATA_DIR / "eos_sample_32.esf3d", FileType.ESF3D)
+    imp.parse_sync()
+
+    matches = imp.data.data["gdtf_matches"]
+    assert matches[1]["status"] == "compatible"
+    assert matches[1]["gobo_count"] == 1
+
+    dev4 = show.patch.devices[4]
+    assert dev4.gdtf_id == "gdtf-anon-spot-12ch"
+    gobo_ch = next(c for c in dev4.channels if c.channel_type is ChannelType.GOBO_WHEEL)
+    assert any(r.gobo_id == "gdtf:star" for r in gobo_ch.ranges)
+    star_r = next(r for r in gobo_ch.ranges if r.gobo_id == "gdtf:star")
+    assert star_r.description == "Star gobo"
+
+    # Eos Cue 115 Gobo_Index/Speed (52155 / 46148) and DMX offsets remain intact
+    cue115 = next(
+        s.cue
+        for s in show.main_playback.steps
+        if s.cue is not None and s.cue.number == 115.0
+    )
+    assert round(cue115.device_values[4]["gobo_index/speed"] * 65535) == 52155
+    assert round(cue115.device_values[5]["gobo_index/speed"] * 65535) == 46148
+
+
+@pytest.mark.parametrize(
+    "actions",
+    [
+        {"use_gdtf_matches": False},
+        {"use_gdtf_matches": True, "gdtf_overrides": {1: "eos"}},
+    ],
+)
+def test_import_esf3d_gdtf_enrichment_disabled_or_overridden(
+    actions: dict[str, object],
+) -> None:
+    """use_gdtf_matches=False or gdtf_overrides={1: 'eos'} skips GDTF enrichment."""
+    show = LightShow()
+    show.fixture_library.register(_make_anon_spot_gdtf())
+
+    imp = ImportFile(show, DATA_DIR / "eos_sample_32.esf3d", FileType.ESF3D)
+    imp.actions.update(actions)
+    imp.parse_sync()
+
+    # Match summary is still recorded for the import dialog
+    assert imp.data.data["gdtf_matches"][1]["status"] == "compatible"
+
+    dev4 = show.patch.devices[4]
+    assert dev4.gdtf_id == ""
+    gobo_ch = next(c for c in dev4.channels if c.channel_type is ChannelType.GOBO_WHEEL)
+    assert all(r.gobo_id == "" for r in gobo_ch.ranges)
