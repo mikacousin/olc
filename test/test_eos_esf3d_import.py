@@ -1221,3 +1221,121 @@ def test_eos_advanced_effects_curves_and_submasters(
     assert fx_fader.effect_channels == [4, 5]
     assert fx_fader.base_size_scale == pytest.approx(1.98)
     assert fx_fader.base_rate_scale == pytest.approx(0.71)
+
+
+def test_eos_patch_advanced_options_curve_invert_swap_notes(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Import patch curve (item[27]), invert/swap (item[15]), and notes (item[56])."""
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    # Reuse the existing Pan/Tilt Spot personality from eos_sample_32.esf3d
+    pers_guid = next(
+        it[2][2]
+        for it in tree[2]
+        if isinstance(it, list)
+        and len(it) >= 19
+        and isinstance(it[2], list)
+        and len(it[2]) > 6
+        and it[2][6] == "Spot_16bit_Anon"
+    )
+
+    # Helper to build a tree[5] patch record of len 75
+    def _patch_rec(
+        ch: int,
+        label: object,
+        guid: str,
+        addr: int,
+        *,
+        opts: int = 0,
+        curve_id: int = 0,
+        text1: str = "",
+    ) -> list[object]:
+        rec: list[object] = ["OBJ"] + [0] * 74
+        rec[3] = ch
+        rec[4] = label
+        rec[5] = guid
+        rec[6] = addr
+        rec[7] = addr
+        rec[15] = opts
+        rec[27] = curve_id * 10000 if curve_id else 0
+        rec[56] = text1
+        return rec
+
+    # Pick an existing dimmer guid from tree[5]
+    dim_guid = next(
+        it[5]
+        for it in tree[5]
+        if isinstance(it, list) and len(it) >= 40 and isinstance(it[5], str)
+    )
+
+    # Ch 501: multi-part dimmer with curve 905
+    # Ch 502: Invert Pan (opts=1) + curve 905 + distinct notes
+    # Ch 503: Invert Tilt (opts=2)
+    # Ch 504: Swap Pan/Tilt (opts=4)
+    # Ch 505: Baseline Spot (opts=0) to compare Pan/Tilt addresses
+    tree[5].extend(
+        [
+            _patch_rec(501, "Dim MP", dim_guid, 101, curve_id=905),
+            _patch_rec(501, "Dim MP", dim_guid, 102, curve_id=905),
+            _patch_rec(
+                502,
+                "Spot Flip Pan",
+                pers_guid,
+                210,
+                opts=1,
+                curve_id=905,
+                text1="Downstage Left",
+            ),
+            _patch_rec(503, "Spot Flip Tilt", pers_guid, 240, opts=2),
+            _patch_rec(504, "Spot Swap PT", pers_guid, 270, opts=4),
+            _patch_rec(505, "Spot Base", pers_guid, 300, opts=0),
+        ]
+    )
+
+    esf_path = tmp_path / "patch_options.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    # Multi-part dimmer Ch 501 -> curve 905
+    d501 = show.patch.get_device(501)
+    assert d501 is not None
+    assert d501.curve_id == 905
+
+    # Ch 502: Invert Pan, curve 905, label + notes
+    d502 = show.patch.get_device(502)
+    assert d502 is not None
+    assert d502.label == "Spot Flip Pan"
+    assert d502.notes == "Downstage Left"
+    assert d502.curve_id == 905
+    pan502 = d502.get_channel(ChannelType.PAN)
+    tilt502 = d502.get_channel(ChannelType.TILT)
+    assert pan502 is not None and tilt502 is not None
+    assert pan502.physical_min > pan502.physical_max
+    assert tilt502.physical_min < tilt502.physical_max
+
+    # Ch 503: Invert Tilt
+    d503 = show.patch.get_device(503)
+    assert d503 is not None
+    pan503 = d503.get_channel(ChannelType.PAN)
+    tilt503 = d503.get_channel(ChannelType.TILT)
+    assert pan503 is not None and tilt503 is not None
+    assert pan503.physical_min < pan503.physical_max
+    assert tilt503.physical_min > tilt503.physical_max
+
+    # Ch 504: Swap Pan & Tilt addresses relative to baseline Ch 505
+    d504 = show.patch.get_device(504)
+    d505 = show.patch.get_device(505)
+    assert d504 is not None and d505 is not None
+    pan504 = d504.get_channel(ChannelType.PAN)
+    tilt504 = d504.get_channel(ChannelType.TILT)
+    pan505 = d505.get_channel(ChannelType.PAN)
+    tilt505 = d505.get_channel(ChannelType.TILT)
+    assert pan504 is not None and tilt504 is not None
+    assert pan505 is not None and tilt505 is not None
+    assert (pan504.address - 270) == (tilt505.address - 300)
+    assert (tilt504.address - 270) == (pan505.address - 300)

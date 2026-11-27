@@ -618,3 +618,43 @@ def decode_eos_cue_params(
             dev_vals[comp] = cmy.get(comp, 0.0)
 
     return dev_vals, intensity_val
+
+
+def apply_eos_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
+    """Apply Eos patch option flags (p=flip pan, t=flip tilt, s=swap pan/tilt)."""
+    channels = dev.get("channels", [])
+    if "p" in flags:
+        for ch_dict in channels:
+            if ch_dict.get("channel_type") == "pan":
+                ch_dict["physical_min"], ch_dict["physical_max"] = (
+                    ch_dict["physical_max"],
+                    ch_dict["physical_min"],
+                )
+    if "t" in flags:
+        for ch_dict in channels:
+            if ch_dict.get("channel_type") == "tilt":
+                ch_dict["physical_min"], ch_dict["physical_max"] = (
+                    ch_dict["physical_max"],
+                    ch_dict["physical_min"],
+                )
+    if "s" in flags:
+        pan_chs = {
+            (bool(c.get("fine")), bool(c.get("ultra_fine"))): c
+            for c in channels
+            if c.get("channel_type") == "pan"
+        }
+        tilt_chs = {
+            (bool(c.get("fine")), bool(c.get("ultra_fine"))): c
+            for c in channels
+            if c.get("channel_type") == "tilt"
+        }
+        for res_key, p_ch in pan_chs.items():
+            if (t_ch := tilt_chs.get(res_key)) is not None:
+                p_ch["universe"], t_ch["universe"] = (
+                    t_ch["universe"],
+                    p_ch["universe"],
+                )
+                p_ch["address"], t_ch["address"] = (
+                    t_ch["address"],
+                    p_ch["address"],
+                )

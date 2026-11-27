@@ -29,6 +29,7 @@ from olc.files.ascii.eos_devices import (
     _PHYSICAL_PARAM_NAMES,
     EOS_GENERIC_PARAM_NAMES,
     EOS_PARAM_TO_CHANNEL_TYPE,
+    apply_eos_patch_options,
 )
 from olc.files.ascii.eos_effects import (
     EOS_TYPE_ABSOLUTE,
@@ -869,10 +870,34 @@ class Esf3dParser:
             dmx_addr = ((addr_start - 1) % 512) + 1
 
             label = ""
+            notes = ""
+            text1 = (
+                item[56]
+                if len(item) > 56 and isinstance(item[56], str) and item[56]
+                else ""
+            )
             if isinstance(item[4], str) and item[4]:
                 label = item[4]
-            elif len(item) > 56 and isinstance(item[56], str) and item[56]:
-                label = item[56]
+                if text1 and text1 != label:
+                    notes = text1
+            elif text1:
+                label = text1
+
+            curve_id = (
+                int(round(item[27] / 10000.0))
+                if len(item) > 27 and isinstance(item[27], int) and item[27] > 0
+                else 0
+            )
+            opts_mask = (
+                item[15]
+                if len(item) > 15 and isinstance(item[15], int) and item[15] > 0
+                else 0
+            )
+            opt_flags = (
+                ("p" if opts_mask & 1 else "")
+                + ("t" if opts_mask & 2 else "")
+                + ("s" if opts_mask & 4 else "")
+            )
 
             # 3D position & orientation from tree[5][66] or working.a3d fallback
             position = (0.0, 0.0, 0.0)
@@ -936,17 +961,23 @@ class Esf3dParser:
                 if gel_str:
                     dev.gel = gel_str
                     dev.gel_color = gel_hex
+                if notes:
+                    dev.notes = notes
+                if curve_id > 0:
+                    dev.set_curve_id(curve_id)
                 dev_dict = dev.to_dict()
                 dev_dict.pop("intensity", None)
                 dev_dict.pop("target_color", None)
                 dev_dict.pop("base_emitters", None)
+                if opt_flags:
+                    apply_eos_patch_options(dev_dict, opt_flags)
                 data["devices"][ch] = dev_dict
             else:
                 data["patch"].setdefault(ch, []).append(
                     {
                         "output": dmx_addr,
                         "universe": universe,
-                        "curve": 0,
+                        "curve": curve_id,
                         "label": label,
                     }
                 )
