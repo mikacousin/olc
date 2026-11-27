@@ -111,6 +111,8 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
         "Footprint",
         "Curve",
         "Gel",
+        "Pan/Tilt",
+        "Notes",
     ]
 
     # 2. Physical sort (by (universe, address) ascending: U1:100, U1:200, U2:50)
@@ -136,6 +138,8 @@ def test_patch_devices_table_and_double_sorting(app_gui: Application) -> None:
         "Footprint",
         "Curve",
         "Gel",
+        "Pan/Tilt",
+        "Notes",
     ]
 
     # 3. Toggle back to logical

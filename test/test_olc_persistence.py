@@ -1144,3 +1144,50 @@ def test_olc_persistence_fader_effect_base_scales(tmp_path: pathlib.Path) -> Non
     assert re_fader.effect_channels == [3, 4]
     assert re_fader.base_size_scale == pytest.approx(1.98)
     assert re_fader.base_rate_scale == pytest.approx(0.71)
+
+
+def test_olc_persistence_device_notes_and_pan_tilt_options(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Verify .olc round-trip preserves LightingDevice notes and Pan/Tilt flags."""
+    from olc.devices.channel import Channel, ChannelType, FixtureType
+    from olc.devices.device import LightingDevice
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    dev = LightingDevice(
+        fixture_id=10,
+        label="Mover 10",
+        fixture_type=FixtureType.MOVING_HEAD,
+        notes="Bridge FOH",
+        channels=[
+            Channel(
+                ChannelType.PAN,
+                1,
+                1,
+                physical_min=-270.0,
+                physical_max=270.0,
+            ),
+            Channel(
+                ChannelType.TILT,
+                1,
+                2,
+                physical_min=-135.0,
+                physical_max=135.0,
+            ),
+        ],
+    )
+    dev.set_pan_tilt_options(invert_pan=True, invert_tilt=False, swap_pan_tilt=True)
+    app.lightshow.patch.restore_device(dev)
+
+    save_path = tmp_path / "device_pt_notes.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    r_dev = app2.lightshow.patch.get_device(10)
+    assert r_dev is not None
+    assert r_dev.notes == "Bridge FOH"
+    assert r_dev.is_pan_inverted is True
+    assert r_dev.is_tilt_inverted is False
+    assert r_dev.swap_pan_tilt is True

@@ -182,6 +182,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         static_gobo: str = "",
         gel: str = "",
         gel_color: str = "",
+        swap_pan_tilt: bool = False,
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -213,6 +214,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self.static_gobo: str = str(static_gobo)
         self.gel: str = str(gel)
         self.gel_color: str = str(gel_color)
+        self.swap_pan_tilt: bool = bool(swap_pan_tilt)
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
@@ -1716,6 +1718,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         }
         if self.color_profile is not None:
             result["color_profile"] = self.color_profile.to_dict()
+        if self.swap_pan_tilt:
+            result["swap_pan_tilt"] = True
         return result
 
     @classmethod
@@ -1772,6 +1776,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             static_gobo=str(data.get("static_gobo", "")),
             gel=str(data.get("gel", "")),
             gel_color=str(data.get("gel_color", "")),
+            swap_pan_tilt=bool(data.get("swap_pan_tilt", False)),
         )
         device._enabled = bool(data.get("enabled", True))
         device._locked = bool(data.get("locked", False))
@@ -1792,6 +1797,63 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
     def enabled(self) -> bool:
         """True if device output is enabled."""
         return self._enabled
+
+    @property
+    def has_pan_tilt(self) -> bool:
+        """True if device has a Pan or Tilt channel."""
+        return (
+            self.get_channel(ChannelType.PAN) is not None
+            or self.get_channel(ChannelType.TILT) is not None
+        )
+
+    @property
+    def is_pan_inverted(self) -> bool:
+        """True if Pan physical_min > physical_max."""
+        pan = self.get_channel(ChannelType.PAN)
+        return pan is not None and pan.physical_min > pan.physical_max
+
+    @property
+    def is_tilt_inverted(self) -> bool:
+        """True if Tilt physical_min > physical_max."""
+        tilt = self.get_channel(ChannelType.TILT)
+        return tilt is not None and tilt.physical_min > tilt.physical_max
+
+    def set_pan_tilt_options(
+        self,
+        *,
+        invert_pan: bool | None = None,
+        invert_tilt: bool | None = None,
+        swap_pan_tilt: bool | None = None,
+    ) -> None:
+        """Apply Pan/Tilt invert and swap patch options on device channels."""
+        if invert_pan is not None and bool(invert_pan) != self.is_pan_inverted:
+            for ch in self.channels:
+                if ch.channel_type is ChannelType.PAN:
+                    ch.physical_min, ch.physical_max = ch.physical_max, ch.physical_min
+        if invert_tilt is not None and bool(invert_tilt) != self.is_tilt_inverted:
+            for ch in self.channels:
+                if ch.channel_type is ChannelType.TILT:
+                    ch.physical_min, ch.physical_max = ch.physical_max, ch.physical_min
+        if swap_pan_tilt is not None and bool(swap_pan_tilt) != self.swap_pan_tilt:
+            pan_chs = {
+                (ch.fine, ch.ultra_fine): ch
+                for ch in self.channels
+                if ch.channel_type is ChannelType.PAN
+            }
+            tilt_chs = {
+                (ch.fine, ch.ultra_fine): ch
+                for ch in self.channels
+                if ch.channel_type is ChannelType.TILT
+            }
+            for res_key, p_ch in pan_chs.items():
+                if (t_ch := tilt_chs.get(res_key)) is not None:
+                    p_ch.universe, t_ch.universe = t_ch.universe, p_ch.universe
+                    p_ch.address, t_ch.address = t_ch.address, p_ch.address
+            self.swap_pan_tilt = bool(swap_pan_tilt)
+        if self.get_channel(ChannelType.PAN) is not None:
+            self.set_pan_degrees(self.pan_degrees)
+        if self.get_channel(ChannelType.TILT) is not None:
+            self.set_tilt_degrees(self.tilt_degrees)
 
     def enable(self) -> None:
         """Enable device output."""

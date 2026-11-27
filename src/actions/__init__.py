@@ -187,6 +187,8 @@ from olc.actions.patch import (
     PatchSetDeviceCurveAction,
     PatchSetDeviceGelAction,
     PatchSetDeviceLabelAction,
+    PatchSetDeviceNotesAction,
+    PatchSetDevicePanTiltOptionsAction,
     PatchUnpatchBatchAction,
     PatchUnpatchDeviceAction,
 )
@@ -285,6 +287,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PatchSetDeviceCurveAction,
         PatchSetDeviceGelAction,
         PatchSetDeviceLabelAction,
+        PatchSetDeviceNotesAction,
+        PatchSetDevicePanTiltOptionsAction,
         PatchMoveDeviceAddressAction,
         DeviceSet3DAction,
         DeviceSetFocusAction,

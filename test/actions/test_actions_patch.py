@@ -259,3 +259,88 @@ def test_patch_set_device_label_and_move_address_undo_redo() -> None:
     app.history.undo()
     assert patch.get_address_occupant(1, 10) == 1
     assert patch.get_address_occupant(1, 20) == 2
+
+
+def test_patch_set_device_notes_and_pan_tilt_options_undo_redo() -> None:
+    """Test patch.set_device_notes and patch.set_device_pan_tilt_options."""
+    from olc.devices.channel import Channel, ChannelType, FixtureType
+    from olc.devices.device import LightingDevice
+
+    app = CoreApplication(MagicMock())
+    dev = LightingDevice(
+        fixture_id=1,
+        label="Mover 1",
+        fixture_type=FixtureType.MOVING_HEAD,
+        channels=[
+            Channel(
+                ChannelType.PAN,
+                1,
+                1,
+                physical_min=-270.0,
+                physical_max=270.0,
+            ),
+            Channel(
+                ChannelType.PAN,
+                1,
+                2,
+                fine=True,
+                physical_min=-270.0,
+                physical_max=270.0,
+            ),
+            Channel(
+                ChannelType.TILT,
+                1,
+                3,
+                physical_min=-135.0,
+                physical_max=135.0,
+            ),
+            Channel(
+                ChannelType.TILT,
+                1,
+                4,
+                fine=True,
+                physical_min=-135.0,
+                physical_max=135.0,
+            ),
+        ],
+    )
+    app.lightshow.patch.restore_device(dev)
+
+    # 1. Notes edit + undo/redo
+    app.action_registry.execute("patch.set_device_notes", 1, "Stage Right")
+    assert dev.notes == "Stage Right"
+    app.history.undo()
+    assert dev.notes == ""
+    app.history.redo()
+    assert dev.notes == "Stage Right"
+
+    # 2. Pan/Tilt invert + swap 16-bit + undo/redo
+    app.action_registry.execute(
+        "patch.set_device_pan_tilt_options",
+        1,
+        invert_pan=True,
+        invert_tilt=True,
+        swap_pan_tilt=True,
+    )
+    assert dev.is_pan_inverted is True
+    assert dev.is_tilt_inverted is True
+    assert dev.swap_pan_tilt is True
+    pan_c = dev.get_channel(ChannelType.PAN)
+    tilt_c = dev.get_channel(ChannelType.TILT)
+    assert pan_c is not None and tilt_c is not None
+    assert pan_c.address == 3
+    assert tilt_c.address == 1
+
+    app.history.undo()
+    assert dev.is_pan_inverted is False
+    assert dev.is_tilt_inverted is False
+    assert dev.swap_pan_tilt is False
+    assert pan_c.address == 1
+    assert tilt_c.address == 3
+
+    app.history.redo()
+    assert dev.is_pan_inverted is True
+    assert dev.is_tilt_inverted is True
+    assert dev.swap_pan_tilt is True
+    assert pan_c.address == 3
+    assert tilt_c.address == 1

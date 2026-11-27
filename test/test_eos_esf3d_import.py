@@ -1339,3 +1339,6 @@ def test_eos_patch_advanced_options_curve_invert_swap_notes(
     assert pan505 is not None and tilt505 is not None
     assert (pan504.address - 270) == (tilt505.address - 300)
     assert (tilt504.address - 270) == (pan505.address - 300)
+    assert d502.is_pan_inverted is True
+    assert d503.is_tilt_inverted is True
+    assert d504.swap_pan_tilt is True

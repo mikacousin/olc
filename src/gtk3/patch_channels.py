@@ -67,6 +67,8 @@ COL_RAW_UNIV = 12
 COL_RAW_ADDR = 13
 COL_GEL_BG = 14
 COL_GEL_BG_SET = 15
+COL_PT_OPTS = 16
+COL_NOTES = 17
 
 # Visual column order depending on sort mode
 _LOGICAL_COL_ORDER = [
@@ -79,6 +81,8 @@ _LOGICAL_COL_ORDER = [
     COL_FOOTPRINT,
     COL_CURVE,
     COL_GEL,
+    COL_PT_OPTS,
+    COL_NOTES,
 ]
 _PHYSICAL_COL_ORDER = [
     COL_UNIVERSE,
@@ -90,6 +94,8 @@ _PHYSICAL_COL_ORDER = [
     COL_FOOTPRINT,
     COL_CURVE,
     COL_GEL,
+    COL_PT_OPTS,
+    COL_NOTES,
 ]
 
 
@@ -155,11 +161,14 @@ class PatchChannelsTab(Gtk.Box):
         self.scope_mode = "patched"
         self.curve_column = None
         self.gel_column = None
+        self.pt_opts_column = None
         self.mode_column = None
         self.type_column = None
         self._active_curve_device_id = None
         self._active_gel_device_id = None
+        self._active_pt_device_id = None
         self._active_popover_device_id = None
+        self._updating_pt_popover: bool = False
         self._needs_idle_refresh: bool = False
         self.tree_columns = {}
         self.cell_renderers = {}
@@ -268,6 +277,8 @@ class PatchChannelsTab(Gtk.Box):
             int,  # COL_RAW_ADDR
             str,  # COL_GEL_BG
             bool,  # COL_GEL_BG_SET
+            str,  # COL_PT_OPTS
+            str,  # COL_NOTES
         )
         self.devices_treeview = Gtk.TreeView(model=self.devices_store)
         self.devices_treeview.set_enable_search(True)
@@ -280,6 +291,7 @@ class PatchChannelsTab(Gtk.Box):
             COL_NAME: self._on_label_edited,
             COL_UNIVERSE: self._on_universe_edited,
             COL_ADDRESS: self._on_address_edited,
+            COL_NOTES: self._on_notes_edited,
         }
 
         columns_spec = [
@@ -292,6 +304,8 @@ class PatchChannelsTab(Gtk.Box):
             ("Footprint", COL_FOOTPRINT, 80),
             ("Curve", COL_CURVE, 100),
             ("Gel", COL_GEL, 95),
+            ("Pan/Tilt", COL_PT_OPTS, 85),
+            ("Notes", COL_NOTES, 160),
         ]
         for title, col_idx, min_width in columns_spec:
             renderer = Gtk.CellRendererText()
@@ -322,6 +336,8 @@ class PatchChannelsTab(Gtk.Box):
                 )
             if col_idx == COL_CURVE:
                 self.curve_column = column
+            elif col_idx == COL_PT_OPTS:
+                self.pt_opts_column = column
             elif col_idx == COL_MODE:
                 self.mode_column = column
             elif col_idx == COL_TYPE:
@@ -399,6 +415,20 @@ class PatchChannelsTab(Gtk.Box):
         label = dev.gel or (hex_col if hex_col else "-")
         return (label, hex_col or "#000000", bool(hex_col))
 
+    @staticmethod
+    def _format_pan_tilt_options(dev: Optional[LightingDevice]) -> str:
+        """Return a concise summary of Pan/Tilt invert & swap options."""
+        if dev is None or not dev.has_pan_tilt:
+            return ""
+        tags: list[str] = []
+        if dev.is_pan_inverted:
+            tags.append("Inv P")
+        if dev.is_tilt_inverted:
+            tags.append("Inv T")
+        if dev.swap_pan_tilt:
+            tags.append("Swap")
+        return ", ".join(tags) if tags else "-"
+
     def _populate_patched_devices(self) -> None:
         """Populate only patched devices, sorted according to sort_mode."""
         devices = list(self.patch.devices.values())
@@ -434,6 +464,8 @@ class PatchChannelsTab(Gtk.Box):
                     dev.address,
                     gel_bg,
                     gel_bg_set,
+                    self._format_pan_tilt_options(dev),
+                    dev.notes,
                 ]
             )
 
@@ -470,6 +502,8 @@ class PatchChannelsTab(Gtk.Box):
                         dev.address,
                         gel_bg,
                         gel_bg_set,
+                        self._format_pan_tilt_options(dev),
+                        dev.notes,
                     ]
                 )
             else:
@@ -489,8 +523,10 @@ class PatchChannelsTab(Gtk.Box):
                         ch,
                         0,
                         0,
-                        "",
+                        "#000000",
                         False,
+                        "",
+                        "",
                     ]
                 )
 
@@ -525,6 +561,8 @@ class PatchChannelsTab(Gtk.Box):
                         footprint_str = str(dev.channel_count())
                         raw_id = dev.fixture_id
                         gel_str, gel_bg, gel_bg_set = self._gel_row_values(dev)
+                        pt_str = self._format_pan_tilt_options(dev)
+                        notes_str = dev.notes
                     else:
                         output_info = self.patch.get_output_info(u, addr)
                         dim_curve_id = output_info[1] if output_info is not None else 0
@@ -544,6 +582,8 @@ class PatchChannelsTab(Gtk.Box):
                         footprint_str = "1"
                         raw_id = info.device_id
                         gel_str, gel_bg, gel_bg_set = "-", "#000000", False
+                        pt_str = ""
+                        notes_str = ""
 
                     self.devices_store.append(
                         [
@@ -563,6 +603,8 @@ class PatchChannelsTab(Gtk.Box):
                             addr,
                             gel_bg,
                             gel_bg_set,
+                            pt_str,
+                            notes_str,
                         ]
                     )
                 else:
@@ -584,6 +626,8 @@ class PatchChannelsTab(Gtk.Box):
                             addr,
                             "#000000",
                             False,
+                            "",
+                            "",
                         ]
                     )
 
@@ -652,6 +696,79 @@ class PatchChannelsTab(Gtk.Box):
             dev, relative_to=treeview, pointing_to=pointing_rect
         )
         return True
+
+    def _open_pan_tilt_popover_at_cell(
+        self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
+    ) -> bool:
+        """Open Pan/Tilt invert & swap popover pointing to the specified cell."""
+        model = treeview.get_model()
+        if model is None:
+            return False
+        treeiter = model.get_iter(path)
+        if not bool(model.get_value(treeiter, COL_IS_PATCHED)):
+            return False
+        device_id = int(model.get_value(treeiter, COL_RAW_ID))
+        dev = self.patch.devices.get(device_id)
+        if dev is None or not dev.has_pan_tilt:
+            return False
+
+        self._active_pt_device_id = device_id
+        selection = treeview.get_selection()
+        if not selection.path_is_selected(path):
+            selection.unselect_all()
+            selection.select_path(path)
+
+        pointing_rect = self._get_cell_pointing_rect(treeview, path, col)
+        popover = Gtk.Popover()
+        popover.set_relative_to(treeview)
+        popover.set_pointing_to(pointing_rect)
+        popover.set_position(Gtk.PositionType.BOTTOM)
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        vbox.set_border_width(8)
+
+        self._updating_pt_popover = True
+        try:
+            chk_pan = Gtk.CheckButton(label=_("Invert Pan"))
+            chk_pan.set_active(dev.is_pan_inverted)
+            chk_pan.connect("toggled", self._on_pt_option_toggled, "invert_pan")
+            vbox.add(chk_pan)
+
+            chk_tilt = Gtk.CheckButton(label=_("Invert Tilt"))
+            chk_tilt.set_active(dev.is_tilt_inverted)
+            chk_tilt.connect("toggled", self._on_pt_option_toggled, "invert_tilt")
+            vbox.add(chk_tilt)
+
+            chk_swap = Gtk.CheckButton(label=_("Swap Pan / Tilt"))
+            chk_swap.set_active(dev.swap_pan_tilt)
+            chk_swap.connect("toggled", self._on_pt_option_toggled, "swap_pan_tilt")
+            vbox.add(chk_swap)
+        finally:
+            self._updating_pt_popover = False
+
+        vbox.show_all()
+        popover.add(vbox)
+        popover.popup()
+        return True
+
+    def _on_pt_option_toggled(self, widget: Gtk.CheckButton, option_key: str) -> None:
+        """Apply Pan/Tilt option toggle across single or multi-selected devices."""
+        if self._updating_pt_popover or self._active_pt_device_id is None:
+            return
+        selected_ids = self.get_selected_device_ids()
+        targets = (
+            selected_ids
+            if len(selected_ids) > 1 and self._active_pt_device_id in selected_ids
+            else [self._active_pt_device_id]
+        )
+        val = widget.get_active()
+        for dev_id in targets:
+            dev = self.patch.devices.get(dev_id)
+            if dev is None or not dev.has_pan_tilt:
+                continue
+            self.app.core.action_registry.execute(
+                "patch.set_device_pan_tilt_options", dev_id, **{option_key: val}
+            )
+        self.refresh()
 
     def _open_mode_popover_at_cell(
         self, treeview: Gtk.TreeView, path: Gtk.TreePath, col: Gtk.TreeViewColumn
@@ -737,6 +854,8 @@ class PatchChannelsTab(Gtk.Box):
             return self._open_curve_popover_at_cell(treeview, path, col)
         if col == self.gel_column:
             return self._open_gel_popover_at_cell(treeview, path, col)
+        if col == self.pt_opts_column:
+            return self._open_pan_tilt_popover_at_cell(treeview, path, col)
         if col == self.mode_column:
             return self._open_mode_popover_at_cell(treeview, path, col)
         if col == self.type_column:
@@ -845,7 +964,7 @@ class PatchChannelsTab(Gtk.Box):
     ) -> bool:
         """Determine if the specified cell is inline-editable."""
         is_patched = bool(model.get_value(treeiter, COL_IS_PATCHED))
-        if col_idx == COL_NAME:
+        if col_idx in (COL_NAME, COL_NOTES):
             return is_patched
         if col_idx == COL_UNIVERSE:
             if not is_patched:
@@ -883,7 +1002,11 @@ class PatchChannelsTab(Gtk.Box):
         order = (
             _PHYSICAL_COL_ORDER if self.sort_mode == "physical" else _LOGICAL_COL_ORDER
         )
-        return [c for c in order if c in (COL_ID, COL_NAME, COL_UNIVERSE, COL_ADDRESS)]
+        return [
+            c
+            for c in order
+            if c in (COL_ID, COL_NAME, COL_UNIVERSE, COL_ADDRESS, COL_NOTES)
+        ]
 
     def _start_editing_cell(self, row_idx: int, col_idx: int) -> bool:
         """Start inline editing at *row_idx* and *col_idx*."""
@@ -962,6 +1085,10 @@ class PatchChannelsTab(Gtk.Box):
             if col_idx == COL_GEL and self.gel_column is not None:
                 return self._open_gel_popover_at_cell(
                     self.devices_treeview, path, self.gel_column
+                )
+            if col_idx == COL_PT_OPTS and self.pt_opts_column is not None:
+                return self._open_pan_tilt_popover_at_cell(
+                    self.devices_treeview, path, self.pt_opts_column
                 )
             if col_idx == COL_MODE and self.mode_column is not None:
                 return self._open_mode_popover_at_cell(
@@ -1137,6 +1264,26 @@ class PatchChannelsTab(Gtk.Box):
         else:
             self.app.core.action_registry.execute(
                 "patch.set_device_label", device_id, cleaned
+            )
+
+    def _on_notes_edited(
+        self, _renderer: Gtk.CellRendererText, path_str: str, new_text: str
+    ) -> None:
+        """Handle inline notes editing for single or multi-selected devices."""
+        treeiter = self.devices_store.get_iter(Gtk.TreePath.new_from_string(path_str))
+        if not bool(self.devices_store.get_value(treeiter, COL_IS_PATCHED)):
+            return
+        device_id = int(self.devices_store.get_value(treeiter, COL_RAW_ID))
+        cleaned = new_text.strip()
+        selected_ids = self.get_selected_device_ids()
+        targets = (
+            selected_ids
+            if len(selected_ids) > 1 and device_id in selected_ids
+            else [device_id]
+        )
+        for dev_id in targets:
+            self.app.core.action_registry.execute(
+                "patch.set_device_notes", dev_id, cleaned
             )
         self.refresh()
 

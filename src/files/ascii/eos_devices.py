@@ -648,6 +648,7 @@ def apply_eos_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
             for c in channels
             if c.get("channel_type") == "tilt"
         }
+        swapped = False
         for res_key, p_ch in pan_chs.items():
             if (t_ch := tilt_chs.get(res_key)) is not None:
                 p_ch["universe"], t_ch["universe"] = (
@@ -658,3 +659,6 @@ def apply_eos_patch_options(dev: dict[str, typing.Any], flags: str) -> None:
                     t_ch["address"],
                     p_ch["address"],
                 )
+                swapped = True
+        if swapped:
+            dev["swap_pan_tilt"] = not bool(dev.get("swap_pan_tilt", False))

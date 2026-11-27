@@ -723,6 +723,129 @@ class PatchMoveDeviceAddressAction(Action):
         return f"Ch {self.device_id} → {self.universe}/{self.address}"
 
 
+class PatchSetDeviceNotesAction(Action):
+    """Action to set the notes of a patched lighting device."""
+
+    name = "patch.set_device_notes"
+    history_label = _("Edit device notes")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.notes: str = ""
+        self.old_notes: str = ""
+
+    def configure(self, device_id: int, notes: str) -> None:
+        """Configure the action with the device ID and new notes."""
+        self.device_id = int(device_id)
+        self.notes = str(notes)
+
+    def _apply_notes(self, notes: str) -> None:
+        dev = self.app.lightshow.patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        dev.notes = notes
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def execute(self) -> None:
+        """Execute the notes update and save previous notes for undo."""
+        dev = self.app.lightshow.patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        self.old_notes = dev.notes
+        self._apply_notes(self.notes)
+
+    def undo(self) -> None:
+        """Restore the previous device notes."""
+        self._apply_notes(self.old_notes)
+
+    def redo(self) -> None:
+        """Re-apply the new device notes."""
+        self._apply_notes(self.notes)
+
+    def get_history_details(self) -> str:
+        """Return channel ID for notes edit."""
+        return f"Ch {self.device_id} notes"
+
+
+class PatchSetDevicePanTiltOptionsAction(Action):
+    """Action to set Invert Pan / Invert Tilt / Swap Pan-Tilt on a device."""
+
+    name = "patch.set_device_pan_tilt_options"
+    history_label = _("Set Pan/Tilt patch options")
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.invert_pan: bool | None = None
+        self.invert_tilt: bool | None = None
+        self.swap_pan_tilt: bool | None = None
+        self._old_state: tuple[bool, bool, bool] = (False, False, False)
+
+    def configure(
+        self,
+        device_id: int,
+        *,
+        invert_pan: bool | None = None,
+        invert_tilt: bool | None = None,
+        swap_pan_tilt: bool | None = None,
+    ) -> None:
+        """Configure target device and Pan/Tilt option overrides."""
+        self.device_id = int(device_id)
+        self.invert_pan = bool(invert_pan) if invert_pan is not None else None
+        self.invert_tilt = bool(invert_tilt) if invert_tilt is not None else None
+        self.swap_pan_tilt = bool(swap_pan_tilt) if swap_pan_tilt is not None else None
+
+    def _apply_options(
+        self,
+        invert_pan: bool | None,
+        invert_tilt: bool | None,
+        swap_pan_tilt: bool | None,
+    ) -> None:
+        patch = self.app.lightshow.patch
+        dev = patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        dev.set_pan_tilt_options(
+            invert_pan=invert_pan,
+            invert_tilt=invert_tilt,
+            swap_pan_tilt=swap_pan_tilt,
+        )
+        patch.invalidate_cache()
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+        if hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
+
+    def execute(self) -> None:
+        """Snapshot current Pan/Tilt flags and apply new ones."""
+        dev = self.app.lightshow.patch.get_device(self.device_id)
+        if dev is None:
+            raise ValueError(f"Device {self.device_id} is not patched.")
+        self._old_state = (
+            dev.is_pan_inverted,
+            dev.is_tilt_inverted,
+            dev.swap_pan_tilt,
+        )
+        self._apply_options(self.invert_pan, self.invert_tilt, self.swap_pan_tilt)
+
+    def undo(self) -> None:
+        """Restore previous Pan/Tilt flags."""
+        old_p, old_t, old_s = self._old_state
+        self._apply_options(
+            old_p if self.invert_pan is not None else None,
+            old_t if self.invert_tilt is not None else None,
+            old_s if self.swap_pan_tilt is not None else None,
+        )
+
+    def redo(self) -> None:
+        """Re-apply configured Pan/Tilt flags."""
+        self._apply_options(self.invert_pan, self.invert_tilt, self.swap_pan_tilt)
+
+
 __all__ = [
     "PatchAddOutputsAction",
     "PatchClearAction",
@@ -733,6 +856,8 @@ __all__ = [
     "PatchSetDeviceCurveAction",
     "PatchSetDeviceGelAction",
     "PatchSetDeviceLabelAction",
+    "PatchSetDeviceNotesAction",
+    "PatchSetDevicePanTiltOptionsAction",
     "PatchUnpatchBatchAction",
     "PatchUnpatchDeviceAction",
 ]
