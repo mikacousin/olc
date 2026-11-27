@@ -929,9 +929,7 @@ class Esf3dParser:
                     )
                     if pcount > 0:
                         pids = [
-                            int(x)
-                            for x in e24_11[6 : 6 + pcount]
-                            if isinstance(x, int)
+                            int(x) for x in e24_11[6 : 6 + pcount] if isinstance(x, int)
                         ]
                         raw_eff["param_ids"] = pids
                         if any(p in (2, 3) for p in pids):
@@ -1003,9 +1001,7 @@ class Esf3dParser:
             if start_cl is not None and cue_num not in used_nums.get(start_cl, set()):
                 target_cl = start_cl
             elif explicit_anchors:
-                candidates = sorted(
-                    explicit_anchors, key=lambda a: abs(a[0] - cue_num)
-                )
+                candidates = sorted(explicit_anchors, key=lambda a: abs(a[0] - cue_num))
                 target_cl = next(
                     (
                         a_cl

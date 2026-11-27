@@ -211,11 +211,7 @@ def test_import_esf3d_routes_none_cuelist_via_start_and_nearest_anchor(
     cue29_cl3[2] = ["OBJ", 1, 290000, "CL3 Anchor 29", 0, 0.0, 0.0, 0]
     cue29_cl3[20] = ["OBJ", 0, None, 3, None]
 
-    new_tree = (
-        tree[:6]
-        + [cl3, start_cl3, cue10_none, cue25_none, cue29_cl3]
-        + tree[6:]
-    )
+    new_tree = tree[:6] + [cl3, start_cl3, cue10_none, cue25_none, cue29_cl3] + tree[6:]
     esf_path = tmp_path / "none_cuelist.esf3d"
     with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("showdat.dat", encode_showdat(header, new_tree))
