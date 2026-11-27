@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 
 use serde::Serialize;
 use tokio::sync::mpsc::UnboundedSender;
-use viz_core::{DmxFrame, Patch, DMX_CHANNELS};
+use viz_core::{DmxFrame, Patch, SceneryMesh, DMX_CHANNELS};
 
 /// Command sent from the visualizer to OLC (on `monitor_port + 1`).
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -64,6 +64,7 @@ struct Inner {
     status: SourceStatus,
     cmd_tx: Option<UnboundedSender<VizCommand>>,
     gobo_images: Arc<HashMap<String, Vec<u8>>>,
+    scenery: Arc<Vec<SceneryMesh>>,
 }
 
 /// Shared state between the receiver thread and the UI.
@@ -141,6 +142,19 @@ impl SharedState {
             .unwrap_or_default()
     }
 
+    pub fn scenery(&self) -> Arc<Vec<SceneryMesh>> {
+        self.0
+            .read()
+            .map(|s| s.scenery.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn set_scenery(&self, meshes: Vec<SceneryMesh>) {
+        if let Ok(mut s) = self.0.write() {
+            s.scenery = Arc::new(meshes);
+        }
+    }
+
     pub fn has_gobo_image(&self, gobo_id: &str) -> bool {
         self.0
             .read()
@@ -164,6 +178,7 @@ impl SharedState {
         let demo_patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![
                 Fixture {
                     id: "demo:1".into(),
@@ -463,6 +478,8 @@ pub mod zmq {
         stage: Option<Stage>,
         #[serde(default)]
         devices: Vec<DeviceWire>,
+        #[serde(default)]
+        scenery_count: usize,
     }
 
     #[derive(Debug, Deserialize)]
@@ -562,6 +579,7 @@ pub mod zmq {
             version: wire.version,
             stage: wire.stage.unwrap_or_default(),
             fixtures,
+            scenery_count: wire.scenery_count,
         })
     }
 
@@ -598,6 +616,30 @@ pub mod zmq {
             parse_patch(reply.get(0)?)
         };
         tokio::time::timeout(Duration::from_secs(2), attempt)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct SceneryReply {
+        #[serde(default)]
+        scenery: Vec<viz_core::SceneryMesh>,
+    }
+
+    async fn fetch_scenery(endpoint: &str) -> Option<Vec<viz_core::SceneryMesh>> {
+        use ::zeromq::{ReqSocket, Socket, SocketRecv, SocketSend, ZmqMessage};
+
+        let req_json = serde_json::json!({ "cmd": "get_scenery" }).to_string();
+        let attempt = async {
+            let mut req = ReqSocket::new();
+            req.connect(endpoint).await.ok()?;
+            req.send(ZmqMessage::from(req_json)).await.ok()?;
+            let reply = req.recv().await.ok()?;
+            let parsed: SceneryReply = serde_json::from_slice(reply.get(0)?).ok()?;
+            Some(parsed.scenery)
+        };
+        tokio::time::timeout(Duration::from_secs(5), attempt)
             .await
             .ok()
             .flatten()
@@ -727,6 +769,13 @@ pub mod zmq {
                                     if let Some(patch) = fetch_patch(endpoint).await {
                                         patch_seen = Some(patch.version);
                                         fetch_missing_gobos(state, endpoint, &patch).await;
+                                        if patch.scenery_count > 0 {
+                                            if let Some(meshes) = fetch_scenery(endpoint).await {
+                                                state.set_scenery(meshes);
+                                            }
+                                        } else {
+                                            state.set_scenery(Vec::new());
+                                        }
                                         state.set_patch(patch);
                                     }
                                 }

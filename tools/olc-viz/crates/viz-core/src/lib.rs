@@ -154,6 +154,25 @@ fn default_beam_angle() -> f32 {
     25.0
 }
 
+fn default_scenery_color() -> [f32; 3] {
+    [0.45, 0.45, 0.48]
+}
+
+/// One 3D scenery mesh (wall, truss, prop) imported from Augment3d.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SceneryMesh {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default = "default_scenery_color")]
+    pub color: [f32; 3],
+    #[serde(default)]
+    pub vertices: Vec<[f32; 3]>,
+    #[serde(default)]
+    pub normals: Vec<[f32; 3]>,
+    #[serde(default)]
+    pub indices: Vec<u32>,
+}
+
 /// Complete versioned patch received from OLC (stage + fixtures).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Patch {
@@ -161,6 +180,8 @@ pub struct Patch {
     #[serde(default)]
     pub stage: Stage,
     pub fixtures: Vec<Fixture>,
+    #[serde(default)]
+    pub scenery_count: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

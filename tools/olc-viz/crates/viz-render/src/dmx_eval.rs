@@ -527,6 +527,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![Fixture {
                 id: "olc:1".into(),
                 channel: Some(1),
@@ -647,6 +648,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![Fixture {
                 id: "olc:2".into(),
                 channel: Some(2),
@@ -711,6 +713,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![Fixture {
                 id: "olc:3".into(),
                 channel: Some(3),
@@ -776,6 +779,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![
                 mk_dimmer("gelled", 1, "#ff6600"),
                 mk_dimmer("open", 2, ""),
@@ -818,6 +822,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![Fixture {
                 id: "olc:4".into(),
                 channel: Some(4),
@@ -933,6 +938,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![make_fixture(10), make_fixture(11)],
         };
 
@@ -989,6 +995,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![Fixture {
                 id: "olc:12".into(),
                 channel: Some(12),
@@ -1044,6 +1051,7 @@ mod tests {
         let patch = Patch {
             version: 1,
             stage: Stage::default(),
+            scenery_count: 0,
             fixtures: vec![
                 Fixture {
                     id: "olc:20".into(),

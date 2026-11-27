@@ -63,6 +63,7 @@ class ParsedData:
             "patch": {},
             "show_metadata": {},
             "stage": {},
+            "scenery": [],
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
             "palettes": {},
@@ -520,6 +521,12 @@ class ParsedData:
             from olc.show.lightshow import StageConfig  # pylint: disable=import-outside-toplevel
 
             self.lightshow.stage = StageConfig.from_dict(stage_data)
+
+    def import_scenery(self) -> None:
+        """Load imported 3D scenery meshes into lightshow.scenery."""
+        scenery = self.data.get("scenery")
+        if isinstance(scenery, list) and scenery:
+            self.lightshow.scenery = list(scenery)
 
     def import_gobo_library(self) -> None:
         """Load custom gobo image assets into lightshow.gobo_library."""

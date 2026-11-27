@@ -387,7 +387,9 @@ class CoreApplication(EventDispatcher):
         """Republish current patch and stage snapshot to external viewers."""
         if self.engine is not None:
             self.engine.publish_patch(
-                self.lightshow.patch.devices.values(), stage=self.lightshow.stage
+                self.lightshow.patch.devices.values(),
+                stage=self.lightshow.stage,
+                scenery_count=len(getattr(self.lightshow, "scenery", ())),
             )
 
     def _run_viz_action(
@@ -403,6 +405,8 @@ class CoreApplication(EventDispatcher):
     ) -> dict[str, typing.Any] | bytes:
         """Handle incoming JSON command from external visualizer (olc-viz)."""
         cmd = payload.get("cmd")
+        if cmd == "get_scenery":
+            return {"scenery": list(getattr(self.lightshow, "scenery", ()))}
         if cmd == "get_gobo":
             gobo_id = str(payload.get("id", ""))
             asset = self.lightshow.gobo_library.get(gobo_id)

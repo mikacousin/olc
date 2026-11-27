@@ -148,12 +148,22 @@ def _stage_dict(stage: object) -> dict[str, Any]:
     return dict(_DEFAULT_STAGE)
 
 
-def build_snapshot(devices: Iterable[Any], version: int, stage: object = None) -> bytes:
+def build_snapshot(
+    devices: Iterable[Any],
+    version: int,
+    stage: object = None,
+    scenery_count: int = 0,
+) -> bytes:
     """Serialize patched devices and stage config into snapshot JSON (UTF-8 bytes)."""
     rows = sorted((_device_row(d) for d in devices), key=lambda r: r["id"])
-    return json.dumps(
-        {"version": version, "stage": _stage_dict(stage), "devices": rows}
-    ).encode("utf-8")
+    payload: dict[str, Any] = {
+        "version": version,
+        "stage": _stage_dict(stage),
+        "devices": rows,
+    }
+    if scenery_count > 0:
+        payload["scenery_count"] = int(scenery_count)
+    return json.dumps(payload).encode("utf-8")
 
 
 class PatchSnapshotServer:
@@ -190,11 +200,19 @@ class PatchSnapshotServer:
         """Version of the snapshot currently served (0 = nothing published)."""
         return self._snapshot[0]
 
-    def update(self, devices: Iterable[Any], stage: object = None) -> int:
+    def update(
+        self,
+        devices: Iterable[Any],
+        stage: object = None,
+        scenery_count: int = 0,
+    ) -> int:
         """Rebuild the snapshot from current devices and stage; return version."""
         version = self._next_version
         self._next_version += 1
-        self._snapshot = (version, build_snapshot(devices, version, stage=stage))
+        self._snapshot = (
+            version,
+            build_snapshot(devices, version, stage=stage, scenery_count=scenery_count),
+        )
         return version
 
     def start(self, timeout: float = 2.0) -> None:

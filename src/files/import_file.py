@@ -185,6 +185,7 @@ class ImportFile:
     def _do_import(self) -> None:
         self.data.import_show_metadata()
         self.data.import_stage()
+        self.data.import_scenery()
         self.data.import_gobo_library()
         self._do_import_curves()
         if self.file_type is FileType.OLC:

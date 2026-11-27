@@ -32,6 +32,16 @@ pub struct RenderScene {
     pub selected_channel: Option<u32>,
     pub aspect: f32,
     pub gobo_images: Arc<HashMap<String, Vec<u8>>>,
+    pub scenery: Arc<Vec<viz_core::SceneryMesh>>,
+    pub show_scenery: bool,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct SceneryVertex {
+    pos: [f32; 3],
+    normal: [f32; 3],
+    color: [f32; 3],
 }
 
 #[repr(C)]
@@ -167,6 +177,113 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 
             let contrib = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * gobo_mask * 2.8;
             accum = accum + contrib * (base * 1.4 + vec3<f32>(0.12));
+        }
+    }
+    let mapped = accum / (accum + vec3<f32>(1.0));
+    return vec4<f32>(mapped, 1.0);
+}
+"#;
+
+const SCENERY_SHADER: &str = r#"
+struct SceneUniform {
+    view_proj: mat4x4<f32>,
+    stage_size_grid: vec4<f32>,
+    stage_color_count: vec4<f32>,
+    cam_eye: vec4<f32>,
+};
+
+struct SpotLight {
+    pos_intensity: vec4<f32>,
+    dir_cos_outer: vec4<f32>,
+    color_cos_inner: vec4<f32>,
+    right_gobo: vec4<f32>,
+    rot_blur: vec4<f32>,
+    gobo2_rot_layer: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> u_scene: SceneUniform;
+@group(0) @binding(1) var<storage, read> u_lights: array<SpotLight>;
+@group(0) @binding(2) var t_gobos: texture_2d_array<f32>;
+@group(0) @binding(3) var s_gobos: sampler;
+
+struct VsIn {
+    @location(0) pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) color: vec3<f32>,
+};
+
+struct VsOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) world_pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) color: vec3<f32>,
+};
+
+@vertex
+fn vs_main(in: VsIn) -> VsOut {
+    var out: VsOut;
+    out.clip = u_scene.view_proj * vec4<f32>(in.pos, 1.0);
+    out.world_pos = in.pos;
+    out.normal = in.normal;
+    out.color = in.color;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let base = in.color;
+    let n = normalize(in.normal);
+    var accum = base * 0.28;
+    let count = u32(u_scene.stage_color_count.w);
+    for (var i = 0u; i < count; i = i + 1u) {
+        let l = u_lights[i];
+        let to_frag = in.world_pos - l.pos_intensity.xyz;
+        let dist = length(to_frag);
+        if (dist > 0.01) {
+            let ldir = to_frag / dist;
+            let cos_theta = dot(ldir, l.dir_cos_outer.xyz);
+            let cone = smoothstep(l.dir_cos_outer.w, l.color_cos_inner.w, cos_theta);
+            let ndotl = max(abs(dot(-ldir, n)), 0.0);
+            let atten = 1.0 / (1.0 + 0.035 * dist * dist);
+
+            var gobo_mask = 1.0;
+            let g_layer1 = i32(l.right_gobo.w + 0.5);
+            let g_layer2 = i32(l.gobo2_rot_layer.z + 0.5);
+            let z_proj = dot(ldir, l.dir_cos_outer.xyz);
+            if ((g_layer1 > 0 || g_layer2 > 0) && z_proj > 0.05) {
+                let right0 = l.right_gobo.xyz;
+                let up0 = cross(l.dir_cos_outer.xyz, right0);
+                let cos_o = clamp(l.dir_cos_outer.w, 0.05, 0.999);
+                let tan_half = sqrt(max(1.0 - cos_o * cos_o, 0.0)) / cos_o;
+                let denom = z_proj * max(tan_half, 0.02);
+                let dx = dot(ldir, right0) / denom * 0.5;
+                let dy = dot(ldir, up0) / denom * 0.5;
+                if (g_layer1 > 0) {
+                    let cr1 = l.rot_blur.x;
+                    let sr1 = l.rot_blur.y;
+                    let u1 = dx * cr1 + dy * sr1 + 0.5;
+                    let v1 = dy * cr1 - dx * sr1 + 0.5;
+                    if (u1 >= 0.0 && u1 <= 1.0 && v1 >= 0.0 && v1 <= 1.0) {
+                        gobo_mask = gobo_mask * textureSampleLevel(t_gobos, s_gobos, vec2<f32>(u1, v1), g_layer1, l.rot_blur.z).r;
+                    } else {
+                        gobo_mask = 0.0;
+                    }
+                }
+                if (g_layer2 > 0) {
+                    let cr2 = l.gobo2_rot_layer.x;
+                    let sr2 = l.gobo2_rot_layer.y;
+                    let u2 = dx * cr2 + dy * sr2 + 0.5;
+                    let v2 = dy * cr2 - dx * sr2 + 0.5;
+                    if (u2 >= 0.0 && u2 <= 1.0 && v2 >= 0.0 && v2 <= 1.0) {
+                        gobo_mask = gobo_mask * textureSampleLevel(t_gobos, s_gobos, vec2<f32>(u2, v2), g_layer2, l.rot_blur.z).r;
+                    } else {
+                        gobo_mask = 0.0;
+                    }
+                }
+            }
+
+            let contrib = l.color_cos_inner.rgb * l.pos_intensity.w * cone * ndotl * atten * gobo_mask * 2.5;
+            accum = accum + contrib * (base * 1.4 + vec3<f32>(0.10));
         }
     }
     let mapped = accum / (accum + vec3<f32>(1.0));
@@ -328,6 +445,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 
 struct GpuResources {
     floor_pipeline: wgpu::RenderPipeline,
+    scenery_pipeline: wgpu::RenderPipeline,
     fixture_pipeline: wgpu::RenderPipeline,
     beam_pipeline: wgpu::RenderPipeline,
     blit_pipeline: wgpu::RenderPipeline,
@@ -342,6 +460,9 @@ struct GpuResources {
     gobo_tex: wgpu::Texture,
     gobo_layers: HashMap<String, u32>,
     next_gobo_layer: u32,
+    scenery_vbuf: Option<wgpu::Buffer>,
+    scenery_vcount: u32,
+    last_scenery_key: (usize, usize),
     fixture_vbuf: Option<wgpu::Buffer>,
     fixture_vcount: u32,
     beam_vbuf: Option<wgpu::Buffer>,
@@ -518,6 +639,60 @@ impl GpuResources {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: depth_state.clone(),
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+
+        let scenery_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("viz_scenery_shader"),
+            source: wgpu::ShaderSource::Wgsl(SCENERY_SHADER.into()),
+        });
+        let scenery_vbuf_layout = wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<SceneryVertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: 12,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: 24,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        };
+        let scenery_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("viz_scenery_pipeline"),
+            layout: Some(&floor_layout),
+            vertex: wgpu::VertexState {
+                module: &scenery_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[Some(scenery_vbuf_layout)],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &scenery_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: target_format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                cull_mode: None,
+                ..Default::default()
+            },
             depth_stencil: depth_state.clone(),
             multisample: wgpu::MultisampleState::default(),
             multiview_mask: None,
@@ -791,6 +966,7 @@ impl GpuResources {
 
         Self {
             floor_pipeline,
+            scenery_pipeline,
             fixture_pipeline,
             beam_pipeline,
             blit_pipeline,
@@ -805,6 +981,9 @@ impl GpuResources {
             gobo_tex,
             gobo_layers: HashMap::new(),
             next_gobo_layer: 0,
+            scenery_vbuf: None,
+            scenery_vcount: 0,
+            last_scenery_key: (0, 0),
             fixture_vbuf: None,
             fixture_vcount: 0,
             beam_vbuf: None,
@@ -1018,6 +1197,49 @@ impl egui_wgpu::CallbackTrait for StageCallback {
         };
         queue.write_buffer(&res.uniform_buf, 0, bytemuck::bytes_of(&uni));
 
+        let scenery_key = (
+            Arc::as_ptr(&self.scene.scenery) as usize,
+            self.scene.scenery.len(),
+        );
+        if scenery_key != res.last_scenery_key {
+            res.last_scenery_key = scenery_key;
+            let mut s_verts = Vec::new();
+            for mesh in self.scene.scenery.iter() {
+                for tri in mesh.indices.chunks_exact(3) {
+                    for &idx in tri {
+                        let i = idx as usize;
+                        if let Some(&pos) = mesh.vertices.get(i) {
+                            let normal = mesh.normals.get(i).copied().unwrap_or([0.0, 0.0, 1.0]);
+                            s_verts.push(SceneryVertex {
+                                pos,
+                                normal,
+                                color: mesh.color,
+                            });
+                        }
+                    }
+                }
+            }
+            res.scenery_vcount = s_verts.len() as u32;
+            if !s_verts.is_empty() {
+                let bytes = bytemuck::cast_slice(&s_verts);
+                let need_realloc = res
+                    .scenery_vbuf
+                    .as_ref()
+                    .is_none_or(|b| b.size() < bytes.len() as u64);
+                if need_realloc {
+                    res.scenery_vbuf = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("viz_scenery_vbuf"),
+                        size: (bytes.len().max(1024) * 2) as u64,
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    }));
+                }
+                if let Some(buf) = &res.scenery_vbuf {
+                    queue.write_buffer(buf, 0, bytes);
+                }
+            }
+        }
+
         let verts = build_fixtures_mesh(&self.scene.fixtures, self.scene.selected_channel);
         res.fixture_vcount = verts.len() as u32;
         if !verts.is_empty() {
@@ -1097,6 +1319,15 @@ impl egui_wgpu::CallbackTrait for StageCallback {
             pass.set_pipeline(&res.floor_pipeline);
             pass.set_bind_group(0, &res.floor_bind_group, &[]);
             pass.draw(0..6, 0..1);
+
+            if self.scene.show_scenery && res.scenery_vcount > 0 {
+                if let Some(vbuf) = &res.scenery_vbuf {
+                    pass.set_pipeline(&res.scenery_pipeline);
+                    pass.set_bind_group(0, &res.floor_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vbuf.slice(..));
+                    pass.draw(0..res.scenery_vcount, 0..1);
+                }
+            }
 
             if res.fixture_vcount > 0 {
                 if let Some(vbuf) = &res.fixture_vbuf {

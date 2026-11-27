@@ -141,6 +141,7 @@ class LightShow(ShowFile):
     universe_map: UniverseMap
     workspace: dict[str, typing.Any]
     stage: StageConfig
+    scenery: list[dict[str, typing.Any]]
     title: str
     home_preset: float | None
 
@@ -149,9 +150,11 @@ class LightShow(ShowFile):
         self.app = app
         self.workspace = default_workspace()
         self.stage = StageConfig()
+        self.scenery = []
         self.title = ""
         self.home_preset = None
         self.stage = StageConfig()
+        self.scenery = []
         lightshow_type = typing.cast("olc.show.lightshow.LightShow", self)
         # Fixture Library
         self.fixture_library = populate_builtin_library()
@@ -247,6 +250,7 @@ class LightShow(ShowFile):
         self.title = ""
         self.home_preset = None
         self.stage = StageConfig()
+        self.scenery = []
         self.fixture_library = populate_builtin_library()
         self.gobo_library.clear()
         del self.main_playback.steps[1:]

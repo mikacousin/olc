@@ -25,6 +25,7 @@ struct VizApp {
     camera: OrbitCamera,
     selected_fixture: Option<u32>,
     show_labels: bool,
+    show_scenery: bool,
     focus_mode: bool,
     focus_height_z: f32,
     local_fog: f32,
@@ -45,6 +46,7 @@ impl VizApp {
             camera: OrbitCamera::iso(),
             selected_fixture: None,
             show_labels: true,
+            show_scenery: true,
             focus_mode: false,
             focus_height_z: 0.0,
             local_fog: 0.35,
@@ -123,6 +125,7 @@ impl VizApp {
                 }
                 ui.separator();
                 ui.checkbox(&mut self.show_labels, "Labels #id");
+                ui.checkbox(&mut self.show_scenery, "Scenery");
                 ui.separator();
 
                 ui.label("Fog:");
@@ -337,6 +340,8 @@ impl VizApp {
             selected_channel: self.selected_fixture,
             aspect,
             gobo_images: self.source.gobo_images(),
+            scenery: self.source.scenery(),
+            show_scenery: self.show_scenery,
         };
         ui.painter().add(paint_callback(rect, scene));
 

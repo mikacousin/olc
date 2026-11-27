@@ -826,3 +826,170 @@ def test_eos_separate_timings_ifcb_discrete_parts_and_hang(
     assert st1.channel_time[4].delay == pytest.approx(1.0)
     assert st1.channel_time[5].time == pytest.approx(12.0)
     assert st2.wait == pytest.approx(0.2)
+
+
+def _make_minimal_glb_triangle() -> bytes:
+    """Build a minimal valid glTF 2.0 binary (.glb) containing one triangle."""
+    import json as _json
+    import struct as _struct
+
+    bin_buf = _struct.pack(
+        "<9f3H",
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0,
+        1,
+        2,
+    )
+    while len(bin_buf) % 4 != 0:
+        bin_buf += b"\x00"
+
+    gltf = {
+        "asset": {"version": "2.0"},
+        "buffers": [{"byteLength": len(bin_buf)}],
+        "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+            {"buffer": 0, "byteOffset": 36, "byteLength": 6},
+        ],
+        "accessors": [
+            {
+                "bufferView": 0,
+                "componentType": 5126,
+                "count": 3,
+                "type": "VEC3",
+            },
+            {
+                "bufferView": 1,
+                "componentType": 5123,
+                "count": 3,
+                "type": "SCALAR",
+            },
+        ],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1}]}],
+        "nodes": [{"mesh": 0, "translation": [2.0, 0.0, 1.0]}],
+    }
+    json_bytes = _json.dumps(gltf).encode("utf-8")
+    while len(json_bytes) % 4 != 0:
+        json_bytes += b" "
+
+    total_len = 12 + 8 + len(json_bytes) + 8 + len(bin_buf)
+    return (
+        _struct.pack("<4sII", b"glTF", 2, total_len)
+        + _struct.pack("<II", len(json_bytes), 0x4E4F534A)
+        + json_bytes
+        + _struct.pack("<II", len(bin_buf), 0x004E4942)
+        + bin_buf
+    )
+
+
+def test_working_a3d_scenery_and_glb_import(tmp_path: pathlib.Path) -> None:
+    """working.a3d GLB meshes and procedural boxes populate show.scenery."""
+    import io
+    import json as _json
+
+    from olc.files.eos.a3d import _decode_glb_mesh, parse_working_a3d_scenery
+
+    glb = _make_minimal_glb_triangle()
+    verts, norms, idx = _decode_glb_mesh(glb)
+    assert len(verts) == 3
+    assert len(norms) == 3
+    assert idx == [0, 1, 2]
+    assert verts[0] == pytest.approx((2.0, -1.0, 0.0))
+
+    a3d_buf = io.BytesIO()
+    with zipfile.ZipFile(a3d_buf, "w", zipfile.ZIP_DEFLATED) as azf:
+        azf.writestr("Resources/Wall.glb", glb)
+        azf.writestr(
+            "resource_database.json",
+            _json.dumps(
+                {
+                    "items": [
+                        {
+                            "obj": {
+                                "uid": "{11111111-1111-1111-1111-111111111111}",
+                                "path": "Resources/Wall.glb",
+                            }
+                        },
+                        {
+                            "obj": {
+                                "uid": "{22222222-2222-2222-2222-222222222222}",
+                                "base_color": {"x": 0.2, "y": 0.4, "z": 0.8},
+                            }
+                        },
+                    ]
+                }
+            ),
+        )
+        azf.writestr(
+            "Scene/Primitive.json",
+            _json.dumps(
+                {
+                    "items": [
+                        {
+                            "obj": {
+                                "name": "Back Wall",
+                                "model_uid": "{11111111-1111-1111-1111-111111111111}",
+                                "material_uids": [
+                                    "{22222222-2222-2222-2222-222222222222}"
+                                ],
+                                "world": {
+                                    "pos": {"x": 0, "y": 5, "z": 0},
+                                    "quat": {"w": 1, "x": 0, "y": 0, "z": 0},
+                                    "scale": {"x": 1, "y": 1, "z": 1},
+                                },
+                            }
+                        }
+                    ]
+                }
+            ),
+        )
+        azf.writestr(
+            "Scene/Procedural Primitive.json",
+            _json.dumps(
+                {
+                    "items": [
+                        {
+                            "obj": {
+                                "name": "Truss 1",
+                                "color": "ff804020",
+                                "local_bounds": {
+                                    "center": {"x": 0, "y": 0, "z": 0},
+                                    "size": {"x": 6, "y": 0.3, "z": 0.3},
+                                },
+                                "world": {
+                                    "pos": {"x": 0, "y": 0, "z": 5},
+                                    "quat": {"w": 1, "x": 0, "y": 0, "z": 0},
+                                    "scale": {"x": 1, "y": 1, "z": 1},
+                                },
+                            }
+                        }
+                    ]
+                }
+            ),
+        )
+
+    scenery = parse_working_a3d_scenery(a3d_buf.getvalue())
+    assert len(scenery) == 2
+    assert scenery[0]["name"] == "Back Wall"
+    assert scenery[0]["color"] == pytest.approx([0.2, 0.4, 0.8])
+    assert scenery[0]["vertices"][0] == pytest.approx([2.0, 4.0, 0.0])
+    assert scenery[1]["name"] == "Truss 1"
+    assert len(scenery[1]["indices"]) == 36
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        showdat = zf.read("showdat.dat")
+    esf_path = tmp_path / "scenery_sample.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", showdat)
+        zf.writestr("working.a3d", a3d_buf.getvalue())
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+    assert len(show.scenery) == 2

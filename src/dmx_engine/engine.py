@@ -251,14 +251,19 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             else:
                 self._patch_server = PatchSnapshotServer(monitor_port + 1)
 
-    def publish_patch(self, devices: Iterable[Any], stage: object = None) -> None:
+    def publish_patch(
+        self,
+        devices: Iterable[Any],
+        stage: object = None,
+        scenery_count: int = 0,
+    ) -> None:
         """Publish a new patch snapshot for external viewers.
 
         Call from the thread that owns the PatchManager, after each patch
         change. The new version is announced in the monitor metadata.
         """
         if self._patch_server is not None:
-            self._patch_server.update(devices, stage=stage)
+            self._patch_server.update(devices, stage=stage, scenery_count=scenery_count)
 
     def set_command_handler(
         self,
