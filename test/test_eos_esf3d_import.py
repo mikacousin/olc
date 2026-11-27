@@ -61,6 +61,7 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     imp.parse_sync()
 
     assert show.title == expected_title
+    assert show.main_playback.tracking_mode is True
 
     # Autonomous fixture definition built directly from tree[2]
     fdef = show.fixture_library.get("AnonLights", "Spot_16bit_Anon")
@@ -91,12 +92,29 @@ def test_import_esf3d_autonomous_fixtures_and_show(
     assert cue1.channels[2] == pytest.approx(0.8)
     assert cue1.is_block is False
 
+    # Cue 110 starts Effect 1.0 on Ch 4, 5 with size_scale=2.01, rate_scale=0.79
+    cue110 = next(
+        s.cue
+        for s in show.main_playback.steps
+        if s.cue is not None and s.cue.number == 110.0
+    )
+    assert cue110.effect_refs[4] == {
+        "effect": 1.0,
+        "order_index": 0,
+        "channels": [4, 5],
+        "rate_scale": 0.79,
+        "size_scale": 2.01,
+    }
+    assert cue110.effect_refs[5]["order_index"] == 1
+
     # Cue 115: Gobo_Mode=191 tracked from Cue 110 -> -55=CCW (52155), +55=CW (46148)
     cue115 = next(
         s.cue
         for s in show.main_playback.steps
         if s.cue is not None and s.cue.number == 115.0
     )
+    assert cue115.effect_refs[4] == {"stop": True}
+    assert cue115.effect_refs[5] == {"stop": True}
     assert cue115.is_block is True
     assert cue115.is_assert is True
     assert cue115.notes == "Check smoke"
@@ -177,6 +195,7 @@ def test_import_esf3d_routes_cuelists_without_duplication(
     # Secondary sequence #2 must be created with its own Cue 115
     seq2 = next((seq for seq in show.sequences if seq.index == 2), None)
     assert seq2 is not None
+    assert seq2.tracking_mode is True
     assert seq2.text == "Secondary List"
     sec_115 = [s.cue for s in seq2.steps if s.cue is not None and s.cue.number == 115.0]
     assert len(sec_115) == 1
@@ -223,6 +242,45 @@ def test_import_esf3d_routes_none_cuelist_via_start_and_nearest_anchor(
     assert seq3 is not None
     seq3_nums = [s.cue.number for s in seq3.steps if s.cue and s.cue.number > 0]
     assert seq3_nums == [10.0, 25.0, 29.0]
+
+
+def test_import_esf3d_tracks_cue26_effect_modifier_updates(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A cue with empty cue[23] and cue[26] scales updates active effect_refs."""
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    cue110_orig = next(
+        it
+        for it in tree[6:]
+        if isinstance(it, list) and len(it) == 31 and it[2][2] == 1100000
+    )
+    cue112 = [list(x) if isinstance(x, list) else x for x in cue110_orig]
+    cue112[2] = ["OBJ", 1, 1120000, "Cue 112 Scale", 0, 0.0, 0.0, 0]
+    cue112[23] = ["OBJ", 0, 0, ["OBJ", 0, 0]]
+    cue112[26] = ["OBJ", 0, 1, 10000, ["OBJ", 0, 77, 7, 100, 100, 180]]
+
+    new_tree = tree + [cue112]
+    esf_path = tmp_path / "eff_scale.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, new_tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    c112 = next(
+        s.cue
+        for s in show.main_playback.steps
+        if s.cue is not None and s.cue.number == 112.0
+    )
+    assert c112.effect_refs[4] == {
+        "effect": 1.0,
+        "order_index": 0,
+        "channels": [4, 5],
+        "rate_scale": 0.07,
+        "size_scale": 0.77,
+    }
 
 
 def test_evaluate_discrete_slots_and_point_ranges() -> None:

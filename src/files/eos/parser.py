@@ -282,6 +282,73 @@ def _decode_channel_values(
     return dev_vals, intensity_val
 
 
+def _parse_cue_effect_raw(
+    cue23: object, cue26: object
+) -> tuple[
+    dict[float, list[int]],
+    set[int],
+    dict[float, tuple[float | None, float | None]],
+]:
+    """Extract ``(started, stopped, scales)`` from ``cue[23]`` and ``cue[26]``."""
+    scales: dict[float, tuple[float | None, float | None]] = {}
+    if isinstance(cue26, list) and len(cue26) >= 5:
+        k = 3
+        while k + 1 < len(cue26):
+            raw_eff = cue26[k]
+            meta = cue26[k + 1]
+            if (
+                isinstance(raw_eff, int)
+                and raw_eff > 0
+                and isinstance(meta, list)
+                and len(meta) >= 4
+            ):
+                size_scale = (
+                    float(meta[2]) / 100.0
+                    if isinstance(meta[2], (int, float))
+                    else None
+                )
+                rate_scale = (
+                    float(meta[3]) / 100.0
+                    if isinstance(meta[3], (int, float))
+                    else None
+                )
+                scales[raw_eff / 10000.0] = (size_scale, rate_scale)
+            k += 2
+
+    started: dict[float, list[int]] = {}
+    stopped: set[int] = set()
+    if isinstance(cue23, list):
+        for channels, ch_obj in _iter_eos_channel_blocks(cue23):
+            i = 3
+            while i + 1 < len(ch_obj):
+                tok = ch_obj[i]
+                if isinstance(tok, list) and tok[0] == "OBJ" and tok[1] == 1:
+                    break
+                val_obj = ch_obj[i + 1]
+                if (
+                    isinstance(tok, int)
+                    and isinstance(val_obj, list)
+                    and len(val_obj) >= 3
+                    and isinstance(val_obj[2], list)
+                    and len(val_obj[2]) >= 3
+                    and isinstance(val_obj[2][2], int)
+                ):
+                    raw_eff_val = val_obj[2][2]
+                    if raw_eff_val == 0:
+                        stopped.update(channels)
+                    elif raw_eff_val > 0:
+                        eff_num = raw_eff_val / 10000.0
+                        lst = started.setdefault(eff_num, [])
+                        for ch in channels:
+                            if ch not in lst:
+                                lst.append(ch)
+                i += 2
+                if i < len(ch_obj) and isinstance(ch_obj[i], int):
+                    i += 1 + ch_obj[i] * 2
+
+    return started, stopped, scales
+
+
 def _pid_to_olc_key(
     pid: int, personality: EosPersonality | None, param_names: dict[int, str]
 ) -> str | None:
@@ -632,8 +699,15 @@ class Esf3dParser:
                     cuelist_order.append(cl_id)
                 seq = data["sequences"].setdefault(
                     cl_id,
-                    {"label": cl_label, "mode": "normal", "steps": {}, "cues": {}},
+                    {
+                        "label": cl_label,
+                        "mode": "normal",
+                        "tracking_mode": True,
+                        "steps": {},
+                        "cues": {},
+                    },
                 )
+                seq["tracking_mode"] = True
                 if cl_label:
                     seq["label"] = cl_label
                 continue
@@ -722,6 +796,9 @@ class Esf3dParser:
                     "is_assert": item[14] is not None,
                     "notes": str(item[16]) if isinstance(item[16], str) else "",
                 }
+                raw_eff_data = _parse_cue_effect_raw(item[23], item[26])
+                if any(raw_eff_data):
+                    cue_dict["_raw_effect"] = raw_eff_data
                 step_dict: dict[str, Any] = {
                     "cue": cue_num,
                     "label": label,
@@ -911,6 +988,8 @@ class Esf3dParser:
                 label = str(item[2][3]) if isinstance(item[2][3], str) else ""
                 raw_eff = new_eos_effect(eff_num)
                 raw_eff["label"] = label
+                if len(item) > 3 and isinstance(item[3], int) and item[3] > 0:
+                    raw_eff["grouping"] = item[3]
                 e24_11 = (
                     item[24][11]
                     if len(item) > 24
@@ -919,6 +998,7 @@ class Esf3dParser:
                     and isinstance(item[24][11], list)
                     else None
                 )
+                cycle_ms: float | None = None
                 if e24_11 is not None:
                     if len(e24_11) > 3 and isinstance(e24_11[3], (int, float)):
                         raw_eff["scale"] = float(e24_11[3])
@@ -927,32 +1007,83 @@ class Esf3dParser:
                         if len(e24_11) > 5 and isinstance(e24_11[5], int)
                         else 0
                     )
-                    if pcount > 0:
-                        pids = [
-                            int(x) for x in e24_11[6 : 6 + pcount] if isinstance(x, int)
-                        ]
-                        raw_eff["param_ids"] = pids
+                    pids = (
+                        [int(x) for x in e24_11[6 : 6 + pcount] if isinstance(x, int)]
+                        if pcount > 0
+                        else []
+                    )
+                    raw_eff["param_ids"] = pids
+                    curve_idx = 6 + pcount
+                    curve_obj = (
+                        e24_11[curve_idx]
+                        if len(e24_11) > curve_idx
+                        and isinstance(e24_11[curve_idx], list)
+                        else None
+                    )
+                    steps_tbl = (
+                        curve_obj[10]
+                        if curve_obj is not None
+                        and len(curve_obj) > 10
+                        and isinstance(curve_obj[10], list)
+                        else None
+                    )
+                    if (
+                        curve_obj is not None
+                        and len(curve_obj) > 8
+                        and isinstance(curve_obj[8], (int, float))
+                        and curve_obj[8] > 0
+                    ):
+                        cycle_ms = float(curve_obj[8])
+                    step_count = (
+                        steps_tbl[2]
+                        if steps_tbl is not None
+                        and len(steps_tbl) > 2
+                        and isinstance(steps_tbl[2], int)
+                        else 0
+                    )
+                    if 0 < step_count <= 16 and steps_tbl is not None:
+                        raw_eff["eos_type"] = (
+                            EOS_TYPE_STEPBASED
+                            if "||ch" in label.lower()
+                            else EOS_TYPE_ABSOLUTE
+                        )
+                        si = 10
+                        while si + 1 < len(steps_tbl):
+                            st = steps_tbl[si + 1]
+                            if isinstance(st, list) and len(st) >= 9:
+                                val = st[3] if isinstance(st[3], (int, float)) else 0.0
+                                s_ms = st[6] if isinstance(st[6], (int, float)) else 0.0
+                                d_ms = st[8] if isinstance(st[8], (int, float)) else 0.0
+                                raw_eff["actions"].append(
+                                    (
+                                        float(s_ms) / 1000.0,
+                                        float(d_ms) / 1000.0,
+                                        str(val),
+                                    )
+                                )
+                                if float(s_ms) + float(d_ms) > 0:
+                                    raw_eff["step_times_ms"].append(
+                                        float(s_ms) + float(d_ms)
+                                    )
+                            si += 2
+                    else:
                         if any(p in (2, 3) for p in pids):
                             raw_eff["eos_type"] = EOS_TYPE_FOCUS
                         elif any(p in (9, 10, 11, 12, 13, 14) for p in pids):
                             raw_eff["eos_type"] = EOS_TYPE_COLOR
                         else:
                             raw_eff["eos_type"] = EOS_TYPE_LINEAR
-                    else:
-                        raw_eff["eos_type"] = (
-                            EOS_TYPE_STEPBASED
-                            if "||ch" in label.lower()
-                            else EOS_TYPE_ABSOLUTE
-                        )
-                        if (
-                            len(e24_11) > 6
-                            and isinstance(e24_11[6], list)
-                            and len(e24_11[6]) > 8
-                            and isinstance(e24_11[6][8], (int, float))
-                            and e24_11[6][8] > 0
-                        ):
-                            raw_eff["step_times_ms"].append(float(e24_11[6][8]))
-                data["effects"].append(convert_eos_effect(raw_eff, param_names))
+                        if cycle_ms is not None:
+                            raw_eff["step_times_ms"].append(cycle_ms)
+
+                eff_dict = convert_eos_effect(raw_eff, param_names)
+                if cycle_ms is not None and raw_eff["eos_type"] in (
+                    EOS_TYPE_LINEAR,
+                    EOS_TYPE_FOCUS,
+                    EOS_TYPE_COLOR,
+                ):
+                    eff_dict["cycle_time"] = round(cycle_ms / 1000.0, 3)
+                data["effects"].append(eff_dict)
 
         # Route cues into their Cue Lists without collisions
         cues_by_list: dict[
@@ -1031,14 +1162,17 @@ class Esf3dParser:
                 {
                     "label": cuelist_labels.get(cl_id, ""),
                     "mode": "normal",
+                    "tracking_mode": True,
                     "steps": {},
                     "cues": {},
                 },
             )
+            seq["tracking_mode"] = True
             if cl_id in cuelist_labels and cuelist_labels[cl_id]:
                 seq["label"] = cuelist_labels[cl_id]
             cl_cues.sort(key=lambda c: c[0])
             tracked_virtuals: dict[int, dict[int, float]] = {}
+            active_effects: dict[float, tuple[list[int], float, float]] = {}
 
             for step_idx, (
                 cue_num,
@@ -1077,5 +1211,57 @@ class Esf3dParser:
                 cue_dict["device_values"] = device_values
                 if palette_refs:
                     cue_dict["palette_refs"] = palette_refs
+
+                raw_eff_tuple = cue_dict.pop("_raw_effect", None)
+                if raw_eff_tuple is not None:
+                    started, stopped, scales = raw_eff_tuple
+                    eff_refs: dict[int, dict[str, Any]] = {}
+                    for eff_id in list(active_effects):
+                        ch_list, sz, rt = active_effects[eff_id]
+                        remaining = [c for c in ch_list if c not in stopped]
+                        if remaining:
+                            active_effects[eff_id] = (remaining, sz, rt)
+                        else:
+                            del active_effects[eff_id]
+                    for ch in stopped:
+                        eff_refs[ch] = {"stop": True}
+
+                    for eff_id, ch_list in started.items():
+                        new_sz, new_rt = scales.get(eff_id, (None, None))
+                        sz = new_sz if new_sz is not None else 1.0
+                        rt = new_rt if new_rt is not None else 1.0
+                        active_effects[eff_id] = (list(ch_list), sz, rt)
+                        for order_idx, ch in enumerate(ch_list):
+                            eff_refs[ch] = {
+                                "effect": eff_id,
+                                "order_index": order_idx,
+                                "channels": list(ch_list),
+                                "rate_scale": rt,
+                                "size_scale": sz,
+                            }
+
+                    for eff_id, (new_sz, new_rt) in scales.items():
+                        if (
+                            eff_id not in started
+                            and eff_id in active_effects
+                            and (new_sz is not None or new_rt is not None)
+                        ):
+                            ch_list, prev_sz, prev_rt = active_effects[eff_id]
+                            sz = new_sz if new_sz is not None else prev_sz
+                            rt = new_rt if new_rt is not None else prev_rt
+                            active_effects[eff_id] = (ch_list, sz, rt)
+                            for order_idx, ch in enumerate(ch_list):
+                                if ch not in eff_refs:
+                                    eff_refs[ch] = {
+                                        "effect": eff_id,
+                                        "order_index": order_idx,
+                                        "channels": list(ch_list),
+                                        "rate_scale": rt,
+                                        "size_scale": sz,
+                                    }
+
+                    if eff_refs:
+                        cue_dict["effect_refs"] = eff_refs
+
                 seq["cues"][cue_num] = cue_dict
                 seq["steps"][step_idx] = step_dict
