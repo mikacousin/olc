@@ -562,3 +562,148 @@ def test_eos_zoom_effects_stepbased_palette_and_engine() -> None:
         dev, 1, layer, 1.0, 1.0, ch_base, ch_last
     )
     assert dev.zoom_degrees == pytest.approx(10.0, abs=0.5)
+
+
+def _make_synthetic_cmy_spd() -> dict[str, object]:
+    """Build a synthetic 380..780 nm CMY subtractive SPD dict."""
+    wls = list(range(380, 781, 5))
+    white_sp = [100.0] * len(wls)
+    cyan_sp = [90.0 if w < 570 else 5.0 for w in wls]
+    magenta_sp = [85.0 if (w < 490 or w > 600) else 5.0 for w in wls]
+    yellow_sp = [95.0 if w > 510 else 5.0 for w in wls]
+    return {
+        "wavelengths": wls,
+        "channels": [
+            {
+                "name": "White",
+                "method": "additive",
+                "spectra": [{"intensity": 1, "spectral_power": white_sp}],
+            },
+            {
+                "name": "Cyan",
+                "method": "subtractive",
+                "spectra": [{"intensity": 1, "spectral_power": cyan_sp}],
+            },
+            {
+                "name": "Magenta",
+                "method": "subtractive",
+                "spectra": [{"intensity": 1, "spectral_power": magenta_sp}],
+            },
+            {
+                "name": "Yellow",
+                "method": "subtractive",
+                "spectra": [{"intensity": 1, "spectral_power": yellow_sp}],
+            },
+        ],
+    }
+
+
+def test_build_color_profile_from_eos_spd_subtractive_and_additive() -> None:
+    """Synthetic subtractive CMY and additive RGBW SPD blobs build valid profiles."""
+    from olc.devices.color import FixtureColorProfile
+    from olc.files.eos.spectral import build_color_profile_from_eos_spd
+
+    # 1. Subtractive CMY
+    cmy_spd = _make_synthetic_cmy_spd()
+    sub_prof = build_color_profile_from_eos_spd("Anon CMY Spot", cmy_spd)
+    assert sub_prof is not None
+    assert sub_prof.mixing_mode == "subtractive"
+    assert sub_prof.has_spectral_filters is True
+    assert len(sub_prof.source_spectrum) == 81
+    for flt in sub_prof.filters:
+        assert len(flt.spectral_transmission) == 81
+        assert all(0.0 <= t <= 1.0 for _wl, t in flt.spectral_transmission)
+
+    cyan_xyz = sub_prof.evaluate_subtractive_xyz_array(1.0, 0.0, 0.0)
+    assert cyan_xyz[2] > cyan_xyz[0]  # Blue/cyan dominant over red
+
+    roundtrip = FixtureColorProfile.from_dict(sub_prof.to_dict())
+    assert roundtrip.has_spectral_filters is True
+    assert len(roundtrip.source_spectrum) == 81
+
+    # 2. Additive RGBW
+    wls = list(range(380, 781, 5))
+    rgbw_spd = {
+        "wavelengths": wls,
+        "channels": [
+            {
+                "name": "Red",
+                "method": "additive",
+                "spectra": [
+                    {
+                        "intensity": 1,
+                        "spectral_power": [100.0 if w == 630 else 0.0 for w in wls],
+                    }
+                ],
+            },
+            {
+                "name": "Green",
+                "method": "additive",
+                "spectra": [
+                    {
+                        "intensity": 1,
+                        "spectral_power": [100.0 if w == 530 else 0.0 for w in wls],
+                    }
+                ],
+            },
+            {
+                "name": "Blue",
+                "method": "additive",
+                "spectra": [
+                    {
+                        "intensity": 1,
+                        "spectral_power": [100.0 if w == 460 else 0.0 for w in wls],
+                    }
+                ],
+            },
+            {
+                "name": "White",
+                "method": "additive",
+                "spectra": [{"intensity": 1, "spectral_power": [20.0] * len(wls)}],
+            },
+        ],
+    }
+    add_prof = build_color_profile_from_eos_spd("Anon RGBW", rgbw_spd)
+    assert add_prof is not None
+    assert add_prof.mixing_mode == "additive"
+    assert len(add_prof.emitters) == 4
+    assert sum(e.cie.Y for e in add_prof.emitters) == pytest.approx(100.0, abs=0.5)
+    red = add_prof.get_emitter("Red")
+    green = add_prof.get_emitter("Green")
+    blue = add_prof.get_emitter("Blue")
+    assert red is not None and red.dominant_wavelength == pytest.approx(630.0)
+    assert green is not None and green.dominant_wavelength == pytest.approx(530.0)
+    assert blue is not None and blue.dominant_wavelength == pytest.approx(460.0)
+
+
+def test_import_esf3d_personality_uses_embedded_spd_blob(
+    tmp_path: pathlib.Path,
+) -> None:
+    """An .esf3d personality with entry[22][6] SPD JSON builds spectral filters."""
+    import base64
+    import json
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    b64_spd = base64.b64encode(
+        json.dumps(_make_synthetic_cmy_spd()).encode("utf-8")
+    ).decode("ascii")
+    for entry in tree[2]:
+        if isinstance(entry, list) and len(entry) > 6 and isinstance(entry[2], list):
+            if len(entry[2]) > 6 and entry[2][6] == "Spot_16bit_Anon":
+                while len(entry) <= 22:
+                    entry.append(None)
+                entry[22] = ["OBJ", 0, 0, 0, 0, 0, b64_spd]
+                break
+
+    esf_path = tmp_path / "spd_sample.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+    fdef = show.fixture_library.get("AnonLights", "Spot_16bit_Anon")
+    assert fdef.color_profile is not None
+    assert fdef.color_profile.has_spectral_filters is True
+    assert len(fdef.color_profile.source_spectrum) == 81

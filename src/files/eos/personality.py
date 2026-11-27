@@ -16,8 +16,6 @@
 
 from __future__ import annotations
 
-import base64
-import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +29,10 @@ from olc.devices.fixture import (
 from olc.files.ascii.eos_devices import (
     EOS_PARAM_TO_CHANNEL_TYPE,
     build_default_color_profile,
+)
+from olc.files.eos.spectral import (
+    build_color_profile_from_eos_spd,
+    decode_eos_spd_blob,
 )
 
 
@@ -119,6 +121,7 @@ class EosPersonality:
     params: dict[int, EosParamDef] = field(default_factory=dict)
     has_subtractive_cmy: bool = False
     has_additive_rgb: bool = False
+    spd_data: dict[str, Any] | None = None
 
     @property
     def is_dimmer(self) -> bool:
@@ -279,19 +282,10 @@ def _parse_param_entry(item: object, param_names: dict[int, str]) -> EosParamDef
     )
 
 
-def _detect_spd_color_methods(pers_raw: list[Any]) -> tuple[bool, bool]:
-    """Detect subtractive CMY / additive RGB from optional base64 SPD JSON."""
-    if len(pers_raw) <= 22 or not isinstance(pers_raw[22], list):
+def _detect_spd_color_methods(spd: dict[str, Any] | None) -> tuple[bool, bool]:
+    """Detect subtractive CMY / additive RGB from decoded SPD JSON."""
+    if spd is None:
         return False, False
-    blob_container = pers_raw[22]
-    if len(blob_container) <= 6 or not isinstance(blob_container[6], str):
-        return False, False
-    try:
-        decoded = base64.b64decode(blob_container[6])
-        spd = json.loads(decoded.decode("utf-8"))
-    except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
-        return False, False
-
     has_cmy = False
     has_rgb = False
     for ch in spd.get("channels", []):
@@ -352,7 +346,8 @@ def parse_personalities(
                     max_off = max(max_off, pdef.fine_offset)
             footprint = max_off + 1 if max_off >= 0 else 1
 
-        has_cmy, has_rgb = _detect_spd_color_methods(entry)
+        spd_data = decode_eos_spd_blob(entry)
+        has_cmy, has_rgb = _detect_spd_color_methods(spd_data)
         personalities[guid] = EosPersonality(
             guid=guid,
             manufacturer=manufacturer,
@@ -363,6 +358,7 @@ def parse_personalities(
             params=params,
             has_subtractive_cmy=has_cmy,
             has_additive_rgb=has_rgb,
+            spd_data=spd_data,
         )
 
     return personalities
@@ -516,17 +512,19 @@ def build_olc_fixture_definition(pers: EosPersonality) -> FixtureDefinition:
         )
 
     ftype = _infer_fixture_type(pers)
-    color_profile: FixtureColorProfile | None = None
-    if pers.has_subtractive_cmy or (
-        ChannelType.CYAN in ctypes
-        and ChannelType.MAGENTA in ctypes
-        and ChannelType.YELLOW in ctypes
-    ):
-        color_profile = default_cmy_profile()
-    else:
-        color_profile = build_default_color_profile(
-            f"{pers.manufacturer} {pers.model}".strip(), list(ctypes)
-        )
+    fixture_name = f"{pers.manufacturer} {pers.model}".strip() or pers.display_name
+    color_profile: FixtureColorProfile | None = build_color_profile_from_eos_spd(
+        fixture_name, pers.spd_data
+    )
+    if color_profile is None:
+        if pers.has_subtractive_cmy or (
+            ChannelType.CYAN in ctypes
+            and ChannelType.MAGENTA in ctypes
+            and ChannelType.YELLOW in ctypes
+        ):
+            color_profile = default_cmy_profile()
+        else:
+            color_profile = build_default_color_profile(fixture_name, list(ctypes))
 
     mode = DmxModeDefinition(
         name=f"Eos {pers.footprint}ch",
