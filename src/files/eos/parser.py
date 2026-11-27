@@ -37,6 +37,7 @@ from olc.files.ascii.eos_effects import (
     EOS_TYPE_LINEAR,
     EOS_TYPE_STEPBASED,
     convert_eos_effect,
+    eos_envelope_mode,
     new_eos_effect,
 )
 from olc.files.eos.a3d import (
@@ -394,6 +395,121 @@ def _parse_cue_effect_raw(
                     i += 1 + ch_obj[i] * 2
 
     return started, stopped, scales
+
+
+def _resample_curve_points(
+    pts: list[tuple[float, float]], max_points: int = 64
+) -> list[tuple[float, float]]:
+    """Downsample normalized (t, y) curve points while preserving endpoints."""
+    if len(pts) <= 1:
+        return pts
+    # Deduplicate points that collapse to the same 8-bit x slot
+    by_slot: dict[int, tuple[float, float]] = {}
+    for t, y in pts:
+        tx = max(0.0, min(1.0, float(t)))
+        ty = max(0.0, min(1.0, float(y)))
+        by_slot[int(round(tx * 255.0))] = (tx, ty)
+    ordered = [by_slot[k] for k in sorted(by_slot)]
+    if len(ordered) <= max_points:
+        return ordered
+    step = (len(ordered) - 1) / float(max_points - 1)
+    indices = [int(round(i * step)) for i in range(max_points - 1)] + [len(ordered) - 1]
+    return [ordered[idx] for idx in dict.fromkeys(indices)]
+
+
+def _extract_eos_effect_curve_points(
+    curve_obj: list[Any],
+) -> tuple[
+    int,
+    list[list[float]],
+    list[tuple[float, float]],
+    list[tuple[float, float]],
+]:
+    """Extract (dim, raw_data, x_norm_pts, y_norm_pts) from ``curve_obj[10]``."""
+    dim = (
+        int(curve_obj[4]) if len(curve_obj) > 4 and isinstance(curve_obj[4], int) else 0
+    )
+    cycle_ms = (
+        float(curve_obj[8])
+        if len(curve_obj) > 8
+        and isinstance(curve_obj[8], (int, float))
+        and curve_obj[8] > 0
+        else 0.0
+    )
+    pts_tbl = (
+        curve_obj[10]
+        if len(curve_obj) > 10 and isinstance(curve_obj[10], list)
+        else None
+    )
+    if pts_tbl is None:
+        return dim, [], [], []
+
+    raw_rows: list[tuple[float, float, float]] = []
+    raw_data: list[list[float]] = []
+    si = 10
+    while si + 1 < len(pts_tbl):
+        pt = pts_tbl[si + 1]
+        if isinstance(pt, list) and len(pt) >= 7:
+            vx = -1.0 if pt[3] is None else max(-1.0, min(1.0, float(pt[3])))
+            vy = (
+                (-1.0 if pt[4] is None else max(-1.0, min(1.0, float(pt[4]))))
+                if dim >= 2
+                else 0.0
+            )
+            dt_ms = (
+                float(pt[6]) if isinstance(pt[6], (int, float)) and pt[6] >= 0 else 0.0
+            )
+            raw_rows.append((vx, vy, dt_ms))
+            raw_data.append([vx, vy] if dim >= 2 else [vx])
+        si += 2
+
+    if len(raw_rows) < 2:
+        return dim, raw_data, [], []
+
+    total_dt = sum(dt for _, _, dt in raw_rows)
+    denom = total_dt if total_dt > 0.0 else cycle_ms
+    x_pts: list[tuple[float, float]] = []
+    y_pts: list[tuple[float, float]] = []
+
+    if denom > 0.0:
+        acc = 0.0
+        for idx, (vx, vy, dt_ms) in enumerate(raw_rows):
+            if idx == 0:
+                t_norm = 0.0
+                if dt_ms > 0.0:
+                    acc += dt_ms
+            else:
+                acc += dt_ms
+                t_norm = max(0.0, min(1.0, acc / denom))
+            x_pts.append((t_norm, max(0.0, min(1.0, (vx + 1.0) * 0.5))))
+            if dim >= 2:
+                y_pts.append((t_norm, max(0.0, min(1.0, (vy + 1.0) * 0.5))))
+        if x_pts[-1][0] < 0.999:
+            x_pts.append((1.0, x_pts[0][1]))
+            if dim >= 2 and y_pts:
+                y_pts.append((1.0, y_pts[0][1]))
+    else:
+        n_pts = len(raw_rows)
+        for idx, (vx, vy, _dt) in enumerate(raw_rows):
+            t_norm = idx / float(n_pts - 1)
+            x_pts.append((t_norm, max(0.0, min(1.0, (vx + 1.0) * 0.5))))
+            if dim >= 2:
+                y_pts.append((t_norm, max(0.0, min(1.0, (vy + 1.0) * 0.5))))
+
+    return (
+        dim,
+        raw_data,
+        _resample_curve_points(x_pts),
+        _resample_curve_points(y_pts),
+    )
+
+
+def _alloc_curve_id(curves_dict: dict[int, Any], start: int = 1000) -> int:
+    """Return the first unused integer curve ID starting at *start*."""
+    cid = start
+    while cid in curves_dict:
+        cid += 1
+    return cid
 
 
 def _pid_to_olc_key(
@@ -860,7 +976,13 @@ class Esf3dParser:
         cuelist_labels: dict[int, str] = {}
         cuelist_order: list[int] = []
         cuelist_start_cues: dict[float, int] = {}
-        raw_effects: list[tuple[dict[str, Any], float | None]] = []
+        raw_effects: list[
+            tuple[
+                dict[str, Any],
+                float | None,
+                tuple[list[tuple[float, float]], list[tuple[float, float]]],
+            ]
+        ] = []
         raw_cues: list[
             tuple[
                 int | None,
@@ -1163,51 +1285,97 @@ class Esf3dParser:
                                 sub_channels[ch] = ival
                             if dvals:
                                 sub_dev_vals[ch] = dvals
-                presets_pool = data.setdefault("palettes", {}).setdefault(
-                    PaletteCategory.PRESET.value, {}
-                )
-                if sub_num not in presets_pool:
-                    presets_pool[sub_num] = {
-                        "category": PaletteCategory.PRESET.value,
-                        "number": sub_num,
-                        "label": label,
-                        "channels": sub_channels,
-                        "device_values": sub_dev_vals,
-                    }
                 sub_int = int(sub_num)
                 page = ((sub_int - 1) // MAX_FADER_PER_PAGE) + 1
                 fader_nb = ((sub_int - 1) % MAX_FADER_PER_PAGE) + 1
-                data["faders"][(page, fader_nb)] = {
-                    "page": page,
-                    "number": fader_nb,
-                    "type": FaderType.PRESET,
-                    "contents": sub_num,
-                    "label": label,
-                }
+                sub_started, _sub_stopped, sub_scales = _parse_cue_effect_raw(
+                    item[17] if len(item) > 17 else None,
+                    item[18] if len(item) > 18 else None,
+                )
+                if sub_started:
+                    eff_id, ch_list = next(iter(sub_started.items()))
+                    sz, rt = sub_scales.get(eff_id, (None, None))
+                    fader_dict: dict[str, Any] = {
+                        "page": page,
+                        "number": fader_nb,
+                        "type": FaderType.EFFECT,
+                        "contents": eff_id,
+                        "effect_channels": list(ch_list),
+                        "control_mode": "size",
+                        "label": label,
+                        "text": label,
+                    }
+                    if sub_channels:
+                        fader_dict["base_channels"] = sub_channels
+                    if sz is not None:
+                        fader_dict["base_size_scale"] = sz
+                    if rt is not None:
+                        fader_dict["base_rate_scale"] = rt
+                    data["faders"][(page, fader_nb)] = fader_dict
+                    if sub_channels or sub_dev_vals:
+                        presets_pool = data.setdefault("palettes", {}).setdefault(
+                            PaletteCategory.PRESET.value, {}
+                        )
+                        if sub_num not in presets_pool:
+                            presets_pool[sub_num] = {
+                                "category": PaletteCategory.PRESET.value,
+                                "number": sub_num,
+                                "label": label,
+                                "channels": sub_channels,
+                                "device_values": sub_dev_vals,
+                            }
+                else:
+                    presets_pool = data.setdefault("palettes", {}).setdefault(
+                        PaletteCategory.PRESET.value, {}
+                    )
+                    if sub_num not in presets_pool:
+                        presets_pool[sub_num] = {
+                            "category": PaletteCategory.PRESET.value,
+                            "number": sub_num,
+                            "label": label,
+                            "channels": sub_channels,
+                            "device_values": sub_dev_vals,
+                        }
+                    data["faders"][(page, fader_nb)] = {
+                        "page": page,
+                        "number": fader_nb,
+                        "type": FaderType.PRESET,
+                        "contents": sub_num,
+                        "label": label,
+                    }
 
             # Effect: len == 27, item[2] is ['OBJ', 1, eff_num*10000, label, ...]
+            # Exclude Macros of len == 27 which lack item[24][11].
             elif (
                 len(item) == 27
                 and isinstance(item[2], list)
                 and len(item[2]) >= 4
                 and isinstance(item[2][2], int)
                 and item[2][2] > 0
+                and isinstance(item[24], list)
+                and len(item[24]) > 11
+                and isinstance(item[24][11], list)
             ):
                 eff_num = item[2][2] / 10000.0
                 label = str(item[2][3]) if isinstance(item[2][3], str) else ""
                 raw_eff = new_eos_effect(eff_num)
                 raw_eff["label"] = label
-                if len(item) > 3 and isinstance(item[3], int) and item[3] > 0:
+                if isinstance(item[3], int) and item[3] > 0:
                     raw_eff["grouping"] = item[3]
-                e24_11 = (
-                    item[24][11]
-                    if len(item) > 24
-                    and isinstance(item[24], list)
-                    and len(item[24]) > 11
-                    and isinstance(item[24][11], list)
-                    else None
-                )
+                if isinstance(item[4], (int, float)) and item[4] > 0:
+                    raw_eff["trail"] = float(item[4])
+                if isinstance(item[6], int):
+                    raw_eff["entry_mode"] = eos_envelope_mode(item[6])
+                if isinstance(item[7], int):
+                    raw_eff["exit_mode"] = eos_envelope_mode(item[7])
+                if isinstance(item[26], list) and len(item[26]) > 4:
+                    if 1562 in item[26][4:]:
+                        raw_eff["random"] = True
+                e24_11 = item[24][11]
                 cycle_ms: float | None = None
+                curve_axes: tuple[
+                    list[tuple[float, float]], list[tuple[float, float]]
+                ] = ([], [])
                 if e24_11 is not None:
                     if len(e24_11) > 3 and isinstance(e24_11[3], (int, float)):
                         raw_eff["scale"] = float(e24_11[3])
@@ -1250,7 +1418,21 @@ class Esf3dParser:
                         and isinstance(steps_tbl[2], int)
                         else 0
                     )
-                    if 0 < step_count <= 16 and steps_tbl is not None:
+                    curve_dim = (
+                        curve_obj[4]
+                        if curve_obj is not None
+                        and len(curve_obj) > 4
+                        and isinstance(curve_obj[4], int)
+                        else 0
+                    )
+                    is_focus_2d_curve = curve_dim == 2 and any(
+                        p in (2, 3) for p in pids
+                    )
+                    if (
+                        0 < step_count <= 16
+                        and steps_tbl is not None
+                        and not is_focus_2d_curve
+                    ):
                         tokens: list[tuple[float, float, float, str]] = []
                         has_pal_ref = False
                         si = 10
@@ -1297,12 +1479,20 @@ class Esf3dParser:
                             raw_eff["eos_type"] = EOS_TYPE_LINEAR
                         if cycle_ms is not None:
                             raw_eff["step_times_ms"].append(cycle_ms)
+                        if curve_obj is not None:
+                            _dim, raw_data, x_pts, y_pts = (
+                                _extract_eos_effect_curve_points(curve_obj)
+                            )
+                            if raw_data:
+                                raw_eff["data"] = raw_data
+                            curve_axes = (x_pts, y_pts)
 
-                raw_effects.append((raw_eff, cycle_ms))
+                raw_effects.append((raw_eff, cycle_ms, curve_axes))
 
         # Convert effects after palettes are populated so palette-based effects
         # can infer their target parameter (e.g. BP -> zoom).
-        for raw_eff, cycle_ms in raw_effects:
+        curves_dict = data.setdefault("curves", {})
+        for raw_eff, cycle_ms, (x_pts, y_pts) in raw_effects:
             eff_dict = convert_eos_effect(
                 raw_eff, param_names, palettes=data.get("palettes")
             )
@@ -1312,6 +1502,55 @@ class Esf3dParser:
                 EOS_TYPE_COLOR,
             ):
                 eff_dict["cycle_time"] = round(cycle_ms / 1000.0, 3)
+            eff_label = str(eff_dict.get("label") or f"Effect {eff_dict['number']:g}")
+            layers = eff_dict.get("layers")
+            if (
+                raw_eff["eos_type"] == EOS_TYPE_LINEAR
+                and len(x_pts) >= 2
+                and max(y for _, y in x_pts) - min(y for _, y in x_pts) > 1e-3
+                and isinstance(layers, list)
+                and layers
+                and layers[0].get("waveform") != "random"
+            ):
+                cid = _alloc_curve_id(curves_dict)
+                curves_dict[cid] = {
+                    "type": "SegmentsCurve",
+                    "label": eff_label,
+                    "points": x_pts,
+                    "normalized": True,
+                }
+                layers[0]["waveform"] = "curve"
+                layers[0]["curve_id"] = cid
+            elif (
+                raw_eff["eos_type"] == EOS_TYPE_FOCUS
+                and len(x_pts) >= 2
+                and len(y_pts) >= 2
+                and (
+                    max(y for _, y in x_pts) - min(y for _, y in x_pts) > 1e-3
+                    or max(y for _, y in y_pts) - min(y for _, y in y_pts) > 1e-3
+                )
+                and isinstance(layers, list)
+                and len(layers) >= 2
+            ):
+                cid_x = _alloc_curve_id(curves_dict)
+                curves_dict[cid_x] = {
+                    "type": "SegmentsCurve",
+                    "label": f"{eff_label} (Pan)",
+                    "points": x_pts,
+                    "normalized": True,
+                }
+                cid_y = _alloc_curve_id(curves_dict)
+                curves_dict[cid_y] = {
+                    "type": "SegmentsCurve",
+                    "label": f"{eff_label} (Tilt)",
+                    "points": y_pts,
+                    "normalized": True,
+                }
+                for layer, cid in ((layers[0], cid_x), (layers[1], cid_y)):
+                    layer["waveform"] = "curve"
+                    layer["curve_id"] = cid
+                    layer.pop("phase_offset_deg", None)
+                    layer.pop("freq_mult", None)
             data["effects"].append(eff_dict)
 
         # Route cues into their Cue Lists without collisions

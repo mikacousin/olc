@@ -473,6 +473,18 @@ class ParsedData:
                         fader_obj, "max_scale"
                     ):
                         fader_obj.max_scale = max(1.0, float(values["max_scale"]))
+                    if values.get("base_size_scale") is not None and hasattr(
+                        fader_obj, "base_size_scale"
+                    ):
+                        fader_obj.base_size_scale = max(
+                            0.0, float(values["base_size_scale"])
+                        )
+                    if values.get("base_rate_scale") is not None and hasattr(
+                        fader_obj, "base_rate_scale"
+                    ):
+                        fader_obj.base_rate_scale = max(
+                            0.0, float(values["base_rate_scale"])
+                        )
                     if values.get("level") is not None and fader_obj is not None:
                         fader_obj.level = float(values["level"])
                     if fader_text := values.get("text"):

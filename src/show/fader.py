@@ -599,6 +599,8 @@ class FaderEffect(Fader):
     modifier_only: bool
     min_scale: float
     max_scale: float
+    base_size_scale: float
+    base_rate_scale: float
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -612,6 +614,8 @@ class FaderEffect(Fader):
         modifier_only: bool = False,
         min_scale: float = 0.0,
         max_scale: float = 4.0,
+        base_size_scale: float = 1.0,
+        base_rate_scale: float = 1.0,
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = effect
@@ -633,6 +637,8 @@ class FaderEffect(Fader):
         self.modifier_only = bool(modifier_only)
         self.min_scale = max(0.0, float(min_scale))
         self.max_scale = max(1.0, float(max_scale))
+        self.base_size_scale = max(0.0, float(base_size_scale))
+        self.base_rate_scale = max(0.0, float(base_rate_scale))
         if self.modifier_only:
             self.level = 0.5
         if effect is not None:
@@ -660,6 +666,20 @@ class FaderEffect(Fader):
         if mode not in VALID_EFFECT_CONTROL_MODES:
             return
         self.control_mode = mode
+        if self.level > 0.0:
+            self.level_changed()
+
+    def set_base_scales(
+        self,
+        *,
+        size_scale: float | None = None,
+        rate_scale: float | None = None,
+    ) -> None:
+        """Set nominal base size/rate multipliers and refresh if live."""
+        if size_scale is not None:
+            self.base_size_scale = max(0.0, float(size_scale))
+        if rate_scale is not None:
+            self.base_rate_scale = max(0.0, float(rate_scale))
         if self.level > 0.0:
             self.level_changed()
 
@@ -769,12 +789,14 @@ class FaderEffect(Fader):
             None if self.modifier_only else self,
         )
         if master is not None:
-            size_scale = 1.0 if master.control_mode == "rate" else float(master.level)
+            size_scale = (
+                1.0 if master.control_mode == "rate" else float(master.level)
+            ) * master.base_size_scale
             rate_scale = (
                 fader_level_to_rate_scale(master.level)
                 if master.control_mode in ("rate", "both")
                 else 1.0
-            )
+            ) * master.base_rate_scale
         else:
             size_scale = 1.0
             rate_scale = 1.0

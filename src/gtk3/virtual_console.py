@@ -1014,6 +1014,18 @@ class VirtualConsoleWindow(Gtk.Window):
                     return f"{fader.text}\nFROZEN"
                 return f"{fader.text}\n×{scale:.2f}"
             return f"{fader.text}\n{round(scale * 100)}%"
+        if isinstance(fader, FaderEffect):
+            bs = float(getattr(fader, "base_size_scale", 1.0))
+            br = float(getattr(fader, "base_rate_scale", 1.0))
+            if abs(bs - 1.0) > 1e-3 or abs(br - 1.0) > 1e-3:
+                parts: list[str] = []
+                if abs(bs - 1.0) > 1e-3:
+                    parts.append(f"S{round(bs * 100)}%")
+                if abs(br - 1.0) > 1e-3:
+                    parts.append(f"R×{br:.2f}")
+                suffix = " ".join(parts)
+                return f"{fader.text}\n{suffix}" if fader.text else suffix
+            return fader.text
         if isinstance(fader, FaderSequence) and fader.contents is not None:
             seq = fader.contents
             base = fader.text or f"Seq {int(seq.index)}"

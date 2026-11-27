@@ -54,6 +54,11 @@ _EOS_ENVELOPE_MODES: dict[int, str] = {
 }
 
 
+def eos_envelope_mode(code: int) -> str:
+    """Map an Eos numeric entry/exit mode code to an OLC envelope mode string."""
+    return _EOS_ENVELOPE_MODES.get(int(code), "fade_by_size")
+
+
 def new_eos_effect(number: float) -> dict[str, typing.Any]:
     """Return an empty raw accumulator for an Eos ``$Effect`` block."""
     return {

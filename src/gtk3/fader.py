@@ -60,6 +60,7 @@ class FaderEdit(Gtk.Box):
     effect_controls_box: Gtk.Box | None
     effect_mode_button: Gtk.MenuButton | None
     effect_channels_button: Gtk.MenuButton | None
+    effect_scales_button: Gtk.MenuButton | None
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
@@ -82,6 +83,7 @@ class FaderEdit(Gtk.Box):
         self.effect_controls_box = None
         self.effect_mode_button = None
         self.effect_channels_button = None
+        self.effect_scales_button = None
         self._updating_fix = False
         self._updating_options = False
         self.option_checks: dict[str, Gtk.CheckButton] = {}
@@ -446,8 +448,71 @@ class FaderEdit(Gtk.Box):
         ch_popover.set_position(Gtk.PositionType.BOTTOM)
         self.effect_channels_button.set_popover(ch_popover)
 
+        bs = float(getattr(fader, "base_size_scale", 1.0))
+        br = float(getattr(fader, "base_rate_scale", 1.0))
+        self.effect_scales_button = Gtk.MenuButton()
+        self.effect_scales_button.set_label(
+            f"Scale: {round(bs * 100)}% / {round(br * 100)}%"
+        )
+        scales_popover = Gtk.Popover()
+        scales_vbox = Gtk.Box(spacing=4, orientation=Gtk.Orientation.VERTICAL)
+        scales_vbox.set_border_width(6)
+
+        size_row = Gtk.Box(spacing=6, orientation=Gtk.Orientation.HORIZONTAL)
+        size_row.pack_start(Gtk.Label(label=_("Size (%)")), False, False, 0)
+        spin_size = Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                value=round(bs * 100),
+                lower=0,
+                upper=400,
+                step_increment=5,
+                page_increment=25,
+                page_size=0,
+            )
+        )
+        spin_size.set_digits(0)
+        size_row.pack_end(spin_size, False, False, 0)
+        scales_vbox.add(size_row)
+
+        rate_row = Gtk.Box(spacing=6, orientation=Gtk.Orientation.HORIZONTAL)
+        rate_row.pack_start(Gtk.Label(label=_("Rate (%)")), False, False, 0)
+        spin_rate = Gtk.SpinButton(
+            adjustment=Gtk.Adjustment(
+                value=round(br * 100),
+                lower=1,
+                upper=400,
+                step_increment=5,
+                page_increment=25,
+                page_size=0,
+            )
+        )
+        spin_rate.set_digits(0)
+        rate_row.pack_end(spin_rate, False, False, 0)
+        scales_vbox.add(rate_row)
+
+        btn_row = Gtk.Box(spacing=4, orientation=Gtk.Orientation.HORIZONTAL)
+        btn_apply = Gtk.Button(label=_("Apply"))
+        btn_apply.connect(
+            "clicked",
+            self._on_effect_scales_apply,
+            spin_size,
+            spin_rate,
+            scales_popover,
+        )
+        btn_reset = Gtk.Button(label=_("Reset (100%)"))
+        btn_reset.connect("clicked", self._on_effect_scales_reset, scales_popover)
+        btn_row.pack_start(btn_apply, True, True, 0)
+        btn_row.pack_start(btn_reset, True, True, 0)
+        scales_vbox.add(btn_row)
+
+        scales_vbox.show_all()
+        scales_popover.add(scales_vbox)
+        scales_popover.set_position(Gtk.PositionType.BOTTOM)
+        self.effect_scales_button.set_popover(scales_popover)
+
         self.effect_controls_box.add(self.effect_mode_button)
         self.effect_controls_box.add(self.effect_channels_button)
+        self.effect_controls_box.add(self.effect_scales_button)
 
     def _fader_fx_master(self) -> None:
         """Create edition and live control UI for an FX Master fader."""
@@ -626,6 +691,38 @@ class FaderEdit(Gtk.Box):
                 "fader.configure_effect", self.page, self.index, effect_channels=[]
             )
 
+    def _on_effect_scales_apply(
+        self,
+        _widget: Gtk.Button,
+        spin_size: Gtk.SpinButton,
+        spin_rate: Gtk.SpinButton,
+        popover: Gtk.Popover,
+    ) -> None:
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.configure_effect",
+                self.page,
+                self.index,
+                base_size_scale=spin_size.get_value() / 100.0,
+                base_rate_scale=spin_rate.get_value() / 100.0,
+            )
+        popover.popdown()
+
+    def _on_effect_scales_reset(
+        self, _widget: Gtk.Button, popover: Gtk.Popover
+    ) -> None:
+        app = self.lightshow.app
+        if app is not None:
+            app.action_registry.execute(
+                "fader.configure_effect",
+                self.page,
+                self.index,
+                base_size_scale=1.0,
+                base_rate_scale=1.0,
+            )
+        popover.popdown()
+
     def refresh(self) -> None:
         """Refresh this fader widget representation in place."""
         fader_type = self.lightshow.fader_bank.get_fader_type(self.page, self.index)
@@ -636,6 +733,7 @@ class FaderEdit(Gtk.Box):
             self.effect_controls_box = None
             self.effect_mode_button = None
             self.effect_channels_button = None
+            self.effect_scales_button = None
 
         if fader_type == FaderType.NONE:
             self._fader_none()

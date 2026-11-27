@@ -1113,3 +1113,34 @@ def test_olc_persistence_stage_and_device_3d_fields(
     assert r_dev.focus_point == pytest.approx((-1.0, 0.5, 1.2))
     assert r_dev.orientation == pytest.approx((15.0, -5.0, 0.0))
     assert r_dev.beam_angle == pytest.approx(32.0)
+
+
+def test_olc_persistence_fader_effect_base_scales(tmp_path: pathlib.Path) -> None:
+    """Verify .olc round-trip preserves FaderEffect base_size_scale/base_rate_scale."""
+    from olc.show.fader import FaderEffect, FaderType
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.action_registry.execute("fader.assign", 1, 2, FaderType.EFFECT, 1.0)
+    app.action_registry.execute(
+        "fader.configure_effect",
+        1,
+        2,
+        effect_channels=[3, 4],
+        base_size_scale=1.98,
+        base_rate_scale=0.71,
+    )
+
+    save_path = tmp_path / "fader_base_scales.olc"
+    app.action_registry.execute("show.save", str(save_path))
+
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", str(save_path))
+    re_fader = app2.lightshow.fader_bank.faders[1][2]
+    assert isinstance(re_fader, FaderEffect)
+    assert re_fader.effect_channels == [3, 4]
+    assert re_fader.base_size_scale == pytest.approx(1.98)
+    assert re_fader.base_rate_scale == pytest.approx(0.71)

@@ -87,6 +87,8 @@ class FaderAssignAction(Action):
         self.old_contents: float | tuple[str, int] | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
+        self.old_base_size_scale: float = 1.0
+        self.old_base_rate_scale: float = 1.0
         self.old_fixed_source: int | None = None
         self._blocked: bool = False
 
@@ -129,9 +131,13 @@ class FaderAssignAction(Action):
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
             self.old_effect_channels = list(old_fader.effect_channels)
+            self.old_base_size_scale = old_fader.base_size_scale
+            self.old_base_rate_scale = old_fader.base_rate_scale
         else:
             self.old_control_mode = "size"
             self.old_effect_channels = []
+            self.old_base_size_scale = 1.0
+            self.old_base_rate_scale = 1.0
 
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, self.new_type, self.new_contents
@@ -150,6 +156,10 @@ class FaderAssignAction(Action):
         if isinstance(restored, FaderEffect):
             restored.set_control_mode(self.old_control_mode)
             restored.set_effect_channels(self.old_effect_channels)
+            restored.set_base_scales(
+                size_scale=self.old_base_size_scale,
+                rate_scale=self.old_base_rate_scale,
+            )
         if self.old_fixed_source is not None:
             self.app.lightshow.fader_bank.set_fader_fixed(
                 self.old_fixed_source, self.index, True
@@ -191,6 +201,8 @@ class FaderClearAction(Action):
         self.old_contents: float | tuple[str, int] | None = None
         self.old_control_mode: str = "size"
         self.old_effect_channels: list[int] = []
+        self.old_base_size_scale: float = 1.0
+        self.old_base_rate_scale: float = 1.0
         self.old_fixed_source: int | None = None
         self._blocked: bool = False
 
@@ -222,9 +234,13 @@ class FaderClearAction(Action):
         if isinstance(old_fader, FaderEffect):
             self.old_control_mode = old_fader.control_mode
             self.old_effect_channels = list(old_fader.effect_channels)
+            self.old_base_size_scale = old_fader.base_size_scale
+            self.old_base_rate_scale = old_fader.base_rate_scale
         else:
             self.old_control_mode = "size"
             self.old_effect_channels = []
+            self.old_base_size_scale = 1.0
+            self.old_base_rate_scale = 1.0
 
         self.app.lightshow.fader_bank.set_fader(
             self.page, self.index, FaderType.NONE, None
@@ -243,6 +259,10 @@ class FaderClearAction(Action):
         if isinstance(restored, FaderEffect):
             restored.set_control_mode(self.old_control_mode)
             restored.set_effect_channels(self.old_effect_channels)
+            restored.set_base_scales(
+                size_scale=self.old_base_size_scale,
+                rate_scale=self.old_base_rate_scale,
+            )
         if self.old_fixed_source is not None:
             self.app.lightshow.fader_bank.set_fader_fixed(
                 self.old_fixed_source, self.index, True
@@ -274,8 +294,12 @@ class FaderConfigureEffectAction(Action):
         self.index: int = 1
         self.new_mode: str | None = None
         self.new_channels: list[int] | None = None
+        self.new_base_size_scale: float | None = None
+        self.new_base_rate_scale: float | None = None
         self._old_mode: str = "size"
         self._old_channels: list[int] = []
+        self._old_base_size_scale: float = 1.0
+        self._old_base_rate_scale: float = 1.0
 
     def configure(
         self,
@@ -284,8 +308,10 @@ class FaderConfigureEffectAction(Action):
         *,
         control_mode: str | None = None,
         effect_channels: list[int] | None = None,
+        base_size_scale: float | None = None,
+        base_rate_scale: float | None = None,
     ) -> None:
-        """Configure control_mode and/or effect_channels on a FaderEffect."""
+        """Configure control_mode, channels, and/or base scales on a FaderEffect."""
         self.page = int(page)
         self.index = int(index)
         self.new_mode = str(control_mode) if control_mode is not None else None
@@ -294,8 +320,20 @@ class FaderConfigureEffectAction(Action):
             if effect_channels is not None
             else None
         )
+        self.new_base_size_scale = (
+            max(0.0, float(base_size_scale)) if base_size_scale is not None else None
+        )
+        self.new_base_rate_scale = (
+            max(0.0, float(base_rate_scale)) if base_rate_scale is not None else None
+        )
 
-    def _apply(self, mode: str | None, channels: list[int] | None) -> None:
+    def _apply(
+        self,
+        mode: str | None,
+        channels: list[int] | None,
+        base_size_scale: float | None = None,
+        base_rate_scale: float | None = None,
+    ) -> None:
         fader = self.app.lightshow.fader_bank.faders[self.page][self.index]
         if not isinstance(fader, FaderEffect):
             return
@@ -303,6 +341,10 @@ class FaderConfigureEffectAction(Action):
             fader.set_control_mode(mode)
         if channels is not None:
             fader.set_effect_channels(channels)
+        if base_size_scale is not None or base_rate_scale is not None:
+            fader.set_base_scales(
+                size_scale=base_size_scale, rate_scale=base_rate_scale
+            )
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
 
@@ -313,18 +355,32 @@ class FaderConfigureEffectAction(Action):
             return
         self._old_mode = fader.control_mode
         self._old_channels = list(fader.effect_channels)
-        self._apply(self.new_mode, self.new_channels)
+        self._old_base_size_scale = fader.base_size_scale
+        self._old_base_rate_scale = fader.base_rate_scale
+        self._apply(
+            self.new_mode,
+            self.new_channels,
+            self.new_base_size_scale,
+            self.new_base_rate_scale,
+        )
 
     def undo(self) -> None:
-        """Restore previous control mode and target channels."""
+        """Restore previous control mode, target channels, and base scales."""
         self._apply(
             self._old_mode if self.new_mode is not None else None,
             self._old_channels if self.new_channels is not None else None,
+            self._old_base_size_scale if self.new_base_size_scale is not None else None,
+            self._old_base_rate_scale if self.new_base_rate_scale is not None else None,
         )
 
     def redo(self) -> None:
-        """Re-apply new control mode and target channels."""
-        self._apply(self.new_mode, self.new_channels)
+        """Re-apply new control mode, target channels, and base scales."""
+        self._apply(
+            self.new_mode,
+            self.new_channels,
+            self.new_base_size_scale,
+            self.new_base_rate_scale,
+        )
 
 
 class FaderSetLevelAction(Action):
@@ -479,6 +535,8 @@ def _snapshot_fader(
         "control_mode": str(getattr(fader, "control_mode", "size")),
         "effect_channels": list(getattr(fader, "effect_channels", [])),
         "base_channels": dict(getattr(fader, "base_channels", {})),
+        "base_size_scale": float(getattr(fader, "base_size_scale", 1.0)),
+        "base_rate_scale": float(getattr(fader, "base_rate_scale", 1.0)),
         "fixed": fader_bank.is_fader_fixed(page, index),
     }
 
@@ -500,6 +558,10 @@ def _restore_fader(
     if isinstance(restored, FaderEffect):
         restored.set_control_mode(snap["control_mode"])
         restored.set_effect_channels(snap["effect_channels"])
+        restored.set_base_scales(
+            size_scale=float(snap.get("base_size_scale", 1.0)),
+            rate_scale=float(snap.get("base_rate_scale", 1.0)),
+        )
         if snap["base_channels"]:
             restored.set_base_channels(snap["base_channels"])
     if snap["text"] and not restored.text:

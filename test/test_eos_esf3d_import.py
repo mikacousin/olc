@@ -1044,3 +1044,180 @@ def test_eos_strobe_channel_keeps_normalized_bounds() -> None:
     strobe_ch = dev.get_channel(ChannelType.STROBE)
     assert strobe_ch is not None
     assert strobe_ch.value == 255
+
+
+def test_eos_advanced_effects_curves_and_submasters(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Import custom 1D/2D curves, envelope/random flags, Macro filter, and FX subs."""
+    import numpy as np
+
+    from olc.core.effects_engine import evaluate_waveform
+    from olc.show.effect import DistributeDirection, EffectEnvelopeMode, WaveformType
+    from olc.show.fader import FaderEffect
+
+    with zipfile.ZipFile(DATA_DIR / "eos_sample_32.esf3d", "r") as zf:
+        header, tree = decode_showdat(zf.read("showdat.dat"))
+
+    # 1. Macro of len == 27 without item[24][11] must NOT be imported as an Effect
+    macro_item = ["OBJ", 0, ["OBJ", 1, 9, "LAMP OFF", 0], 0, 0] + [0] * 22
+
+    # 2. Linear 1D Effect with custom curve (None == -1.0), trail, exit=3, 1562
+    def _pt(vx: float | None, vy: float | None, dt_ms: float) -> list[object]:
+        return ["OBJ", 0, 3, vx, vy, 0, dt_ms, 0, 0] + [None] * 8
+
+    pts_1d_flat: list[object] = [
+        "OBJ",
+        0,
+        21,
+        None,
+        0,
+        0,
+        0,
+        0,
+        99999990,
+        1,
+    ]
+    for i in range(21):
+        frac = i / 20.0
+        vx = None if i == 0 else (-1.0 + 2.0 * frac)
+        dt_ms = 0.0 if i == 0 else 200.0
+        pts_1d_flat.extend([i + 1, _pt(vx, 0.0, dt_ms)])
+
+    curve_1d_obj = [
+        "OBJ",
+        0,
+        0,
+        0,
+        1,  # dim = 1
+        0,
+        0,
+        0,
+        4000,  # cycle_ms
+        1,
+        pts_1d_flat,
+    ]
+    eff_1d: list[object] = ["OBJ"] + [0] * 26
+    eff_1d[2] = ["OBJ", 1, 50000, "Ramp 1D", 0]
+    eff_1d[3] = 2  # grouping
+    eff_1d[4] = 100  # trail
+    eff_1d[6] = 0  # entry_mode: immediate
+    eff_1d[7] = 3  # exit_mode: fade_by_size_and_rate
+    eff_1d[24] = ["OBJ"] + [0] * 10 + [["OBJ", 0, 0, 35, 0, 1, 1, curve_1d_obj]]
+    eff_1d[26] = ["OBJ", 0, 1, 2, 1562, 0, None]  # 1562 -> random
+
+    # 3. Focus 2D Effect with Pan/Tilt custom curve points
+    curve_2d_obj = [
+        "OBJ",
+        0,
+        0,
+        0,
+        2,  # dim = 2
+        0,
+        0,
+        0,
+        5000,
+        1,
+        [
+            "OBJ",
+            0,
+            3,
+            None,
+            0,
+            0,
+            0,
+            0,
+            99999990,
+            1,
+            1,
+            _pt(None, 1.0, 0.0),
+            2,
+            _pt(1.0, None, 2500.0),
+            3,
+            _pt(0.0, 0.5, 2500.0),
+        ],
+    ]
+    eff_2d: list[object] = ["OBJ"] + [0] * 26
+    eff_2d[2] = ["OBJ", 1, 9010000, "Custom 2D", 0]
+    eff_2d[6] = 1
+    eff_2d[7] = 1
+    eff_2d[24] = ["OBJ"] + [0] * 10 + [["OBJ", 0, 0, 25, 0, 2, 2, 3, curve_2d_obj]]
+    eff_2d[26] = ["OBJ", 0, 0, 2]
+
+    # 4. Effect Submaster (len == 21) referencing Effect 5.0 on channels [4, 5]
+    sub_item: list[object] = ["OBJ"] + [0] * 20
+    sub_item[2] = ["OBJ", 0, 12, "FX Sub 12"]
+    sub_item[16] = ["OBJ", 0, 0, 0, 0, ["OBJ", 0, 0]]
+    sub_item[17] = [
+        "OBJ",
+        0,
+        2,
+        4,
+        0,
+        ["OBJ", 0, 1, 79, ["OBJ", 0, ["OBJ", 0, 50000]], 0, ["OBJ", 1, 4, 0, 0]],
+        1,
+        5,
+        ["OBJ", 0, 0],
+    ]
+    sub_item[18] = [
+        "OBJ",
+        0,
+        1,
+        50000,
+        ["OBJ", 0, 198, 71, 100, 100, 180],
+    ]
+
+    tree.extend([macro_item, eff_1d, eff_2d, sub_item])
+    esf_path = tmp_path / "adv_effects.esf3d"
+    with zipfile.ZipFile(esf_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("showdat.dat", encode_showdat(header, tree))
+
+    show = LightShow()
+    ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
+
+    # Macro excluded
+    assert show.effects.get(0.0009) is None
+
+    # 1D effect fields + custom curve evaluation
+    e5 = show.effects.get(5.0)
+    assert e5 is not None
+    assert e5.groups == 2
+    assert e5.direction is DistributeDirection.RANDOM
+    assert e5.entry_mode is EffectEnvelopeMode.IMMEDIATE
+    assert e5.exit_mode is EffectEnvelopeMode.FADE_BY_SIZE_AND_RATE
+    assert e5.layers[0].waveform is WaveformType.CURVE
+    cid_1d = e5.layers[0].curve_id
+    assert cid_1d is not None
+    curve_1d = show.curves.get_curve(cid_1d)
+    assert curve_1d is not None
+    out = evaluate_waveform(
+        WaveformType.CURVE,
+        np.array([0.0, 0.5, 0.99]),
+        curve_evaluator=curve_1d.evaluate_normalized,
+    )
+    assert out[0] == pytest.approx(-1.0, abs=0.02)
+    assert out[1] == pytest.approx(0.0, abs=0.02)
+    assert out[2] == pytest.approx(0.98, abs=0.03)
+
+    # 2D effect Pan & Tilt custom curves
+    e901 = show.effects.get(901.0)
+    assert e901 is not None
+    assert len(e901.layers) == 2
+    assert e901.layers[0].waveform is WaveformType.CURVE
+    assert e901.layers[1].waveform is WaveformType.CURVE
+    assert e901.layers[0].curve_id is not None
+    assert e901.layers[1].curve_id is not None
+    assert e901.layers[0].curve_id != e901.layers[1].curve_id
+
+    # Submaster 12 imported as FaderEffect on expected page/fader slot
+    from olc.define import MAX_FADER_PER_PAGE
+
+    exp_page = ((12 - 1) // MAX_FADER_PER_PAGE) + 1
+    exp_num = ((12 - 1) % MAX_FADER_PER_PAGE) + 1
+    fx_fader = show.fader_bank.faders[exp_page][exp_num]
+    assert isinstance(fx_fader, FaderEffect)
+    assert fx_fader.contents is not None
+    assert fx_fader.contents.number == pytest.approx(5.0)
+    assert fx_fader.effect_channels == [4, 5]
+    assert fx_fader.base_size_scale == pytest.approx(1.98)
+    assert fx_fader.base_rate_scale == pytest.approx(0.71)

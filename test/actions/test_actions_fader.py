@@ -487,3 +487,58 @@ def test_fader_options_solo_inhibitive_swop_protect_lock_and_undo() -> None:
     assert comp_inhib[5] == pytest.approx(0.4)
     assert comp_inhib[3] == pytest.approx(0.7)
     assert comp_inhib[4] == pytest.approx(0.8)
+
+
+def test_fader_effect_base_scales_and_undo_redo() -> None:
+    """FaderEffect base_size_scale/base_rate_scale compose and support undo/redo."""
+    import pytest
+
+    app = CoreApplication(MagicMock())
+    app.selected_channels = [1, 2]
+    app.action_registry.execute(
+        "effect.create", 1.0, "Sine Wave", template_id="sine_dimmer"
+    )
+    app.action_registry.execute("fader.assign", 1, 1, FaderType.EFFECT, 1.0)
+    fader = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(fader, FaderEffect)
+    assert fader.base_size_scale == pytest.approx(1.0)
+    assert fader.base_rate_scale == pytest.approx(1.0)
+
+    app.action_registry.execute(
+        "fader.configure_effect",
+        1,
+        1,
+        control_mode="both",
+        base_size_scale=1.98,
+        base_rate_scale=0.71,
+    )
+    assert fader.control_mode == "both"
+    assert fader.base_size_scale == pytest.approx(1.98)
+    assert fader.base_rate_scale == pytest.approx(0.71)
+
+    app.action_registry.execute("fader.set_level", 1, 1, 0.5)
+    inst = next(iter(app.effects_engine.get_active_instances()))
+    assert inst.size_scale == pytest.approx(0.5 * 1.98)
+    assert inst.rate_scale == pytest.approx(0.71)
+
+    # Undo configure_effect -> restores 1.0 / 1.0 and updates live instance
+    app.history.undo()  # undo set_level? Wait: set_level is can_undo=False!
+    assert fader.base_size_scale == pytest.approx(1.0)
+    assert fader.base_rate_scale == pytest.approx(1.0)
+    assert fader.control_mode == "size"
+    inst_after_undo = next(iter(app.effects_engine.get_active_instances()))
+    assert inst_after_undo.size_scale == pytest.approx(0.5)
+    assert inst_after_undo.rate_scale == pytest.approx(1.0)
+
+    app.history.redo()
+    assert fader.base_size_scale == pytest.approx(1.98)
+    assert fader.base_rate_scale == pytest.approx(0.71)
+    assert fader.control_mode == "both"
+
+    # Clear & undo preserves base scales
+    app.action_registry.execute("fader.clear", 1, 1)
+    app.history.undo()
+    restored = app.lightshow.fader_bank.faders[1][1]
+    assert isinstance(restored, FaderEffect)
+    assert restored.base_size_scale == pytest.approx(1.98)
+    assert restored.base_rate_scale == pytest.approx(0.71)

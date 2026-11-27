@@ -295,6 +295,12 @@ class OlcWriter(WriteFile):
                             getattr(fader, "max_scale", 4.0)
                         )
                         fader_entry["level"] = float(getattr(fader, "level", 0.5))
+                    base_sz = float(getattr(fader, "base_size_scale", 1.0))
+                    if abs(base_sz - 1.0) > 1e-6:
+                        fader_entry["base_size_scale"] = base_sz
+                    base_rt = float(getattr(fader, "base_rate_scale", 1.0))
+                    if abs(base_rt - 1.0) > 1e-6:
+                        fader_entry["base_rate_scale"] = base_rt
                     self.data["faders"][number] = fader_entry
                 elif content_type == FaderType.FX_MASTER:
                     self.data["faders"][number] = {
