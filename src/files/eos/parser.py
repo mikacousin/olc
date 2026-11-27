@@ -113,6 +113,38 @@ _REF_CAT_TO_NAME: dict[int, str] = {
 }
 
 
+_REF_CAT_TO_PREFIX: dict[int, str] = {
+    1: "IP",
+    2: "FP",
+    3: "CP",
+    4: "BP",
+}
+
+
+def _extract_effect_step_token(st: list[Any]) -> str:
+    """Extract palette/preset token or numeric level from an Eos effect step."""
+    ref_kind = st[7] if len(st) > 7 and isinstance(st[7], int) else 0
+    ref_obj = st[16] if len(st) > 16 and isinstance(st[16], list) else None
+    if (
+        ref_obj is not None
+        and len(ref_obj) >= 4
+        and isinstance(ref_obj[2], int)
+        and ref_obj[2] > 0
+    ):
+        num = ref_obj[2] / 10000.0
+        if ref_kind == 4:
+            return f"PR {num:g}"
+        if ref_kind == 3:
+            cat_id = ref_obj[3]
+            prefix = (
+                _REF_CAT_TO_PREFIX.get(cat_id) if isinstance(cat_id, int) else None
+            )
+            if prefix is not None:
+                return f"{prefix} {num:g}"
+    val = st[3] if len(st) > 3 and isinstance(st[3], (int, float)) else 0.0
+    return str(val)
+
+
 def _extract_palette_ref(v_node: list[Any]) -> tuple[str, float] | None:
     """Extract ``(category_str, number)`` from an Eos ``v_node`` if referenced."""
     if len(v_node) <= 7:
@@ -696,6 +728,7 @@ class Esf3dParser:
         cuelist_labels: dict[int, str] = {}
         cuelist_order: list[int] = []
         cuelist_start_cues: dict[float, int] = {}
+        raw_effects: list[tuple[dict[str, Any], float | None]] = []
         raw_cues: list[
             tuple[
                 int | None,
@@ -1063,11 +1096,8 @@ class Esf3dParser:
                         else 0
                     )
                     if 0 < step_count <= 16 and steps_tbl is not None:
-                        raw_eff["eos_type"] = (
-                            EOS_TYPE_STEPBASED
-                            if "||ch" in label.lower()
-                            else EOS_TYPE_ABSOLUTE
-                        )
+                        tokens: list[tuple[float, float, float, str]] = []
+                        has_pal_ref = False
                         si = 10
                         while si + 1 < len(steps_tbl):
                             st = steps_tbl[si + 1]
@@ -1075,18 +1105,36 @@ class Esf3dParser:
                                 val = st[3] if isinstance(st[3], (int, float)) else 0.0
                                 s_ms = st[6] if isinstance(st[6], (int, float)) else 0.0
                                 d_ms = st[8] if isinstance(st[8], (int, float)) else 0.0
-                                raw_eff["actions"].append(
+                                tok = _extract_effect_step_token(st)
+                                if tok[:2] in ("IP", "FP", "CP", "BP", "PR"):
+                                    has_pal_ref = True
+                                tokens.append(
                                     (
                                         float(s_ms) / 1000.0,
                                         float(d_ms) / 1000.0,
-                                        str(val),
+                                        float(val),
+                                        tok,
                                     )
                                 )
-                                if float(s_ms) + float(d_ms) > 0:
-                                    raw_eff["step_times_ms"].append(
-                                        float(s_ms) + float(d_ms)
-                                    )
                             si += 2
+                        is_stepbased = "||ch" in label.lower() or (
+                            len(item[24]) > 2
+                            and item[24][2] == 2
+                            and not has_pal_ref
+                        )
+                        raw_eff["eos_type"] = (
+                            EOS_TYPE_STEPBASED if is_stepbased else EOS_TYPE_ABSOLUTE
+                        )
+                        for s_sec, d_sec, val, tok in tokens:
+                            raw_eff["actions"].append((s_sec, d_sec, tok))
+                            if is_stepbased:
+                                raw_eff["steps"].append(
+                                    [s_sec, 0.0, 0.0, 0.0, val, 0.0]
+                                )
+                            if s_sec + d_sec > 0:
+                                raw_eff["step_times_ms"].append(
+                                    (s_sec + d_sec) * 1000.0
+                                )
                     else:
                         if any(p in (2, 3) for p in pids):
                             raw_eff["eos_type"] = EOS_TYPE_FOCUS
@@ -1097,14 +1145,21 @@ class Esf3dParser:
                         if cycle_ms is not None:
                             raw_eff["step_times_ms"].append(cycle_ms)
 
-                eff_dict = convert_eos_effect(raw_eff, param_names)
-                if cycle_ms is not None and raw_eff["eos_type"] in (
-                    EOS_TYPE_LINEAR,
-                    EOS_TYPE_FOCUS,
-                    EOS_TYPE_COLOR,
-                ):
-                    eff_dict["cycle_time"] = round(cycle_ms / 1000.0, 3)
-                data["effects"].append(eff_dict)
+                raw_effects.append((raw_eff, cycle_ms))
+
+        # Convert effects after palettes are populated so palette-based effects
+        # can infer their target parameter (e.g. BP -> zoom).
+        for raw_eff, cycle_ms in raw_effects:
+            eff_dict = convert_eos_effect(
+                raw_eff, param_names, palettes=data.get("palettes")
+            )
+            if cycle_ms is not None and raw_eff["eos_type"] in (
+                EOS_TYPE_LINEAR,
+                EOS_TYPE_FOCUS,
+                EOS_TYPE_COLOR,
+            ):
+                eff_dict["cycle_time"] = round(cycle_ms / 1000.0, 3)
+            data["effects"].append(eff_dict)
 
         # Route cues into their Cue Lists without collisions
         cues_by_list: dict[

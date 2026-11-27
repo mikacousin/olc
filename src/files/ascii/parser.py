@@ -1504,9 +1504,12 @@ class AsciiParser(ReadFile):
         if not self._raw_effects:
             return
         effects = self.data.setdefault("effects", [])
+        palettes = self.data.get("palettes")
         for number in sorted(self._raw_effects):
             effects.append(
-                convert_eos_effect(self._raw_effects[number], self.param_types)
+                convert_eos_effect(
+                    self._raw_effects[number], self.param_types, palettes=palettes
+                )
             )
 
     def _finalize_unmounted_subs(self) -> None:

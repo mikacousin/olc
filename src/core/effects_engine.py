@@ -1526,10 +1526,31 @@ class EffectsEngine:
             return parsed_raw
         return fallback
 
+    @staticmethod
+    def _resolve_palette_device_value(
+        show: LightShow | None,
+        pal_ref: PaletteRef | None,
+        channel: int,
+        param_key: str,
+    ) -> float | None:
+        if show is None or pal_ref is None:
+            return None
+        pal = show.palettes.get(pal_ref[0], pal_ref[1])
+        if pal is None:
+            return None
+        dev_vals = pal.device_values.get(channel)
+        if dev_vals is None and pal.device_values:
+            dev_vals = next(iter(pal.device_values.values()))
+        if isinstance(dev_vals, dict):
+            raw = dev_vals.get(param_key)
+            if isinstance(raw, (int, float)):
+                return float(raw)
+        return None
+
     def _apply_scalar_device_layer_locked(
         self,
         dev: LightingDevice,
-        _channel: int,
+        channel: int,
         layer: EffectLayer,
         w_val: float,
         size_mult: float,
@@ -1542,16 +1563,32 @@ class EffectsEngine:
             if layer.mode == EffectMode.RELATIVE:
                 target_z = base_z + layer.size * size_mult * w_val
             else:
-                low_z = (
-                    float(layer.low_value)
-                    if isinstance(layer.low_value, (int, float))
-                    else 5.0
-                )
-                high_z = (
-                    float(layer.high_value)
-                    if isinstance(layer.high_value, (int, float))
-                    else 50.0
-                )
+                if (
+                    isinstance(layer.low_value, str)
+                    and layer.low_value.strip().lower() == "bkgrd"
+                ):
+                    low_z = base_z
+                elif isinstance(layer.low_value, (int, float)):
+                    low_z = float(layer.low_value)
+                else:
+                    pal_low = self._resolve_palette_device_value(
+                        self.lightshow, layer.low_palette, channel, "zoom"
+                    )
+                    low_z = pal_low if pal_low is not None else 5.0
+
+                if (
+                    isinstance(layer.high_value, str)
+                    and layer.high_value.strip().lower() == "bkgrd"
+                ):
+                    high_z = base_z
+                elif isinstance(layer.high_value, (int, float)):
+                    high_z = float(layer.high_value)
+                else:
+                    pal_high = self._resolve_palette_device_value(
+                        self.lightshow, layer.high_palette, channel, "zoom"
+                    )
+                    high_z = pal_high if pal_high is not None else 50.0
+
                 target_z = base_z + ((low_z + (high_z - low_z) * w_val) - base_z) * min(
                     1.0, size_mult
                 )

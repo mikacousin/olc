@@ -439,3 +439,126 @@ def test_import_esf3d_gdtf_enrichment_disabled_or_overridden(
     assert dev4.gdtf_id == ""
     gobo_ch = next(c for c in dev4.channels if c.channel_type is ChannelType.GOBO_WHEEL)
     assert all(r.gobo_id == "" for r in gobo_ch.ranges)
+
+
+def test_eos_zoom_effects_stepbased_palette_and_engine() -> None:
+    """StepBased Zoom, palette-based Absolute Zoom, ESF3D ref, and engine."""
+    from olc.core.effects_engine import EffectsEngine
+    from olc.files.ascii.eos_effects import (
+        EOS_TYPE_ABSOLUTE,
+        EOS_TYPE_STEPBASED,
+        convert_eos_effect,
+        new_eos_effect,
+    )
+    from olc.files.eos.parser import _extract_effect_step_token
+    from olc.show.effect import EffectLayer, EffectMode, WaveformType
+    from olc.show.palette import Palette
+
+    param_types = {79: "Zoom"}
+
+    # 1. StepBased effect with param_id 79 -> parameter == "zoom"
+    raw_step = new_eos_effect(1.0)
+    raw_step["label"] = "Zoom"
+    raw_step["eos_type"] = EOS_TYPE_STEPBASED
+    raw_step["param_ids"] = [79]
+    raw_step["steps"] = [[1.0, 0.0, 0.0, 0.0, 100.0, 0.0]] * 2
+    eff1 = convert_eos_effect(raw_step, param_types)
+    assert eff1["groups"] == 2
+    assert eff1["layers"][0]["parameter"] == "zoom"
+
+    # 2. ESF3D step token extraction for BP 1 (ref_kind=3, cat_id=4, num=10000)
+    st_bp1: list[object] = [
+        "OBJ",
+        0,
+        3,
+        0,
+        0,
+        0,
+        2000,
+        3,
+        0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        ["OBJ", 0, 10000, 4, None],
+        None,
+    ]
+    assert _extract_effect_step_token(st_bp1) == "BP 1"
+
+    # 3. Absolute effect with BP 1 / BP 2 and empty param_ids infers "zoom"
+    raw_abs = new_eos_effect(2.0)
+    raw_abs["label"] = "Zoom2"
+    raw_abs["eos_type"] = EOS_TYPE_ABSOLUTE
+    raw_abs["actions"] = [(2.0, 0.0, "BP 1"), (2.0, 0.0, "BP 2")]
+    palettes = {
+        "beam": {
+            1.0: {"device_values": {1: {"zoom": 60.0}}},
+            2.0: {"device_values": {1: {"zoom": 10.0}}},
+        }
+    }
+    eff2 = convert_eos_effect(raw_abs, param_types, palettes=palettes)
+    assert eff2["layers"][0]["parameter"] == "zoom"
+    assert eff2["layers"][0]["low_palette"] == ["beam", 1.0]
+    assert eff2["layers"][0]["high_palette"] == ["beam", 2.0]
+
+    # 4. EffectsEngine resolves low_palette / high_palette for zoom in ABSOLUTE mode
+    show = LightShow()
+    fdef = FixtureDefinition(
+        manufacturer="Test",
+        model="ZoomSpot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        dmx_modes=[
+            DmxModeDefinition(
+                name="1ch",
+                channel_defs=[
+                    ChannelDefinition(
+                        ChannelType.ZOOM,
+                        offset=0,
+                        label="Zoom",
+                        physical_min=10.0,
+                        physical_max=60.0,
+                    )
+                ],
+            )
+        ],
+    )
+    dev = fdef.instantiate(fixture_id=1, label="Spot 1", universe=1, address=1)
+    show.patch.devices[1] = dev
+    show.palettes.add(
+        Palette(
+            category=PaletteCategory.BEAM,
+            number=1.0,
+            text="Narrow",
+            device_values={1: {"zoom": 60.0}},
+        )
+    )
+    show.palettes.add(
+        Palette(
+            category=PaletteCategory.BEAM,
+            number=2.0,
+            text="Wide",
+            device_values={1: {"zoom": 10.0}},
+        )
+    )
+    engine = EffectsEngine(None, lightshow=show)
+    layer = EffectLayer(
+        parameter="zoom",
+        waveform=WaveformType.PULSE,
+        mode=EffectMode.ABSOLUTE,
+        low_palette=("beam", 1.0),
+        high_palette=("beam", 2.0),
+    )
+    ch_base: dict[str, object] = {"zoom": 20.0}
+    ch_last: dict[str, object] = {}
+    assert engine._apply_scalar_device_layer_locked(
+        dev, 1, layer, 0.0, 1.0, ch_base, ch_last
+    )
+    assert dev.zoom_degrees == pytest.approx(60.0, abs=0.5)
+    assert engine._apply_scalar_device_layer_locked(
+        dev, 1, layer, 1.0, 1.0, ch_base, ch_last
+    )
+    assert dev.zoom_degrees == pytest.approx(10.0, abs=0.5)

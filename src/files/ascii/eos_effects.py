@@ -261,13 +261,15 @@ def _convert_absolute(raw: dict[str, typing.Any], param: str) -> dict[str, typin
     return {"cycle_time": cycle, "layers": [layer]}
 
 
-def _convert_stepbased(raw: dict[str, typing.Any]) -> dict[str, typing.Any]:
+def _convert_stepbased(
+    raw: dict[str, typing.Any], param: str = "intensity"
+) -> dict[str, typing.Any]:
     steps: list[list[float]] = raw["steps"]
     n_steps = max(2, len(steps))
     step_time = steps[0][0] if steps else 1.0
     cycle = max(0.05, step_time * n_steps)
     layer: dict[str, typing.Any] = {
-        "parameter": "intensity",
+        "parameter": param,
         "waveform": "pulse",
         "mode": "absolute",
         "duty_cycle": 1.0 / n_steps,
@@ -276,6 +278,60 @@ def _convert_stepbased(raw: dict[str, typing.Any]) -> dict[str, typing.Any]:
         "high_value": 100.0,
     }
     return {"cycle_time": cycle, "layers": [layer], "groups": n_steps}
+
+
+_COLOR_COMPONENTS = frozenset(
+    {"red", "green", "blue", "cyan", "magenta", "yellow", "white", "amber"}
+)
+
+_CATEGORY_FALLBACK_PARAMS: dict[str, list[str]] = {
+    "color": ["color"],
+    "focus": ["pan", "tilt"],
+    "beam": ["zoom"],
+    "intensity": ["intensity"],
+}
+
+
+def _infer_params_from_palettes(
+    palette_refs: list[tuple[str, float]],
+    palettes: typing.Mapping[str, typing.Any] | None,
+) -> list[str]:
+    """Infer OLC parameter(s) from referenced palettes when param_ids is empty."""
+    if not palette_refs:
+        return []
+    if all(cat == "color" for cat, _ in palette_refs):
+        return ["color"]
+
+    ordered_keys: list[str] = []
+    saw_channels = False
+    if palettes:
+        for cat, num in palette_refs:
+            pool = palettes.get(cat)
+            if not isinstance(pool, typing.Mapping):
+                continue
+            pal = pool.get(num)
+            if pal is None:
+                pal = pool.get(float(num))
+            if not isinstance(pal, typing.Mapping):
+                continue
+            dev_vals = pal.get("device_values")
+            if isinstance(dev_vals, typing.Mapping):
+                for ch_vals in dev_vals.values():
+                    if isinstance(ch_vals, typing.Mapping):
+                        for key in ch_vals:
+                            k = str(key)
+                            if k not in ordered_keys:
+                                ordered_keys.append(k)
+            if pal.get("channels"):
+                saw_channels = True
+
+    if ordered_keys:
+        if "color" in ordered_keys:
+            ordered_keys = [k for k in ordered_keys if k not in _COLOR_COMPONENTS]
+        return ordered_keys
+    if saw_channels:
+        return ["intensity"]
+    return list(_CATEGORY_FALLBACK_PARAMS.get(palette_refs[0][0], ["intensity"]))
 
 
 def _finalize_eos_effect_dict(
@@ -296,7 +352,9 @@ def _finalize_eos_effect_dict(
 
 
 def convert_eos_effect(
-    raw: dict[str, typing.Any], param_types: dict[int, str]
+    raw: dict[str, typing.Any],
+    param_types: dict[int, str],
+    palettes: typing.Mapping[str, typing.Any] | None = None,
 ) -> dict[str, typing.Any]:
     """Convert a raw Eos ``$Effect`` accumulator into an EffectDefinition dict."""
     eos_type = int(raw["eos_type"])
@@ -319,12 +377,28 @@ def convert_eos_effect(
         result["groups"] = int(raw["grouping"])
 
     if eos_type == EOS_TYPE_ABSOLUTE and raw["actions"]:
-        param = _fmt_param(ids[0], param_types) if ids else "intensity"
-        result.update(_convert_absolute(raw, param))
+        if ids:
+            params = [_fmt_param(ids[0], param_types)]
+        else:
+            pal_refs = [
+                ref
+                for _t, _d, tok in raw["actions"]
+                for kind, _v, ref in [_action_value(tok)]
+                if kind == "palette" and ref is not None
+            ]
+            params = _infer_params_from_palettes(pal_refs, palettes) or ["intensity"]
+        abs_result = _convert_absolute(raw, params[0])
+        if len(params) > 1 and abs_result.get("layers"):
+            base_layer = abs_result["layers"][0]
+            abs_result["layers"] = [
+                {**base_layer, "parameter": p} for p in params
+            ]
+        result.update(abs_result)
         return _finalize_eos_effect_dict(result, raw)
 
     if eos_type == EOS_TYPE_STEPBASED:
-        step_result = _convert_stepbased(raw)
+        param = _fmt_param(ids[0], param_types) if ids else "intensity"
+        step_result = _convert_stepbased(raw, param)
         if raw["grouping"] is not None:
             step_result.pop("groups", None)
         result.update(step_result)
