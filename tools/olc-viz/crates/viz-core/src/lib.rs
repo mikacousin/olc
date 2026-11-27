@@ -57,13 +57,17 @@ pub enum FixtureType {
 }
 
 /// Discrete range of a DMX channel (gobo wheel, color, etc.).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ChannelRange {
     pub label: String,
     pub min: u8,
     pub max: u8,
     #[serde(default)]
     pub gobo_id: String,
+    #[serde(default)]
+    pub physical_min: Option<f32>,
+    #[serde(default)]
+    pub physical_max: Option<f32>,
 }
 
 /// Individual DMX channel of a fixture.

@@ -79,15 +79,26 @@ def _channel_row(ch: Any) -> dict[str, Any]:  # noqa: ANN401
         row["physical_max"] = float(pmax)
     ranges = getattr(ch, "ranges", None)
     if ranges:
-        row["ranges"] = [
-            {
+        row_ranges: list[dict[str, Any]] = []
+        for r in ranges:
+            r_dict: dict[str, Any] = {
                 "label": str(r.label),
                 "min": int(r.value_min),
                 "max": int(r.value_max),
-                **({"gobo_id": str(r.gobo_id)} if getattr(r, "gobo_id", "") else {}),
             }
-            for r in ranges
-        ]
+            if getattr(r, "gobo_id", ""):
+                r_dict["gobo_id"] = str(r.gobo_id)
+            r_pmin = getattr(r, "physical_min", None)
+            r_pmax = getattr(r, "physical_max", None)
+            if (
+                r_pmin is not None
+                and r_pmax is not None
+                and (r_pmin, r_pmax) != (0.0, 1.0)
+            ):
+                r_dict["physical_min"] = float(r_pmin)
+                r_dict["physical_max"] = float(r_pmax)
+            row_ranges.append(r_dict)
+        row["ranges"] = row_ranges
     return row
 
 

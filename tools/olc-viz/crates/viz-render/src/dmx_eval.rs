@@ -123,6 +123,132 @@ fn extract_wheel_number(label: &str) -> Option<u8> {
 
 const MAX_GOBO_ROT_RAD_PER_SEC: f32 = 8.0;
 const STOP_DEADZONE: f32 = 0.03;
+const DEFAULT_STROBE_MIN_HZ: f32 = 1.0;
+const DEFAULT_STROBE_MAX_HZ: f32 = 18.0;
+const STROBE_DUTY_CYCLE: f32 = 0.25;
+
+fn resolve_freq_hz(
+    t: f32,
+    r_min: Option<f32>,
+    r_max: Option<f32>,
+    ch_min: Option<f32>,
+    ch_max: Option<f32>,
+) -> f32 {
+    let valid_pair = |mn: Option<f32>, mx: Option<f32>| -> Option<(f32, f32)> {
+        let (lo, hi) = (mn?, mx?);
+        if (lo - 0.0).abs() < 1e-4 && (hi - 1.0).abs() < 1e-4 {
+            return None;
+        }
+        if (lo - hi).abs() <= 1e-4 {
+            return None;
+        }
+        Some((lo, hi))
+    };
+    let (lo, hi) = valid_pair(r_min, r_max)
+        .or_else(|| valid_pair(ch_min, ch_max))
+        .unwrap_or((DEFAULT_STROBE_MIN_HZ, DEFAULT_STROBE_MAX_HZ));
+    (lo + t.clamp(0.0, 1.0) * (hi - lo)).clamp(0.25, 30.0)
+}
+
+fn splitmix64(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^ (x >> 31)
+}
+
+fn eval_shutter_strobe(
+    f: &Fixture,
+    time_sec: f32,
+    get_universe: &impl Fn(u16) -> Option<DmxFrame>,
+) -> f32 {
+    let Some(ch) = by_type(f, "strobe").find(|c| !c.fine && !c.ultra_fine) else {
+        return 1.0;
+    };
+    let Some(frame) = get_universe(ch.universe) else {
+        return 1.0;
+    };
+    let idx = ch.address.saturating_sub(1) as usize;
+    if idx >= frame.len() {
+        return 1.0;
+    }
+    let dmx_val = frame[idx];
+    let fixture_seed = ((f.channel.unwrap_or(0) as u64) << 16) ^ (ch.address as u64);
+
+    if !ch.ranges.is_empty() {
+        if let Some(r) = ch.ranges.iter().find(|r| dmx_val >= r.min && dmx_val <= r.max) {
+            let low = r.label.to_ascii_lowercase();
+            let t = if r.max > r.min {
+                (dmx_val - r.min) as f32 / (r.max - r.min) as f32
+            } else {
+                0.5
+            };
+
+            if low.contains("rand") {
+                let freq = resolve_freq_hz(
+                    t,
+                    r.physical_min,
+                    r.physical_max,
+                    ch.physical_min,
+                    ch.physical_max,
+                );
+                let step = (time_sec.max(0.0) * freq).floor() as u64;
+                let h = splitmix64(step ^ fixture_seed.wrapping_mul(0x9E37_79B9));
+                return if (h & 0xFF) < 64 { 1.0 } else { 0.0 };
+            }
+
+            if low.contains("pulse") || low.contains("ramp") {
+                let freq = resolve_freq_hz(
+                    t,
+                    r.physical_min,
+                    r.physical_max,
+                    ch.physical_min,
+                    ch.physical_max,
+                );
+                let phase = (time_sec.max(0.0) * freq).fract();
+                if low.contains("close") {
+                    return 1.0 - phase;
+                }
+                if low.contains("open") {
+                    return phase;
+                }
+                return 1.0 - (phase * 2.0 - 1.0).abs();
+            }
+
+            if (low.contains("close") || low.contains("blackout") || low == "off")
+                && !low.contains("open")
+            {
+                return 0.0;
+            }
+
+            if low.contains("strobe")
+                || low.contains("flash")
+                || low.contains("hz")
+                || low.contains("burst")
+            {
+                let freq = resolve_freq_hz(
+                    t,
+                    r.physical_min,
+                    r.physical_max,
+                    ch.physical_min,
+                    ch.physical_max,
+                );
+                let phase = (time_sec.max(0.0) * freq).fract();
+                return if phase < STROBE_DUTY_CYCLE { 1.0 } else { 0.0 };
+            }
+
+            return 1.0;
+        }
+    }
+
+    if dmx_val == 0 {
+        return 1.0;
+    }
+    let t = dmx_val as f32 / 255.0;
+    let freq = resolve_freq_hz(t, None, None, ch.physical_min, ch.physical_max);
+    let phase = (time_sec.max(0.0) * freq).fract();
+    if phase < STROBE_DUTY_CYCLE { 1.0 } else { 0.0 }
+}
 
 fn eval_bipolar_spin(norm: f32, lo: f32, hi: f32, time_sec: f32) -> f32 {
     let mid = (lo + hi) * 0.5;
@@ -299,6 +425,7 @@ fn evaluate_one(
     if !has_intensity && (has_rgb || has_cmy) {
         intensity = 1.0;
     }
+    intensity *= eval_shutter_strobe(f, time_sec, get_universe);
 
     // 3. Pan / Tilt et direction
     let pos = [f.position.x, f.position.y, f.position.z];
@@ -558,12 +685,12 @@ mod tests {
         use viz_core::ChannelRange;
 
         let w1_ranges = vec![
-            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into() },
-            ChannelRange { label: "Stars".into(), min: 128, max: 255, gobo_id: "builtin:stars".into() },
+            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into(), ..Default::default() },
+            ChannelRange { label: "Stars".into(), min: 128, max: 255, gobo_id: "builtin:stars".into(), ..Default::default() },
         ];
         let w2_ranges = vec![
-            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into() },
-            ChannelRange { label: "Bars".into(), min: 128, max: 255, gobo_id: "builtin:bars".into() },
+            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into(), ..Default::default() },
+            ChannelRange { label: "Bars".into(), min: 128, max: 255, gobo_id: "builtin:bars".into(), ..Default::default() },
         ];
         let patch = Patch {
             version: 1,
@@ -622,12 +749,12 @@ mod tests {
         use viz_core::ChannelRange;
 
         let w1_ranges = vec![
-            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into() },
-            ChannelRange { label: "Grid".into(), min: 128, max: 255, gobo_id: "builtin:grid".into() },
+            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into(), ..Default::default() },
+            ChannelRange { label: "Grid".into(), min: 128, max: 255, gobo_id: "builtin:grid".into(), ..Default::default() },
         ];
         let w2_ranges = vec![
-            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into() },
-            ChannelRange { label: "Ring".into(), min: 128, max: 255, gobo_id: "builtin:ring".into() },
+            ChannelRange { label: "Open".into(), min: 0, max: 127, gobo_id: "builtin:open".into(), ..Default::default() },
+            ChannelRange { label: "Ring".into(), min: 128, max: 255, gobo_id: "builtin:ring".into(), ..Default::default() },
         ];
         let patch = Patch {
             version: 1,
@@ -721,12 +848,12 @@ mod tests {
         use viz_core::ChannelRange;
 
         let gobo_ranges = vec![
-            ChannelRange { label: "Open".into(), min: 0, max: 9, gobo_id: "builtin:open".into() },
-            ChannelRange { label: "Stardust".into(), min: 20, max: 29, gobo_id: "builtin:stars".into() },
+            ChannelRange { label: "Open".into(), min: 0, max: 9, gobo_id: "builtin:open".into(), ..Default::default() },
+            ChannelRange { label: "Stardust".into(), min: 20, max: 29, gobo_id: "builtin:stars".into(), ..Default::default() },
         ];
         let pos_ranges = vec![
-            ChannelRange { label: "Gobo1Index".into(), min: 0, max: 127, gobo_id: String::new() },
-            ChannelRange { label: "Gobo1Rotation".into(), min: 128, max: 255, gobo_id: String::new() },
+            ChannelRange { label: "Gobo1Index".into(), min: 0, max: 127, ..Default::default() },
+            ChannelRange { label: "Gobo1Rotation".into(), min: 128, max: 255, ..Default::default() },
         ];
         let pos_fine = DmxChannel {
             channel_type: "generic".into(),
@@ -796,5 +923,170 @@ mod tests {
         assert!(ccw_rot > 0.5);
         assert!(cw_rot < -0.5);
         assert!((ccw_rot + cw_rot).abs() < 0.5);
+    }
+
+    #[test]
+    fn evaluates_shutter_closed_open_strobe_pulse_and_random() {
+        use viz_core::ChannelRange;
+
+        let strobe_ranges = vec![
+            ChannelRange { label: "Shutter Closed".into(), min: 0, max: 19, ..Default::default() },
+            ChannelRange { label: "Open".into(), min: 20, max: 39, ..Default::default() },
+            ChannelRange {
+                label: "Strobe".into(),
+                min: 40,
+                max: 139,
+                physical_min: Some(2.0),
+                physical_max: Some(10.0),
+                ..Default::default()
+            },
+            ChannelRange {
+                label: "Pulse Open".into(),
+                min: 140,
+                max: 199,
+                physical_min: Some(1.0),
+                physical_max: Some(5.0),
+                ..Default::default()
+            },
+            ChannelRange {
+                label: "Random Strobe".into(),
+                min: 200,
+                max: 255,
+                physical_min: Some(4.0),
+                physical_max: Some(12.0),
+                ..Default::default()
+            },
+        ];
+
+        let make_fixture = |id: u32| Fixture {
+            id: format!("olc:{id}"),
+            channel: Some(id),
+            unit: None,
+            name: format!("Spot {id}"),
+            fixture_type: FixtureType::MovingHead,
+            gdtf: None,
+            mode: None,
+            address: Some(DmxAddress { universe: 1, channel: 1 }),
+            footprint: Some(2),
+            position: Vec3::new(0.0, 0.0, 4.0),
+            focus_point: Vec3::ZERO,
+            orientation: Orientation::default(),
+            beam_angle: 25.0,
+            static_gobo: String::new(),
+            gel: String::new(),
+            gel_color: String::new(),
+            channels: vec![
+                ch_simple("intensity", "Intens", 1, vec![]),
+                ch_simple("strobe", "Shutter", 2, strobe_ranges.clone()),
+            ],
+        };
+
+        let patch = Patch {
+            version: 1,
+            stage: Stage::default(),
+            fixtures: vec![make_fixture(10), make_fixture(11)],
+        };
+
+        let mut frame = [0u8; DMX_CHANNELS];
+        frame[0] = 255;
+
+        // 1. Closed (DMX 5) -> 0.0; Open (DMX 25) -> 1.0
+        frame[1] = 5;
+        let closed = evaluate_fixtures(&patch, 0.0, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!(closed.abs() < 1e-5);
+
+        frame[1] = 25;
+        let open = evaluate_fixtures(&patch, 0.0, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!((open - 1.0).abs() < 1e-5);
+
+        // 2. Strobe at max of range (DMX 139 -> 10 Hz, period 0.1s, duty 25% = 0.025s)
+        frame[1] = 139;
+        let s_on = evaluate_fixtures(&patch, 0.02, |u| (u == 1).then_some(frame))[0].intensity;
+        let s_off = evaluate_fixtures(&patch, 0.08, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!((s_on - 1.0).abs() < 1e-5);
+        assert!(s_off.abs() < 1e-5);
+
+        // 3. Pulse Open (DMX 140 -> 1.0 Hz) -> smooth ramp
+        frame[1] = 140;
+        let p_low = evaluate_fixtures(&patch, 0.1, |u| (u == 1).then_some(frame))[0].intensity;
+        let p_high = evaluate_fixtures(&patch, 0.9, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!(p_low < 0.25);
+        assert!(p_high > 0.75);
+
+        // 4. Random strobe produces both ON and OFF and desynchronizes fixtures
+        frame[1] = 230;
+        let mut saw_on = false;
+        let mut saw_off = false;
+        let mut saw_diff = false;
+        for step in 0..40 {
+            let t = step as f32 * 0.13;
+            let res = evaluate_fixtures(&patch, t, |u| (u == 1).then_some(frame));
+            let i0 = res[0].intensity;
+            let i1 = res[1].intensity;
+            if i0 > 0.5 {
+                saw_on = true;
+            } else {
+                saw_off = true;
+            }
+            if (i0 - i1).abs() > 0.5 {
+                saw_diff = true;
+            }
+        }
+        assert!(saw_on && saw_off && saw_diff);
+    }
+
+    #[test]
+    fn evaluates_strobe_without_ranges() {
+        let patch = Patch {
+            version: 1,
+            stage: Stage::default(),
+            fixtures: vec![Fixture {
+                id: "olc:12".into(),
+                channel: Some(12),
+                unit: None,
+                name: "Simple Strobe".into(),
+                fixture_type: FixtureType::Strobe,
+                gdtf: None,
+                mode: None,
+                address: Some(DmxAddress { universe: 1, channel: 1 }),
+                footprint: Some(2),
+                position: Vec3::new(0.0, 0.0, 4.0),
+                focus_point: Vec3::ZERO,
+                orientation: Orientation::default(),
+                beam_angle: 25.0,
+                static_gobo: String::new(),
+                gel: String::new(),
+                gel_color: String::new(),
+                channels: vec![
+                    ch_simple("intensity", "Intens", 1, vec![]),
+                    DmxChannel {
+                        channel_type: "strobe".into(),
+                        label: "Strobe".into(),
+                        universe: 1,
+                        address: 2,
+                        fine: false,
+                        ultra_fine: false,
+                        physical_min: Some(1.0),
+                        physical_max: Some(10.0),
+                        ranges: vec![],
+                    },
+                ],
+            }],
+        };
+
+        let mut frame = [0u8; DMX_CHANNELS];
+        frame[0] = 255;
+
+        // DMX 0 -> open
+        frame[1] = 0;
+        let open = evaluate_fixtures(&patch, 0.08, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!((open - 1.0).abs() < 1e-5);
+
+        // DMX 255 -> 10 Hz strobe
+        frame[1] = 255;
+        let on = evaluate_fixtures(&patch, 0.01, |u| (u == 1).then_some(frame))[0].intensity;
+        let off = evaluate_fixtures(&patch, 0.06, |u| (u == 1).then_some(frame))[0].intensity;
+        assert!((on - 1.0).abs() < 1e-5);
+        assert!(off.abs() < 1e-5);
     }
 }
