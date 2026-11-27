@@ -1277,7 +1277,7 @@ def test_eos_patch_advanced_options_curve_invert_swap_notes(
     # Ch 505: Baseline Spot (opts=0) to compare Pan/Tilt addresses
     tree[5].extend(
         [
-            _patch_rec(501, "Dim MP", dim_guid, 101, curve_id=905),
+            _patch_rec(501, "Dim MP", dim_guid, 101, curve_id=905, text1="Dimmer Note"),
             _patch_rec(501, "Dim MP", dim_guid, 102, curve_id=905),
             _patch_rec(
                 502,
@@ -1301,10 +1301,11 @@ def test_eos_patch_advanced_options_curve_invert_swap_notes(
     show = LightShow()
     ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
 
-    # Multi-part dimmer Ch 501 -> curve 905
+    # Multi-part dimmer Ch 501 -> curve 905 + notes
     d501 = show.patch.get_device(501)
     assert d501 is not None
     assert d501.curve_id == 905
+    assert d501.notes == "Dimmer Note"
 
     # Ch 502: Invert Pan, curve 905, label + notes
     d502 = show.patch.get_device(502)

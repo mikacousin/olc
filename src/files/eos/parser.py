@@ -991,6 +991,8 @@ class Esf3dParser:
                 if gel_str:
                     meta["gel"] = gel_str
                     meta["gel_color"] = gel_hex
+                if notes:
+                    meta["notes"] = notes
                 if meta:
                     data.setdefault("patch_meta", {})[ch] = meta
 

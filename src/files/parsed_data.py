@@ -312,6 +312,8 @@ class ParsedData:
                     dev_obj.gel = str(meta["gel"])
                 if "gel_color" in meta:
                     dev_obj.gel_color = str(meta["gel_color"])
+                if "notes" in meta:
+                    dev_obj.notes = str(meta["notes"])
 
     def _normalize_channels_dict(
         self, channels: dict[typing.Any, typing.Any] | None
