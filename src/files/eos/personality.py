@@ -459,6 +459,17 @@ def _infer_fixture_type(pers: EosPersonality) -> FixtureType:
     return FixtureType.GENERIC
 
 
+_PHYSICAL_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.PAN,
+        ChannelType.TILT,
+        ChannelType.ZOOM,
+        ChannelType.FOCUS,
+        ChannelType.COLOR_TEMP,
+    }
+)
+
+
 def build_olc_fixture_definition(pers: EosPersonality) -> FixtureDefinition:
     """Build an OLC ``FixtureDefinition`` directly from an ``EosPersonality``."""
     channel_defs: list[ChannelDefinition] = []
@@ -476,7 +487,9 @@ def build_olc_fixture_definition(pers: EosPersonality) -> FixtureDefinition:
         ctype = EOS_PARAM_TO_CHANNEL_TYPE.get(pname_lower, ChannelType.GENERIC)
         ctypes.add(ctype)
 
-        phys_min, phys_max, phys_unit = p.physical_bounds()
+        phys_min, phys_max, phys_unit = (
+            p.physical_bounds() if ctype in _PHYSICAL_CHANNEL_TYPES else (0.0, 1.0, "")
+        )
 
         # Build coarse 0..255 ChannelRanges
         ol_ranges: list[ChannelRange] = []

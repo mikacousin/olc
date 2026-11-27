@@ -993,3 +993,54 @@ def test_working_a3d_scenery_and_glb_import(tmp_path: pathlib.Path) -> None:
     show = LightShow()
     ImportFile(show, esf_path, FileType.ESF3D).parse_sync()
     assert len(show.scenery) == 2
+
+
+def test_eos_strobe_channel_keeps_normalized_bounds() -> None:
+    """Multi-function Shutter_Strobe keeps [0, 1] bounds so DMX 255 stays Open."""
+    from olc.files.eos.personality import EosPersonality, build_olc_fixture_definition
+
+    pers = EosPersonality(
+        guid="test-strobe-guid",
+        manufacturer="AnonLights",
+        model="Spot_Strobe",
+        display_name="Spot Strobe",
+        category="Luminaire",
+        footprint=2,
+        params={
+            1: EosParamDef(
+                param_id=1, name="Intens", home_dmx=0, offset=0, num_bytes=1
+            ),
+            204: EosParamDef(
+                param_id=204,
+                name="Shutter_Strobe",
+                home_dmx=255,
+                offset=1,
+                num_bytes=1,
+                range_blocks=[
+                    EosRangeBlock(
+                        None,
+                        0.0,
+                        0.0,
+                        [
+                            EosSubRange("Closed", 0, 10, 0.0, 10.0, 0),
+                            EosSubRange("Strobe 1 to 25 Hz", 21, 117, 21.0, 117.0, 21),
+                            EosSubRange("Open 4", 246, 255, 246.0, 255.0, 255),
+                        ],
+                    )
+                ],
+            ),
+        },
+    )
+    fdef = build_olc_fixture_definition(pers)
+    strobe_def = next(
+        c
+        for c in fdef.dmx_modes[0].channel_defs
+        if c.channel_type is ChannelType.STROBE
+    )
+    assert (strobe_def.physical_min, strobe_def.physical_max) == (0.0, 1.0)
+
+    dev = fdef.instantiate(fixture_id=1, label="Spot 1", universe=1, address=1)
+    dev.set_strobe_hz(1.0)
+    strobe_ch = dev.get_channel(ChannelType.STROBE)
+    assert strobe_ch is not None
+    assert strobe_ch.value == 255
