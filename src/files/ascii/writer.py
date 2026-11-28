@@ -538,6 +538,10 @@ class AsciiWriter(WriteFile):
                 self.stream.write(bytes(f"   $$Text {dev.label}\n", "utf8"))
             if dev.gel:
                 self.stream.write(bytes(f"   $$TextGel {dev.gel}\n", "utf8"))
+            if dev.notes:
+                for line in dev.notes.splitlines():
+                    if line.strip():
+                        self.stream.write(bytes(f"   $$Notes {line}\n", "utf8"))
             if tuple(dev.position) != (0.0, 0.0, 4.0):
                 px, py, pz = dev.position
                 self.stream.write(

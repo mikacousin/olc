@@ -70,6 +70,10 @@ _EOS_PALETTE_KEYWORDS: dict[str, PaletteCategory] = {
     "$beampalette": PaletteCategory.BEAM,
 }
 
+_PATCH_TEXT_NOTE_KEYWORDS: frozenset[str] = frozenset(
+    f"$$text{idx}" for idx in range(1, 11)
+)
+
 _RAW_TEXT_KEYWORDS: frozenset[str] = frozenset(
     {
         "text",
@@ -86,6 +90,7 @@ _RAW_TEXT_KEYWORDS: frozenset[str] = frozenset(
         "$$notes",
         "$$title",
         "$$cuenotes",
+        *_PATCH_TEXT_NOTE_KEYWORDS,
     }
 )
 
@@ -1241,7 +1246,23 @@ class AsciiParser(ReadFile):
                     channel, dmx_addr, curve_id, fdef_dict, mode_name=mode_name
                 )
                 if device_dict is not None:
-                    self.data.setdefault("devices", {})[channel] = device_dict
+                    existing_dev = self.data.get("devices", {}).get(channel)
+                    if isinstance(existing_dev, dict):
+                        existing_chs = existing_dev.setdefault("channels", [])
+                        seen_addrs = {
+                            (int(c.get("universe", 0)), int(c.get("address", 0)))
+                            for c in existing_chs
+                        }
+                        for new_ch in device_dict.get("channels", []):
+                            addr_key = (
+                                int(new_ch.get("universe", 0)),
+                                int(new_ch.get("address", 0)),
+                            )
+                            if addr_key not in seen_addrs:
+                                existing_chs.append(new_ch)
+                                seen_addrs.add(addr_key)
+                    else:
+                        self.data.setdefault("devices", {})[channel] = device_dict
 
         self.state = State.IN_PATCH
 
@@ -1285,6 +1306,22 @@ class AsciiParser(ReadFile):
                     ):
                         self._apply_label(out, key="label")
                         break
+        elif (
+            self.keyword == "$$notes" or self.keyword in _PATCH_TEXT_NOTE_KEYWORDS
+        ) and self.args:
+            note_text = html.unescape(self.args[0]).strip()
+            target = self._get_patch_meta_target(ch, dev)
+            if target is not None and note_text:
+                if (
+                    self.keyword in _PATCH_TEXT_NOTE_KEYWORDS
+                    and note_text == target.get("label")
+                ):
+                    return
+                existing_notes = str(target.get("notes", "") or "")
+                if not existing_notes:
+                    target["notes"] = note_text
+                elif note_text not in existing_notes.splitlines():
+                    target["notes"] = f"{existing_notes}\n{note_text}"
         elif self.keyword == "$$options" and dev is not None and self.args:
             self._apply_patch_options(dev, "".join(self.args).lower())
         elif self.keyword == "$$proportion" and self.args:

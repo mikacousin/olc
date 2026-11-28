@@ -167,7 +167,8 @@ def test_import_eos_personalities_patch_and_cue_params(
     """Test $ParamType, $Personality, $Patch (16-bit & virtual dimmer), and $$Param."""
     import pathlib
 
-    from olc.devices.channel import ChannelType, FixtureType
+    from olc.devices.channel import ChannelType
+    from olc.devices.device import FixtureType
 
     mock_app = MagicMock()
     monkeypatch.setattr("olc.files.import_file.App", lambda: mock_app, raising=False)
@@ -3018,3 +3019,69 @@ def test_ascii_round_trip_cue_link_loop_and_curve(tmp_path: object) -> None:
     assert "LINK 1\n" in rt_text
     assert "$$LOOP 4\n" in rt_text
     assert "$$CURVE 7\n" in rt_text
+
+
+def test_ascii_import_multipart_fixture_and_patch_notes(tmp_path: Path) -> None:
+    """Multi-part fixtures merge channels and $$Notes/$$Text1..10 populate dev.notes."""
+    from olc.devices.channel import ChannelType
+    from olc.files.ascii.writer import AsciiWriter
+
+    asc = tmp_path / "multipart_notes.asc"
+    asc.write_text(
+        "\n".join(
+            [
+                "Ident 3:0",
+                "Manufacturer ETC",
+                "Console Eos",
+                "$ParamType 1 1 Intens",
+                "$ParamType 2 2 Pan",
+                "$Personality 10",
+                "   $$Manuf TourBrand",
+                "   $$Model SpotDual",
+                "   $$Footprint 2",
+                "   $$PersChan 1 1 1 0 0 100 0.0 100.0",
+                "   $$PersChan 2 2 2 0 32768 100 -270.0 270.0",
+                "$Patch 30 10 100 1",
+                "   $$Text Dual Spot",
+                "   $$Notes Bridge 1",
+                "$Patch 30 10 120 1",
+                "$Patch 31 0 150 1",
+                "   $$Text Dimmer 31",
+                "   $$Text1 FOH Left",
+                "$Patch 32 0 0 1",
+                "   $$Text Spare 32",
+                "   $$Notes Rack B",
+                "ENDDATA",
+            ]
+        ),
+        encoding="ascii",
+    )
+
+    ls = LightShow()
+    ImportFile(ls, Gio.File.new_for_path(str(asc)), FileType.ASCII).parse_sync(
+        auto_import=True
+    )
+
+    d30 = ls.patch.get_device(30)
+    assert d30 is not None
+    assert d30.label == "Dual Spot"
+    assert "Bridge 1" in d30.notes
+    int_chs = [c for c in d30.channels if c.channel_type is ChannelType.INTENSITY]
+    assert [(c.universe, c.address) for c in int_chs] == [(1, 100), (1, 120)]
+    d30.set_intensity(0.5)
+    assert all(c.value in (127, 128) for c in int_chs)
+
+    d31 = ls.patch.get_device(31)
+    assert d31 is not None
+    assert d31.label == "Dimmer 31"
+    assert d31.notes == "FOH Left"
+
+    d32 = ls.patch.get_device(32)
+    assert d32 is not None
+    assert d32.label == "Spare 32"
+    assert d32.notes == "Rack B"
+    assert d32.channels == []
+
+    rt_path = tmp_path / "multipart_notes_rt.asc"
+    AsciiWriter(rt_path, ls).write()
+    assert "   $$Notes Rack B\n" in rt_path.read_text(encoding="utf-8")
